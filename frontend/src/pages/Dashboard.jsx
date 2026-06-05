@@ -24,8 +24,8 @@ export default function Dashboard() {
       alert("Please select a role first!");
       return;
     }
-    // TODO: Navigate to the actual Pre-Test Likert scale page
-    alert(`Starting Pre-Test for ${selectedRole} (${selectedDifficulty} difficulty)`);
+    // Navigate to the Pre-Test Likert scale page
+    navigate("/likert-pre");
   };
 
   return (
