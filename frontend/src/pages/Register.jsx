@@ -25,9 +25,23 @@ export default function Register() {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log("Registered user:", userCredential.user.uid);
-      // TODO: Save to MongoDB and navigate to Dashboard
-      alert("Successfully registered!");
+      const { uid, email: userEmail } = userCredential.user;
+      console.log("Registered user:", uid);
+
+      // Sync the new Firebase user into MongoDB (non-blocking)
+      try {
+        const response = await fetch("http://localhost:5000/api/users/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ firebaseUid: uid, email: userEmail }),
+        });
+        const data = await response.json();
+        console.log("MongoDB sync:", data.message);
+      } catch (syncErr) {
+        console.warn("MongoDB sync failed (non-critical):", syncErr.message);
+      }
+
+      navigate("/dashboard");
     } catch (err) {
       console.error("Registration Error:", err);
       // Firebase throws specific errors we can handle
