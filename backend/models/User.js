@@ -11,13 +11,20 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  // Here is where we will store the answers from your Likert Scale component
-  preTestScores: {
-    // You can adjust these categories based on your actual Likert questions
-    confidence: { type: Number, default: null },
-    communication: { type: Number, default: null },
-    technical: { type: Number, default: null },
+  // Stores the pre-test Likert Scale baseline (H₀₂)
+  // Shape mirrors the LikertScale.jsx payload:
+  //   preConfidenceAnswers: [{ questionId: "q1", score: 3 }, ...]
+  //   confidenceScore: sum of all 5 scores (max 25)
+  preConfidenceAnswers: {
+    type: [
+      {
+        questionId: { type: String },
+        score: { type: Number },
+      },
+    ],
+    default: [],
   },
+  confidenceScore: { type: Number, default: null },
   createdAt: {
     type: Date,
     default: Date.now,

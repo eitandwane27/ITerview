@@ -64,7 +64,7 @@ router.post("/login", async (req, res) => {
 // This endpoint receives data from your Likert Scale frontend
 router.post("/pretest", async (req, res) => {
   try {
-    const { firebaseUid, email, scores } = req.body;
+    const { firebaseUid, email, answers, confidenceScore } = req.body;
 
     if (!firebaseUid || !email) {
       return res
@@ -74,7 +74,14 @@ router.post("/pretest", async (req, res) => {
 
     const user = await User.findOneAndUpdate(
       { firebaseUid },
-      { firebaseUid, email, preTestScores: scores },
+      {
+        $set: {
+          email,
+          preConfidenceAnswers: answers,
+          confidenceScore,
+        },
+        $setOnInsert: { firebaseUid },
+      },
       { new: true, upsert: true },
     );
 

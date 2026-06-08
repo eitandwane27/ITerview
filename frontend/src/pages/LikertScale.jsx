@@ -5,6 +5,7 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { auth } from "../firebase";
 import "./LikertScale.css";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,7 +96,7 @@ export default function LikertScale({ phase = "pre" }) {
     setAnswers((prev) => ({ ...prev, [currentQuestion.id]: value }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentAnswer === null) return; // guard — button disabled anyway
 
     if (currentIndex < totalQuestions - 1) {
@@ -108,23 +109,23 @@ export default function LikertScale({ phase = "pre" }) {
       }));
       const confidenceScore = answersArray.reduce((sum, a) => sum + a.score, 0);
 
-      // TODO (Day 3): POST to /api/likert when backend is ready
-      // await fetch("/api/likert", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     userId: auth.currentUser.uid,
-      //     phase,
-      //     answers: answersArray,
-      //     confidenceScore,
-      //   }),
-      // });
-
-      console.log("[LikertScale] Payload ready for MongoDB:", {
-        phase,
-        answers: answersArray,
-        confidenceScore,
-      });
+      // POST to /api/users/pretest → saves to MongoDB
+      try {
+        const user = auth.currentUser;
+        await fetch("/api/users/pretest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firebaseUid: user.uid,
+            email: user.email,
+            answers: answersArray,
+            confidenceScore,
+          }),
+        });
+        console.log("[LikertScale] Pre-test scores saved to MongoDB ✅");
+      } catch (err) {
+        console.error("[LikertScale] Failed to save pre-test scores:", err);
+      }
 
       setIsDone(true);
     }
