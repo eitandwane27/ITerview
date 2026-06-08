@@ -5,6 +5,7 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { auth } from "../firebase";
 import "./LikertScale.css";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,11 +41,16 @@ const QUESTIONS = [
 // MongoDB document field: confidenceScore = sum of all 5 values (max: 25)
 // ─────────────────────────────────────────────────────────────────────────────
 const OPTIONS = [
-  { value: 1, emoji: "😰", title: "Not at all",     sub: "I feel very uncertain" },
-  { value: 2, emoji: "😐", title: "Slightly",        sub: "I have some doubts"   },
-  { value: 3, emoji: "🙂", title: "Moderately",      sub: "I'm somewhat confident" },
-  { value: 4, emoji: "😊", title: "Confident",       sub: "I feel fairly ready"  },
-  { value: 5, emoji: "🔥", title: "Very Confident",  sub: "I feel completely ready" },
+  { value: 1, emoji: "😰", title: "Not at all", sub: "I feel very uncertain" },
+  { value: 2, emoji: "😐", title: "Slightly", sub: "I have some doubts" },
+  { value: 3, emoji: "🙂", title: "Moderately", sub: "I'm somewhat confident" },
+  { value: 4, emoji: "😊", title: "Confident", sub: "I feel fairly ready" },
+  {
+    value: 5,
+    emoji: "🔥",
+    title: "Very Confident",
+    sub: "I feel completely ready",
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,7 +79,7 @@ export default function LikertScale({ phase = "pre" }) {
 
   // answers: { q1: 3, q2: null, ... }
   const [answers, setAnswers] = useState(
-    Object.fromEntries(QUESTIONS.map((q) => [q.id, null]))
+    Object.fromEntries(QUESTIONS.map((q) => [q.id, null])),
   );
 
   // true once all 5 answers are submitted and we show the completion card
@@ -81,16 +87,16 @@ export default function LikertScale({ phase = "pre" }) {
 
   // ── Derived state ───────────────────────────────────────
   const currentQuestion = QUESTIONS[currentIndex];
-  const currentAnswer   = answers[currentQuestion.id];
-  const progressPercent = ((currentIndex) / QUESTIONS.length) * 100;
-  const totalQuestions  = QUESTIONS.length;
+  const currentAnswer = answers[currentQuestion.id];
+  const progressPercent = (currentIndex / QUESTIONS.length) * 100;
+  const totalQuestions = QUESTIONS.length;
 
   // ── Handlers ────────────────────────────────────────────
   const handleSelect = (value) => {
     setAnswers((prev) => ({ ...prev, [currentQuestion.id]: value }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentAnswer === null) return; // guard — button disabled anyway
 
     if (currentIndex < totalQuestions - 1) {
@@ -103,23 +109,23 @@ export default function LikertScale({ phase = "pre" }) {
       }));
       const confidenceScore = answersArray.reduce((sum, a) => sum + a.score, 0);
 
-      // TODO (Day 3): POST to /api/likert when backend is ready
-      // await fetch("/api/likert", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     userId: auth.currentUser.uid,
-      //     phase,
-      //     answers: answersArray,
-      //     confidenceScore,
-      //   }),
-      // });
-
-      console.log("[LikertScale] Payload ready for MongoDB:", {
-        phase,
-        answers: answersArray,
-        confidenceScore,
-      });
+      // POST to /api/users/pretest → saves to MongoDB
+      try {
+        const user = auth.currentUser;
+        await fetch("/api/users/pretest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firebaseUid: user.uid,
+            email: user.email,
+            answers: answersArray,
+            confidenceScore,
+          }),
+        });
+        console.log("[LikertScale] Pre-test scores saved to MongoDB ✅");
+      } catch (err) {
+        console.error("[LikertScale] Failed to save pre-test scores:", err);
+      }
 
       setIsDone(true);
     }
@@ -129,7 +135,7 @@ export default function LikertScale({ phase = "pre" }) {
     // After pre-test Likert → go to Pre-Test Interview Voice Screen
     // After post-test Likert → go to Results Page
     if (phase === "pre") {
-      navigate("/pre-test");
+      navigate("/mic-test");
     } else {
       navigate("/results");
     }
@@ -176,8 +182,13 @@ export default function LikertScale({ phase = "pre" }) {
             Question {currentIndex + 1} of {totalQuestions}
           </span>
         </div>
-        <div className="likert-progress-bar" role="progressbar"
-          aria-valuenow={currentIndex + 1} aria-valuemin={1} aria-valuemax={totalQuestions}>
+        <div
+          className="likert-progress-bar"
+          role="progressbar"
+          aria-valuenow={currentIndex + 1}
+          aria-valuemin={1}
+          aria-valuemax={totalQuestions}
+        >
           <div
             className="likert-progress-fill"
             style={{ width: `${progressPercent}%` }}
@@ -188,14 +199,15 @@ export default function LikertScale({ phase = "pre" }) {
       <main className="likert-main">
         {/* Question Card — key forces remount/animation on question change */}
         <div className="likert-question-card" key={currentQuestion.id}>
-          <p className="likert-question-number">
-            Question {currentIndex + 1}
-          </p>
+          <p className="likert-question-number">Question {currentIndex + 1}</p>
           <p className="likert-question-text">{currentQuestion.text}</p>
 
           {/* Answer Options */}
-          <div className="likert-options" role="radiogroup"
-            aria-label={`Options for question ${currentIndex + 1}`}>
+          <div
+            className="likert-options"
+            role="radiogroup"
+            aria-label={`Options for question ${currentIndex + 1}`}
+          >
             {OPTIONS.map((opt) => (
               <button
                 key={opt.value}

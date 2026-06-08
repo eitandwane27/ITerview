@@ -1,0 +1,355 @@
+/* src/components/MicTest.css */
+/* Mic test / pre-interview setup screen — matches Dashboard.css design system */
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.mictest-container {
+  min-height: 100vh;
+  background-color: #f9fafb;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: #111827;
+}
+
+.mictest-topbar {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 2rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.mictest-topbar-content {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mictest-topbar-content h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.mictest-topbar-content span {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.mictest-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.mictest-header {
+  margin-bottom: 2rem;
+}
+
+.mictest-header h2 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.mictest-header p {
+  font-size: 1rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.mictest-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+}
+
+.mictest-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── Mic Selector ────────────────────────────────────────────────────────── */
+.mictest-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}
+
+.mictest-select-wrap {
+  position: relative;
+}
+
+.mictest-select {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+  background-color: white;
+  color: #111827;
+  appearance: none;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.mictest-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.mictest-select:disabled {
+  background-color: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.mictest-select-chevron {
+  pointer-events: none;
+  position: absolute;
+  inset-y: 0;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  color: #6b7280;
+}
+
+/* ── Volume Meter ────────────────────────────────────────────────────────── */
+.mictest-volume-bar-wrap {
+  margin-top: 1rem;
+}
+
+.mictest-volume-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 0.4rem;
+}
+
+.mictest-volume-track {
+  width: 100%;
+  height: 10px;
+  background-color: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mictest-volume-fill {
+  height: 100%;
+  border-radius: 999px;
+  background-color: #3b82f6;
+  transition: width 0.1s ease-out;
+}
+
+.mictest-volume-fill.good {
+  background-color: #22c55e;
+}
+
+.mictest-volume-fill.loud {
+  background-color: #f59e0b;
+}
+
+/* ── Test button ─────────────────────────────────────────────────────────── */
+.mictest-btn-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.mictest-btn-test {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 1;
+  padding: 0.75rem 1rem;
+  background-color: white;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mictest-btn-test:hover:not(:disabled) {
+  background-color: #f3f4f6;
+}
+
+.mictest-btn-test:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.mictest-btn-test.active {
+  border-color: #ef4444;
+  color: #ef4444;
+  background-color: #fef2f2;
+}
+
+/* ── Status indicator ────────────────────────────────────────────────────── */
+.mictest-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  min-height: 1.5rem;
+}
+
+.mictest-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.mictest-dot.recording {
+  background-color: #ef4444;
+  animation: pulse-dot 1s infinite;
+}
+
+.mictest-dot.ok {
+  background-color: #22c55e;
+}
+
+.mictest-dot.error-dot {
+  background-color: #ef4444;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ── Permission / Error Banner ───────────────────────────────────────────── */
+.mictest-banner {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+  border: 1px solid;
+}
+
+.mictest-banner.denied {
+  background-color: #fef9c3;
+  border-color: #fde047;
+  color: #713f12;
+}
+
+.mictest-banner.error {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.mictest-banner-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Transcript preview ──────────────────────────────────────────────────── */
+.mictest-transcript {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  min-height: 80px;
+  font-size: 0.9rem;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.mictest-transcript .placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.mictest-transcript .partial {
+  color: #9ca3af;
+}
+
+/* ── Info tips ───────────────────────────────────────────────────────────── */
+.mictest-tip {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #1d4ed8;
+  margin-top: 1.5rem;
+}
+
+.mictest-tip-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Proceed button ──────────────────────────────────────────────────────── */
+.mictest-proceed-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem;
+  background-color: #111827;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1.5rem;
+}
+
+.mictest-proceed-btn:hover:not(:disabled) {
+  background-color: #374151;
+}
+
+.mictest-proceed-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}

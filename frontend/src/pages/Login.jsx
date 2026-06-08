@@ -18,8 +18,27 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log("Logged in user:", userCredential.user.uid);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+      const { uid, email: userEmail } = userCredential.user;
+      // console.log("Logged in user:", uid);
+
+      // Sync the logged-in Firebase user into MongoDB (non-blocking)
+      try {
+        const response = await fetch("http://localhost:5000/api/users/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ firebaseUid: uid, email: userEmail }),
+        });
+        const data = await response.json();
+        console.log("MongoDB sync:", data.message);
+      } catch (syncErr) {
+        console.warn("MongoDB sync failed (non-critical):", syncErr.message);
+      }
+
       navigate("/dashboard");
     } catch (err) {
       console.error("Login Error:", err);
@@ -37,7 +56,14 @@ export default function Login() {
           <p>Ready for your mock interview? Log in to continue.</p>
         </div>
 
-        {error && <div className="error-message" style={{color: "red", textAlign: "center", marginBottom: "1rem"}}>{error}</div>}
+        {error && (
+          <div
+            className="error-message"
+            style={{ color: "red", textAlign: "center", marginBottom: "1rem" }}
+          >
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="login-form">
           <div className="input-group">
