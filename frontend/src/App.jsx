@@ -5,6 +5,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import LikertScale from "./pages/LikertScale";
 import MicTest from "./components/MicTest";
+import PreTest from "./pages/PreTest";
 import "./App.css";
 
 function App() {
@@ -27,7 +28,8 @@ function App() {
           <Route path="/mic-test" element={<MicTest />} />
 
           {/* Placeholder routes — to be built on later days */}
-          {/* <Route path="/pre-test" element={<PreTest />} /> */}
+          {/* Pre-Test Interview Phase */}
+          <Route path="/pre-test" element={<PreTest />} />
           {/* <Route path="/results" element={<Results />} /> */}
         </Routes>
       </div>

@@ -6,7 +6,8 @@
 //   2. Run a live mic test with a real-time volume meter
 //   3. Optionally speak a sentence — transcript preview via Deepgram STT
 //      (uses the short-lived token from GET /api/deepgram/token)
-//   4. Click "Start Interview" once satisfied → navigates to /pre-test
+//   4. Hear the AI interviewer voice via POST /api/tts/speak (aura-2-luna-en)
+//   5. Click "Start Interview" once satisfied → navigates to /pre-test
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useRef } from "react";
@@ -32,6 +33,11 @@ export default function MicTest() {
   const [status, setStatus] = useState("idle");
   // idle | requesting | recording | ok | denied | error
   const [errorMsg, setErrorMsg] = useState("");
+
+  // ── TTS sample state ─────────────────────────────────────────────────────
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [ttsError, setTtsError] = useState("");
+  const audioRef = useRef(null);
 
   // ── Refs ─────────────────────────────────────────────────────────────────
   const streamRef = useRef(null);
@@ -265,6 +271,36 @@ export default function MicTest() {
     }
   };
 
+  // ── TTS: play AI interviewer voice sample ────────────────────────────────
+  const handleHearSample = async () => {
+    setTtsLoading(true);
+    setTtsError("");
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/tts/speak`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Hello! I'm your AI interviewer. When you're ready, click Start Interview and we'll begin.",
+        }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({}));
+        throw new Error(error || `Server returned ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (audioRef.current) {
+        audioRef.current.src = url;
+        audioRef.current.play();
+      }
+    } catch (err) {
+      console.error("[TTS] Sample playback failed:", err);
+      setTtsError("Could not play audio sample. Check your connection or try again.");
+    } finally {
+      setTtsLoading(false);
+    }
+  };
+
   // ── Proceed to interview ──────────────────────────────────────────────────
   const handleProceed = () => {
     stopTest();
@@ -428,6 +464,41 @@ export default function MicTest() {
               <span className="placeholder">Transcript will appear here…</span>
             )}
           </div>
+        </div>
+
+        {/* ── AI Voice Sample Card ─────────────────────────────────────────── */}
+        <div className="mictest-card">
+          <p className="mictest-card-title">🔊 AI Interviewer Voice</p>
+          <p className="mictest-label" style={{ marginBottom: "0.75rem" }}>
+            Click the button below to hear how your AI interviewer will sound
+            during the session.
+          </p>
+
+          {/* Hidden audio element — src is set dynamically after fetch */}
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <audio ref={audioRef} style={{ display: "none" }} />
+
+          <div className="mictest-btn-row">
+            <button
+              id="mic-tts-sample-btn"
+              className="mictest-btn-test"
+              onClick={handleHearSample}
+              disabled={ttsLoading}
+            >
+              {ttsLoading ? "⏳ Loading…" : "▶ Hear Sample"}
+            </button>
+          </div>
+
+          {ttsError && (
+            <div
+              className="mictest-banner error"
+              role="alert"
+              style={{ marginTop: "0.75rem", marginBottom: 0 }}
+            >
+              <span className="mictest-banner-icon">⚠️</span>
+              <span>{ttsError}</span>
+            </div>
+          )}
         </div>
 
         {/* ── Info tip ─────────────────────────────────────────────────────── */}

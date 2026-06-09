@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 
+
 // POST /api/users/register
 // Called right after Firebase creates a new account.
 // Saves the user to MongoDB so we have a record there too.
