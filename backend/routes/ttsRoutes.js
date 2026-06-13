@@ -18,7 +18,7 @@ const { synthesizeSpeech } = require("../services/ttsService");
 
 // POST /api/tts/speak
 router.post("/speak", async (req, res) => {
-  const { text } = req.body;
+  const { text, voice } = req.body;
 
   // ── Input validation ────────────────────────────────────────────────────
   if (!text || typeof text !== "string" || text.trim() === "") {
@@ -26,9 +26,9 @@ router.post("/speak", async (req, res) => {
   }
 
   try {
-    console.log(`[TTS] Synthesizing speech for: "${text.substring(0, 60)}…"`);
+    console.log(`[TTS] Synthesizing speech for: "${text.substring(0, 60)}…" with voice ${voice || "default"}`);
 
-    const audioBuffer = await synthesizeSpeech(text);
+    const audioBuffer = await synthesizeSpeech(text, voice);
 
     // ── Stream audio back to the client ─────────────────────────────────
     res.set({

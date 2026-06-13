@@ -25,6 +25,9 @@ export default function MicTest() {
   const [devices, setDevices] = useState([]);
   const [selectedMic, setSelectedMic] = useState("");
 
+  // ── Voice selection ──────────────────────────────────────────────────────
+  const [selectedVoice, setSelectedVoice] = useState("aura-2-luna-en");
+
   // ── Test session state ───────────────────────────────────────────────────
   const [isTesting, setIsTesting] = useState(false);
   const [volume, setVolume] = useState(0);
@@ -281,6 +284,7 @@ export default function MicTest() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: "Hello! I'm your AI interviewer. When you're ready, click Start Interview and we'll begin.",
+          voice: selectedVoice,
         }),
       });
       if (!res.ok) {
@@ -304,7 +308,7 @@ export default function MicTest() {
   // ── Proceed to interview ──────────────────────────────────────────────────
   const handleProceed = () => {
     stopTest();
-    navigate("/pre-test");
+    navigate("/pre-test", { state: { voice: selectedVoice } });
   };
 
   const handleLogout = async () => {
@@ -470,9 +474,31 @@ export default function MicTest() {
         <div className="mictest-card">
           <p className="mictest-card-title">🔊 AI Interviewer Voice</p>
           <p className="mictest-label" style={{ marginBottom: "0.75rem" }}>
-            Click the button below to hear how your AI interviewer will sound
-            during the session.
+            Select your preferred AI interviewer voice and click to hear a sample.
           </p>
+
+          <label htmlFor="voice-select" className="mictest-label">
+            AI Voice Model
+          </label>
+          <div className="mictest-select-wrap" style={{ marginBottom: "1rem" }}>
+            <select
+              id="voice-select"
+              className="mictest-select"
+              value={selectedVoice}
+              onChange={(e) => setSelectedVoice(e.target.value)}
+              disabled={ttsLoading}
+            >
+              <option value="aura-2-luna-en">Luna (Female)</option>
+              <option value="aura-2-juno-en">Juno (Female)</option>
+              <option value="aura-2-zeus-en">Zeus (Male)</option>
+              <option value="aura-2-amalthea-en">Amalthea (Female)</option>
+            </select>
+            <span className="mictest-select-chevron">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+              </svg>
+            </span>
+          </div>
 
           {/* Hidden audio element — src is set dynamically after fetch */}
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}

@@ -41,8 +41,8 @@ const server = http.createServer(app);
 //    ws://localhost:5000/ws/interview
 const wss = new WebSocketServer({ noServer: true });
 
-wss.on("connection", (ws) => {
-  handleInterviewSocket(ws);
+wss.on("connection", (ws, request) => {
+  handleInterviewSocket(ws, request);
 });
 
 // Upgrade HTTP → WS only for the /ws/interview path

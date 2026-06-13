@@ -11,13 +11,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-// We use MicTest.css for the requested layout matching
-import "../components/MicTest.css";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./PreTest.css";
+
 
 export default function PreTest() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const voice = location.state?.voice || "aura-2-luna-en";
 
   // ── UI State ───────────────────────────────────────────────────────────────
   const [status, setStatus] = useState("Connecting to session…");
@@ -30,9 +31,11 @@ export default function PreTest() {
   // Volume & Transcript state
   const [volume, setVolume] = useState(0);
   const [partialTranscript, setPartialTranscript] = useState("");
-  const [finalTranscript, setFinalTranscript] = useState(""); 
+  const [finalTranscript, setFinalTranscript] = useState("");
   const [confirmedTranscript, setConfirmedTranscript] = useState(""); // editable
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState(1);
+  const [showContinueButton, setShowContinueButton] = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const wsRef = useRef(null);
@@ -42,43 +45,87 @@ export default function PreTest() {
   const sourceRef = useRef(null);
   const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
-  
+
   const finalTranscriptRef = useRef(""); // to accumulate final segments reliably
 
-  // ── Audio playback helper ──────────────────────────────────────────────────
-  const playAudioFromBase64 = useCallback((base64Data) => {
-    try {
-      const binary = atob(base64Data);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      const blob = new Blob([bytes], { type: "audio/mpeg" });
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+  // ── Audio queue refs (prevents feedback + question TTS from overlapping) ───
+  const audioQueueRef = useRef([]); // pending audio items (base64 or stream objects)
+  const isPlayingRef = useRef(false); // true while any audio clip is playing
+  const currentAudioRef = useRef(null); // active playing HTML5 Audio element
 
-      setIsPlayingAudio(true);
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        setIsPlayingAudio(false);
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(url);
-        setIsPlayingAudio(false);
-        setError("Audio playback failed.");
-      };
-      audio.play().catch((err) => {
-        setIsPlayingAudio(false);
-        setError(`Playback error: ${err.message}`);
-      });
+
+  // ── Playback Functions ─────────────────────────────────────────────────────
+
+  const playBase64 = useCallback((base64Data, onEnded, onError) => {
+    try {
+      fetch(`data:audio/mpeg;base64,${base64Data}`)
+        .then((r) => r.blob())
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          currentAudioRef.current = audio;
+
+          audio.onended = () => {
+            if (currentAudioRef.current === audio) currentAudioRef.current = null;
+            URL.revokeObjectURL(url);
+            onEnded();
+          };
+
+          audio.onerror = () => {
+            if (currentAudioRef.current === audio) currentAudioRef.current = null;
+            URL.revokeObjectURL(url);
+            onError(new Error("Audio playback failed."));
+          };
+
+          audio.play().catch((err) => {
+            if (currentAudioRef.current === audio) currentAudioRef.current = null;
+            onError(err);
+          });
+        })
+        .catch((err) => {
+          onError(err);
+        });
     } catch (err) {
-      setError(`Audio decode error: ${err.message}`);
+      onError(err);
     }
   }, []);
 
+  const processQueue = useCallback(() => {
+    if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
+
+    const item = audioQueueRef.current[0]; // peek
+    isPlayingRef.current = true;
+    setIsPlayingAudio(true);
+
+    const onEnded = () => {
+      isPlayingRef.current = false;
+      audioQueueRef.current.shift(); // remove completed item
+      if (audioQueueRef.current.length === 0) setIsPlayingAudio(false);
+      processQueue(); // play next
+    };
+
+    const onPlaybackError = (err) => {
+      setError(`Audio playback error: ${err.message}`);
+      onEnded();
+    };
+
+    if (item.type === "base64") {
+      playBase64(item.data, onEnded, onPlaybackError);
+    }
+  }, [playBase64]);
+
+  const enqueueBase64Audio = useCallback(
+    (base64Data) => {
+      audioQueueRef.current.push({ type: "base64", data: base64Data });
+      processQueue();
+    },
+    [processQueue],
+  );
+
   // ── WebSocket connection ───────────────────────────────────────────────────
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:5000/ws/interview");
+    const ws = new WebSocket(`ws://localhost:5000/ws/interview?voice=${voice}`);
+    ws.binaryType = "arraybuffer"; // Set to receive binary chunks as ArrayBuffers
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -92,7 +139,7 @@ export default function PreTest() {
       try {
         msg = JSON.parse(event.data);
       } catch {
-        return; // binary data or invalid json
+        return; // invalid json
       }
 
       switch (msg.type) {
@@ -101,7 +148,7 @@ export default function PreTest() {
           break;
 
         case "tts_audio":
-          playAudioFromBase64(msg.data);
+          enqueueBase64Audio(msg.data);
           break;
 
         case "transcript":
@@ -120,6 +167,11 @@ export default function PreTest() {
 
         case "error":
           setError(msg.message);
+          break;
+
+        case "feedback_complete":
+          setShowContinueButton(true);
+          setStatus("Feedback complete. Click below to continue.");
           break;
 
         case "session_complete":
@@ -146,7 +198,7 @@ export default function PreTest() {
       ws.close();
       cleanupAudio();
     };
-  }, [playAudioFromBase64]);
+  }, [enqueueBase64Audio, processQueue, voice]);
 
   // ── Volume meter (RAF loop) ───────────────────────────────────────────────
   const startVolumeMeter = (analyser) => {
@@ -168,7 +220,7 @@ export default function PreTest() {
     sourceRef.current = null;
     analyserRef.current?.disconnect();
     analyserRef.current = null;
-    
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -186,13 +238,13 @@ export default function PreTest() {
     setError("");
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
           sampleRate: 16000,
           echoCancellation: true,
           noiseSuppression: true,
-        } 
+        },
       });
       streamRef.current = stream;
 
@@ -266,7 +318,10 @@ export default function PreTest() {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
     wsRef.current.send(
-      JSON.stringify({ type: "submit_answer", final_text: confirmedTranscript })
+      JSON.stringify({
+        type: "submit_answer",
+        final_text: confirmedTranscript,
+      }),
     );
 
     setAwaitingConfirmation(false);
@@ -275,6 +330,36 @@ export default function PreTest() {
     setConfirmedTranscript("");
     finalTranscriptRef.current = "";
     setStatus("Answer submitted. Waiting for the next question…");
+  };
+
+  const handleContinue = () => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
+    // Stop current playing audio if any to prevent overlap
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.src = "";
+      } catch (err) {
+        console.error("Error stopping current audio:", err);
+      }
+      currentAudioRef.current = null;
+    }
+
+    // Reset audio queue
+    audioQueueRef.current = [];
+    setIsPlayingAudio(false);
+    isPlayingRef.current = false;
+
+    wsRef.current.send(
+      JSON.stringify({
+        type: "next_question",
+      }),
+    );
+
+    setCurrentQuestion((prev) => prev + 1);
+    setShowContinueButton(false);
+    setStatus("Loading the next question…");
   };
 
   const reRecord = () => {
@@ -287,144 +372,229 @@ export default function PreTest() {
   };
 
   // ── Derived UI ────────────────────────────────────────────────────────────
-  const volumeClass = volume > 70 ? "loud" : volume > 20 ? "good" : "";
-  const dotClass = isConnected ? (isRecording ? "recording" : "ok") : "error-dot";
-
   return (
-    <div className="mictest-container">
+    <div className="pt-root">
       {/* Top Bar */}
-      <header className="mictest-topbar">
-        <div className="mictest-topbar-content">
-          <h1>ITerview</h1>
-          <span>Pre-Test Interview Session</span>
+      <header className="pt-topbar">
+        <div className="pt-topbar-brand">ITerview</div>
+        <div className="pt-topbar-meta">
+          <span className="pt-phase-badge">Pre-Test</span>
+          <span className="pt-q-counter">Question {currentQuestion} of 5</span>
         </div>
       </header>
 
-      <main className="mictest-main">
-        {/* Header */}
-        <div className="mictest-header">
-          <h2>Pre-Test Interview</h2>
-          <p>The AI will ask you questions. Listen, then record your answer.</p>
-        </div>
+      {/* Progress bar */}
+      <div className="pt-progress-bar-track">
+        <div
+          className="pt-progress-bar-fill"
+          style={{ width: `${(currentQuestion / 5) * 100}%` }}
+        ></div>
+      </div>
 
-        {/* Error Banner */}
-        {error && (
-          <div className="mictest-banner error" role="alert">
-            <span className="mictest-banner-icon">⚠️</span>
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Status Card */}
-        <div className="mictest-card">
-          <p className="mictest-card-title">🎙️ Interview Status</p>
-
-          <div className="mictest-status" style={{ marginTop: 0, marginBottom: "1rem" }}>
-            <span className={`mictest-dot ${dotClass}`} />
-            <span style={{ fontWeight: 500, color: "#111827" }}>
-              {status}
-              {isPlayingAudio && " 🔊 Playing question…"}
-            </span>
-          </div>
-
-          {/* Volume Meter (Visible when recording) */}
-          {isRecording && (
-            <div className="mictest-volume-bar-wrap" style={{ marginTop: "1rem" }}>
-              <div className="mictest-volume-label">
-                <span>Microphone Level</span>
-                <span>{volume}%</span>
-              </div>
-              <div className="mictest-volume-track" role="meter" aria-valuenow={volume} aria-valuemin={0} aria-valuemax={100}>
-                <div className={`mictest-volume-fill ${volumeClass}`} style={{ width: `${volume}%` }} />
-              </div>
+      <main className="pt-main">
+        {/* Left Column */}
+        <div
+          className="pt-content"
+          style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
+        >
+          {error && (
+            <div className="pt-error-toast" role="alert">
+              <span>⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
-          {/* Actions */}
-          {!isSessionComplete && (
-            <div className="mictest-btn-row" style={{ marginTop: "1.5rem" }}>
-              {awaitingConfirmation ? (
-                <>
-                  <button className="mictest-btn-test" onClick={submitAnswer} style={{ background: "#111827", color: "white", borderColor: "#111827" }}>
-                    ✅ Confirm &amp; Continue
+          <div className="pt-card pt-question-card">
+            <div className="pt-card-body">
+              <span className="pt-question-number">
+                Question {currentQuestion}
+              </span>
+              <div className="pt-question-text">
+                Listen to the AI's question, then record your answer.
+              </div>
+
+              {/* Status Strip */}
+              <div
+                className={`pt-status-strip ${
+                  !isConnected
+                    ? "idle"
+                    : isPlayingAudio
+                      ? "speaking"
+                      : isRecording
+                        ? "listening"
+                        : awaitingConfirmation
+                          ? "verify"
+                          : "idle"
+                }`}
+              >
+                <div className="pt-status-dot" />
+                <span>
+                  {status}
+                  {isPlayingAudio && " 🔊"}
+                </span>
+              </div>
+
+              {/* Verify Panel (Phase 2) */}
+              {awaitingConfirmation && (
+                <div
+                  className="pt-verify-panel"
+                  style={{ marginTop: "1.5rem" }}
+                >
+                  <span className="pt-verify-label">Review Your Answer</span>
+                  <textarea
+                    className="pt-verify-textarea"
+                    value={confirmedTranscript}
+                    onChange={(e) => setConfirmedTranscript(e.target.value)}
+                    placeholder="Your transcribed answer will appear here…"
+                  />
+                  <div className="pt-verify-actions">
+                    <button
+                      className="pt-btn pt-btn-success"
+                      onClick={submitAnswer}
+                    >
+                      ✅ Confirm &amp; Continue
+                    </button>
+                    <button className="pt-btn pt-btn-ghost" onClick={reRecord}>
+                      🔄 Re-Record
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Mic Area */}
+              {!isSessionComplete &&
+                !awaitingConfirmation &&
+                !showContinueButton && (
+                  <div className="pt-mic-btn-wrap">
+                    {!isRecording ? (
+                      <button
+                        className="pt-mic-btn inactive"
+                        onClick={startRecording}
+                        disabled={!isConnected || isPlayingAudio}
+                      >
+                        🎙️
+                      </button>
+                    ) : (
+                      <button
+                        className="pt-mic-btn active"
+                        onClick={stopRecording}
+                      >
+                        ⏹️
+                      </button>
+                    )}
+                    <span className="pt-mic-label">
+                      {isRecording ? "Recording..." : "Tap to Speak"}
+                    </span>
+
+                    {/* Volume Meter */}
+                    {isRecording && (
+                      <div
+                        style={{
+                          marginTop: "1rem",
+                          width: "100%",
+                          maxWidth: "300px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "0.8rem",
+                            color: "var(--text-muted)",
+                            marginBottom: "0.5rem",
+                          }}
+                        >
+                          <span>Microphone Level</span>
+                          <span>{volume}%</span>
+                        </div>
+                        <div
+                          className="pt-progress-bar-track"
+                          style={{ borderRadius: "4px", overflow: "hidden" }}
+                        >
+                          <div
+                            className="pt-progress-bar-fill"
+                            style={{
+                              width: `${volume}%`,
+                              background:
+                                volume > 70
+                                  ? "var(--red)"
+                                  : volume > 20
+                                    ? "var(--green)"
+                                    : "var(--accent)",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              {/* Continue Button */}
+              {showContinueButton && !isSessionComplete && (
+                <div className="pt-mic-btn-wrap" style={{ marginTop: "1rem" }}>
+                  <button
+                    className="pt-btn pt-btn-primary"
+                    onClick={handleContinue}
+                    style={{
+                      padding: "0.8rem 2rem",
+                      fontSize: "1.05rem",
+                      fontWeight: "600",
+                      borderRadius: "12px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      background: "var(--accent)",
+                      border: "none",
+                      color: "#fff",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+                    }}
+                  >
+                    Continue to Next Question ➔
                   </button>
-                  <button className="mictest-btn-test" onClick={reRecord}>
-                    🔄 Re-Record
+                </div>
+              )}
+
+              {isSessionComplete && (
+                <div className="pt-mic-btn-wrap">
+                  <button
+                    className="pt-btn pt-btn-primary"
+                    onClick={() => navigate("/dashboard")}
+                  >
+                    🏁 Return to Dashboard
                   </button>
-                </>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (Sidebar) */}
+        <aside className="pt-sidebar">
+          <div className="pt-card">
+            <div className="pt-card-header">
+              <div className="pt-card-icon accent">📝</div>
+              <span className="pt-card-title">Live Transcript</span>
+            </div>
+            <div className="pt-card-body pt-transcript-body" aria-live="polite">
+              {!finalTranscript && !partialTranscript ? (
+                <div className="pt-transcript-empty">
+                  Your voice transcript will appear here...
+                </div>
               ) : (
                 <>
-                  {!isRecording ? (
-                    <button
-                      className="mictest-btn-test active"
-                      style={{ borderColor: "#22c55e", color: "#166534", backgroundColor: "#f0fdf4" }}
-                      onClick={startRecording}
-                      disabled={!isConnected || isPlayingAudio}
-                    >
-                      🎙️ Start Recording
-                    </button>
-                  ) : (
-                    <button className="mictest-btn-test active" onClick={stopRecording}>
-                      ⏹️ Stop Recording
-                    </button>
+                  <span className="pt-transcript-final">{finalTranscript}</span>
+                  {partialTranscript && (
+                    <span className="pt-transcript-partial">
+                      {" "}
+                      {partialTranscript}
+                    </span>
                   )}
                 </>
               )}
             </div>
-          )}
-          
-          {isSessionComplete && (
-            <div className="mictest-btn-row" style={{ marginTop: "1.5rem" }}>
-              <button className="mictest-proceed-btn" onClick={() => navigate("/dashboard")}>
-                🏁 Return to Dashboard
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Transcript Preview Card */}
-        {(finalTranscript || partialTranscript || awaitingConfirmation) && (
-          <div className="mictest-card">
-            <p className="mictest-card-title">📝 Voice Preview</p>
-            <p className="mictest-label" style={{ marginBottom: "0.5rem" }}>
-              {awaitingConfirmation ? "Review and edit your answer before submitting:" : "Live Transcript:"}
-            </p>
-            
-            {awaitingConfirmation ? (
-              <textarea
-                value={confirmedTranscript}
-                onChange={(e) => setConfirmedTranscript(e.target.value)}
-                rows={6}
-                style={{
-                  width: "100%",
-                  padding: "1rem",
-                  borderRadius: "8px",
-                  border: "1px solid #d1d5db",
-                  fontSize: "0.95rem",
-                  color: "#111827",
-                  lineHeight: "1.5",
-                  resize: "vertical",
-                  boxSizing: "border-box"
-                }}
-                placeholder="Your transcribed answer will appear here…"
-              />
-            ) : (
-              <div className="mictest-transcript" aria-live="polite">
-                {finalTranscript || partialTranscript ? (
-                  <>
-                    <span>{finalTranscript}</span>
-                    {partialTranscript && (
-                      <span className="partial"> {partialTranscript}</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="placeholder">Listening...</span>
-                )}
-              </div>
-            )}
           </div>
-        )}
-
+        </aside>
       </main>
     </div>
   );

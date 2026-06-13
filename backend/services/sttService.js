@@ -42,8 +42,9 @@ function createDeepgramLiveSession(onTranscript, onError) {
   }
 
   // ── Open a live transcription connection using raw WebSockets ──────────────
-  const url = "wss://api.deepgram.com/v1/listen?model=nova-3&language=en-US&smart_format=true&punctuate=true&interim_results=true&utterance_end_ms=1500&encoding=linear16&sample_rate=16000&channels=1";
-  
+  const url =
+    "wss://api.deepgram.com/v1/listen?model=nova-3&language=en-US&smart_format=true&punctuate=true&interim_results=true&utterance_end_ms=1500&encoding=linear16&sample_rate=16000&channels=1";
+
   const live = new WebSocket(url, ["token", apiKey]);
 
   // ── Event listeners ───────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ function createDeepgramLiveSession(onTranscript, onError) {
   live.on("message", (data) => {
     try {
       const response = JSON.parse(data.toString());
-      
+
       if (response.type === "UtteranceEnd") {
         console.log("[STT] 🔇 UtteranceEnd received");
         onTranscript("", true); // empty final to signal end-of-utterance
@@ -63,7 +64,7 @@ function createDeepgramLiveSession(onTranscript, onError) {
 
       const channel = response?.channel;
       const transcript = channel?.alternatives?.[0]?.transcript ?? "";
-      
+
       if (!transcript) return;
 
       const isFinal = response.is_final === true;

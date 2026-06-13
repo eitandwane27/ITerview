@@ -30,6 +30,21 @@
 
 const { createDeepgramLiveSession } = require("../services/sttService");
 const { synthesizeSpeech } = require("../services/ttsService");
+const { evaluateAnswer } = require("../services/aiEvaluator");
+
+/**
+ * Splits a text block into separate sentences.
+ * Matches any sequence of characters ending with .!? or the end of the text.
+ * @param {string} text
+ * @returns {string[]}
+ */
+function splitIntoSentences(text) {
+  if (!text || typeof text !== "string") return [];
+  const regex = /[^.!?]+(?:[.!?]+|$)/g;
+  const matches = text.match(regex);
+  if (!matches) return [text];
+  return matches.map(s => s.trim()).filter(Boolean);
+}
 
 // Pre-Test questions (blueprint § 3)
 const PRE_TEST_QUESTIONS = [
@@ -47,16 +62,22 @@ const PRE_TEST_QUESTIONS = [
  * STT session, keepalive timer, TTS playback, and question progression.
  *
  * @param {import("ws").WebSocket} ws
+ * @param {import("http").IncomingMessage} request
  */
-function handleInterviewSocket(ws) {
+function handleInterviewSocket(ws, request) {
   console.log("[WS] 🔌 New interview session connected");
 
+  // Parse requested voice from the URL query string
+  const url = new URL(request.url, `http://${request.headers.host}`);
+  const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
+
   // ── Session state ─────────────────────────────────────────────────────────
-  let sttSession = null;        // Deepgram live connection
-  let keepAliveTimer = null;    // 2 s keepalive interval
+  let sttSession = null; // Deepgram live connection
+  let keepAliveTimer = null; // 2 s keepalive interval
   let currentQuestionIndex = 0;
   let isRecording = false;
-  let fullTranscript = "";      // accumulates the current answer
+  let fullTranscript = ""; // accumulates the current answer
+  let preGeneratedNextQuestionAudio = null; // pre-synthesized audio for the next question
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -68,18 +89,23 @@ function handleInterviewSocket(ws) {
   }
 
   /** Speak a question via TTS and send the MP3 back over the WebSocket. */
-  async function speakQuestion(text) {
+  async function speakQuestion(text, label = "TTS") {
     try {
       send({ type: "status", message: "Generating question audio…" });
-      const audioBuffer = await synthesizeSpeech(text);
+      const t0 = Date.now();
+      const audioBuffer = await synthesizeSpeech(text, voiceModel);
       const base64Audio = audioBuffer.toString("base64");
       send({ type: "tts_audio", data: base64Audio });
-      console.log(`[WS] 🔊 TTS sent (${audioBuffer.length} bytes) for: "${text.substring(0, 50)}…"`);
+      console.log(
+        `[TTS] 🔊 Sent audio to user in ${((Date.now() - t0) / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`,
+      );
     } catch (err) {
       console.error("[WS] TTS error:", err.message);
       send({ type: "error", message: `TTS failed: ${err.message}` });
     }
   }
+
+
 
   /** Start the 2 s Deepgram keepalive (blueprint §1). */
   function startKeepAlive() {
@@ -121,7 +147,7 @@ function handleInterviewSocket(ws) {
         send({ type: "error", message: `STT error: ${err.message}` });
         stopKeepAlive();
         sttSession = null;
-      }
+      },
     );
 
     startKeepAlive();
@@ -141,9 +167,15 @@ function handleInterviewSocket(ws) {
   // ── Session startup ───────────────────────────────────────────────────────
   // Greet the user and speak the first question immediately on connect.
   (async () => {
-    send({ type: "status", message: "Session started. Preparing your first question…" });
+    send({
+      type: "status",
+      message: "Session started. Preparing your first question…",
+    });
     await speakQuestion(PRE_TEST_QUESTIONS[currentQuestionIndex]);
-    send({ type: "status", message: "Question ready. Press the mic button to begin your answer." });
+    send({
+      type: "status",
+      message: "Question ready. Press the mic button to begin your answer.",
+    });
   })();
 
   // ── Incoming message handler ──────────────────────────────────────────────
@@ -179,25 +211,137 @@ function handleInterviewSocket(ws) {
       // User released the mic (but has NOT confirmed yet — Phase 2)
       case "stop_recording":
         closeSttSession();
-        send({ type: "status", message: "Recording stopped. Review your answer, then confirm to continue." });
+        send({
+          type: "status",
+          message:
+            "Recording stopped. Review your answer, then confirm to continue.",
+        });
         break;
 
-      // User confirmed the transcript → advance to the next question
-      // (Phase 3 AI evaluation will be hooked in here later)
+      // User confirmed the transcript → evaluate with AI, speak feedback, then advance
       case "submit_answer": {
         const confirmedText = msg.final_text || fullTranscript;
-        console.log(`[WS] Answer confirmed: "${confirmedText.substring(0, 80)}…"`);
+        const answeredQuestion = PRE_TEST_QUESTIONS[currentQuestionIndex];
+        const questionNumber = currentQuestionIndex + 1;
+        console.log(
+          `[WS] Answer confirmed for Q${questionNumber}: "${confirmedText.substring(0, 80)}…"`,
+        );
 
-        currentQuestionIndex++;
+        // ── Step 1: AI Evaluation + TTS Feedback (Phase 3) ────────────────
+        // We wrap in an async IIFE so we can await inside the switch case.
+        (async () => {
+          const perfSubmit = Date.now(); // [PERF] total submit_answer wall clock
+          send({ type: "status", message: "Evaluating your answer…" });
 
-        if (currentQuestionIndex < PRE_TEST_QUESTIONS.length) {
-          fullTranscript = "";
-          send({ type: "status", message: `Moving to question ${currentQuestionIndex + 1}…` });
-          speakQuestion(PRE_TEST_QUESTIONS[currentQuestionIndex]);
-        } else {
-          send({ type: "status", message: "All questions answered! Pre-test complete." });
-          send({ type: "session_complete" });
-        }
+          const nextIndex = currentQuestionIndex + 1;
+          const hasNext = nextIndex < PRE_TEST_QUESTIONS.length;
+
+          // Await ONLY the AI evaluation first
+          const t1 = Date.now();
+          let feedbackText = "";
+          try {
+            feedbackText = await evaluateAnswer(answeredQuestion, confirmedText);
+            console.log(
+              `[AI Evaluator] 🤖 Groq AI evaluated answer in ${((Date.now() - t1) / 1000).toFixed(2)}s`,
+            );
+            console.log(`[AI Feedback] 📝 "${feedbackText.substring(0, 80)}..."`);
+          } catch (err) {
+            console.error(`[AI] ❌ Groq evaluation failed:`, err.message);
+            feedbackText = "There was an error evaluating your answer.";
+          }
+
+          // Trigger next-question synthesis in the background (fire-and-forget)
+          if (hasNext) {
+            console.log(`[TTS] 🚀 Triggering background next-question synthesis for Q${nextIndex + 1}...`);
+            synthesizeSpeech(PRE_TEST_QUESTIONS[nextIndex], voiceModel)
+              .then((audioBuffer) => {
+                preGeneratedNextQuestionAudio = audioBuffer;
+                console.log(`[TTS] ✅ Background next-question audio pre-generation completed.`);
+              })
+              .catch((err) => {
+                preGeneratedNextQuestionAudio = null;
+                console.error(`[TTS] ❌ Background next-question audio pre-generation failed:`, err.message);
+              });
+          } else {
+            preGeneratedNextQuestionAudio = null;
+          }
+
+          // Generate and send the feedback audio buffer sentence-by-sentence in parallel
+          if (feedbackText) {
+            try {
+              send({ type: "status", message: "Generating feedback voice…" });
+              const sentences = splitIntoSentences(feedbackText);
+              console.log(`[TTS] Splitting feedback into ${sentences.length} sentences for parallel synthesis`);
+
+              // Start all syntheses in parallel
+              const sentencePromises = sentences.map((sentence, idx) => {
+                return synthesizeSpeech(sentence, voiceModel).then((audioBuffer) => ({
+                  index: idx,
+                  text: sentence,
+                  audioBuffer,
+                }));
+              });
+
+              // Await and send them in sequential order
+              for (const promise of sentencePromises) {
+                const { text, audioBuffer } = await promise;
+                const base64Audio = audioBuffer.toString("base64");
+                send({ type: "tts_audio", data: base64Audio });
+                console.log(
+                  `[TTS] 🔊 Sent feedback sentence audio to user — "${text.substring(0, 50)}…"`
+                );
+              }
+            } catch (err) {
+              console.error(`[AI] ❌ TTS Feedback synthesis failed for Q${questionNumber}:`, err.message);
+              send({ type: "error", message: "Feedback audio generation failed." });
+            }
+          }
+
+          // Send feedback_complete message to client so they can display "Continue" button
+          send({ type: "feedback_complete" });
+
+          const totalMs = Date.now() - perfSubmit;
+          console.log(
+            `[Performance] ⏱  Total processing & latency: ${(totalMs / 1000).toFixed(2)}s`
+          );
+        })();
+
+        break;
+      }
+
+      // Client requested the next question (transition triggered by UI button click)
+      case "next_question": {
+        (async () => {
+          currentQuestionIndex++;
+          const hasNext = currentQuestionIndex < PRE_TEST_QUESTIONS.length;
+
+          if (hasNext) {
+            fullTranscript = "";
+            send({
+              type: "status",
+              message: `Moving to question ${currentQuestionIndex + 1}…`,
+            });
+
+            // Send pre-generated question audio immediately if ready, otherwise fallback
+            if (preGeneratedNextQuestionAudio) {
+              const base64Audio = preGeneratedNextQuestionAudio.toString("base64");
+              send({ type: "tts_audio", data: base64Audio });
+              console.log(
+                `[TTS] 🔊 Sent pre-generated question audio to user — "${PRE_TEST_QUESTIONS[currentQuestionIndex].substring(0, 50)}…"`,
+              );
+              preGeneratedNextQuestionAudio = null; // Reset
+            } else {
+              console.warn(`[TTS] ⚠️ Pre-generated TTS was missing, falling back to sequential synthesis.`);
+              await speakQuestion(PRE_TEST_QUESTIONS[currentQuestionIndex], `Q${currentQuestionIndex + 1}/Question`);
+            }
+          } else {
+            send({
+              type: "status",
+              message: "All questions answered! Pre-test complete.",
+            });
+            send({ type: "session_complete" });
+          }
+        })();
         break;
       }
 
