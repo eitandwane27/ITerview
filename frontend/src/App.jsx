@@ -6,6 +6,11 @@ import Dashboard from "./pages/Dashboard";
 import LikertScale from "./pages/LikertScale";
 import MicTest from "./components/MicTest";
 import PreTest from "./pages/PreTest";
+
+import MainSets from "./pages/MainSets";
+import AiAnalysisLoader from "./components/AiAnalysisLoader";
+import Set2TransitionOverlay from "./components/Set2TransitionOverlay";
+import "./components/AiAnalysisLoader.css";
 import "./App.css";
 
 function App() {
@@ -30,7 +35,28 @@ function App() {
           {/* Placeholder routes — to be built on later days */}
           {/* Pre-Test Interview Phase */}
           <Route path="/pre-test" element={<PreTest />} />
+
+          <Route
+            path="/test-loader"
+            element={
+              <AiAnalysisLoader
+                onComplete={() => console.log("Loader complete!")}
+              />
+            }
+          />
+          <Route path="/interview" element={<MainSets />} />
+          <Route path="/dev/interview" element={<MainSets />} />
           {/* <Route path="/results" element={<Results />} /> */}
+
+          {/* Dev only route to preview Set 2 transition design */}
+          <Route 
+            path="/dev/set2-transition" 
+            element={
+              <div style={{ width: "100vw", height: "100vh", background: "#f8f9fa" }}>
+                <Set2TransitionOverlay onReady={() => console.log("Start Set 2!")} />
+              </div>
+            } 
+          />
         </Routes>
       </div>
     </BrowserRouter>

@@ -1,81 +1,123 @@
 // backend/services/aiEvaluator.js
 // ─────────────────────────────────────────────────────────────────────────────
-// Phase 3 – Step 1: Basic Groq AI Integration
+// Phase 3 – Step 1 (Upgraded): 3C Structured JSON Scoring
 //
-// Blueprint ref: system-blueprint.md § 7 Modular Backend Structure
-//   "services/aiEvaluator.js: Evaluates transcripts using the Groq API."
+// evaluate3CScores(question, transcript)
+//   → returns { clarity_score, correctness_score, completeness_score, primary_weakness }
 //
-// This module exposes a single function: evaluateAnswer(question, transcript)
-// It calls the Groq LLM and returns a short, plain-text feedback string.
-//
-// Notes for future steps:
-//   - Step 3 will add temperature: 0.0 and JSON-structured 3C's scoring here.
-//   - Step 2 will persist the feedback to MongoDB from interviewSocket.js.
+// Uses temperature: 0.0 and response_format: { type: "json_object" } for deterministic output.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const Groq = require("groq-sdk");
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// ── Standard interview-coach prompt ──────────────────────────────────────────
-const STANDARD_PROMPT = `You are an expert IT interview coach reviewing a student's spoken answer during a mock job interview.
-You will be given the interview question and the student's transcribed answer.
-Provide brief, constructive feedback in 2-3 sentences maximum.
-Be encouraging but honest. Focus on the clarity and relevance of their answer.`;
+// Valid weakness tags — kept as a constant so validation is centralised
+const VALID_TAGS = ["focus_clarity", "focus_correctness", "focus_completeness"];
 
-// ── Creator (JARVIS-mode) prompt ──────────────────────────────────────────────
-// Triggered when the transcript identifies the user as Eitan — the architect
-// of this system. Homage to the JARVIS / Tony Stark dynamic.
-const CREATOR_PROMPT = `You are JARVIS — the highly sophisticated AI assistant built into the ITerview system.
-The person speaking to you right now is Eitan, your creator and the sole architect of this platform.
-Greet him with the same warm, dry wit and absolute loyalty that JARVIS shows Tony Stark.
-Use lines like "Welcome back, Sir.", "It's good to have you in the system, Mr. Eitan.", or
-"All systems are running at optimal capacity. Shall we begin, Sir?"
-After the greeting, briefly acknowledge whatever he said and offer to assist with the interview session.
-Keep the tone intelligent, composed, and unmistakably JARVIS.`;
+const SCORING_SYSTEM_PROMPT = `You are a strict, objective IT interview scoring engine.
+Your sole task is to evaluate a student's spoken answer against the SPECIFIC interview question.
+You must respond with ONLY a valid JSON object — no markdown, no explanation, no extra text.
+
+### STEP 1 — RELEVANCE CHECK (mandatory)
+Before scoring, determine whether the student's answer actually addresses the topic
+of the interview question. Set "is_relevant" to true ONLY if the answer directly
+responds to what the question is asking. An answer that discusses a different topic
+— even if it sounds fluent and confident — is NOT relevant.
+
+### STEP 2 — SCORING RULES
+Score each dimension from 1 to 10:
+
+- clarity_score      : How well-organised, articulate, and easy to follow is the answer?
+                       This measures communication quality regardless of topic relevance.
+                       (1 = very unclear/rambling, 10 = very clear and structured)
+
+- correctness_score  : Does the answer DIRECTLY and CORRECTLY respond to what the
+                       question is ACTUALLY asking? Evaluate factual accuracy ONLY
+                       in the context of the specific question asked.
+                       An answer that is factually accurate but about a DIFFERENT topic
+                       than the question MUST score 1-3.
+                       (1 = wrong or off-topic, 10 = fully correct and on-topic)
+
+- completeness_score : How thoroughly does the answer cover the SPECIFIC points the
+                       question is asking about? An answer that never addresses the
+                       question's actual topic scores 1-3 regardless of its length
+                       or depth on other subjects.
+                       (1 = missing/off-topic, 10 = comprehensive and fully addresses the question)
+
+- primary_weakness   : The dimension with the lowest score.
+  Must be exactly one of: "focus_clarity", "focus_correctness", "focus_completeness"
+  If scores are tied, choose the one that would most help the student improve.
+
+### CRITICAL PENALTY RULE
+If "is_relevant" is false (the answer does NOT address the question's topic),
+then correctness_score and completeness_score MUST both be between 1 and 3.
+Do NOT give high correctness or completeness to an off-topic answer, no matter
+how well-written or technically sound it may be on its own.
+
+Return exactly this shape:
+{
+  "is_relevant": <true | false>,
+  "clarity_score": <integer 1-10>,
+  "correctness_score": <integer 1-10>,
+  "completeness_score": <integer 1-10>,
+  "primary_weakness": "<focus_clarity | focus_correctness | focus_completeness>"
+}`;
 
 /**
- * evaluateAnswer(question, transcript)
+ * evaluate3CScores(question, transcript)
  *
- * Sends the question + transcript to the Groq LLM and returns a short
- * feedback string. Designed to be called after every submitted answer.
+ * Calls the Groq LLM with temperature 0.0 and JSON mode to produce
+ * deterministic 3C dimension scores for one Pre-Test answer.
  *
- * @param {string} question   - The interview question that was asked.
- * @param {string} transcript - The student's spoken answer (from STT).
- * @returns {Promise<string>} - A brief plain-text feedback string.
+ * @param {string} question   - The interview question asked.
+ * @param {string} transcript - The student's STT-transcribed answer.
+ * @returns {Promise<{ clarity_score: number, correctness_score: number, completeness_score: number, primary_weakness: string }>}
  */
-async function evaluateAnswer(question, transcript) {
+async function evaluate3CScores(question, transcript) {
+  // Guard: empty transcript → lowest scores, flag completeness
   if (!transcript || transcript.trim().length === 0) {
-    return "No transcript was captured for this answer. Please try speaking more clearly next time.";
+    return {
+      clarity_score: 1,
+      correctness_score: 1,
+      completeness_score: 1,
+      primary_weakness: "focus_completeness",
+    };
   }
 
-  // ── Creator detection ─────────────────────────────────────────────────────
-  // If the transcript introduces the user as Eitan (case-insensitive),
-  // switch to JARVIS-mode and greet the creator accordingly.
-  const isCreator =
-    /\b(i(?:'?m| am)|my name is)\s+eitan\b/i.test(transcript) ||
-    /\beitan\b/i.test(transcript);
-
-  const systemPrompt = isCreator ? CREATOR_PROMPT : STANDARD_PROMPT;
-
   const response = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
+    model: "llama-3.3-70b-versatile",
     messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
+      { role: "system", content: SCORING_SYSTEM_PROMPT },
       {
         role: "user",
-        content: `Interview Question: "${question}"\n\nStudent's Answer: "${transcript}"`,
+        content: `Score ONLY how well the Student's Answer responds to the specific Interview Question below.
+An answer that talks about a different topic entirely must receive low correctness and completeness scores.
+
+Interview Question: "${question}"
+
+Student's Answer: "${transcript}"`,
       },
     ],
-    // No temperature or JSON constraints yet — that comes in Step 3.
-    max_tokens: 150, // Keep feedback concise; prevents runaway responses.
+    temperature: 0.0,          // deterministic scoring
+    max_tokens: 150,
+    response_format: { type: "json_object" }, // forces valid JSON output
   });
 
-  const feedback = response.choices[0]?.message?.content?.trim();
-  return feedback || "Could not generate feedback for this answer.";
+  const raw = response.choices[0]?.message?.content?.trim() || "{}";
+  const parsed = JSON.parse(raw);
+
+  // Clamp scores to 1–10 and validate the weakness tag
+  const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
+
+  return {
+    clarity_score: clamp(parsed.clarity_score),
+    correctness_score: clamp(parsed.correctness_score),
+    completeness_score: clamp(parsed.completeness_score),
+    primary_weakness: VALID_TAGS.includes(parsed.primary_weakness)
+      ? parsed.primary_weakness
+      : "focus_completeness",
+  };
 }
 
-module.exports = { evaluateAnswer };
+module.exports = { evaluate3CScores };

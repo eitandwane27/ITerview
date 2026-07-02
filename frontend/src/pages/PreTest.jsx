@@ -12,8 +12,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { auth } from "../firebase";
+import AiAnalysisLoader from "../components/AiAnalysisLoader";
 import "./PreTest.css";
-
 
 export default function PreTest() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export default function PreTest() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isSessionComplete, setIsSessionComplete] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Volume & Transcript state
   const [volume, setVolume] = useState(0);
@@ -53,7 +55,6 @@ export default function PreTest() {
   const isPlayingRef = useRef(false); // true while any audio clip is playing
   const currentAudioRef = useRef(null); // active playing HTML5 Audio element
 
-
   // ── Playback Functions ─────────────────────────────────────────────────────
 
   const playBase64 = useCallback((base64Data, onEnded, onError) => {
@@ -66,19 +67,22 @@ export default function PreTest() {
           currentAudioRef.current = audio;
 
           audio.onended = () => {
-            if (currentAudioRef.current === audio) currentAudioRef.current = null;
+            if (currentAudioRef.current === audio)
+              currentAudioRef.current = null;
             URL.revokeObjectURL(url);
             onEnded();
           };
 
           audio.onerror = () => {
-            if (currentAudioRef.current === audio) currentAudioRef.current = null;
+            if (currentAudioRef.current === audio)
+              currentAudioRef.current = null;
             URL.revokeObjectURL(url);
             onError(new Error("Audio playback failed."));
           };
 
           audio.play().catch((err) => {
-            if (currentAudioRef.current === audio) currentAudioRef.current = null;
+            if (currentAudioRef.current === audio)
+              currentAudioRef.current = null;
             onError(err);
           });
         })
@@ -124,7 +128,11 @@ export default function PreTest() {
 
   // ── WebSocket connection ───────────────────────────────────────────────────
   useEffect(() => {
-    const ws = new WebSocket(`ws://localhost:5000/ws/interview?voice=${voice}`);
+    const user = auth.currentUser;
+    const uid = user ? user.uid : "anonymous_user";
+    const ws = new WebSocket(
+      `ws://localhost:5000/ws/interview?voice=${voice}&uid=${uid}`,
+    );
     ws.binaryType = "arraybuffer"; // Set to receive binary chunks as ArrayBuffers
     wsRef.current = ws;
 
@@ -171,12 +179,13 @@ export default function PreTest() {
 
         case "feedback_complete":
           setShowContinueButton(true);
-          setStatus("Feedback complete. Click below to continue.");
+          setStatus("Answer recorded. Click below to continue.");
           break;
 
         case "session_complete":
           setIsSessionComplete(true);
-          setStatus("Pre-test complete! All 5 questions answered.");
+          setIsAnalyzing(true);
+          setStatus("Pre-test complete! AI Analysis starting...");
           break;
 
         default:
@@ -273,7 +282,6 @@ export default function PreTest() {
 
       const processor = audioCtx.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
-
       source.connect(analyser);
       source.connect(processor);
       processor.connect(audioCtx.destination);
@@ -391,6 +399,9 @@ export default function PreTest() {
         ></div>
       </div>
 
+      {isAnalyzing ? (
+        <AiAnalysisLoader onComplete={() => navigate('/interview')} />
+      ) : (
       <main className="pt-main">
         {/* Left Column */}
         <div
@@ -596,6 +607,7 @@ export default function PreTest() {
           </div>
         </aside>
       </main>
+      )}
     </div>
   );
 }

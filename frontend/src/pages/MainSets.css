@@ -1,0 +1,728 @@
+/* =====================================================
+   MainSets.css — Soft Productivity SaaS (Interview Arena)
+   ITerview Design System (DESIGN.md)
+   Mirror pattern: Dashboard.css
+   ===================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+/* ── Design Tokens (mirror Dashboard.css) ─────────── */
+/* Tokens are shared via :root — Dashboard.css already
+   defines them. We re-declare here so MainSets can
+   work standalone if needed and to be explicit. */
+:root {
+  --color-primary:        #7C6FCD;
+  --color-primary-light:  #EAE8F7;
+  --color-primary-hover:  #6B5FBC;
+  --color-primary-muted:  #B8B0E8;
+
+  --color-canvas:         #F4F4F6;
+  --color-surface-card:   #FFFFFF;
+  --color-surface-inner:  #F0EFF8;
+  --color-surface-sidebar:#FFFFFF;
+  --color-surface-input:  #F7F7F9;
+
+  --color-ink:            #1A1A2E;
+  --color-ink-secondary:  #6B6B80;
+  --color-ink-muted:      #9B9BAD;
+  --color-ink-on-primary: #FFFFFF;
+
+  --color-border-soft:    #E8E8EE;
+  --color-border-card:    #EFEFEF;
+
+  --color-badge-green:    #22C55E;
+  --color-badge-green-bg: #DCFCE7;
+  --color-badge-orange:   #F97316;
+  --color-badge-orange-bg:#FFEDD5;
+  --color-badge-blue:     #3B82F6;
+  --color-badge-blue-bg:  #DBEAFE;
+  --color-badge-purple:   #7C6FCD;
+  --color-badge-purple-bg:#EAE8F7;
+  --color-badge-red:      #EF4444;
+  --color-badge-red-bg:   #FEE2E2;
+
+  --avatar-red:    #EF4444;
+  --avatar-purple: #8B5CF6;
+
+  --shadow-card:    0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-sidebar: -2px 0 8px rgba(0, 0, 0, 0.08);
+
+  --card-radius: 16px;
+  --lg-radius:   12px;
+  --md-radius:   8px;
+  --sm-radius:   6px;
+  --xs-radius:   4px;
+  --pill-radius: 9999px;
+
+  --topnav-height: 52px;
+}
+
+/* ── Reset ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Root Shell ────────────────────────────────────── */
+.pt-root {
+  font-family: "Inter", system-ui, sans-serif;
+  background: var(--color-canvas);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-ink);
+}
+
+/* ════════════════════════════════════════════════════
+   TOP BAR  (mirrors db-topnav)
+   ════════════════════════════════════════════════════ */
+.pt-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--topnav-height);
+  background: var(--color-surface-card);
+  border-bottom: 1px solid var(--color-border-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+/* "ITerview" brand / wordmark side */
+.pt-topbar-brand {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* Right meta cluster */
+.pt-topbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Set badge — pill-shaped, purple tint */
+.pt-phase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-badge-purple-bg);
+  color: var(--color-badge-purple);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 3px 10px;
+  border-radius: var(--pill-radius);
+}
+
+/* Question counter chip — mirrors db-sessions-chip */
+.pt-q-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-surface-input);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: var(--pill-radius);
+  border: 1px solid var(--color-border-soft);
+  white-space: nowrap;
+}
+
+/* "AI Speaking" indicator */
+.pt-speaking-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-badge-green-bg);
+  color: var(--color-badge-green);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--pill-radius);
+  animation: pt-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pt-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+.pt-speaking-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-badge-green);
+}
+
+/* ════════════════════════════════════════════════════
+   MAIN LAYOUT  (canvas → two-column)
+   ════════════════════════════════════════════════════ */
+.ms-main {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  padding: 24px 20px;
+  overflow: hidden;
+  align-items: stretch;
+  min-height: 0;
+}
+
+/* Left column — AI avatar + controls */
+.ms-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 2;
+  min-width: 0;
+}
+
+/* Right column — Transcript + Coach */
+.ms-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 340px;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════
+   BASE CARD  (mirrors db-main-card)
+   ════════════════════════════════════════════════════ */
+.ms-card {
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════
+   AI AVATAR CARD  (main interview panel)
+   Lavender inner-card pattern: white outer → lavender inner
+   ════════════════════════════════════════════════════ */
+.ms-avatar-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+/* Card header row inside the white card */
+.ms-avatar-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.ms-avatar-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--color-ink-secondary);
+}
+
+/* Inner lavender card — mirrors db-inner-card */
+.ms-inner-card {
+  background: var(--color-surface-inner);
+  border-radius: var(--lg-radius);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+}
+
+/* Pulsing avatar orb */
+.ms-avatar-orb {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, #dbd6f5 100%);
+  border: 3px solid var(--color-primary-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.6rem;
+  position: relative;
+  transition: box-shadow 0.3s ease;
+  flex-shrink: 0;
+}
+
+.ms-avatar-orb.speaking {
+  box-shadow: 0 0 0 8px rgba(124, 111, 205, 0.15),
+              0 0 0 16px rgba(124, 111, 205, 0.06);
+  animation: pt-orb-speak 1.4s ease-in-out infinite;
+}
+
+.ms-avatar-orb.listening {
+  box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.15),
+              0 0 0 16px rgba(34, 197, 94, 0.06);
+  border-color: var(--color-badge-green);
+}
+
+@keyframes pt-orb-speak {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(124, 111, 205, 0.12), 0 0 0 14px rgba(124, 111, 205, 0.05); }
+  50%       { box-shadow: 0 0 0 12px rgba(124, 111, 205, 0.18), 0 0 0 22px rgba(124, 111, 205, 0.08); }
+}
+
+/* Question text */
+.ms-question-text-display {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--color-ink);
+  line-height: 1.55;
+  text-align: center;
+  max-width: 640px;
+}
+
+/* Status strip — matches Dashboard idle/active visual language */
+.pt-status-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: var(--pill-radius);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--color-surface-input);
+  color: var(--color-ink-secondary);
+  border: 1px solid var(--color-border-soft);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.pt-status-strip.speaking {
+  background: var(--color-badge-green-bg);
+  color: var(--color-badge-green);
+  border-color: transparent;
+}
+
+.pt-status-strip.listening {
+  background: var(--color-badge-purple-bg);
+  color: var(--color-badge-purple);
+  border-color: var(--color-primary-muted);
+}
+
+.pt-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.pt-status-strip.speaking .pt-status-dot {
+  animation: pt-pulse 1.4s ease-in-out infinite;
+}
+
+/* Error message */
+.ms-error-text {
+  font-size: 12px;
+  color: var(--color-badge-red);
+  background: var(--color-badge-red-bg);
+  padding: 6px 12px;
+  border-radius: var(--md-radius);
+  text-align: center;
+  width: 100%;
+}
+
+/* ── Primary mic CTA — full-width inside inner card ─ */
+.ms-unmute-btn {
+  width: 100%;
+  max-width: 360px;
+  padding: 14px 24px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink-on-primary);
+  background: rgba(124, 111, 205, 0.88);
+  border: none;
+  border-radius: var(--lg-radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s, transform 0.1s;
+  letter-spacing: 0;
+}
+
+.ms-unmute-btn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.ms-unmute-btn:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.ms-unmute-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Recording state — red variant */
+.ms-unmute-btn.recording {
+  background: var(--color-badge-red);
+}
+
+.ms-unmute-btn.recording:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+/* Session complete CTA — mirrors db-btn-primary */
+.pt-btn.pt-btn-primary {
+  width: 100%;
+  max-width: 360px;
+  padding: 14px 24px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink-on-primary);
+  background: rgba(124, 111, 205, 0.88);
+  border: none;
+  border-radius: var(--lg-radius);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pt-btn.pt-btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+/* ── Volume visualizer ───────────────────────────── */
+.ms-volume-visualizer-container {
+  width: 100%;
+  max-width: 300px;
+}
+
+.pt-progress-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--color-border-soft);
+  border-radius: var(--pill-radius);
+  overflow: hidden;
+}
+
+.pt-progress-bar-fill {
+  height: 100%;
+  background: var(--color-badge-green);
+  border-radius: var(--pill-radius);
+  transition: width 0.08s linear;
+}
+
+/* ════════════════════════════════════════════════════
+   PARTICIPANTS ROW  (bottom of left column)
+   ════════════════════════════════════════════════════ */
+.ms-participants-row {
+  display: flex;
+  gap: 12px;
+  height: 130px;
+  flex-shrink: 0;
+}
+
+.ms-participant-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ms-participant-card.ms-participant-empty {
+  opacity: 0.45;
+}
+
+.ms-participant-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Candidate avatar — mirrors db-avatar in purple */
+.ms-participant-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--pill-radius);
+  background: var(--avatar-purple);
+  position: relative;
+}
+
+/* Online dot */
+.ms-participant-avatar::after {
+  content: "";
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 8px;
+  height: 8px;
+  background: var(--color-badge-green);
+  border-radius: 50%;
+  border: 2px solid var(--color-surface-card);
+}
+
+.ms-participant-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink-secondary);
+}
+
+/* ════════════════════════════════════════════════════
+   CARD HEADER  (shared by Transcript + Coach panels)
+   ════════════════════════════════════════════════════ */
+.ms-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border-card);
+  flex-shrink: 0;
+}
+
+.ms-card-body {
+  padding: 16px 18px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Shared icon badge style ─────────────────────── */
+.pt-card-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sm-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: var(--color-badge-blue-bg);
+  color: var(--color-badge-blue);
+  flex-shrink: 0;
+}
+
+.pt-card-icon.accent {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.pt-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  color: var(--color-ink);
+}
+
+/* ════════════════════════════════════════════════════
+   TRANSCRIPT CARD
+   ════════════════════════════════════════════════════ */
+.ms-transcript-card {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ms-transcript-body {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-soft) transparent;
+  line-height: 1.6;
+}
+
+/* Empty state */
+.pt-transcript-empty {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+/* Finalized transcript text */
+.pt-transcript-final {
+  font-size: 14px;
+  color: var(--color-ink);
+  font-weight: 400;
+}
+
+/* Partial/live transcript — muted lavender */
+.pt-transcript-partial {
+  font-size: 14px;
+  color: var(--color-primary-muted);
+  font-weight: 400;
+}
+
+/* ════════════════════════════════════════════════════
+   AI COACH CARD
+   ════════════════════════════════════════════════════ */
+.ms-coach-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Coach card icon — green tint */
+.ms-card-icon-coach {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sm-radius);
+  background: var(--color-badge-green-bg);
+  color: var(--color-badge-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.ms-card-title-coach {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  color: var(--color-ink);
+}
+
+.ms-coach-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.ms-coach-feedback-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-ink-secondary);
+  margin: 0;
+}
+
+/* ── Score cards (Set 2 / Set 3) ────────────────── */
+.ms-scores-container {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Each score card — inner-card pattern */
+.ms-score-card {
+  flex: 1;
+  background: var(--color-surface-inner);
+  border-radius: var(--md-radius);
+  padding: 10px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ms-score-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.ms-score-value {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+/* ════════════════════════════════════════════════════
+   EVALUATING LOADER STATE
+   ════════════════════════════════════════════════════ */
+.ms-evaluating-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--color-primary-light);
+  border-radius: var(--md-radius);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.ms-evaluating-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.ms-evaluating-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: ms-dot-bounce 1.2s ease-in-out infinite;
+}
+
+.ms-evaluating-dots span:nth-child(2) { animation-delay: 0.2s; }
+.ms-evaluating-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes ms-dot-bounce {
+  0%, 80%, 100% { transform: scale(1); opacity: 0.6; }
+  40%            { transform: scale(1.4); opacity: 1; }
+}
+
+/* ════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .ms-main {
+    flex-direction: column;
+    overflow: visible;
+    padding: 16px 14px;
+  }
+
+  .ms-right-column {
+    width: 100%;
+    flex-shrink: 1;
+  }
+
+  .ms-avatar-card {
+    min-height: 380px;
+  }
+}
+
+@media (max-width: 600px) {
+  .pt-topbar {
+    padding: 0 14px;
+    gap: 10px;
+  }
+
+  .pt-phase-badge {
+    display: none;
+  }
+
+  .ms-question-text-display {
+    font-size: 15px;
+  }
+
+  .ms-participants-row {
+    height: 100px;
+  }
+
+  .ms-participant-avatar {
+    width: 38px;
+    height: 38px;
+  }
+}

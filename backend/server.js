@@ -6,6 +6,9 @@ const cors = require("cors");
 require("dotenv").config();
 
 const { handleInterviewSocket } = require("./controllers/interviewSocket");
+const { handleSet1Socket }      = require("./controllers/set1Socket");
+const { handleSet2Socket }      = require("./controllers/set2Socket");
+const { handleSet3Socket }      = require("./controllers/set3Socket");
 
 const app = express();
 
@@ -34,6 +37,10 @@ app.use("/api/deepgram", deepgramRoutes);
 const ttsRoutes = require("./routes/ttsRoutes");
 app.use("/api/tts", ttsRoutes);
 
+// DEV-ONLY: AI question generation dry-run (no TTS/STT/WebSocket)
+const debugRoutes = require("./routes/debugRoutes");
+app.use("/api/debug", debugRoutes);
+
 // 4. Wrap Express in a raw HTTP server so we can share the port with WebSockets
 const server = http.createServer(app);
 
@@ -41,17 +48,25 @@ const server = http.createServer(app);
 //    ws://localhost:5000/ws/interview
 const wss = new WebSocketServer({ noServer: true });
 
-wss.on("connection", (ws, request) => {
-  handleInterviewSocket(ws, request);
-});
-
-// Upgrade HTTP → WS only for the /ws/interview path
+// Upgrade HTTP → WS only for specific paths
 server.on("upgrade", (request, socket, head) => {
   const { pathname } = new URL(request.url, `http://${request.headers.host}`);
 
   if (pathname === "/ws/interview") {
     wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit("connection", ws, request);
+      handleInterviewSocket(ws, request);
+    });
+  } else if (pathname === "/ws/set1") {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      handleSet1Socket(ws, request);
+    });
+  } else if (pathname === "/ws/set2") {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      handleSet2Socket(ws, request);
+    });
+  } else if (pathname === "/ws/set3") {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      handleSet3Socket(ws, request);
     });
   } else {
     socket.destroy(); // reject unknown WS paths
@@ -62,5 +77,7 @@ server.on("upgrade", (request, socket, head) => {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  console.log(`🔌 WebSocket ready at ws://localhost:${PORT}/ws/interview`);
+  console.log(
+    `🔌 WebSockets ready at ws://localhost:${PORT}/ws/interview | /ws/set1 | /ws/set2 | /ws/set3`,
+  );
 });

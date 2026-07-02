@@ -11,6 +11,25 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+
+  role: {
+    type: String,
+    enum: ["frontend", "backend", "fullstack"],
+    default: null,
+  },
+
+  difficulty: {
+    type: String,
+    enum: ["easy", "medium", "hard"],
+    default: "easy",
+  },
+
+  unlockedDifficulty: {
+    type: String,
+    enum: ["easy", "medium", "hard"],
+    default: "easy",
+  },
+
   // Stores the pre-test Likert Scale baseline (H₀₂)
   // Shape mirrors the LikertScale.jsx payload:
   //   preConfidenceAnswers: [{ questionId: "q1", score: 3 }, ...]

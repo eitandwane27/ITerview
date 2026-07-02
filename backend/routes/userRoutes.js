@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
+const PreTestSession = require("../models/PreTestSession");
 
 
 // POST /api/users/register
@@ -20,7 +21,7 @@ router.post("/register", async (req, res) => {
     const user = await User.findOneAndUpdate(
       { firebaseUid },
       { firebaseUid, email },
-      { new: true, upsert: true },
+      { returnDocument: "after", upsert: true },
     );
 
     console.log("✅ User synced to MongoDB:", user.email);
@@ -50,7 +51,7 @@ router.post("/login", async (req, res) => {
     const user = await User.findOneAndUpdate(
       { firebaseUid },
       { firebaseUid, email },
-      { new: true, upsert: true },
+      { returnDocument: "after", upsert: true },
     );
 
     console.log("✅ User login synced to MongoDB:", user.email);
@@ -83,7 +84,7 @@ router.post("/pretest", async (req, res) => {
         },
         $setOnInsert: { firebaseUid },
       },
-      { new: true, upsert: true },
+      { returnDocument: "after", upsert: true },
     );
 
     res
@@ -91,6 +92,104 @@ router.post("/pretest", async (req, res) => {
       .json({ message: "Pre-test scores saved successfully!", user });
   } catch (error) {
     console.error("Error saving pre-test scores:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// GET /api/users/pretest-profile?uid=<firebaseUid>
+// Returns the user's pre-test weakness tag, baseline score, and role
+// for the Set 1 Briefing screen. Must be declared BEFORE /:firebaseUid
+// to avoid the wildcard swallowing this route.
+router.get("/pretest-profile", async (req, res) => {
+  try {
+    const { uid } = req.query;
+
+    if (!uid) {
+      return res.status(400).json({ message: "Firebase UID is required" });
+    }
+
+    // Fetch both in parallel
+    const [session, user] = await Promise.all([
+      PreTestSession.findOne({ firebaseUid: uid }).select(
+        "final_weakness_tag baseline_score_percentage"
+      ),
+      User.findOne({ firebaseUid: uid }).select("role"),
+    ]);
+
+    // Graceful fallback if pre-test was never completed
+    return res.status(200).json({
+      weaknessTag: session?.final_weakness_tag ?? null,
+      baselineScore: session?.baseline_score_percentage ?? null,
+      role: user?.role ?? null,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching pretest profile:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// GET /api/users/:firebaseUid
+// Retrieves user profile including their role.
+router.get("/:firebaseUid", async (req, res) => {
+  try {
+    const { firebaseUid } = req.params;
+    const user = await User.findOne({ firebaseUid });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error("❌ Error fetching user:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// PUT /api/users/role
+// Updates the user's target role and/or difficulty.
+router.put("/role", async (req, res) => {
+  try {
+    const { firebaseUid, role, difficulty } = req.body;
+
+    if (!firebaseUid) {
+      return res.status(400).json({ message: "Firebase UID is required" });
+    }
+
+    const updateFields = {};
+
+    if (role !== undefined) {
+      if (!["frontend", "backend", "fullstack"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role specified" });
+      }
+      updateFields.role = role;
+    }
+
+    if (difficulty !== undefined) {
+      if (!["easy", "medium", "hard"].includes(difficulty)) {
+        return res.status(400).json({ message: "Invalid difficulty specified" });
+      }
+      updateFields.difficulty = difficulty;
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: "Nothing to update. Provide role or difficulty." });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { firebaseUid },
+      { $set: updateFields },
+      { returnDocument: "after" }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(`✅ User updated: role=${user.role}, difficulty=${user.difficulty} for:`, user.email);
+    res.status(200).json({ message: "User profile updated successfully", user });
+  } catch (error) {
+    console.error("❌ Error updating user role:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 });
