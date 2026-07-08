@@ -18,6 +18,13 @@ import "./MicTest.css";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
+// Chevron SVG — shared by both selects
+const ChevronIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+  </svg>
+);
+
 export default function MicTest() {
   const navigate = useNavigate();
 
@@ -53,8 +60,6 @@ export default function MicTest() {
   const isTestingRef = useRef(false); // mirrors isTesting for ws.onclose
 
   // ── On mount: enumerate devices WITHOUT requesting permission ─────────────
-  // Device labels will be "Microphone 1" etc until permission is granted —
-  // that's fine. Labels become real after the first successful getUserMedia.
   useEffect(() => {
     refreshDevices();
     return stopTest; // cleanup on unmount
@@ -115,8 +120,6 @@ export default function MicTest() {
   };
 
   // ── Start mic test ────────────────────────────────────────────────────────
-  // Permission popup is triggered HERE (user-gesture context) so the browser
-  // always shows the allow/deny notification bar at the top of the page.
   const startTest = async () => {
     setStatus("requesting");
     setErrorMsg("");
@@ -125,7 +128,7 @@ export default function MicTest() {
 
     let stream;
 
-    // ── 1. Request mic permission ─────────────────────────────────────────
+    // 1. Request mic permission
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: selectedMic
@@ -144,8 +147,6 @@ export default function MicTest() {
             },
       });
     } catch (err) {
-      // NotAllowedError  = user clicked "Block" or dismissed the popup
-      // NotFoundError    = no mic hardware found
       if (
         err.name === "NotAllowedError" ||
         err.name === "PermissionDeniedError"
@@ -170,7 +171,7 @@ export default function MicTest() {
     refreshDevices();
     streamRef.current = stream;
 
-    // ── 2. Web Audio — volume meter + PCM extraction ──────────────────────
+    // 2. Web Audio — volume meter + PCM extraction
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
         sampleRate: 16000,
@@ -193,13 +194,13 @@ export default function MicTest() {
 
       startVolumeMeter(analyser);
 
-      // ── 3. Fetch Deepgram token from backend ────────────────────────────
+      // 3. Fetch Deepgram token from backend
       const tokenRes = await fetch(`${BACKEND_URL}/api/deepgram/token`);
       if (!tokenRes.ok)
         throw new Error("Failed to get Deepgram token from backend");
       const { token } = await tokenRes.json();
 
-      // ── 4. Open Deepgram WebSocket (browser → Deepgram directly) ────────
+      // 4. Open Deepgram WebSocket (browser → Deepgram directly)
       const ws = new WebSocket(
         "wss://api.deepgram.com/v1/listen?model=nova-2&language=en-US&encoding=linear16&sample_rate=16000&interim_results=true&smart_format=true&numerals=true&dictation=true&endpointing=300",
         ["token", token],
@@ -299,7 +300,9 @@ export default function MicTest() {
       }
     } catch (err) {
       console.error("[TTS] Sample playback failed:", err);
-      setTtsError("Could not play audio sample. Check your connection or try again.");
+      setTtsError(
+        "Could not play audio sample. Check your connection or try again.",
+      );
     } finally {
       setTtsLoading(false);
     }
@@ -349,12 +352,12 @@ export default function MicTest() {
       <header className="mictest-topbar">
         <div className="mictest-topbar-content">
           <h1>ITerview</h1>
-          <span>Pre-Test · Mic Setup</span>
+          <span className="mictest-phase-badge">Pre-Test · Mic Setup</span>
         </div>
       </header>
 
       <main className="mictest-main">
-        {/* ── Page heading ───────────────────────────────────────────────── */}
+        {/* ── Page heading ────────────────────────────────────────────────── */}
         <div className="mictest-header">
           <h2>Set Up Your Microphone</h2>
           <p>
@@ -363,7 +366,7 @@ export default function MicTest() {
           </p>
         </div>
 
-        {/* ── Permission / Error Banner ───────────────────────────────────── */}
+        {/* ── Permission / Error Banner ────────────────────────────────────── */}
         {errorMsg && (
           <div
             className={`mictest-banner ${status === "denied" ? "denied" : "error"}`}
@@ -376,71 +379,67 @@ export default function MicTest() {
           </div>
         )}
 
-        {/* ── Device Selection Card ───────────────────────────────────────── */}
+        {/* ── Audio Input Card ─────────────────────────────────────────────── */}
         <div className="mictest-card">
           <p className="mictest-card-title">🎙️ Audio Input</p>
 
-          <label htmlFor="mic-select" className="mictest-label">
-            Select Microphone
-          </label>
-          <div className="mictest-select-wrap">
-            <select
-              id="mic-select"
-              className="mictest-select"
-              value={selectedMic}
-              onChange={(e) => setSelectedMic(e.target.value)}
-              disabled={isTesting}
-            >
-              {devices.length === 0 && (
-                <option value="">No microphones found</option>
-              )}
-              {devices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label || `Microphone (${d.deviceId.slice(0, 8)}…)`}
-                </option>
-              ))}
-            </select>
-            <span className="mictest-select-chevron">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 20 20"
-                fill="currentColor"
+          {/* Inner lavender card — card-in-card pattern */}
+          <div className="mictest-inner">
+            <label htmlFor="mic-select" className="mictest-label">
+              Select Microphone
+            </label>
+            <div className="mictest-select-wrap">
+              <select
+                id="mic-select"
+                className="mictest-select"
+                value={selectedMic}
+                onChange={(e) => setSelectedMic(e.target.value)}
+                disabled={isTesting}
               >
-                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-              </svg>
-            </span>
-          </div>
-
-          {/* Volume Meter */}
-          <div className="mictest-volume-bar-wrap">
-            <div className="mictest-volume-label">
-              <span>Microphone Level</span>
-              <span>{volume}%</span>
+                {devices.length === 0 && (
+                  <option value="">No microphones found</option>
+                )}
+                {devices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label || `Microphone (${d.deviceId.slice(0, 8)}…)`}
+                  </option>
+                ))}
+              </select>
+              <span className="mictest-select-chevron">
+                <ChevronIcon />
+              </span>
             </div>
-            <div
-              className="mictest-volume-track"
-              role="meter"
-              aria-valuenow={volume}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
+
+            {/* Volume Meter */}
+            <div className="mictest-volume-bar-wrap">
+              <div className="mictest-volume-label">
+                <span>Microphone Level</span>
+                <span>{volume}%</span>
+              </div>
               <div
-                className={`mictest-volume-fill ${volumeClass}`}
-                style={{ width: `${volume}%` }}
-              />
+                className="mictest-volume-track"
+                role="meter"
+                aria-valuenow={volume}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  className={`mictest-volume-fill ${volumeClass}`}
+                  style={{ width: `${volume}%` }}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Test Button */}
-          <div className="mictest-btn-row">
-            <button
-              id="mic-test-btn"
-              className={`mictest-btn-test ${isTesting ? "active" : ""}`}
-              onClick={handleToggleTest}
-            >
-              {isTesting ? "⏹ Stop Test" : "▶ Test Microphone"}
-            </button>
+            {/* Test Button */}
+            <div className="mictest-btn-row">
+              <button
+                id="mic-test-btn"
+                className={`mictest-btn-test ${isTesting ? "active" : ""}`}
+                onClick={handleToggleTest}
+              >
+                {isTesting ? "⏹ Stop Test" : "▶ Test Microphone"}
+              </button>
+            </div>
           </div>
 
           {/* Status */}
@@ -450,10 +449,10 @@ export default function MicTest() {
           </div>
         </div>
 
-        {/* ── Transcript Preview Card ─────────────────────────────────────── */}
+        {/* ── Voice Preview Card ───────────────────────────────────────────── */}
         <div className="mictest-card">
           <p className="mictest-card-title">📝 Voice Preview</p>
-          <p className="mictest-label" style={{ marginBottom: "0.5rem" }}>
+          <p className="mictest-label">
             Say something — your speech will appear below in real time.
           </p>
           <div className="mictest-transcript" aria-live="polite">
@@ -470,56 +469,52 @@ export default function MicTest() {
           </div>
         </div>
 
-        {/* ── AI Voice Sample Card ─────────────────────────────────────────── */}
+        {/* ── AI Voice Card ────────────────────────────────────────────────── */}
         <div className="mictest-card">
           <p className="mictest-card-title">🔊 AI Interviewer Voice</p>
-          <p className="mictest-label" style={{ marginBottom: "0.75rem" }}>
-            Select your preferred AI interviewer voice and click to hear a sample.
-          </p>
 
-          <label htmlFor="voice-select" className="mictest-label">
-            AI Voice Model
-          </label>
-          <div className="mictest-select-wrap" style={{ marginBottom: "1rem" }}>
-            <select
-              id="voice-select"
-              className="mictest-select"
-              value={selectedVoice}
-              onChange={(e) => setSelectedVoice(e.target.value)}
-              disabled={ttsLoading}
-            >
-              <option value="aura-2-luna-en">Luna (Female)</option>
-              <option value="aura-2-juno-en">Juno (Female)</option>
-              <option value="aura-2-zeus-en">Zeus (Male)</option>
-              <option value="aura-2-amalthea-en">Amalthea (Female)</option>
-            </select>
-            <span className="mictest-select-chevron">
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-              </svg>
-            </span>
-          </div>
+          <div className="mictest-inner">
+            <label htmlFor="voice-select" className="mictest-label">
+              AI Voice Model
+            </label>
+            <div className="mictest-select-wrap">
+              <select
+                id="voice-select"
+                className="mictest-select"
+                value={selectedVoice}
+                onChange={(e) => setSelectedVoice(e.target.value)}
+                disabled={ttsLoading}
+              >
+                <option value="aura-2-luna-en">Luna (Female)</option>
+                <option value="aura-2-juno-en">Juno (Female)</option>
+                <option value="aura-2-zeus-en">Zeus (Male)</option>
+                <option value="aura-2-amalthea-en">Amalthea (Female)</option>
+              </select>
+              <span className="mictest-select-chevron">
+                <ChevronIcon />
+              </span>
+            </div>
 
-          {/* Hidden audio element — src is set dynamically after fetch */}
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <audio ref={audioRef} style={{ display: "none" }} />
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <audio ref={audioRef} style={{ display: "none" }} />
 
-          <div className="mictest-btn-row">
-            <button
-              id="mic-tts-sample-btn"
-              className="mictest-btn-test"
-              onClick={handleHearSample}
-              disabled={ttsLoading}
-            >
-              {ttsLoading ? "⏳ Loading…" : "▶ Hear Sample"}
-            </button>
+            <div className="mictest-btn-row">
+              <button
+                id="mic-tts-sample-btn"
+                className="mictest-btn-test"
+                onClick={handleHearSample}
+                disabled={ttsLoading}
+              >
+                {ttsLoading ? "⏳ Loading…" : "▶ Hear Sample"}
+              </button>
+            </div>
           </div>
 
           {ttsError && (
             <div
               className="mictest-banner error"
               role="alert"
-              style={{ marginTop: "0.75rem", marginBottom: 0 }}
+              style={{ marginTop: "12px", marginBottom: 0 }}
             >
               <span className="mictest-banner-icon">⚠️</span>
               <span>{ttsError}</span>
@@ -537,7 +532,7 @@ export default function MicTest() {
           </span>
         </div>
 
-        {/* ── Proceed Button ─────────────────────────────────────────────── */}
+        {/* ── Proceed CTA ─────────────────────────────────────────────────── */}
         <button
           id="mictest-proceed-btn"
           className="mictest-proceed-btn"
@@ -546,19 +541,9 @@ export default function MicTest() {
           Start Interview →
         </button>
 
-        {/* ── Sign out ───────────────────────────────────────────────────── */}
-        <div style={{ textAlign: "center", marginTop: "1rem" }}>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#6b7280",
-              fontSize: "0.875rem",
-              cursor: "pointer",
-              textDecoration: "underline",
-            }}
-          >
+        {/* ── Sign out ────────────────────────────────────────────────────── */}
+        <div className="mictest-signout-wrap">
+          <button className="mictest-signout-btn" onClick={handleLogout}>
             Sign out
           </button>
         </div>

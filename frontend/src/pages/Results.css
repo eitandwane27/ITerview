@@ -1,0 +1,551 @@
+/* =====================================================
+   Results.css — Soft Productivity SaaS (Results / Graduation Page)
+   ITerview Design System (DESIGN.md)
+   Mirror pattern: MainSets.css / LikertScale.css
+   ===================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+/* ── Design Tokens ────────────────────────────────── */
+:root {
+  --color-primary:        #7C6FCD;
+  --color-primary-light:  #EAE8F7;
+  --color-primary-hover:  #6B5FBC;
+  --color-primary-muted:  #B8B0E8;
+
+  --color-canvas:         #F4F4F6;
+  --color-surface-card:   #FFFFFF;
+  --color-surface-inner:  #F0EFF8;
+  --color-surface-input:  #F7F7F9;
+
+  --color-ink:            #1A1A2E;
+  --color-ink-secondary:  #6B6B80;
+  --color-ink-muted:      #9B9BAD;
+  --color-ink-on-primary: #FFFFFF;
+
+  --color-border-soft:    #E8E8EE;
+  --color-border-card:    #EFEFEF;
+
+  --color-badge-green:    #22C55E;
+  --color-badge-green-bg: #DCFCE7;
+  --color-badge-orange:   #F97316;
+  --color-badge-orange-bg:#FFEDD5;
+  --color-badge-blue:     #3B82F6;
+  --color-badge-blue-bg:  #DBEAFE;
+  --color-badge-purple:   #7C6FCD;
+  --color-badge-purple-bg:#EAE8F7;
+
+  --shadow-card:    0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-card-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+  --card-radius: 16px;
+  --lg-radius:   12px;
+  --md-radius:   8px;
+  --sm-radius:   6px;
+  --pill-radius: 9999px;
+
+  --topnav-height: 52px;
+}
+
+/* ── Reset ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ════════════════════════════════════════════════════
+   ROOT SHELL
+   ════════════════════════════════════════════════════ */
+.rs-root {
+  font-family: "Inter", system-ui, sans-serif;
+  background: var(--color-canvas);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-ink);
+}
+
+/* ════════════════════════════════════════════════════
+   TOP BAR  (mirrors pt-topbar)
+   ════════════════════════════════════════════════════ */
+.rs-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--topnav-height);
+  background: var(--color-surface-card);
+  border-bottom: 1px solid var(--color-border-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.rs-topbar-brand {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--color-primary);
+}
+
+.rs-topbar-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-badge-purple-bg);
+  color: var(--color-badge-purple);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 3px 10px;
+  border-radius: var(--pill-radius);
+}
+
+/* ════════════════════════════════════════════════════
+   UNLOCK BANNER  (graduation callout)
+   ════════════════════════════════════════════════════ */
+.rs-unlock-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, #d1fae5 0%, #bbf7d0 100%);
+  border-bottom: 1px solid #86efac;
+  padding: 14px 20px;
+  font-size: 14px;
+  color: #166534;
+  animation: rs-slide-down 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes rs-slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+.rs-unlock-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.rs-unlock-banner strong {
+  font-weight: 700;
+}
+
+.rs-unlock-banner em {
+  font-style: normal;
+  font-weight: 600;
+  color: #15803d;
+}
+
+/* ════════════════════════════════════════════════════
+   MAIN SCROLL CANVAS
+   ════════════════════════════════════════════════════ */
+.rs-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ════════════════════════════════════════════════════
+   BASE CARD  (mirrors ms-card / db-main-card)
+   ════════════════════════════════════════════════════ */
+.rs-card {
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  animation: rs-fade-up 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.rs-card:nth-child(1) { animation-delay: 0.05s; }
+.rs-card:nth-child(2) { animation-delay: 0.15s; }
+.rs-card:nth-child(3) { animation-delay: 0.25s; }
+
+@keyframes rs-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Card header row ────────────────────────────── */
+.rs-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+/* Square icon badge — mirrors pt-card-icon */
+.rs-card-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--sm-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.rs-card-icon--purple { background: var(--color-badge-purple-bg); color: var(--color-badge-purple); }
+.rs-card-icon--green  { background: var(--color-badge-green-bg);  color: var(--color-badge-green);  }
+.rs-card-icon--orange { background: var(--color-badge-orange-bg); color: var(--color-badge-orange); }
+.rs-card-icon--blue   { background: var(--color-badge-blue-bg);   color: var(--color-badge-blue);   }
+
+.rs-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-ink-secondary);
+  margin: 0;
+}
+
+/* ── Inner lavender card — signature card-in-card ── */
+.rs-inner-card {
+  background: var(--color-surface-inner);
+  border-radius: var(--lg-radius);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+/* ════════════════════════════════════════════════════
+   HERO DELTA CARD
+   ════════════════════════════════════════════════════ */
+.rs-hero-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #fdfcff 100%);
+}
+
+.rs-hero-inner {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, #dbd6f5 100%);
+}
+
+/* Giant "+25%" count-up display */
+.rs-delta-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1;
+}
+
+.rs-delta-sign {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-top: 12px;
+}
+
+.rs-delta-num {
+  font-size: 5.5rem;
+  font-weight: 800;
+  letter-spacing: -3px;
+  color: var(--color-primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-delta-unit {
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--color-primary-muted);
+  margin-top: 16px;
+}
+
+.rs-delta-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary);
+  opacity: 0.75;
+  text-align: center;
+}
+
+/* Before / After comparison pills */
+.rs-confidence-compare {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.rs-conf-arrow {
+  font-size: 1.1rem;
+  color: var(--color-primary-muted);
+  font-weight: 600;
+}
+
+.rs-conf-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: var(--md-radius);
+  padding: 8px 18px;
+  border: 1px solid rgba(124, 111, 205, 0.15);
+}
+
+.rs-conf-pill--after {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(124, 111, 205, 0.3);
+}
+
+.rs-conf-pill-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-primary-muted);
+}
+
+.rs-conf-pill-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ════════════════════════════════════════════════════
+   MASTERY SCORE CARD
+   ════════════════════════════════════════════════════ */
+
+/* Circular-style score badge */
+.rs-mastery-badge {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.rs-mastery-num {
+  font-size: 4rem;
+  font-weight: 800;
+  letter-spacing: -2px;
+  color: var(--color-badge-green);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-mastery-denom {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+/* Per-set chips row */
+.rs-set-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.rs-set-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-surface-card);
+  border-radius: var(--md-radius);
+  padding: 10px 14px;
+  border: 1px solid var(--color-border-soft);
+}
+
+.rs-set-chip--incomplete {
+  opacity: 0.5;
+}
+
+.rs-set-chip-emoji {
+  font-size: 1.3rem;
+  width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.rs-set-chip-body {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.rs-set-chip-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.rs-set-chip-score {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-badge-green);
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-set-chip-incomplete {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+/* ════════════════════════════════════════════════════
+   STAR BREAKDOWN CARD — horizontal progress bars
+   ════════════════════════════════════════════════════ */
+.rs-star-inner {
+  align-items: stretch;
+}
+
+.rs-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.rs-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.rs-bar-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--color-ink);
+}
+
+.rs-bar-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-bar-max {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+}
+
+.rs-bar-track {
+  width: 100%;
+  height: 8px;
+  background: var(--color-border-soft);
+  border-radius: var(--pill-radius);
+  overflow: hidden;
+}
+
+.rs-bar-fill {
+  height: 100%;
+  border-radius: var(--pill-radius);
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rs-bar-fill--purple { background: var(--color-primary); }
+.rs-bar-fill--blue   { background: var(--color-badge-blue); }
+.rs-bar-fill--green  { background: var(--color-badge-green); }
+
+/* ════════════════════════════════════════════════════
+   CTA BUTTON GROUP
+   ════════════════════════════════════════════════════ */
+.rs-cta-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: rs-fade-up 0.4s 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Primary — full-width lavender */
+.rs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 24px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--lg-radius);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, opacity 0.15s;
+  letter-spacing: 0;
+}
+
+.rs-btn:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.rs-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rs-btn--primary {
+  background: rgba(124, 111, 205, 0.88);
+  color: var(--color-ink-on-primary);
+}
+
+.rs-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.rs-btn--secondary {
+  background: var(--color-surface-card);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border-soft);
+  box-shadow: var(--shadow-card);
+}
+
+.rs-btn--secondary:hover:not(:disabled) {
+  border-color: var(--color-primary-muted);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.rs-btn--ghost {
+  background: transparent;
+  color: var(--color-ink-secondary);
+  border: 1px dashed var(--color-border-soft);
+}
+
+.rs-btn--ghost:hover:not(:disabled) {
+  background: var(--color-surface-input);
+}
+
+/* ════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .rs-main {
+    padding: 16px 14px 48px;
+    gap: 14px;
+  }
+
+  .rs-delta-num {
+    font-size: 4rem;
+    letter-spacing: -2px;
+  }
+
+  .rs-delta-sign,
+  .rs-delta-unit {
+    font-size: 1.8rem;
+  }
+
+  .rs-mastery-num {
+    font-size: 3rem;
+  }
+
+  .rs-unlock-banner {
+    font-size: 13px;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+}

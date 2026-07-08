@@ -25,7 +25,11 @@
 
 const Groq = require("groq-sdk");
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+
+const EVALUATOR_MODEL = "llama-3.3-70b-versatile";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BEHAVIORAL COMPETENCY PILLARS — 5 total, one per question slot.
@@ -122,13 +126,11 @@ async function generateSet3Question(
   const competency = BEHAVIORAL_COMPETENCIES[competencyIndex];
 
   // ── LOCKED TO EASY ONLY ───────────────────────────────────────────────────
-  // Medium/hard tiers disabled until easy-level guardrails are validated.
   const difficultyLabel = "Easy (Entry Level / Fresh Graduate)";
   const difficultyContext = `The candidate is a fresh IT graduate or IT student with mostly academic knowledge and personal project experience.
 They have no commercial work experience. All behavioral questions must be answerable using group projects, coursework, personal coding projects, hackathons, or brief internships.`;
 
   // ── Build calibration examples section ────────────────────────────────────
-  // Show 2 benchmark examples to anchor style/difficulty, and blacklist all of them.
   const shuffledExamples = [...competency.examples].sort(
     () => Math.random() - 0.5,
   );
@@ -142,7 +144,6 @@ ${benchmarkSamples}
 
 IMPORTANT: Do NOT repeat or closely paraphrase these examples. Generate a DIFFERENT, NOVEL question targeting the same competency at the same level.`;
 
-  // All curated examples go into the blacklist to prevent repeats
   const curationBlacklist = competency.examples;
 
   // ── System prompt ─────────────────────────────────────────────────────────
@@ -189,7 +190,7 @@ OUTPUT RULE:
   }
 
   const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: EVALUATOR_MODEL,
     messages,
     temperature: 0.65,
     max_tokens: 140,
@@ -199,9 +200,7 @@ OUTPUT RULE:
     response.choices[0]?.message?.content?.trim() ||
     "Tell me about a time you had to work closely with a team to complete a project under a tight deadline.";
 
-  // ── Post-process: strip LLM self-correction artifacts ────────────────────
   const sanitized = raw.includes(" -> ") ? raw.split(" -> ").pop().trim() : raw;
-
   return sanitized;
 }
 
@@ -228,7 +227,10 @@ Score each STAR dimension from 1 to 10:
 
 ### STEP 2 — COACHING TIP & INTERVIEWER REPLY
 1. "tip": Exactly ONE SENTENCE of actionable coaching on how to improve the STAR structure (e.g. "Next time, be sure to end your answer with a specific result or what you personally learned from the situation.").
-2. "interviewer_reply": A short, conversational reply from the interviewer acknowledging the answer (e.g. "That's a great example, thank you. Let's move on."). Do NOT generate the next question here.
+2. "interviewer_reply": A warm, encouraging reply from the interviewer consisting of EXACTLY TWO sentences:
+   - Sentence 1: A warm validation of their answer (e.g. "That is a really clear and well-structured response!").
+   - Sentence 2: A brief, positive piece of reinforcement or coaching (e.g. "Next time, try adding a concrete outcome to make your result even stronger.").
+   - STRICT CONSTRAINT: Do NOT end with a question, ask any questions, or mention the next topic. Do NOT say anything like "Let's move on" or "Next question". The next question will be introduced separately.
 
 Return exactly this shape:
 {
@@ -238,6 +240,32 @@ Return exactly this shape:
   "tip": "<1-sentence string>",
   "interviewer_reply": "<short conversational string>"
 }`;
+
+const SET3_SCORING_RESPONSE_FORMAT = {
+  type: "json_schema",
+  json_schema: {
+    name: "set3_scoring_result",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        situation_score:   { type: "integer", description: "STAR Situation score 1-10" },
+        action_score:      { type: "integer", description: "STAR Action score 1-10" },
+        result_score:      { type: "integer", description: "STAR Result/Learning score 1-10" },
+        tip:               { type: "string",  description: "One sentence actionable feedback tip to improve STAR structure" },
+        interviewer_reply: { type: "string",  description: "Exactly two sentences warm interviewer reply, no questions, no next topic mentions" },
+      },
+      required: [
+        "situation_score",
+        "action_score",
+        "result_score",
+        "tip",
+        "interviewer_reply",
+      ],
+      additionalProperties: false,
+    },
+  },
+};
 
 /**
  * Evaluates a Set 3 (Behavioral) answer using STAR scoring dimensions.
@@ -258,7 +286,7 @@ async function evaluateSet3Answer(question, transcript) {
   }
 
   const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: EVALUATOR_MODEL,
     messages: [
       { role: "system", content: SET3_SCORING_SYSTEM_PROMPT },
       {
@@ -272,9 +300,24 @@ async function evaluateSet3Answer(question, transcript) {
   });
 
   const raw = response.choices[0]?.message?.content?.trim() || "{}";
-  const parsed = JSON.parse(raw);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.error("[aiSet3Generator] JSON parse error. Raw response:", raw);
+    return {
+      situation_score: 5,
+      action_score: 5,
+      result_score: 5,
+      tip: "Try to structure your answer by describing the situation, your specific actions, and the final result or lesson learned.",
+      interviewer_reply: "Alright, thank you for sharing that.",
+    };
+  }
 
   const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
+
+  console.log(`[aiSet3Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via Groq)`);
 
   return {
     situation_score: clamp(parsed.situation_score),

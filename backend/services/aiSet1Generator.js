@@ -4,9 +4,14 @@
 // Handles generating questions and scoring answers specifically for Set 1.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Groq = require("groq-sdk");
+const { OpenAI } = require("openai");
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com",
+});
+
+const EVALUATOR_MODEL = "deepseek-chat";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CURATED QUESTION EXAMPLES — Grounded in real, widely-asked interview questions
@@ -30,9 +35,9 @@ const EASY_QUESTION_EXAMPLES = {
       "What does `===` (triple equals) do differently from `==` in JavaScript?",
     ],
     focus_completeness: [
-      "What are some of the ways you can make a webpage load faster for users?",
-      "What are some common HTML tags you would use when building a basic webpage, and what is each one used for?",
-      "How would you center an element on a page? What are the different approaches you know?",
+      "What are three different HTML semantic tags you can use to structure a webpage?",
+      "What are some of the different values you can use for the CSS display property?",
+      "What are three different CSS selectors you can use to style elements on a page?",
     ],
   },
   backend: {
@@ -49,9 +54,9 @@ const EASY_QUESTION_EXAMPLES = {
       "What is JSON and when would you use it in a backend application?",
     ],
     focus_completeness: [
-      "What are some things you would check if an API endpoint is returning an error?",
-      "What are the basic HTTP methods (GET, POST, PUT, DELETE) and what is each one typically used for?",
-      "What are some reasons you would use a database instead of just saving data to a file?",
+      "What are three common HTTP status codes and what basic message does each represent?",
+      "What are the four main HTTP methods used in REST APIs?",
+      "What are three different data types you can store in a JSON object?",
     ],
   },
   fullstack: {
@@ -68,20 +73,12 @@ const EASY_QUESTION_EXAMPLES = {
       "What is a REST API and what makes it 'RESTful'?",
     ],
     focus_completeness: [
-      "What are some things you would consider when deciding whether to store data on the client side or the server side?",
-      "What are some common problems a junior developer might run into when connecting a frontend to a backend API?",
-      "What are the main steps you would take to build a simple todo list web application from scratch?",
+      "What are three of the basic Git commands you use when working on a project?",
+      "What are three common HTTP methods used to communicate between client and server?",
+      "What are three different places where you can store data on the client side in a web application?",
     ],
   },
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MEDIUM & HARD BANKS — commented out while we validate easy-level guardrails.
-// Re-enable once role + easy prompt is confirmed solid.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// const MEDIUM_QUESTION_EXAMPLES = { ... };
-// const HARD_QUESTION_EXAMPLES   = { ... };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROLE TOPIC SCOPE — hard fence on what topics the LLM can pull from.
@@ -112,6 +109,67 @@ const ROLE_TOPIC_SCOPE = {
     "Version control: what Git is, why version control matters, basic commands (commit, push, pull)",
     "HTTP vs HTTPS: difference, why HTTPS matters",
     "Cookies vs sessions: what they are and when you'd use them",
+  ],
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOPIC KEYWORDS FOR PREVENTING REPETITION
+// Used to score each topic based on keywords found in previous questions.
+// ─────────────────────────────────────────────────────────────────────────────
+const TOPIC_KEYWORDS = {
+  frontend: [
+    [
+      "html",
+      "semantic",
+      "tag",
+      "element",
+      "header",
+      "nav",
+      "main",
+      "section",
+      "article",
+      "footer",
+    ],
+    [
+      "css",
+      "box model",
+      "selector",
+      "specificity",
+      "display",
+      "visibility",
+      "block",
+      "inline",
+    ],
+    ["position", "flexbox", "layout", "responsive", "media query", "align"],
+    [
+      "variable",
+      "let",
+      "const",
+      "var",
+      "data type",
+      "operator",
+      "function",
+      "conditional",
+      "loop",
+    ],
+    ["dom", "event", "listener", "click", "manipulate"],
+    ["browser", "render", "client", "server"],
+  ],
+  backend: [
+    ["http", "get", "post", "status code", "request"],
+    ["api", "rest", "endpoint", "response"],
+    ["database", "sql", "nosql", "crud"],
+    ["server", "node", "express", "environment variable"],
+    ["auth", "session", "cookie"],
+    ["json"],
+  ],
+  fullstack: [
+    ["client", "server", "communicate", "url"],
+    ["http", "api", "rest", "get", "post", "put", "delete"],
+    ["database", "sql", "nosql", "query"],
+    ["git", "version control", "commit", "push", "pull"],
+    ["https"],
+    ["cookie", "session"],
   ],
 };
 
@@ -154,9 +212,6 @@ async function generateSet1Question(
     : "focus_correctness";
 
   // ── LOCKED TO EASY ONLY ──────────────────────────────────────────────────
-  // Medium and hard tiers are disabled until easy-level role guardrails are
-  // confirmed solid. Difficulty parameter is intentionally ignored for now.
-  // TODO: Re-enable difficulty branching once prompt quality is validated.
   const examplePool = EASY_QUESTION_EXAMPLES[safeRole]?.[safeWeakness] || [];
   const difficultyLabel = "Easy (Entry Level / Fresh Graduate)";
   const difficultyContext = `The candidate is a fresh IT graduate or IT student practicing core interview basics. They have mostly academic knowledge and personal project experience — no commercial work experience. Questions MUST be simple, fundamental, and answerable without any industry experience.`;
@@ -186,22 +241,21 @@ QUESTION FORMAT RULES:
 - Good: "What is the difference between display: block and display: inline in CSS?"
 - Bad: "What is the difference between block and inline, and how does each affect spacing and layout?"`;
   } else {
-    weaknessInstruction = `The question must be open-ended, asking the candidate to name or list MULTIPLE things about ONE topic. It reveals whether they give thorough or shallow answers.
+    weaknessInstruction = `The question must be extremely simple, asking the candidate to list or name MULTIPLE basic things about ONE specific topic. It tests their ability to retrieve foundational items.
 QUESTION FORMAT RULES:
-- ONE topic. Broad coverage comes from asking them to think about the full range — not from chaining sub-questions.
-- Single sentence.
-- Good: "What are some ways you can use CSS to control how elements are positioned on a page?"
-- Bad: "What are the positioning methods in CSS, and how does JavaScript interact with them, and what are common mistakes?"`;
+- Ask them to list or name multiple items of a single basic category (e.g. "What are three basic CSS selectors...", "What are some values for the CSS display property...").
+- Keep it to a single, simple sentence.
+- STRICTLY BAN any compound structures or chained sub-questions. Do NOT ask "how they work", "how they affect layout", "when you would use them", "what they are used for", or "and why". The question should only ask to list or name them.
+- Good: "What are three different HTML semantic tags you can use to structure a webpage?"
+- Good: "What are some of the values you can use for the CSS position property?"
+- Bad: "What are some different display properties in CSS, and how do they affect the layout of elements on a webpage?"
+- Bad: "What are some common semantic elements in HTML, and what purpose does each one serve?"`;
   }
 
   // ── Step 3: Build the calibration + exclusion section ───────────────────
-  // The curated examples serve TWO purposes:
-  //   1. Show the LLM 2 random samples as a DIFFICULTY BENCHMARK only
-  //   2. Add ALL curated examples to the blacklist so the LLM never repeats them
   let examplesSection = "";
   let curationBlacklist = [];
   if (examplePool && examplePool.length > 0) {
-    // Shuffle and pick 2 random examples to show as benchmark (different each call)
     const shuffled = [...examplePool].sort(() => Math.random() - 0.5);
     const benchmarkSamples = shuffled
       .slice(0, 2)
@@ -212,14 +266,36 @@ DIFFICULTY BENCHMARK — these questions represent the EXACT difficulty level an
 ${benchmarkSamples}
 
 IMPORTANT: Do NOT repeat or closely paraphrase any of those examples. Generate a DIFFERENT, NOVEL question at the same difficulty level.`;
-    // All curated examples go into the blacklist regardless of which ones were shown
     curationBlacklist = examplePool;
   }
 
+  // ── Step 3.5: Select a topic to ensure variance and avoid repetition ──────
+  const topics = ROLE_TOPIC_SCOPE[safeRole] || [];
+  const keywordLists = TOPIC_KEYWORDS[safeRole] || [];
+  let selectedTopic = "";
+  if (topics.length > 0) {
+    const topicScores = topics.map((topic, index) => {
+      const keywords = keywordLists[index] || [];
+      let score = 0;
+      previousQuestions.forEach((q) => {
+        const qLower = q.toLowerCase();
+        keywords.forEach((word) => {
+          if (qLower.includes(word.toLowerCase())) {
+            score++;
+          }
+        });
+      });
+      return { index, score, topic };
+    });
+
+    const minScore = Math.min(...topicScores.map((t) => t.score));
+    const candidates = topicScores.filter((t) => t.score === minScore);
+    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    selectedTopic = chosen.topic;
+  }
+
   // ── Step 4: Build the full system prompt ─────────────────────────────────
-  const topicScope = (ROLE_TOPIC_SCOPE[safeRole] || [])
-    .map((t, i) => `  ${i + 1}. ${t}`)
-    .join("\n");
+  const topicScope = topics.map((t, i) => `  ${i + 1}. ${t}`).join("\n");
 
   const systemPrompt = `You are an experienced IT recruiter and mock interview coach generating personalized practice questions.
 You are creating a question for a ${difficultyLabel} candidate applying for a ${formattedRole} position.
@@ -229,6 +305,10 @@ ${difficultyContext}
 
 ALLOWED TOPICS — Your question MUST come from one of these topics only. Do not go outside this list:
 ${topicScope}
+
+STRICT TOPIC FOCUS:
+You MUST generate a question specifically targeting this topic: "${selectedTopic}".
+Do not ask about any other topic. Make sure the question focuses purely on this specific concept or tool.
 
 QUESTION TYPE REQUIREMENT:
 ${weaknessInstruction}
@@ -242,7 +322,6 @@ OUTPUT RULE:
 - No introduction, no explanation, no quotes, no numbering. Just the single, final question itself.`;
 
   // ── Step 5: Build the messages array ─────────────────────────────────────
-  // Merge session questions + all curated examples into one blacklist
   const allExcluded = [...previousQuestions, ...curationBlacklist];
   const messages = [{ role: "system", content: systemPrompt }];
 
@@ -258,22 +337,30 @@ OUTPUT RULE:
     });
   }
 
-  const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+  const response = await deepseek.chat.completions.create({
+    model: EVALUATOR_MODEL,
     messages,
-    temperature: 0.65,
-    max_tokens: 120,
+    temperature: 0.85,
+    max_tokens: 300,
   });
 
+  if (!response.choices || response.choices.length === 0 || !response.choices[0]?.message?.content) {
+    console.error("[DeepSeek Error] Received empty choices or error response in generateSet1Question:", JSON.stringify(response));
+  }
+
+  const fallbackQuestions = [
+    "Can you tell me about a project you worked on and what your specific role and contributions were?",
+    "What is the difference between client-side and server-side in web development?",
+    "How does a browser request and load a webpage from a server?",
+    "Why is it important to use semantic HTML tags when building a webpage?",
+    "What are some basic git commands you use to manage your project code?"
+  ];
+
   const raw =
-    response.choices[0]?.message?.content?.trim() ||
-    "Can you tell me about a project you worked on and what your specific role and contributions were?";
+    response.choices?.[0]?.message?.content?.trim() ||
+    fallbackQuestions[previousQuestions.length % fallbackQuestions.length];
 
-  // ── Post-process: strip LLM self-correction artifacts ─────────────────────
-  // The LLM sometimes outputs "draft! -> revised version" when it corrects itself.
-  // If the response contains " -> ", take only the last segment after the final arrow.
   const sanitized = raw.includes(" -> ") ? raw.split(" -> ").pop().trim() : raw;
-
   return sanitized;
 }
 
@@ -307,6 +394,45 @@ Return exactly this shape:
   "interviewer_reply": "<exactly two sentences warm reply>"
 }`;
 
+const SET1_SCORING_RESPONSE_FORMAT = {
+  type: "json_schema",
+  json_schema: {
+    name: "set1_scoring_result",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        clarity_score: { type: "integer", description: "Clarity score 1-10" },
+        correctness_score: {
+          type: "integer",
+          description: "Correctness score 1-10",
+        },
+        completeness_score: {
+          type: "integer",
+          description: "Completeness score 1-10",
+        },
+        tip: {
+          type: "string",
+          description: "One sentence actionable feedback tip",
+        },
+        interviewer_reply: {
+          type: "string",
+          description:
+            "Exactly two sentences warm interviewer reply, no questions, no next topic mentions",
+        },
+      },
+      required: [
+        "clarity_score",
+        "correctness_score",
+        "completeness_score",
+        "tip",
+        "interviewer_reply",
+      ],
+      additionalProperties: false,
+    },
+  },
+};
+
 /**
  * Evaluates a Set 1 answer, returning 3C scores (for backend aggregation)
  * and a 1-sentence tip (for immediate frontend display).
@@ -327,8 +453,8 @@ async function evaluateSet1Answer(question, transcript) {
     };
   }
 
-  const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+  const response = await deepseek.chat.completions.create({
+    model: EVALUATOR_MODEL,
     messages: [
       { role: "system", content: SET1_SCORING_SYSTEM_PROMPT },
       {
@@ -337,14 +463,32 @@ async function evaluateSet1Answer(question, transcript) {
       },
     ],
     temperature: 0.0,
-    max_tokens: 200,
+    max_tokens: 1000,
     response_format: { type: "json_object" },
   });
 
   const raw = response.choices[0]?.message?.content?.trim() || "{}";
-  const parsed = JSON.parse(raw);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.error("[aiSet1Generator] JSON parse error. Raw response:", raw);
+    return {
+      clarity_score: 5,
+      correctness_score: 5,
+      completeness_score: 5,
+      tip: "Try to provide a bit more detail next time to fully address the question.",
+      interviewer_reply:
+        "That was a solid start. Let's build on that in the next parts.",
+    };
+  }
 
   const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
+
+  console.log(
+    `[aiSet1Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via DeepSeek V3)`,
+  );
 
   return {
     clarity_score: clamp(parsed.clarity_score),
@@ -354,7 +498,8 @@ async function evaluateSet1Answer(question, transcript) {
       parsed.tip ||
       "Try to provide a bit more detail next time to fully address the question.",
     interviewer_reply:
-      parsed.interviewer_reply || "That was a solid start. Let's build on that in the next parts.",
+      parsed.interviewer_reply ||
+      "That was a solid start. Let's build on that in the next parts.",
   };
 }
 

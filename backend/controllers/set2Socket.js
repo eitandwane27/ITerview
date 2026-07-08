@@ -175,6 +175,7 @@ function handleSet2Socket(ws, request) {
         message: "Generating your technical questions...",
       });
 
+      const genStart = Date.now();
       let q1SynthesisPromise = null;
       for (let i = 0; i < MAX_QUESTIONS; i++) {
         const q = await generateSet2Question(
@@ -189,6 +190,11 @@ function handleSet2Socket(ws, request) {
           q1SynthesisPromise = synthesizeSpeech(q, voiceModel);
         }
       }
+      const totalGenDuration = Date.now() - genStart;
+      console.log(`[aiSet2Generator] 🧠 Generated ${questions.length} questions for Set 2 (${sessionRole}, ${sessionDifficulty}) in ${(totalGenDuration / 1000).toFixed(2)}s:`);
+      questions.forEach((q, idx) => {
+        console.log(`  Q${idx + 1}: "${q}"`);
+      });
 
       currentQuestionText = questions[0];
 

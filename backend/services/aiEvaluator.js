@@ -8,9 +8,12 @@
 // Uses temperature: 0.0 and response_format: { type: "json_object" } for deterministic output.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Groq = require("groq-sdk");
+const { OpenAI } = require("openai");
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com",
+});
 
 // Valid weakness tags — kept as a constant so validation is centralised
 const VALID_TAGS = ["focus_clarity", "focus_correctness", "focus_completeness"];
@@ -85,8 +88,8 @@ async function evaluate3CScores(question, transcript) {
     };
   }
 
-  const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+  const response = await deepseek.chat.completions.create({
+    model: "deepseek-chat",
     messages: [
       { role: "system", content: SCORING_SYSTEM_PROMPT },
       {
@@ -99,8 +102,8 @@ Interview Question: "${question}"
 Student's Answer: "${transcript}"`,
       },
     ],
-    temperature: 0.0,          // deterministic scoring
-    max_tokens: 150,
+    temperature: 0.0, // deterministic scoring
+    max_tokens: 300,
     response_format: { type: "json_object" }, // forces valid JSON output
   });
 

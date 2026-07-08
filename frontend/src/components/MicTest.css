@@ -1,355 +1,598 @@
-/* src/components/MicTest.css */
-/* Mic test / pre-interview setup screen — matches Dashboard.css design system */
+/* =====================================================
+   MicTest.css — Soft Productivity SaaS
+   ITerview Design System (DESIGN.md)
+   Mirror pattern: LikertScale.css / Dashboard.css
+   ===================================================== */
 
-/* ── Layout ─────────────────────────────────────────────────────────────── */
-.mictest-container {
-  min-height: 100vh;
-  background-color: #f9fafb;
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
-  color: #111827;
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+/* ── Design Tokens ────────────────────────────────── */
+:root {
+  --color-primary: #7c6fcd;
+  --color-primary-light: #eae8f7;
+  --color-primary-hover: #6b5fbc;
+  --color-primary-muted: #b8b0e8;
+
+  --color-canvas: #f4f4f6;
+  --color-surface-card: #ffffff;
+  /* inner card — was flat #f0eff8; now defined as a gradient via class */
+  --color-surface-inner: #f0eff8;
+  --color-surface-input: #f7f7f9;
+
+  /* Inner card border — crisp edge so the zone has a definite floor */
+  --color-inner-border: rgba(124, 111, 205, 0.18);
+  /* Inner card shadow — inset depth, not a floating card */
+  --shadow-inner: inset 0 1px 3px rgba(124, 111, 205, 0.08),
+                  0 1px 2px rgba(0, 0, 0, 0.04);
+
+  --color-ink: #1a1a2e;
+  --color-ink-secondary: #6b6b80;
+  --color-ink-muted: #9b9bad;
+  --color-ink-on-primary: #ffffff;
+
+  --color-border-soft: #e8e8ee;
+  --color-border-card: #efefef;
+
+  --color-badge-green: #22c55e;
+  --color-badge-green-bg: #dcfce7;
+  --color-badge-purple: #7c6fcd;
+  --color-badge-purple-bg: #eae8f7;
+  --color-badge-orange: #f97316;
+  --color-badge-orange-bg: #ffedd5;
+  --color-badge-red: #ef4444;
+  --color-badge-red-bg: #fee2e2;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  --card-radius: 16px;
+  --lg-radius: 12px;
+  --md-radius: 8px;
+  --sm-radius: 6px;
+  --pill-radius: 9999px;
+
+  --topnav-height: 52px;
 }
 
+/* ── Reset ─────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ════════════════════════════════════════════════════
+   ROOT SHELL
+   ════════════════════════════════════════════════════ */
+.mictest-container {
+  min-height: 100vh;
+  background: var(--color-canvas);
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--color-ink);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ════════════════════════════════════════════════════
+   TOP BAR  (mirrors LikertScale .likert-topbar)
+   ════════════════════════════════════════════════════ */
 .mictest-topbar {
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 1rem 2rem;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--topnav-height);
+  background: var(--color-surface-card);
+  border-bottom: 1px solid var(--color-border-card);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .mictest-topbar-content {
-  max-width: 760px;
+  width: 100%;
+  max-width: 680px;
   margin: 0 auto;
+  padding: 0 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+/* Brand wordmark — primary color */
 .mictest-topbar-content h1 {
-  font-size: 1.5rem;
+  font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  letter-spacing: -0.3px;
+  color: var(--color-primary);
   margin: 0;
 }
 
-.mictest-topbar-content span {
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
+/* Phase badge — pill-shaped, purple tint */
+.mictest-phase-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-badge-purple-bg);
+  color: var(--color-badge-purple);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 3px 10px;
+  border-radius: var(--pill-radius);
 }
 
+/* ════════════════════════════════════════════════════
+   MAIN CONTENT
+   ════════════════════════════════════════════════════ */
 .mictest-main {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 3rem 2rem;
+  max-width: 680px;
+  margin: 28px auto;
+  padding: 0 20px 48px;
+  width: 100%;
+  flex: 1;
 }
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
+/* ── Page header ────────────────────────────────── */
 .mictest-header {
-  margin-bottom: 2rem;
+  margin-bottom: 20px;
 }
 
+/* Page title — primary color, 28px/700 */
 .mictest-header h2 {
-  font-size: 1.875rem;
+  font-size: 28px;
   font-weight: 700;
-  color: #111827;
-  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.5px;
+  color: var(--color-primary);
+  line-height: 1.2;
+  margin-bottom: 6px;
 }
 
 .mictest-header p {
-  font-size: 1rem;
-  color: #6b7280;
-  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-ink-secondary);
+  line-height: 1.5;
 }
 
-/* ── Card ────────────────────────────────────────────────────────────────── */
-.mictest-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.1),
-    0 2px 4px -2px rgb(0 0 0 / 0.1);
-  border: 1px solid #e5e7eb;
-  margin-bottom: 1.5rem;
-}
-
-.mictest-card-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 1rem 0;
+/* ════════════════════════════════════════════════════
+   PERMISSION / ERROR BANNER
+   ════════════════════════════════════════════════════ */
+.mictest-banner {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-radius: var(--md-radius);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  border: 1px solid;
 }
 
-/* ── Mic Selector ────────────────────────────────────────────────────────── */
+.mictest-banner.denied {
+  background: var(--color-badge-orange-bg);
+  border-color: rgba(249, 115, 22, 0.3);
+  color: #92400e;
+}
+
+.mictest-banner.error {
+  background: var(--color-badge-red-bg);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #991b1b;
+}
+
+.mictest-banner-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ════════════════════════════════════════════════════
+   OUTER CARD  (white card — mirrors .likert-question-card)
+   ════════════════════════════════════════════════════ */
+.mictest-card {
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  margin-bottom: 16px;
+  animation: mt-fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes mt-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Card section label — sidebar-section-label style */
+.mictest-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  margin-bottom: 16px;
+}
+
+/* ════════════════════════════════════════════════════
+   INNER CARD  (card-in-card — textured, not flat)
+   ════════════════════════════════════════════════════ */
+.mictest-inner {
+  /* Diagonal micro-gradient so the fill has perceived depth */
+  background: linear-gradient(
+    135deg,
+    #ece9f8 0%,
+    #f2f0fa 60%,
+    #edeaf6 100%
+  );
+  border: 1px solid var(--color-inner-border);
+  border-radius: var(--lg-radius);
+  box-shadow: var(--shadow-inner);
+  padding: 16px;
+}
+
+/* ── Field label ────────────────────────────────── */
 .mictest-label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 12px;
   font-weight: 500;
-  color: #4b5563;
-  margin-bottom: 0.5rem;
+  color: var(--color-ink-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0;
 }
 
+/* ── Mic / Voice Select ─────────────────────────── */
 .mictest-select-wrap {
   position: relative;
+  margin-bottom: 16px;
+}
+
+.mictest-select-wrap:last-child {
+  margin-bottom: 0;
 }
 
 .mictest-select {
   width: 100%;
-  padding: 0.75rem 2.5rem 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.95rem;
+  padding: 10px 36px 10px 14px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--md-radius);
+  font-size: 14px;
+  font-family: inherit;
   outline: none;
-  background-color: white;
-  color: #111827;
+  background: var(--color-surface-card);
+  color: var(--color-ink);
   appearance: none;
   cursor: pointer;
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
-.mictest-select:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.mictest-select:focus,
+.mictest-select:focus-visible {
+  border-color: var(--color-primary-muted);
+  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.18);
+  outline: none;
 }
 
 .mictest-select:disabled {
-  background-color: #f9fafb;
-  color: #9ca3af;
+  background: var(--color-surface-input);
+  color: var(--color-ink-muted);
   cursor: not-allowed;
 }
 
 .mictest-select-chevron {
   pointer-events: none;
   position: absolute;
-  inset-y: 0;
-  right: 0.75rem;
+  top: 0;
+  bottom: 0;
+  right: 12px;
   display: flex;
   align-items: center;
-  color: #6b7280;
+  color: var(--color-ink-muted);
 }
 
-/* ── Volume Meter ────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   VOLUME METER
+   ════════════════════════════════════════════════════ */
 .mictest-volume-bar-wrap {
-  margin-top: 1rem;
+  margin-bottom: 16px;
 }
 
 .mictest-volume-label {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8rem;
-  color: #6b7280;
-  margin-bottom: 0.4rem;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink-secondary);
+  margin-bottom: 6px;
+}
+
+.mictest-volume-label span:last-child {
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 32px;
+  text-align: right;
 }
 
 .mictest-volume-track {
   width: 100%;
-  height: 10px;
-  background-color: #e5e7eb;
-  border-radius: 999px;
+  height: 6px;
+  background: var(--color-border-soft);
+  border-radius: var(--pill-radius);
   overflow: hidden;
 }
 
+/* Default fill — primary lavender */
 .mictest-volume-fill {
   height: 100%;
-  border-radius: 999px;
-  background-color: #3b82f6;
-  transition: width 0.1s ease-out;
+  border-radius: var(--pill-radius);
+  background: var(--color-primary);
+  transition: width 0.08s ease-out;
 }
 
+/* Good level (20–70%) — same primary, no color switch needed */
 .mictest-volume-fill.good {
-  background-color: #22c55e;
+  background: var(--color-badge-green);
 }
 
+/* Loud (>70%) — orange warning */
 .mictest-volume-fill.loud {
-  background-color: #f59e0b;
+  background: var(--color-badge-orange);
 }
 
-/* ── Test button ─────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   BUTTONS
+   ════════════════════════════════════════════════════ */
 .mictest-btn-row {
   display: flex;
-  gap: 1rem;
-  margin-top: 1.25rem;
+  gap: 10px;
+  margin-top: 4px;
 }
 
+/* Secondary / ghost button — "Test Microphone" / "Hear Sample" */
 .mictest-btn-test {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 6px;
   flex: 1;
-  padding: 0.75rem 1rem;
-  background-color: white;
-  color: #111827;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  padding: 10px 16px;
+  background: var(--color-surface-card);
+  /* Start at ink, not secondary — creates a stronger hover delta */
+  color: var(--color-ink);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--md-radius);
+  font-family: inherit;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
 }
 
 .mictest-btn-test:hover:not(:disabled) {
-  background-color: #f3f4f6;
+  border-color: var(--color-primary-muted);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.10);
+}
+
+.mictest-btn-test:focus-visible {
+  outline: none;
+  border-color: var(--color-primary-muted);
+  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.22);
 }
 
 .mictest-btn-test:disabled {
-  color: #9ca3af;
+  color: var(--color-ink-muted);
   cursor: not-allowed;
+  opacity: 0.55;
 }
 
+/* Active / stop state — red tint */
 .mictest-btn-test.active {
-  border-color: #ef4444;
-  color: #ef4444;
-  background-color: #fef2f2;
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--color-badge-red);
+  background: var(--color-badge-red-bg);
 }
 
-/* ── Status indicator ────────────────────────────────────────────────────── */
+.mictest-btn-test.active:hover:not(:disabled) {
+  background: #fecaca;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+/* ════════════════════════════════════════════════════
+   STATUS INDICATOR
+   ════════════════════════════════════════════════════ */
 .mictest-status {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin-top: 0.75rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-  min-height: 1.5rem;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--color-ink-secondary);
+  min-height: 20px;
 }
 
 .mictest-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #9ca3af;
+  background: var(--color-ink-muted);
   flex-shrink: 0;
 }
 
 .mictest-dot.recording {
-  background-color: #ef4444;
-  animation: pulse-dot 1s infinite;
+  background: var(--color-badge-red);
+  animation: mt-pulse-dot 1.1s ease-in-out infinite;
 }
 
 .mictest-dot.ok {
-  background-color: #22c55e;
+  background: var(--color-badge-green);
 }
 
 .mictest-dot.error-dot {
-  background-color: #ef4444;
+  background: var(--color-badge-red);
 }
 
-@keyframes pulse-dot {
+@keyframes mt-pulse-dot {
   0%,
   100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.3;
+    opacity: 0.35;
+    transform: scale(0.75);
   }
 }
 
-/* ── Permission / Error Banner ───────────────────────────────────────────── */
-.mictest-banner {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  padding: 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  margin-bottom: 1.25rem;
-  border: 1px solid;
-}
-
-.mictest-banner.denied {
-  background-color: #fef9c3;
-  border-color: #fde047;
-  color: #713f12;
-}
-
-.mictest-banner.error {
-  background-color: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
-}
-
-.mictest-banner-icon {
-  font-size: 1.1rem;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-/* ── Transcript preview ──────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   TRANSCRIPT PREVIEW
+   (content display zone — distinct from inner card)
+   ════════════════════════════════════════════════════ */
 .mictest-transcript {
-  margin-top: 1rem;
-  padding: 1rem;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  /* Slightly cooler, more neutral than the inner card —
+     signals "content output" rather than "input zone" */
+  background: linear-gradient(135deg, #f5f4fb 0%, #f9f8fd 100%);
+  border: 1px solid var(--color-inner-border);
+  /* Left accent bar — marks this as a live output surface */
+  border-left: 3px solid var(--color-primary-muted);
+  border-radius: var(--lg-radius);
+  box-shadow: var(--shadow-inner);
+  padding: 14px 16px;
   min-height: 80px;
-  font-size: 0.9rem;
-  color: #374151;
+  font-size: 14px;
+  color: var(--color-ink);
   line-height: 1.6;
 }
 
 .mictest-transcript .placeholder {
-  color: #9ca3af;
+  color: var(--color-ink-muted);
   font-style: italic;
+  font-size: 13px;
 }
 
 .mictest-transcript .partial {
-  color: #9ca3af;
+  color: var(--color-ink-secondary);
 }
 
-/* ── Info tips ───────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   INFO TIP
+   ════════════════════════════════════════════════════ */
 .mictest-tip {
   display: flex;
-  gap: 0.75rem;
+  gap: 10px;
   align-items: flex-start;
-  padding: 1rem;
-  background-color: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  color: #1d4ed8;
-  margin-top: 1.5rem;
+  padding: 14px 16px;
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary-muted);
+  border-radius: var(--md-radius);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-ink-secondary);
+  line-height: 1.55;
+  margin-top: 4px;
 }
 
 .mictest-tip-icon {
-  font-size: 1.1rem;
+  font-size: 1rem;
   flex-shrink: 0;
   margin-top: 1px;
 }
 
-/* ── Proceed button ──────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   PROCEED CTA — full-width primary button
+   (mirrors .likert-btn-next / db-btn-primary)
+   ════════════════════════════════════════════════════ */
 .mictest-proceed-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 8px;
   width: 100%;
-  padding: 0.875rem;
-  background-color: #111827;
-  color: white;
+  padding: 14px 24px;
+  background: rgba(124, 111, 205, 0.88);
+  color: var(--color-ink-on-primary);
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: var(--lg-radius);
+  font-family: inherit;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-top: 1.5rem;
+  transition:
+    background 0.15s,
+    transform 0.1s;
+  margin-top: 8px;
+  letter-spacing: 0;
 }
 
 .mictest-proceed-btn:hover:not(:disabled) {
-  background-color: #374151;
+  background: var(--color-primary-hover);
+}
+
+.mictest-proceed-btn:active:not(:disabled) {
+  transform: scale(0.99);
 }
 
 .mictest-proceed-btn:disabled {
-  background-color: #9ca3af;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ── Sign out link ──────────────────────────────── */
+.mictest-signout-wrap {
+  text-align: center;
+  margin-top: 12px;
+}
+
+.mictest-signout-btn {
+  background: none;
+  border: none;
+  color: var(--color-ink-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+
+.mictest-signout-btn:hover {
+  color: var(--color-ink-secondary);
+}
+
+/* ════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .mictest-phase-badge {
+    display: none;
+  }
+
+  .mictest-main {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .mictest-header h2 {
+    font-size: 22px;
+  }
+
+  .mictest-proceed-btn {
+    font-size: 15px;
+  }
 }

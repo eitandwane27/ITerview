@@ -19,7 +19,11 @@
 
 const Groq = require("groq-sdk");
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+
+const EVALUATOR_MODEL = "llama-3.3-70b-versatile";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CURATED QUESTION EXAMPLES — easy junior-level technical questions.
@@ -103,6 +107,36 @@ const ROLE_TOPIC_SCOPE = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TOPIC KEYWORDS FOR PREVENTING REPETITION
+// Used to score each topic based on keywords found in previous questions.
+// ─────────────────────────────────────────────────────────────────────────────
+const TOPIC_KEYWORDS = {
+  frontend: [
+    ["dom", "select", "content", "class", "click", "element", "textcontent", "innerhtml"],
+    ["css", "layout", "flexbox", "grid", "block", "inline", "responsive", "media query", "specificity"],
+    ["html", "semantic", "tag", "attribute", "form", "structure"],
+    ["scenario", "button", "listener", "fire", "show", "hide", "javascript", "script"]
+  ],
+  backend: [
+    ["express", "route", "get", "post", "req", "res", "json", "response"],
+    ["async", "await", "promise", "database", "forget", "call"],
+    ["env", "environment", "secret", "hardcode", "commit"],
+    ["http", "debugging", "404", "500", "exist", "log"],
+    ["middleware", "express", "request", "route handler"],
+    ["database", "query", "result", "undefined", "fail"]
+  ],
+  fullstack: [
+    ["client-server", "form", "submit", "fetch", "route", "write", "database"],
+    ["cors", "cross-origin", "block", "enable", "backend"],
+    ["auth", "session", "token", "login", "state"],
+    ["json", "serialization", "stringify", "parse", "body"],
+    ["async", "sync", "promise", "fetch"],
+    ["storage", "localstorage", "session", "fetch", "server"]
+  ]
+};
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // STRICT AVOID LIST — same across all Set 2 roles at easy difficulty
 // ─────────────────────────────────────────────────────────────────────────────
 const EASY_AVOID_LIST = `STRICT TOPIC BAN — Do NOT ask about any of the following:
@@ -149,7 +183,6 @@ async function generateSet2Question(
     : "fullstack";
 
   // ── LOCKED TO EASY ONLY ───────────────────────────────────────────────────
-  // Medium/hard tiers disabled until easy-level guardrails are validated.
   const examplePool = EASY_QUESTION_EXAMPLES[safeRole] || [];
   const difficultyLabel = "Easy (Entry Level / Fresh Graduate)";
   const difficultyContext = `The candidate is a fresh IT graduate or IT student with mostly academic knowledge and personal project experience.
@@ -173,9 +206,31 @@ IMPORTANT: Do NOT repeat or closely paraphrase these examples. Generate a DIFFER
   }
 
   // ── Build topic scope ─────────────────────────────────────────────────────
-  const topicScope = (ROLE_TOPIC_SCOPE[safeRole] || [])
-    .map((t, i) => `  ${i + 1}. ${t}`)
-    .join("\n");
+  const topics = ROLE_TOPIC_SCOPE[safeRole] || [];
+  const keywordLists = TOPIC_KEYWORDS[safeRole] || [];
+  let selectedTopic = "";
+  if (topics.length > 0) {
+    const topicScores = topics.map((topic, index) => {
+      const keywords = keywordLists[index] || [];
+      let score = 0;
+      previousQuestions.forEach((q) => {
+        const qLower = q.toLowerCase();
+        keywords.forEach((word) => {
+          if (qLower.includes(word.toLowerCase())) {
+            score++;
+          }
+        });
+      });
+      return { index, score, topic };
+    });
+
+    const minScore = Math.min(...topicScores.map((t) => t.score));
+    const candidates = topicScores.filter((t) => t.score === minScore);
+    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    selectedTopic = chosen.topic;
+  }
+
+  const topicScope = topics.map((t, i) => `  ${i + 1}. ${t}`).join("\n");
 
   // ── System prompt ─────────────────────────────────────────────────────────
   const systemPrompt = `You are an experienced IT recruiter and technical interview coach generating technical practice questions.
@@ -186,6 +241,10 @@ ${difficultyContext}
 
 ALLOWED TOPICS — Your question MUST come from one of these topics only. Do not go outside this list:
 ${topicScope}
+
+STRICT TOPIC FOCUS:
+You MUST generate a question specifically targeting this topic: "${selectedTopic}".
+Do not ask about any other topic. Make sure the question focuses purely on this specific concept or tool.
 
 QUESTION TYPE REQUIREMENT:
 Generate a single, clear, easy-level technical practice question testing the selected role.
@@ -224,19 +283,29 @@ OUTPUT RULE:
   }
 
   const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: EVALUATOR_MODEL,
     messages,
     temperature: 0.65,
     max_tokens: 160,
   });
 
+  if (!response.choices || response.choices.length === 0 || !response.choices[0]?.message?.content) {
+    console.error("[Groq Error] Received empty choices or error response in generateSet2Question:", JSON.stringify(response));
+  }
+
+  const fallbackQuestions = [
+    "Can you walk me through how you would debug a function that is returning undefined when you expect it to return a value?",
+    "What is the difference between a GET request and a POST request in a REST API?",
+    "How does localStorage differ from sessionStorage, and when would you use each?",
+    "What is the purpose of middleware in Express, and how does it process requests?",
+    "Why should API keys and database credentials never be hardcoded in your frontend codebase?"
+  ];
+
   const raw =
-    response.choices[0]?.message?.content?.trim() ||
-    "Can you walk me through how you would debug a function that is returning undefined when you expect it to return a value?";
+    response.choices?.[0]?.message?.content?.trim() ||
+    fallbackQuestions[previousQuestions.length % fallbackQuestions.length];
 
-  // ── Post-process: strip LLM self-correction artifacts ────────────────────
   const sanitized = raw.includes(" -> ") ? raw.split(" -> ").pop().trim() : raw;
-
   return sanitized;
 }
 
@@ -269,6 +338,48 @@ Return exactly this shape:
   "interviewer_reply": "<exactly two sentences, no questions, no next-topic mentions>"
 }`;
 
+const SET2_SCORING_RESPONSE_FORMAT = {
+  type: "json_schema",
+  json_schema: {
+    name: "set2_scoring_result",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        problem_solving_score: {
+          type: "integer",
+          description: "Problem solving score 1-10",
+        },
+        accuracy_score: {
+          type: "integer",
+          description: "Technical accuracy score 1-10",
+        },
+        depth_score: {
+          type: "integer",
+          description: "Technical depth score 1-10",
+        },
+        tip: {
+          type: "string",
+          description: "One sentence actionable technical coaching tip",
+        },
+        interviewer_reply: {
+          type: "string",
+          description:
+            "Exactly two sentences warm interviewer reply, no questions, no next topic mentions",
+        },
+      },
+      required: [
+        "problem_solving_score",
+        "accuracy_score",
+        "depth_score",
+        "tip",
+        "interviewer_reply",
+      ],
+      additionalProperties: false,
+    },
+  },
+};
+
 /**
  * Evaluates a Set 2 (Technical Mastery) answer.
  *
@@ -288,7 +399,7 @@ async function evaluateSet2Answer(question, transcript) {
   }
 
   const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: EVALUATOR_MODEL,
     messages: [
       { role: "system", content: SET2_SCORING_SYSTEM_PROMPT },
       {
@@ -297,14 +408,29 @@ async function evaluateSet2Answer(question, transcript) {
       },
     ],
     temperature: 0.0,
-    max_tokens: 220,
+    max_tokens: 800,
     response_format: { type: "json_object" },
   });
 
   const raw = response.choices[0]?.message?.content?.trim() || "{}";
-  const parsed = JSON.parse(raw);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.error("[aiSet2Generator] JSON parse error. Raw response:", raw);
+    return {
+      problem_solving_score: 5,
+      accuracy_score: 5,
+      depth_score: 5,
+      tip: "Try to explain the specific step or property you would use rather than staying at a high level.",
+      interviewer_reply: "Alright, thank you for that.",
+    };
+  }
 
   const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
+
+  console.log(`[aiSet2Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via Groq)`);
 
   return {
     problem_solving_score: clamp(parsed.problem_solving_score),

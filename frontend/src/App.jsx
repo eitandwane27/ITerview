@@ -6,8 +6,10 @@ import Dashboard from "./pages/Dashboard";
 import LikertScale from "./pages/LikertScale";
 import MicTest from "./components/MicTest";
 import PreTest from "./pages/PreTest";
+import PostTest from "./pages/PostTest";
 
 import MainSets from "./pages/MainSets";
+import Results from "./pages/Results";
 import AiAnalysisLoader from "./components/AiAnalysisLoader";
 import Set2TransitionOverlay from "./components/Set2TransitionOverlay";
 import "./components/AiAnalysisLoader.css";
@@ -32,9 +34,11 @@ function App() {
           {/* Mic Setup & Test — between Likert (pre) and the interview */}
           <Route path="/mic-test" element={<MicTest />} />
 
-          {/* Placeholder routes — to be built on later days */}
           {/* Pre-Test Interview Phase */}
           <Route path="/pre-test" element={<PreTest />} />
+
+          {/* Post-Test Graduation Challenge */}
+          <Route path="/post-test" element={<PostTest />} />
 
           <Route
             path="/test-loader"
@@ -46,7 +50,7 @@ function App() {
           />
           <Route path="/interview" element={<MainSets />} />
           <Route path="/dev/interview" element={<MainSets />} />
-          {/* <Route path="/results" element={<Results />} /> */}
+          <Route path="/results" element={<Results />} />
 
           {/* Dev only route to preview Set 2 transition design */}
           <Route 

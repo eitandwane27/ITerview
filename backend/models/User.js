@@ -44,6 +44,20 @@ const userSchema = new mongoose.Schema({
     default: [],
   },
   confidenceScore: { type: Number, default: null },
+
+  // Stores the post-test Likert Scale scores (H₀₂ comparison)
+  // Shape mirrors preConfidenceAnswers
+  postConfidenceAnswers: {
+    type: [
+      {
+        questionId: { type: String },
+        score: { type: Number },
+      },
+    ],
+    default: [],
+  },
+  postConfidenceScore: { type: Number, default: null },
+
   createdAt: {
     type: Date,
     default: Date.now,

@@ -189,6 +189,7 @@ function handleSet1Socket(ws, request) {
         message: "Generating your personalized questions...",
       });
 
+      const genStart = Date.now();
       let q1SynthesisPromise = null;
       for (let i = 0; i < MAX_QUESTIONS; i++) {
         const q = await generateSet1Question(
@@ -204,6 +205,11 @@ function handleSet1Socket(ws, request) {
           q1SynthesisPromise = synthesizeSpeech(q, voiceModel);
         }
       }
+      const totalGenDuration = Date.now() - genStart;
+      console.log(`[aiSet1Generator] 🧠 Generated ${questions.length} questions for Set 1 (${sessionRole}, ${sessionDifficulty}, Weakness: ${sessionWeaknessTag}) in ${(totalGenDuration / 1000).toFixed(2)}s:`);
+      questions.forEach((q, idx) => {
+        console.log(`  Q${idx + 1}: "${q}"`);
+      });
 
       currentQuestionText = questions[0];
 

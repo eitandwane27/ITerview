@@ -5,10 +5,12 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 
+
 const { handleInterviewSocket } = require("./controllers/interviewSocket");
-const { handleSet1Socket }      = require("./controllers/set1Socket");
-const { handleSet2Socket }      = require("./controllers/set2Socket");
-const { handleSet3Socket }      = require("./controllers/set3Socket");
+const { handleSet1Socket } = require("./controllers/set1Socket");
+const { handleSet2Socket } = require("./controllers/set2Socket");
+const { handleSet3Socket } = require("./controllers/set3Socket");
+const { handlePostTestSocket } = require("./controllers/postTestSocket");
 
 const app = express();
 
@@ -68,6 +70,10 @@ server.on("upgrade", (request, socket, head) => {
     wss.handleUpgrade(request, socket, head, (ws) => {
       handleSet3Socket(ws, request);
     });
+  } else if (pathname === "/ws/posttest") {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      handlePostTestSocket(ws, request);
+    });
   } else {
     socket.destroy(); // reject unknown WS paths
   }
@@ -78,6 +84,6 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
   console.log(
-    `🔌 WebSockets ready at ws://localhost:${PORT}/ws/interview | /ws/set1 | /ws/set2 | /ws/set3`,
+    `🔌 WebSockets ready at ws://localhost:${PORT}/ws/interview | /ws/set1 | /ws/set2 | /ws/set3 | /ws/posttest`
   );
 });

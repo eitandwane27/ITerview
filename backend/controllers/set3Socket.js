@@ -2,15 +2,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // WebSocket traffic controller for Set 3 (Behavioral Interview)
 //
-// Flow implemented:
-//   1. Browser connects → server fetches role & difficulty from User model
-//   2. Server generates Q1 (Teamwork) via aiSet3Generator and sends TTS audio
-//   3. User presses mic → streams binary audio → Deepgram STT
-//   4. User stops recording → submits answer
-//   5. Server evaluates answer (STAR scoring) → returns scores, tip, interviewer_reply
-//   6. Server sends tip to frontend, speaks interviewer_reply + next question
-//   7. Repeats for Q2 (Adaptability), Q3 (Conflict), Q4 (Resilience), Q5 (Initiative)
-//   8. Session finalised → overall_score_percentage persisted to Set3Session
+// OPTIMIZED FLOW (tts_and_prefetching_optimization_plan):
+//   Step 1 — Upfront question generation: all 5 Qs generated during loading.
+//             Q1 TTS synthesis fires concurrently after Q1 text is ready.
+//   Step 2 — Background next-Q TTS caching: Q(N+1) is pre-synthesized in the
+//             background while the user is recording answer for Q(N).
+//   Step 3 — Sentence-level concurrent reply TTS: interviewer_reply is split
+//             into sentences and synthesized in parallel, streamed sequentially.
+//   Step 4 — Cache hit/miss fallback: next-Q audio plays instantly from cache,
+//             or falls back to on-the-fly synthesis on a cache miss.
+//   Step 5 — Evaluator prompt enforces 2-sentence no-question reply (in aiSet3Generator).
+//   Step 6 — Session conclusion uses concurrent sentence TTS before session_complete.
 //
 // Competency order (matches aiSet3Generator.js pillar mapping):
 //   Q1 → Teamwork & Collaboration
@@ -61,17 +63,24 @@ function handleSet3Socket(ws, request) {
   let fullTranscript = "";
   let sessionRole = "fullstack";
   let sessionDifficulty = "easy";
-  const askedQuestions = []; // tracks asked question strings for dedup
   let currentQuestionText = "";
   let currentCompetency = "";
   let sessionDoc = null;
 
-  // Performance metrics tracking
+  // ── Step 1: Upfront question bank (all 5 Qs pre-generated at startup) ─────
+  let questions = [];
+
+  // ── Step 2: Background next-Q TTS cache ────────────────────────────────────
+  let preGeneratedNextQuestionAudio = null;
+  let preGeneratedNextQuestionIndex = -1;
+
+  // ── Performance metrics (matching Set 2 pattern) ──────────────────────────
+  const startupStart = Date.now();
   const metrics = {
-    questionGenLatencies: [], // time to generate question text via LLM
-    ttsLatencies: [], // question or combined reply+question TTS latencies
-    replyTtsLatencies: [], // final reply TTS latencies
-    evaluationLatencies: [], // AI evaluation latencies
+    questionGenLatencies: [], // per-question LLM latencies (upfront generation)
+    ttsLatencies: [],         // individual question audio delivery latency
+    replyTtsLatencies: [],    // interviewer reply audio synthesis latency
+    evaluationLatencies: [],  // AI evaluation latency
   };
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -79,22 +88,6 @@ function handleSet3Socket(ws, request) {
   function send(obj) {
     if (ws.readyState === ws.OPEN) {
       ws.send(JSON.stringify(obj));
-    }
-  }
-
-  async function speak(text) {
-    try {
-      const t0 = Date.now();
-      const audioBuffer = await synthesizeSpeech(text, voiceModel);
-      const latency = Date.now() - t0;
-      const base64Audio = audioBuffer.toString("base64");
-      send({ type: "tts_audio", data: base64Audio });
-      console.log(
-        `[TTS] 🔊 Sent audio in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`,
-      );
-    } catch (err) {
-      console.error("[WS] TTS error:", err.message);
-      send({ type: "error", message: `TTS failed: ${err.message}` });
     }
   }
 
@@ -144,7 +137,52 @@ function handleSet3Socket(ws, request) {
     isRecording = false;
   }
 
+  // ── Step 3: Sentence-level concurrent TTS synthesis helper ────────────────
+  /**
+   * Splits text into sentences, synthesizes all concurrently, then streams
+   * them to the client sequentially to maintain natural speech ordering.
+   *
+   * @param {string} text        - Full text to synthesize
+   * @param {string} [label=""]  - Log label for perf output
+   * @returns {Promise<number>}  - Total wall-clock time in ms
+   */
+  async function speakSentencesConcurrently(text, label = "") {
+    const sentences = (text.match(/[^.!?]+[.!?]*/g) || [text])
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const t0 = Date.now();
+
+    // Launch all TTS requests in parallel
+    const promises = sentences.map((sentence) =>
+      synthesizeSpeech(sentence, voiceModel)
+        .then((buffer) => ({ sentence, buffer }))
+        .catch((err) => {
+          console.error(`[TTS] ❌ Error on "${sentence.substring(0, 40)}…": ${err.message}`);
+          return { sentence, buffer: null };
+        }),
+    );
+
+    // Stream sequentially to the client as each resolves in order
+    for (let i = 0; i < promises.length; i++) {
+      const { sentence, buffer } = await promises[i];
+      if (buffer) {
+        send({ type: "tts_audio", data: buffer.toString("base64") });
+        if (label) {
+          console.log(
+            `[TTS] 🔊 ${label} sentence ${i + 1}/${promises.length} sent — "${sentence.substring(0, 50)}…"`,
+          );
+        }
+      }
+    }
+
+    return Date.now() - t0;
+  }
+
   // ── Session startup ───────────────────────────────────────────────────────
+  // Step 1: Generate all 5 questions upfront during loading.
+  // Q1 TTS synthesis fires immediately once Q1 text is ready so LLM
+  // generation of Q2-5 and TTS of Q1 run concurrently.
   (async () => {
     try {
       send({
@@ -181,34 +219,56 @@ function handleSet3Socket(ws, request) {
         `[DB] ✅ Set 3 session initialized: ${sessionId} for user: ${firebaseUid}`,
       );
 
-      // 3. Generate Q1 (Teamwork)
+      // 3. Generate all 5 questions upfront, launching Q1 TTS concurrently
       send({
         type: "status",
-        message: "Generating your first behavioral question...",
+        message: "Generating your behavioral questions...",
       });
-      currentCompetency = getCompetencyTopic(currentQuestionIndex);
 
-      const qGenStart = Date.now();
-      currentQuestionText = await generateSet3Question(
-        askedQuestions,
-        sessionDifficulty,
-      );
-      const qGenDuration = Date.now() - qGenStart;
-      metrics.questionGenLatencies.push(qGenDuration);
-      askedQuestions.push(currentQuestionText);
+      const askedQuestions = []; // local tracker used during generation
+      let q1SynthesisPromise = null;
+      const genStart = Date.now();
 
-      // 4. Send question text + competency label to frontend, then speak it
+      for (let i = 0; i < MAX_QUESTIONS; i++) {
+        const qGenStart = Date.now();
+        const q = await generateSet3Question(askedQuestions, sessionDifficulty);
+        const qGenDuration = Date.now() - qGenStart;
+        metrics.questionGenLatencies.push(qGenDuration);
+
+        questions.push(q);
+        askedQuestions.push(q);
+
+        // Fire Q1 TTS synthesis immediately so it runs while Q2-5 generate
+        if (i === 0) {
+          q1SynthesisPromise = synthesizeSpeech(q, voiceModel);
+        }
+      }
+      const totalGenDuration = Date.now() - genStart;
+      console.log(`[aiSet3Generator] 🧠 Generated ${questions.length} questions for Set 3 (${sessionRole}, ${sessionDifficulty}) in ${(totalGenDuration / 1000).toFixed(2)}s:`);
+      questions.forEach((q, idx) => {
+        console.log(`  Q${idx + 1}: "${q}"`);
+      });
+
+      // 4. Set Q1 as current question and send text to frontend
+      currentQuestionText = questions[0];
+      currentCompetency = getCompetencyTopic(0);
+
       send({
         type: "question_text",
         text: currentQuestionText,
-        index: currentQuestionIndex + 1,
+        index: 1,
         competency: currentCompetency,
       });
 
-      const q1TtsStart = Date.now();
-      await speak(currentQuestionText);
-      const q1TtsDuration = Date.now() - q1TtsStart;
-      metrics.ttsLatencies.push(q1TtsDuration);
+      // 5. Await Q1 TTS (was running concurrently with Q2-5 generation)
+      const q1AudioBuffer = await q1SynthesisPromise;
+      const q1TtsLatency = Date.now() - startupStart;
+      metrics.ttsLatencies.push(q1TtsLatency);
+
+      send({ type: "tts_audio", data: q1AudioBuffer.toString("base64") });
+      console.log(
+        `[TTS] 🔊 Q1 audio sent in ${(q1TtsLatency / 1000).toFixed(2)}s (total startup)`,
+      );
 
       send({
         type: "status",
@@ -237,12 +297,45 @@ function handleSet3Socket(ws, request) {
 
     switch (msg.type) {
       // ── User opened the mic ──────────────────────────────────────────────
-      case "start_recording":
+      // Step 2: Trigger background TTS caching of Q(N+1) while user records
+      case "start_recording": {
         if (!isRecording) {
           openSttSession();
           send({ type: "status", message: "Listening..." });
         }
+
+        // Fire background synthesis of the next question (if not already cached)
+        const nextIndex = currentQuestionIndex + 1;
+        if (
+          nextIndex < MAX_QUESTIONS &&
+          preGeneratedNextQuestionIndex !== nextIndex &&
+          questions[nextIndex]
+        ) {
+          preGeneratedNextQuestionIndex = nextIndex;
+          preGeneratedNextQuestionAudio = null;
+
+          synthesizeSpeech(questions[nextIndex], voiceModel)
+            .then((audioBuffer) => {
+              if (preGeneratedNextQuestionIndex === nextIndex) {
+                preGeneratedNextQuestionAudio = audioBuffer;
+                console.log(
+                  `[Cache] ✅ Pre-cached Q${nextIndex + 1} audio ready`,
+                );
+              }
+            })
+            .catch((err) => {
+              // Reset so submit_answer falls back to on-the-fly synthesis
+              if (preGeneratedNextQuestionIndex === nextIndex) {
+                preGeneratedNextQuestionAudio = null;
+                preGeneratedNextQuestionIndex = -1;
+                console.warn(
+                  `[Cache] ⚠️ Pre-cache failed for Q${nextIndex + 1}: ${err.message}`,
+                );
+              }
+            });
+        }
         break;
+      }
 
       // ── User released the mic ────────────────────────────────────────────
       case "stop_recording":
@@ -309,22 +402,9 @@ function handleSet3Socket(ws, request) {
           const hasNext = currentQuestionIndex < MAX_QUESTIONS;
 
           if (hasNext) {
-            send({ type: "status", message: "Generating next question..." });
-
-            // 4. Generate next question (competency auto-maps to new index)
+            // 4. Advance to next question (already pre-generated upfront)
             currentCompetency = getCompetencyTopic(currentQuestionIndex);
-            console.time("[Perf] AI Question Generation");
-            const qGenStart = Date.now();
-            const nextQuestion = await generateSet3Question(
-              askedQuestions,
-              sessionDifficulty,
-            );
-            const qGenDuration = Date.now() - qGenStart;
-            metrics.questionGenLatencies.push(qGenDuration);
-            console.timeEnd("[Perf] AI Question Generation");
-
-            currentQuestionText = nextQuestion;
-            askedQuestions.push(nextQuestion);
+            currentQuestionText = questions[currentQuestionIndex];
 
             send({
               type: "question_text",
@@ -333,14 +413,44 @@ function handleSet3Socket(ws, request) {
               competency: currentCompetency,
             });
 
-            // 5. Speak interviewer reply + next question
-            const combinedSpeechText = `${evaluation.interviewer_reply} ${currentQuestionText}`;
-            console.time("[Perf] TTS Synthesis");
-            const ttsStart = Date.now();
-            await speak(combinedSpeechText);
-            const ttsDuration = Date.now() - ttsStart;
-            metrics.ttsLatencies.push(ttsDuration);
-            console.timeEnd("[Perf] TTS Synthesis");
+            send({ type: "status", message: "Speaking feedback..." });
+
+            // 5. Step 3: Speak interviewer_reply sentence by sentence (concurrent TTS)
+            console.time("[Perf] Reply TTS (Concurrent Sentences)");
+            const replyTtsStart = Date.now();
+            const replyTtsDuration = await speakSentencesConcurrently(
+              evaluation.interviewer_reply,
+              "Reply",
+            );
+            metrics.replyTtsLatencies.push(replyTtsDuration);
+            console.timeEnd("[Perf] Reply TTS (Concurrent Sentences)");
+
+            // 6. Step 4: Play next-question audio — cache hit or on-the-fly fallback
+            if (
+              preGeneratedNextQuestionAudio &&
+              preGeneratedNextQuestionIndex === currentQuestionIndex
+            ) {
+              console.log(`[TTS] 🔊 Sent pre-cached question audio for Q${currentQuestionIndex + 1}`);
+              metrics.ttsLatencies.push(0); // instant — 0ms perceived latency
+              send({
+                type: "tts_audio",
+                data: preGeneratedNextQuestionAudio.toString("base64"),
+              });
+              preGeneratedNextQuestionAudio = null;
+              preGeneratedNextQuestionIndex = -1;
+            } else {
+              console.log(`[TTS] ⚠️ Next question audio not pre-cached. Synthesizing on-the-fly.`);
+              console.time("[Perf] Next Question TTS Synthesis");
+              const qTtsStart = Date.now();
+              const qAudioBuffer = await synthesizeSpeech(
+                currentQuestionText,
+                voiceModel,
+              );
+              const qTtsDuration = Date.now() - qTtsStart;
+              metrics.ttsLatencies.push(qTtsDuration);
+              console.timeEnd("[Perf] Next Question TTS Synthesis");
+              send({ type: "tts_audio", data: qAudioBuffer.toString("base64") });
+            }
 
             send({
               type: "status",
@@ -359,57 +469,60 @@ function handleSet3Socket(ws, request) {
               `[Session] 🏁 Set 3 complete. Overall Score: ${sessionDoc.overall_score_percentage}% | Avg Situation: ${sessionDoc.avg_situation} | Avg Action: ${sessionDoc.avg_action} | Avg Result: ${sessionDoc.avg_result}`,
             );
 
+            // Step 6: Concurrent sentence TTS for final closing speech
             const finalSpeech = `${evaluation.interviewer_reply} That concludes our behavioral round. Excellent effort!`;
-            console.time("[Perf] Final TTS Synthesis");
+            console.time("[Perf] Final TTS Synthesis (Concurrent Sentences)");
             const finalTtsStart = Date.now();
-            await speak(finalSpeech);
-            const finalTtsDuration = Date.now() - finalTtsStart;
+            const finalTtsDuration = await speakSentencesConcurrently(
+              finalSpeech,
+              "Final",
+            );
             metrics.replyTtsLatencies.push(finalTtsDuration);
-            console.timeEnd("[Perf] Final TTS Synthesis");
+            console.timeEnd("[Perf] Final TTS Synthesis (Concurrent Sentences)");
 
             // ── Print Session Performance Metrics ────────────────────────
             const totalQgen = metrics.questionGenLatencies.reduce(
               (a, b) => a + b,
               0,
             );
-            const totalTts = metrics.ttsLatencies.reduce((a, b) => a + b, 0);
+            const totalQtts = metrics.ttsLatencies.reduce((a, b) => a + b, 0);
             const totalEval = metrics.evaluationLatencies.reduce(
               (a, b) => a + b,
               0,
             );
-            const finalReplyTts = metrics.replyTtsLatencies.reduce(
+            const totalRtts = metrics.replyTtsLatencies.reduce(
               (a, b) => a + b,
               0,
             );
             const systemLatency =
-              totalQgen + totalTts + totalEval + finalReplyTts;
+              totalQgen + totalQtts + totalEval + totalRtts;
 
             console.log(`\n==================================================`);
-            console.log(`📊 SET 3 PERFORMANCE METRICS (UNOPTIMIZED)`);
+            console.log(`📊 SET 3 PERFORMANCE METRICS (OPTIMIZED)`);
             console.log(`Session ID: ${sessionId}`);
             console.log(`--------------------------------------------------`);
             metrics.questionGenLatencies.forEach((lat, idx) => {
               console.log(
-                `  Q${idx + 1} Question Generation Latency: ${(lat / 1000).toFixed(2)}s`,
+                `  Q${idx + 1} Upfront Question Gen Latency    : ${(lat / 1000).toFixed(2)}s`,
               );
             });
             console.log(`--------------------------------------------------`);
             metrics.ttsLatencies.forEach((lat, idx) => {
-              if (idx === 0) {
-                console.log(
-                  `  Q1 Question TTS Latency             : ${(lat / 1000).toFixed(2)}s`,
-                );
-              } else {
-                console.log(
-                  `  Q${idx + 1} Reply + Question TTS Latency     : ${(lat / 1000).toFixed(2)}s`,
-                );
-              }
+              console.log(
+                `  Q${idx + 1} Question TTS Delivery Latency: ${(lat / 1000).toFixed(2)}s ${lat === 0 ? "(Cached/Instant)" : ""}`,
+              );
             });
             console.log(`--------------------------------------------------`);
             metrics.replyTtsLatencies.forEach((lat, idx) => {
-              console.log(
-                `  Final Reply TTS Latency            : ${(lat / 1000).toFixed(2)}s`,
-              );
+              if (idx < metrics.replyTtsLatencies.length - 1) {
+                console.log(
+                  `  Q${idx + 1} Reply TTS Synthesis Latency  : ${(lat / 1000).toFixed(2)}s`,
+                );
+              } else {
+                console.log(
+                  `  Final Closing Speech TTS Latency   : ${(lat / 1000).toFixed(2)}s`,
+                );
+              }
             });
             console.log(`--------------------------------------------------`);
             metrics.evaluationLatencies.forEach((lat, idx) => {
@@ -419,16 +532,19 @@ function handleSet3Socket(ws, request) {
             });
             console.log(`--------------------------------------------------`);
             console.log(
-              `  Total Question Gen Latency             : ${(totalQgen / 1000).toFixed(2)}s`,
+              `  Total Upfront Q-Gen Latency             : ${(totalQgen / 1000).toFixed(2)}s`,
             );
             console.log(
-              `  Total TTS Synthesis Latency            : ${((totalTts + finalReplyTts) / 1000).toFixed(2)}s`,
+              `  Total Question TTS Latency             : ${(totalQtts / 1000).toFixed(2)}s`,
             );
             console.log(
-              `  Total AI Eval Latency                  : ${(totalEval / 1000).toFixed(2)}s`,
+              `  Total Reply TTS Latency                : ${(totalRtts / 1000).toFixed(2)}s`,
             );
             console.log(
-              `  Overall System Latency                 : ${(systemLatency / 1000).toFixed(2)}s (excl. user response time)`,
+              `  Total AI Eval Latency                   : ${(totalEval / 1000).toFixed(2)}s`,
+            );
+            console.log(
+              `  Overall System Latency                  : ${(systemLatency / 1000).toFixed(2)}s (excl. user response time)`,
             );
             console.log(`==================================================\n`);
 

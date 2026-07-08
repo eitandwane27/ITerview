@@ -467,7 +467,13 @@ export default function MainSets() {
   };
 
   // ── Derived state ──────────────────────────────────────────────────────────
-  const orbState = isPlayingAudio ? "speaking" : isRecording ? "listening" : "";
+  const orbState = isSessionComplete
+    ? "complete"
+    : isPlayingAudio
+      ? "speaking"
+      : isRecording
+        ? "listening"
+        : "";
   const statusState = isPlayingAudio
     ? "speaking"
     : isRecording
@@ -609,14 +615,14 @@ export default function MainSets() {
                       id="btn-session-complete"
                       onClick={() => {
                         if (setNumber === 3) {
-                          navigate("/likert-post", { state: { voice } });
+                          navigate("/post-test", { state: { voice } });
                         } else {
                           navigate("/dashboard");
                         }
                       }}
                     >
                       {setNumber === 3
-                        ? "Proceed to Post-Test Evaluation"
+                        ? "🎓 Start Graduation Challenge"
                         : "Return to Dashboard"}
                     </button>
                   )}

@@ -1,0 +1,241 @@
+/* frontend/src/pages/PostTest.css
+   ─────────────────────────────────────────────────────────────────────────────
+   Graduation Challenge — Post-Test Interview Arena
+   Gold & Emerald victory color scheme layered on top of PreTest.css tokens.
+   Import PreTest.css via PostTest.jsx; these are PostTest-specific overrides.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Victory color tokens ────────────────────────────────────────────────── */
+:root {
+  --gold: #f59e0b;
+  --gold-light: #fef3c7;
+  --gold-dark: #d97706;
+  --emerald: #10b981;
+  --emerald-light: #d1fae5;
+  --emerald-dark: #059669;
+}
+
+/* ── Briefing Overlay ─────────────────────────────────────────────────────── */
+.posttest-briefing-root {
+  position: relative;
+}
+
+.posttest-briefing-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 1000;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f2f1a 100%);
+}
+
+.posttest-briefing-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 24px;
+  padding: 3rem 3.5rem;
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(245, 158, 11, 0.1);
+  animation: briefingFadeIn 0.6s ease-out;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+@keyframes briefingFadeIn {
+  from { opacity: 0; transform: scale(0.92) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.posttest-briefing-badge {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: trophyBounce 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes trophyBounce {
+  from { transform: translateY(0) scale(1); }
+  to   { transform: translateY(-8px) scale(1.05); }
+}
+
+.posttest-briefing-title {
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f59e0b, #10b981);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 0.3rem;
+  line-height: 1.2;
+}
+
+.posttest-briefing-subtitle {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 1.5rem;
+}
+
+.posttest-briefing-divider {
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #f59e0b, #10b981);
+  border-radius: 2px;
+  margin: 0 auto 1.5rem;
+}
+
+.posttest-briefing-body {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+.posttest-briefing-body strong {
+  color: #f59e0b;
+}
+
+.posttest-briefing-goal-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: left;
+  margin-bottom: 2rem;
+}
+
+.posttest-briefing-goal-banner strong {
+  color: #10b981;
+}
+
+.posttest-briefing-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0f172a;
+  border: none;
+  border-radius: 14px;
+  padding: 1rem 2.5rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+}
+
+.posttest-briefing-btn:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(245, 158, 11, 0.5);
+}
+
+.posttest-briefing-btn:active {
+  transform: translateY(0);
+}
+
+/* ── Top Bar overrides ───────────────────────────────────────────────────── */
+.posttest-topbar {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.posttest-phase-badge {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(16, 185, 129, 0.2)) !important;
+  color: #f59e0b !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+}
+
+/* ── Goal Bar ────────────────────────────────────────────────────────────── */
+.posttest-goal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(16, 185, 129, 0.15));
+  border-bottom: 1px solid rgba(245, 158, 11, 0.25);
+  color: #f59e0b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.55rem 1.5rem;
+  letter-spacing: 0.02em;
+}
+
+/* ── Progress bar override ───────────────────────────────────────────────── */
+.posttest-progress-track {
+  height: 4px;
+}
+
+.posttest-progress-fill {
+  background: linear-gradient(90deg, #f59e0b, #10b981) !important;
+  transition: width 0.5s ease;
+}
+
+/* ── Question card override ──────────────────────────────────────────────── */
+.posttest-question-card {
+  border-top: 3px solid #f59e0b !important;
+}
+
+.posttest-question-number {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(16, 185, 129, 0.1)) !important;
+  color: #f59e0b !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+/* ── Continue button override ────────────────────────────────────────────── */
+.posttest-continue-btn {
+  background: linear-gradient(135deg, #f59e0b, #10b981) !important;
+  border: none !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35) !important;
+}
+
+.posttest-continue-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5) !important;
+}
+
+/* ── Victory sidebar card ────────────────────────────────────────────────── */
+.posttest-victory-card {
+  border-top: 3px solid #10b981 !important;
+}
+
+.posttest-mission-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 1rem;
+}
+
+.posttest-mission-text strong {
+  color: #10b981;
+}
+
+.posttest-score-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.posttest-score-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  border-radius: 20px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
