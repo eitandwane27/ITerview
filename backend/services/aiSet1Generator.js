@@ -5,6 +5,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { OpenAI } = require("openai");
+const { getRoleConfig } = require("../config/roleConfig");
+const { sanitizeTTS } = require("../utils/ttsSanitizer");
+const { EASY_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -14,165 +17,8 @@ const deepseek = new OpenAI({
 const EVALUATOR_MODEL = "deepseek-chat";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CURATED QUESTION EXAMPLES — Grounded in real, widely-asked interview questions
-// for each role and weakness type at the Easy (junior/fresh-grad) tier.
-// These serve as concrete style anchors so the LLM doesn't drift into
-// senior-level complexity. The LLM must generate in the SAME spirit and
-// difficulty as these examples.
-// ─────────────────────────────────────────────────────────────────────────────
-const EASY_QUESTION_EXAMPLES = {
-  frontend: {
-    focus_clarity: [
-      "Can you walk me through what happens step-by-step when a user clicks a button in a web page?",
-      "How would you explain the difference between HTML, CSS, and JavaScript to someone who has never coded?",
-      "Can you describe in your own words how the browser renders a webpage from start to finish?",
-    ],
-    focus_correctness: [
-      "What is the difference between `var`, `let`, and `const` in JavaScript?",
-      "What does CSS `position: absolute` do, and how is it different from `position: relative`?",
-      "What is the difference between `display: none` and `visibility: hidden` in CSS?",
-      "What is an HTML semantic element? Can you give an example?",
-      "What does `===` (triple equals) do differently from `==` in JavaScript?",
-    ],
-    focus_completeness: [
-      "What are three different HTML semantic tags you can use to structure a webpage?",
-      "What are some of the different values you can use for the CSS display property?",
-      "What are three different CSS selectors you can use to style elements on a page?",
-    ],
-  },
-  backend: {
-    focus_clarity: [
-      "Can you walk me through what happens when a client sends a GET request to a REST API?",
-      "How would you explain the difference between a GET request and a POST request to a teammate?",
-      "Can you describe in simple terms how a user login system works from start to finish?",
-    ],
-    focus_correctness: [
-      "What is the difference between SQL and NoSQL databases?",
-      "What is an HTTP status code? What does a 404 mean versus a 500?",
-      "What is the purpose of an environment variable, and why should you not hardcode API keys in your code?",
-      "What is the difference between authentication and authorization?",
-      "What is JSON and when would you use it in a backend application?",
-    ],
-    focus_completeness: [
-      "What are three common HTTP status codes and what basic message does each represent?",
-      "What are the four main HTTP methods used in REST APIs?",
-      "What are three different data types you can store in a JSON object?",
-    ],
-  },
-  fullstack: {
-    focus_clarity: [
-      "Can you explain in simple terms what happens from when you type a URL in a browser to when the page appears?",
-      "How would you explain the difference between the frontend and the backend of a web application to a non-developer?",
-      "Can you walk me through how data typically flows from a user action on a webpage all the way to a database?",
-    ],
-    focus_correctness: [
-      "What is CORS and why would a browser block a request because of it?",
-      "What is the difference between a cookie and a session?",
-      "What is Git and why is version control important in software development?",
-      "What is the difference between HTTP and HTTPS?",
-      "What is a REST API and what makes it 'RESTful'?",
-    ],
-    focus_completeness: [
-      "What are three of the basic Git commands you use when working on a project?",
-      "What are three common HTTP methods used to communicate between client and server?",
-      "What are three different places where you can store data on the client side in a web application?",
-    ],
-  },
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ROLE TOPIC SCOPE — hard fence on what topics the LLM can pull from.
-// This prevents Llama from drifting into backend/fullstack concepts when the
-// role is frontend, and vice versa. Each role only asks within its own domain.
-// ─────────────────────────────────────────────────────────────────────────────
-const ROLE_TOPIC_SCOPE = {
-  frontend: [
-    "HTML structure, semantic elements (header, nav, main, section, article, footer), and basic tags",
-    "CSS fundamentals: box model, selectors, specificity, display (block, inline, inline-block, none), visibility",
-    "CSS layout: position (static, relative, absolute, fixed), flexbox basics, simple responsive design with media queries",
-    "Vanilla JavaScript basics: variables (var, let, const), data types, operators, functions, conditionals, loops",
-    "DOM manipulation: selecting elements, adding event listeners, changing text or styles with JavaScript",
-    "Browser basics: how the browser renders a page, what HTML/CSS/JS each does, difference between client and server (surface level only)",
-  ],
-  backend: [
-    "HTTP basics: what HTTP is, GET vs POST requests, common status codes (200, 404, 500)",
-    "REST API fundamentals: what an API is, what makes it RESTful, endpoints, request/response",
-    "Databases: SQL vs NoSQL at a high level, what a database is, basic CRUD operations",
-    "Server basics: what a server does, what Node.js/Express is used for, what an environment variable is",
-    "Authentication basics: difference between authentication and authorization, what a session is",
-    "JSON: what it is, how it's used to send data between client and server",
-  ],
-  fullstack: [
-    "Client vs server: what happens when you type a URL, how frontend and backend communicate",
-    "HTTP and APIs: what a REST API is, GET vs POST vs PUT vs DELETE",
-    "Basic databases: SQL vs NoSQL, what a database is used for, basic queries",
-    "Version control: what Git is, why version control matters, basic commands (commit, push, pull)",
-    "HTTP vs HTTPS: difference, why HTTPS matters",
-    "Cookies vs sessions: what they are and when you'd use them",
-  ],
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TOPIC KEYWORDS FOR PREVENTING REPETITION
-// Used to score each topic based on keywords found in previous questions.
-// ─────────────────────────────────────────────────────────────────────────────
-const TOPIC_KEYWORDS = {
-  frontend: [
-    [
-      "html",
-      "semantic",
-      "tag",
-      "element",
-      "header",
-      "nav",
-      "main",
-      "section",
-      "article",
-      "footer",
-    ],
-    [
-      "css",
-      "box model",
-      "selector",
-      "specificity",
-      "display",
-      "visibility",
-      "block",
-      "inline",
-    ],
-    ["position", "flexbox", "layout", "responsive", "media query", "align"],
-    [
-      "variable",
-      "let",
-      "const",
-      "var",
-      "data type",
-      "operator",
-      "function",
-      "conditional",
-      "loop",
-    ],
-    ["dom", "event", "listener", "click", "manipulate"],
-    ["browser", "render", "client", "server"],
-  ],
-  backend: [
-    ["http", "get", "post", "status code", "request"],
-    ["api", "rest", "endpoint", "response"],
-    ["database", "sql", "nosql", "crud"],
-    ["server", "node", "express", "environment variable"],
-    ["auth", "session", "cookie"],
-    ["json"],
-  ],
-  fullstack: [
-    ["client", "server", "communicate", "url"],
-    ["http", "api", "rest", "get", "post", "put", "delete"],
-    ["database", "sql", "nosql", "query"],
-    ["git", "version control", "commit", "push", "pull"],
-    ["https"],
-    ["cookie", "session"],
-  ],
-};
-
+// Role data (examples, topic scope, keywords) is now sourced from
+// backend/config/roleConfig.js — see that file to add or modify roles.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -190,19 +36,10 @@ async function generateSet1Question(
   difficulty = "easy",
   previousQuestions = [],
 ) {
-  const formattedRole =
-    role === "frontend"
-      ? "Frontend Developer"
-      : role === "backend"
-        ? "Backend Developer"
-        : role === "fullstack"
-          ? "Fullstack Developer"
-          : "Software Developer";
+  // ── Step 1: Resolve role config from registry ────────────────────────────
+  const roleData = getRoleConfig(role);
+  const formattedRole = roleData.label;
 
-  // ── Step 1: Pick the right example bank ──────────────────────────────────
-  const safeRole = ["frontend", "backend", "fullstack"].includes(role)
-    ? role
-    : "fullstack";
   const safeWeakness = [
     "focus_clarity",
     "focus_correctness",
@@ -212,17 +49,10 @@ async function generateSet1Question(
     : "focus_correctness";
 
   // ── LOCKED TO EASY ONLY ──────────────────────────────────────────────────
-  const examplePool = EASY_QUESTION_EXAMPLES[safeRole]?.[safeWeakness] || [];
+  const examplePool = roleData.set1.easyExamples?.[safeWeakness] || [];
   const difficultyLabel = "Easy (Entry Level / Fresh Graduate)";
   const difficultyContext = `The candidate is a fresh IT graduate or IT student practicing core interview basics. They have mostly academic knowledge and personal project experience — no commercial work experience. Questions MUST be simple, fundamental, and answerable without any industry experience.`;
-  const avoidList = `STRICT TOPIC BAN — Do NOT ask about any of the following:
-- Frameworks or libraries (React, Vue, Angular, Express, etc.)
-- Any system design, architecture, or trade-offs
-- Web security (CORS, XSS, CSRF, JWT, OAuth)
-- Advanced async patterns (Promises, async/await, event loop)
-- DevOps, deployment, Docker, or Kubernetes
-- Database internals, indexing, normalization, or transactions
-- Anything requiring real-world industry experience`;
+  const avoidList = `${roleData.avoidList || ""}\n\n${EASY_AVOID_LIST}\n\n${TTS_SAFETY}`;
 
   // ── Step 2: Build the weakness-specific instruction ───────────────────────
   let weaknessInstruction = "";
@@ -234,12 +64,19 @@ QUESTION FORMAT RULES:
 - Good: "Can you explain how the CSS box model works?"
 - Bad: "Can you explain how the box model works, including margin and padding, and how it affects layout?"`;
   } else if (safeWeakness === "focus_correctness") {
-    weaknessInstruction = `The question must test ONE specific fact — a definition, a difference between two things, or a "what is / what does X do" question. There must be a clearly correct answer.
+    weaknessInstruction = `The question must test ONE simple, fundamental fact — a basic definition, a difference between two basic items, or a "what is / what does X do" question.
+CRITICAL EASY DIFFICULTY RULES:
+- The question must be extremely simple and foundational. It must NOT test abstract rendering concepts, CSS cascade conflicts, or advanced JS mechanics.
+- Do NOT ask about the browser's rendering engine or internals.
+- Do NOT ask about CSS specificity calculation, cascading rules, or selector weight.
+- Do NOT ask about JavaScript hoisting, closures, temporal dead zone, function expressions versus declarations, or arrow functions vs regular functions.
+- Keep comparisons to very basic things like: var/let/const, double equals/triple equals, display none/visibility hidden, local storage/session storage, SQL/NoSQL.
 QUESTION FORMAT RULES:
 - ONE fact only. Do not combine two questions into one sentence.
 - Single sentence. Short and direct.
-- Good: "What is the difference between display: block and display: inline in CSS?"
-- Bad: "What is the difference between block and inline, and how does each affect spacing and layout?"`;
+- Good: "What is the difference between let and const in JavaScript?"
+- Good: "What does the textContent property do in JavaScript?"
+- Bad: "What is the difference between a function expression and a declaration, and how does hoisting affect them?"`;
   } else {
     weaknessInstruction = `The question must be extremely simple, asking the candidate to list or name MULTIPLE basic things about ONE specific topic. It tests their ability to retrieve foundational items.
 QUESTION FORMAT RULES:
@@ -270,8 +107,8 @@ IMPORTANT: Do NOT repeat or closely paraphrase any of those examples. Generate a
   }
 
   // ── Step 3.5: Select a topic to ensure variance and avoid repetition ──────
-  const topics = ROLE_TOPIC_SCOPE[safeRole] || [];
-  const keywordLists = TOPIC_KEYWORDS[safeRole] || [];
+  const topics = roleData.set1.topicScope || [];
+  const keywordLists = roleData.set1.topicKeywords || [];
   let selectedTopic = "";
   if (topics.length > 0) {
     const topicScores = topics.map((topic, index) => {
@@ -314,6 +151,8 @@ QUESTION TYPE REQUIREMENT:
 ${weaknessInstruction}
 ${avoidList ? `\nSTRICT CONSTRAINTS:\n${avoidList}` : ""}
 ${examplesSection}
+
+CRITICAL TTS RULE: Do NOT include backticks, dot-notation, slashes, angle brackets, curly braces, or any programming syntax. Do NOT write method calls like element.textContent or style.display — use plain English names instead (e.g. "the textContent property", "the display style property"). The question is read aloud by a TTS engine — every character you write will be spoken literally.
 
 OUTPUT RULE:
 - Return ONLY the final question string.
@@ -360,8 +199,7 @@ OUTPUT RULE:
     response.choices?.[0]?.message?.content?.trim() ||
     fallbackQuestions[previousQuestions.length % fallbackQuestions.length];
 
-  const sanitized = raw.includes(" -> ") ? raw.split(" -> ").pop().trim() : raw;
-  return sanitized;
+  return sanitizeTTS(raw);
 }
 
 const SET1_SCORING_SYSTEM_PROMPT = `You are a strict, objective IT interview scoring engine and coach.

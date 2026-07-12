@@ -3,6 +3,9 @@ const router = express.Router();
 const User = require("../models/User");
 const PreTestSession = require("../models/PreTestSession");
 const PostTestSession = require("../models/PostTestSession");
+const Set1Session = require("../models/Set1Session");
+const Set2Session = require("../models/Set2Session");
+const Set3Session = require("../models/Set3Session");
 
 
 // POST /api/users/register
@@ -140,39 +143,98 @@ router.get("/results-summary", async (req, res) => {
       return res.status(400).json({ message: "Firebase UID is required" });
     }
 
-    // Fetch all three sources in parallel
-    const [preSession, postSession, user] = await Promise.all([
+    // Fetch all database documents in parallel
+    const [preSession, postSession, user, set1, set2, set3] = await Promise.all([
       PreTestSession.findOne({ firebaseUid: uid }).select(
-        "baseline_score_percentage final_weakness_tag answers"
+        "baseline_score_percentage final_weakness_tag"
       ),
       PostTestSession.findOne({ firebaseUid: uid }).select(
-        "final_score_percentage final_weakness_tag answers"
+        "final_score_percentage final_weakness_tag"
       ),
       User.findOne({ firebaseUid: uid }).select(
-        "confidenceScore postConfidenceScore role"
+        "confidenceScore postConfidenceScore role difficulty unlockedDifficulty"
+      ),
+      Set1Session.findOne({ firebaseUid: uid }).select(
+        "avg_clarity avg_correctness avg_completeness isCompleted"
+      ),
+      Set2Session.findOne({ firebaseUid: uid }).select(
+        "avg_problem_solving avg_accuracy avg_depth isCompleted"
+      ),
+      Set3Session.findOne({ firebaseUid: uid }).select(
+        "avg_situation avg_action avg_result isCompleted"
       ),
     ]);
 
+    // Derived mastery score (Overall graduation post-test score)
+    const postScore = postSession?.final_score_percentage ?? null;
     const preScore  = preSession?.baseline_score_percentage  ?? null;
-    const postScore = postSession?.final_score_percentage    ?? null;
     const preConf   = user?.confidenceScore                  ?? null;
     const postConf  = user?.postConfidenceScore              ?? null;
 
+    // Formulate individual set averages (out of 10)
+    const set1Score = set1 && set1.isCompleted && set1.avg_clarity !== null
+      ? parseFloat(((set1.avg_clarity + set1.avg_correctness + set1.avg_completeness) / 3).toFixed(1))
+      : null;
+
+    const set2Score = set2 && set2.isCompleted && set2.avg_problem_solving !== null
+      ? parseFloat(((set2.avg_problem_solving + set2.avg_accuracy + set2.avg_depth) / 3).toFixed(1))
+      : null;
+
+    const set3Score = set3 && set3.isCompleted && set3.avg_situation !== null
+      ? parseFloat(((set3.avg_situation + set3.avg_action + set3.avg_result) / 3).toFixed(1))
+      : null;
+
+    // Determine target difficulty and unlock threshold logic
+    const currentDiff = user?.difficulty ?? "easy";
+    let nextDifficulty = "medium";
+    if (currentDiff === "medium") nextDifficulty = "hard";
+    if (currentDiff === "hard") nextDifficulty = "hard";
+
+    // If score >= 70%, update unlockedDifficulty in User model if it's an upgrade
+    const unlockThreshold = 70;
+    const isUnlocked = postScore !== null && postScore >= unlockThreshold;
+
+    if (isUnlocked && user) {
+      let upgradedDiff = user.unlockedDifficulty;
+      if (currentDiff === "easy" && user.unlockedDifficulty === "easy") {
+        upgradedDiff = "medium";
+      } else if (currentDiff === "medium" && (user.unlockedDifficulty === "easy" || user.unlockedDifficulty === "medium")) {
+        upgradedDiff = "hard";
+      }
+
+      if (upgradedDiff !== user.unlockedDifficulty) {
+        user.unlockedDifficulty = upgradedDiff;
+        await user.save();
+        console.log(`[DB] 🎓 Upgraded unlockedDifficulty to '${upgradedDiff}' for user: ${uid}`);
+      }
+    }
+
     return res.status(200).json({
-      performance: {
-        preTestScore:          preScore,
-        postTestScore:         postScore,
-        improvementDelta:      preScore !== null && postScore !== null ? postScore - preScore : null,
-        preWeaknessTag:        preSession?.final_weakness_tag  ?? null,
-        postWeaknessTag:       postSession?.final_weakness_tag ?? null,
-        unlockedNextDifficulty: postScore !== null && postScore >= 70,
+      preConfidenceScore:  preConf,
+      postConfidenceScore: postConf,
+      masteryScore:        postScore,
+      preTestScore:        preScore,
+      improvementDelta:    preScore !== null && postScore !== null ? postScore - preScore : null,
+
+      // Individual set scores details
+      setScores: {
+        set1: { label: "Set 1 · Personalized",   score: set1Score, outOf: 10, emoji: "🤖", completed: !!(set1?.isCompleted) },
+        set2: { label: "Set 2 · Technical",       score: set2Score, outOf: 10, emoji: "💻", completed: !!(set2?.isCompleted) },
+        set3: { label: "Set 3 · Behavioral STAR", score: set3Score, outOf: 10, emoji: "🎯", completed: !!(set3?.isCompleted) },
       },
-      confidence: {
-        preConfidenceScore:  preConf,
-        postConfidenceScore: postConf,
-        improvementDelta:    preConf !== null && postConf !== null ? postConf - preConf : null,
+
+      // STAR dimension averages from Set 3 (out of 10)
+      starBreakdown: {
+        situation: set3?.avg_situation ?? null,
+        action:    set3?.avg_action    ?? null,
+        result:    set3?.avg_result    ?? null,
       },
-      role: user?.role ?? null,
+
+      targetDifficulty: currentDiff.charAt(0).toUpperCase() + currentDiff.slice(1),
+      nextDifficulty:   nextDifficulty.charAt(0).toUpperCase() + nextDifficulty.slice(1),
+      unlocked:         isUnlocked,
+      unlockThreshold,
+      role:             user?.role ?? null,
     });
   } catch (error) {
     console.error("❌ Error fetching results summary:", error);

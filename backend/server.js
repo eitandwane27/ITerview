@@ -81,6 +81,21 @@ server.on("upgrade", (request, socket, head) => {
 
 // 6. Start the server
 const PORT = process.env.PORT || 5000;
+
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `❌ Port ${PORT} is already in use. Kill the process holding it and restart.`
+    );
+    console.error(
+      `   Run: Stop-Process -Id (Get-NetTCPConnection -LocalPort ${PORT}).OwningProcess -Force`
+    );
+    process.exit(1);
+  } else {
+    throw err;
+  }
+});
+
 server.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
   console.log(

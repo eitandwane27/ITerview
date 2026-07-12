@@ -17,143 +17,21 @@
 //   may appear in any question text.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Groq = require("groq-sdk");
+const { OpenAI } = require("openai");
+const { getRoleConfig } = require("../config/roleConfig");
+const { sanitizeTTS } = require("../utils/ttsSanitizer");
+const { EASY_AVOID_LIST: GLOBAL_EASY_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+const deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com",
 });
 
-const EVALUATOR_MODEL = "llama-3.3-70b-versatile";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CURATED QUESTION EXAMPLES — easy junior-level technical questions.
-// These anchor the LLM to the right difficulty — fresh-grad / IT student level.
-// ALL examples are TTS-safe: plain English, no code, no backticks.
-// ─────────────────────────────────────────────────────────────────────────────
-const EASY_QUESTION_EXAMPLES = {
-  frontend: [
-    // Problem Solving
-    "If a button on a webpage is not responding to clicks, what are the first two things you would check?",
-    "If a CSS rule you wrote is not being applied to an element, what steps would you take to figure out why?",
-    "How would you use JavaScript to show a hidden element on the page when a user clicks a button?",
-    // Debugging
-    "A developer tries to select a button by its ID in JavaScript, but the code cannot find the element even though the ID exists in the HTML. What is a likely cause of this?",
-    "A div element is not visible on the page even though the HTML for it exists. What are two CSS properties that could be causing it to be hidden?",
-    "A developer adds a JavaScript event listener to a button, but the listener never fires when the button is clicked. What is the first thing you would check?",
-    // Technical Depth
-    "What is the difference between using textContent and innerHTML to update an element's text in JavaScript?",
-    "Why does placing a script tag at the bottom of the HTML body instead of in the head section matter?",
-    "What is the difference between display none and visibility hidden in CSS?",
-  ],
-  backend: [
-    // Problem Solving
-    "If your server returns a 500 error every time a specific route is hit, what are the first things you would check?",
-    "A user reports they can log in fine but their data is not saving. What parts of the backend would you check first?",
-    "How would you write a simple route that receives a number from the request and sends back double that number in the response?",
-    // Debugging
-    "A developer sets up a route meant to return all users, but every time it is called it only returns one user. What is a likely cause of this mistake?",
-    "An API route is returning a 404 error even though the developer is sure the route is defined. What are two things you would check first?",
-    "A backend function that reads from a database crashes with an error saying it cannot read a property of undefined. What is most likely going wrong?",
-    // Technical Depth
-    "What is middleware in Express, and can you give a simple example of when you would use it?",
-    "Why do you need to use async and await when reading data from a database instead of writing regular synchronous code?",
-    "What does a dot env file do in a Node project and why should it never be uploaded to GitHub?",
-  ],
-  fullstack: [
-    // Problem Solving
-    "A user fills out a form and clicks Submit but nothing happens. Where do you start debugging — the frontend or the backend, and why?",
-    "Your frontend is calling an API but the browser is blocking the request with a CORS error. What does that mean and how would you fix it?",
-    "How would you design a simple flow so that after a user logs in, their name is shown on every page of the app?",
-    // Debugging
-    "A fetch request from the frontend is returning undefined instead of the expected user data. What are two things you would check?",
-    "The frontend sends data to the backend but the backend receives an empty object instead of the data. What is the most likely cause?",
-    "A developer saves user passwords as plain text in the database. Why is this a serious problem and what should be done instead?",
-    // Technical Depth
-    "What is the difference between JSON dot stringify and JSON dot parse, and when would you use each one?",
-    "What is the difference between a synchronous and an asynchronous function, and why does it matter in web development?",
-    "Why would a developer store data in localStorage instead of always fetching it from the server?",
-  ],
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ROLE TOPIC SCOPE — what domains Set 2 questions are allowed to draw from.
-// Strictly junior-level topics only — no frameworks, no system design.
-// ─────────────────────────────────────────────────────────────────────────────
-const ROLE_TOPIC_SCOPE = {
-  frontend: [
-    "DOM manipulation: selecting a single element by ID, reading or changing its textContent or innerHTML, toggling a CSS class",
-    "Event handling: adding a click listener to a button, preventing default form submission, reading a value from an input field",
-    "Debugging HTML/CSS/JS: spotting typos in method names, identifying why a CSS rule is not applying, reading a simple error message",
-    "CSS rules and the cascade: why a rule might not apply to an element, what specificity means, common display and visibility issues",
-    "Script loading: what defer and async attributes do, why a script tag placed before the HTML body can cause errors",
-    "Simple browser scenarios: what happens when a button is clicked, why an event listener might not fire, how to show or hide an element with JavaScript",
-  ],
-  backend: [
-    "Express.js basics: defining GET/POST routes, using req and res, sending JSON responses",
-    "Async fundamentals: why async/await is needed, what happens if you forget to await a database call",
-    "Environment variables: what a .env file is, why secrets must not be hardcoded or committed",
-    "Common HTTP debugging: understanding 404 vs 500, checking if a route exists, reading error logs",
-    "Middleware: what it is in Express, how it sits between a request and a route handler",
-    "Basic database interaction: making a query, handling the result, what undefined means when a query fails",
-  ],
-  fullstack: [
-    "Client-server flow: what happens end-to-end when a form is submitted — frontend fetch, backend route, database write",
-    "CORS: what it is, why browsers block cross-origin requests, how to enable it on the backend",
-    "Authentication basics: storing a session or token, checking login state on the frontend",
-    "JSON serialization: using JSON.stringify and JSON.parse, what happens if a POST body is not parsed",
-    "Async concepts: difference between sync and async code, why fetch returns a Promise",
-    "Storage choices: when to use localStorage vs session vs always fetching from the server",
-  ],
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TOPIC KEYWORDS FOR PREVENTING REPETITION
-// Used to score each topic based on keywords found in previous questions.
-// ─────────────────────────────────────────────────────────────────────────────
-const TOPIC_KEYWORDS = {
-  frontend: [
-    ["dom", "select", "content", "class", "click", "element", "textcontent", "innerhtml"],
-    ["css", "layout", "flexbox", "grid", "block", "inline", "responsive", "media query", "specificity"],
-    ["html", "semantic", "tag", "attribute", "form", "structure"],
-    ["scenario", "button", "listener", "fire", "show", "hide", "javascript", "script"]
-  ],
-  backend: [
-    ["express", "route", "get", "post", "req", "res", "json", "response"],
-    ["async", "await", "promise", "database", "forget", "call"],
-    ["env", "environment", "secret", "hardcode", "commit"],
-    ["http", "debugging", "404", "500", "exist", "log"],
-    ["middleware", "express", "request", "route handler"],
-    ["database", "query", "result", "undefined", "fail"]
-  ],
-  fullstack: [
-    ["client-server", "form", "submit", "fetch", "route", "write", "database"],
-    ["cors", "cross-origin", "block", "enable", "backend"],
-    ["auth", "session", "token", "login", "state"],
-    ["json", "serialization", "stringify", "parse", "body"],
-    ["async", "sync", "promise", "fetch"],
-    ["storage", "localstorage", "session", "fetch", "server"]
-  ]
-};
+const EVALUATOR_MODEL = "deepseek-chat";
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STRICT AVOID LIST — same across all Set 2 roles at easy difficulty
-// ─────────────────────────────────────────────────────────────────────────────
-const EASY_AVOID_LIST = `STRICT TOPIC BAN — Do NOT ask about any of the following:
-- Frameworks or libraries (React, Vue, Angular, Express internals, ORM tools)
-- System design, architecture decisions, or scalability trade-offs
-- Web security internals (JWT signing, OAuth flows, CSRF tokens)
-- Advanced async patterns (Promise.all, Promise.race, event loop internals, closures)
-- Event propagation internals: event bubbling, event capturing, stopPropagation — too advanced
-- CSS specificity edge cases or cascade conflicts — too advanced for fresh grads
-- DevOps, deployment, CI/CD, Docker, or Kubernetes
-- Database internals: indexing, normalization, transactions, query optimization
-- Anything requiring real-world industry or production experience
-- Pure array or data structure exercises (filter an array of numbers, find duplicates, sum odd numbers) — these are LeetCode problems, NOT interview questions
-- Abstract algorithmic problems with no connection to browser, DOM, or UI context
-- TTS SAFETY: Do NOT include any code snippets, backtick characters, angle brackets, or programming syntax in the question text. The question is read aloud by a text-to-speech engine. All questions must be written in plain conversational English only.`;
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Generates a role-specific Set 2 (Technical Mastery) interview question based on the user's role and difficulty.
@@ -168,25 +46,19 @@ async function generateSet2Question(
   difficulty = "easy",
   previousQuestions = [],
 ) {
-  const formattedRole =
-    role === "frontend"
-      ? "Frontend Developer"
-      : role === "backend"
-        ? "Backend Developer"
-        : role === "fullstack"
-          ? "Fullstack Developer"
-          : "Software Developer";
+  // ── Resolve role config from registry ─────────────────────────────────────
+  const roleData = getRoleConfig(role);
+  const formattedRole = roleData.label;
 
-  // ── Normalise inputs ───────────────────────────────────────────────────────
-  const safeRole = ["frontend", "backend", "fullstack"].includes(role)
-    ? role
-    : "fullstack";
-
-  // ── LOCKED TO EASY ONLY ───────────────────────────────────────────────────
-  const examplePool = EASY_QUESTION_EXAMPLES[safeRole] || [];
+  // ── LOCKED TO EASY ONLY ──────────────────────────────────────────────────
+  const examplePool = roleData.set2.easyExamples || [];
   const difficultyLabel = "Easy (Entry Level / Fresh Graduate)";
-  const difficultyContext = `The candidate is a fresh IT graduate or IT student with mostly academic knowledge and personal project experience.
-They have no commercial work experience. Questions must be answerable with junior-level practical knowledge only.`;
+  const difficultyContext = `The candidate is a fresh IT graduate or IT student who has studied web development in school and built one or two small personal projects.
+They have ZERO commercial work experience and have never worked on a production codebase.
+Questions must be answerable by someone who has only studied textbook concepts and done basic lab exercises.
+Do NOT assume they have debugged production bugs, used command-line tools professionally, or memorized API method signatures.
+The question should feel approachable and confidence-building — not intimidating.`;
+  const avoidList = `${roleData.avoidList || ""}\n\n${GLOBAL_EASY_AVOID_LIST}\n\n${TTS_SAFETY}`;
 
   // ── Build calibration examples section ────────────────────────────────────
   let examplesSection = "";
@@ -206,8 +78,8 @@ IMPORTANT: Do NOT repeat or closely paraphrase these examples. Generate a DIFFER
   }
 
   // ── Build topic scope ─────────────────────────────────────────────────────
-  const topics = ROLE_TOPIC_SCOPE[safeRole] || [];
-  const keywordLists = TOPIC_KEYWORDS[safeRole] || [];
+  const topics = roleData.set2.topicScope || [];
+  const keywordLists = roleData.set2.topicKeywords || [];
   let selectedTopic = "";
   if (topics.length > 0) {
     const topicScores = topics.map((topic, index) => {
@@ -233,30 +105,57 @@ IMPORTANT: Do NOT repeat or closely paraphrase these examples. Generate a DIFFER
   const topicScope = topics.map((t, i) => `  ${i + 1}. ${t}`).join("\n");
 
   // ── System prompt ─────────────────────────────────────────────────────────
-  const systemPrompt = `You are an experienced IT recruiter and technical interview coach generating technical practice questions.
-You are creating a question for a ${difficultyLabel} candidate applying for a ${formattedRole} position.
+  const systemPrompt = `You are a friendly and supportive IT interview coach writing warm-up practice questions for fresh IT graduates.
+You are creating ONE question for a ${difficultyLabel} candidate practicing for a ${formattedRole} interview.
 
 CANDIDATE PROFILE:
 ${difficultyContext}
 
-ALLOWED TOPICS — Your question MUST come from one of these topics only. Do not go outside this list:
+━━━ WHAT MAKES A GOOD EASY QUESTION ━━━
+A good easy question at this level:
+- Asks the candidate to DEFINE or EXPLAIN a single concept in plain language
+- OR asks the candidate to compare exactly two simple things
+- Has ONE clear correct answer that any IT student who studied from a textbook can give
+- Is short — one sentence, two at most
+- Does NOT describe a multi-step scenario
+- Does NOT ask "what is the most likely reason" or "what are two things" — keep it singular and direct
+
+BAD EXAMPLES — Do NOT generate questions like these:
+  ✗ "You are building a portfolio page and want a paragraph to be hidden but still take up space — which CSS property would you use and why would you choose it over the other option?"
+    → This is a two-part question wrapped in a scenario. Too complex.
+  ✗ "A developer adds a JavaScript event listener to a button, but the listener never fires when the button is clicked. What is the first thing you would check?"
+    → Debugging scenario with multiple plausible answers. Too ambiguous.
+  ✗ "If a CSS rule you wrote is not being applied to an element, what steps would you take to figure out why?"
+    → Open-ended multi-step troubleshooting. Too hard.
+
+GOOD EXAMPLES — Generate questions exactly like these:
+  ✓ "What is the difference between display none and visibility hidden in CSS?"
+  ✓ "What does the textContent property do in JavaScript?"
+  ✓ "What is a GET request and when would you use it?"
+  ✓ "What does a dot env file store in a Node project?"
+  ✓ "What is middleware in Express and what does it do?"
+
+━━━ TOPIC TO COVER ━━━
+ALLOWED TOPICS — Your question MUST come from one of these topics only:
 ${topicScope}
 
-STRICT TOPIC FOCUS:
 You MUST generate a question specifically targeting this topic: "${selectedTopic}".
-Do not ask about any other topic. Make sure the question focuses purely on this specific concept or tool.
+Do not stray into other topics. Focus purely on this one concept.
 
-QUESTION TYPE REQUIREMENT:
-Generate a single, clear, easy-level technical practice question testing the selected role.
-The question can be about:
-1. Reasoning through a simple browser/DOM/server scenario (Problem Solving)
-2. Diagnosing a common beginner mistake or symptom described in plain English (Debugging)
-3. Explaining why a basic technical mechanic works the way it does or the difference between two common tools (Technical Depth)
+━━━ QUESTION FORMAT ━━━
+Generate a single easy-level question. It MUST be one of these two types ONLY:
+1. CONCEPT EXPLANATION — ask the candidate to define or explain what something is or does.
+   Pattern: "What is [X]?" or "What does [X] do?" or "What is [X] used for?"
+2. SIMPLE DIFFERENCE — ask the candidate to compare exactly two basic things.
+   Pattern: "What is the difference between [X] and [Y]?"
 
-CRITICAL TTS RULE: Do NOT include any code, backticks, angle brackets, or programming syntax in the question text. The question is read aloud — it must read like a natural sentence.
+Do NOT use scenario-based formats. Do NOT ask "why would you choose", "what would you check", or "what steps would you take".
+The question must be direct, factual, and answerable in one or two sentences.
+
+CRITICAL TTS RULE: Do NOT include backticks, dot-notation, slashes, angle brackets, curly braces, or any programming syntax. Do NOT write method calls like element.textContent or style.display — use plain English names instead (e.g. "the textContent property", "the display style property"). The question is read aloud by a TTS engine — every character you write will be spoken literally.
 
 STRICT CONSTRAINTS:
-${EASY_AVOID_LIST}
+${avoidList}
 ${examplesSection}
 
 OUTPUT RULE:
@@ -282,15 +181,15 @@ OUTPUT RULE:
     });
   }
 
-  const response = await groq.chat.completions.create({
+  const response = await deepseek.chat.completions.create({
     model: EVALUATOR_MODEL,
     messages,
-    temperature: 0.65,
-    max_tokens: 160,
+    temperature: 0.2,
+    max_tokens: 120,
   });
 
   if (!response.choices || response.choices.length === 0 || !response.choices[0]?.message?.content) {
-    console.error("[Groq Error] Received empty choices or error response in generateSet2Question:", JSON.stringify(response));
+    console.error("[DeepSeek Error] Received empty choices or error response in generateSet2Question:", JSON.stringify(response));
   }
 
   const fallbackQuestions = [
@@ -305,8 +204,7 @@ OUTPUT RULE:
     response.choices?.[0]?.message?.content?.trim() ||
     fallbackQuestions[previousQuestions.length % fallbackQuestions.length];
 
-  const sanitized = raw.includes(" -> ") ? raw.split(" -> ").pop().trim() : raw;
-  return sanitized;
+  return sanitizeTTS(raw);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -398,7 +296,7 @@ async function evaluateSet2Answer(question, transcript) {
     };
   }
 
-  const response = await groq.chat.completions.create({
+  const response = await deepseek.chat.completions.create({
     model: EVALUATOR_MODEL,
     messages: [
       { role: "system", content: SET2_SCORING_SYSTEM_PROMPT },
@@ -430,7 +328,7 @@ async function evaluateSet2Answer(question, transcript) {
 
   const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
 
-  console.log(`[aiSet2Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via Groq)`);
+  console.log(`[aiSet2Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via DeepSeek)`);
 
   return {
     problem_solving_score: clamp(parsed.problem_solving_score),

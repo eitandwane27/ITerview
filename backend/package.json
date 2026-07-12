@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "powershell -Command \"$p = Get-NetTCPConnection -LocalPort 5000 -EA SilentlyContinue | Select -Expand OwningProcess -Unique; if ($p) { Stop-Process -Id $p -Force }\" && nodemon server.js"
   },
   "keywords": [],
   "author": "",

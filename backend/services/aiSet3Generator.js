@@ -24,6 +24,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const Groq = require("groq-sdk");
+const { sanitizeTTS } = require("../utils/ttsSanitizer");
+const { BEHAVIORAL_AVOID_LIST: GLOBAL_BEHAVIORAL_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -95,14 +97,7 @@ const BEHAVIORAL_COMPETENCIES = [
 // STRICT AVOID LIST — hard guardrails for behavioral question generation.
 // These prevent the LLM from producing off-topic, too-advanced, or unsafe output.
 // ─────────────────────────────────────────────────────────────────────────────
-const BEHAVIORAL_AVOID_LIST = `STRICT TOPIC BAN — Do NOT generate any of the following:
-- Technical questions: Do NOT ask about code, algorithms, system design, or anything requiring a technical/factual answer.
-- Hypothetical future scenarios using "What would you do if...": The question MUST ask about a REAL past experience ("Tell me about a time...", "Describe a situation...", "Give me an example...").
-- Questions requiring commercial work experience: The candidate is a fresh graduate. All questions must be answerable with academic projects, personal projects, group coursework, hackathons, or internships.
-- Multi-part or compound questions: The question MUST be a single, clear sentence. Avoid appending secondary clauses or sub-questions (like "and tell me what you learned" or "and describe how you felt"). The candidate already knows to use the STAR method. Keep it to a single main question with simple synonyms.
-- Overly vague or generic openers like "Tell me about yourself" or "What are your strengths?": These are not behavioral STAR questions.
-- Any self-reflection or opinion questions: The question must ask about a SPECIFIC past event, not the candidate's general personality or preferences.
-- TTS SAFETY: Do NOT include any code snippets, backtick characters, angle brackets, or programming syntax in the question text. The question is read aloud by a text-to-speech engine. All questions must be written in plain, natural English only.`;
+const BEHAVIORAL_AVOID_LIST = `${GLOBAL_BEHAVIORAL_AVOID_LIST}\n\n${TTS_SAFETY}`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -200,8 +195,7 @@ OUTPUT RULE:
     response.choices[0]?.message?.content?.trim() ||
     "Tell me about a time you had to work closely with a team to complete a project under a tight deadline.";
 
-  const sanitized = raw.includes(" -> ") ? raw.split(" -> ").pop().trim() : raw;
-  return sanitized;
+  return sanitizeTTS(raw);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
