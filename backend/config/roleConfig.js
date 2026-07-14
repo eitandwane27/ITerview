@@ -79,6 +79,24 @@ const ROLE_CONFIG = {
           "What are three different CSS selectors you can use to style elements on a page?",
         ],
       },
+
+      mediumExamples: {
+        focus_clarity: [
+          "How would you explain the difference between a block element and an inline element to a teammate?",
+          "How would you describe the difference between the relative and absolute positioning values in CSS?",
+          "Can you explain how a media query works to make a website responsive on smaller screens?",
+        ],
+        focus_correctness: [
+          "What is the difference between using the text content property and the inner HTML property in JavaScript?",
+          "What does the prevent default method on the event object do inside a form submit listener?",
+          "What is the difference between using the query selector method and the get element by ID method in JavaScript?",
+        ],
+        focus_completeness: [
+          "What are three common CSS layout properties you can use to position elements on a webpage?",
+          "What are three different values you can use for the CSS position property?",
+          "What are three different types of events you can listen for in JavaScript besides a click event?",
+        ],
+      },
     },
 
     set2: {
@@ -115,6 +133,15 @@ const ROLE_CONFIG = {
         "What is the difference between using textContent and innerHTML to update an element's text in JavaScript?",
         "What is the difference between display none and visibility hidden in CSS?",
         "If you add a CSS class to an element using JavaScript but the element's appearance does not change, what are two things you would check?",
+      ],
+
+      mediumExamples: [
+        "If you add a CSS class to an element using JavaScript but the page styling does not change, what are two things you would check?",
+        "If a JavaScript file runs before the HTML body has loaded, what error is likely to occur when selecting elements?",
+        "If a form is reloading the entire page when a user clicks the submit button, how do you prevent that using JavaScript?",
+        "What is the difference between the double equals and triple equals comparison operators in JavaScript?",
+        "How would you use CSS flexbox properties to center a child container inside a parent container?",
+        "If an element with absolute positioning is not aligning correctly, what CSS position property must be added to its parent container?",
       ],
     },
   },
@@ -167,6 +194,24 @@ const ROLE_CONFIG = {
           "What are three different data types you can store in a JSON object?",
         ],
       },
+
+      mediumExamples: {
+        focus_clarity: [
+          "How would you explain what a route parameter is to someone who is new to building backend APIs?",
+          "How would you describe the flow of an HTTP request passing through a logging middleware in Express?",
+          "Can you explain the difference between asynchronous code and synchronous code using a real world example?",
+        ],
+        focus_correctness: [
+          "What is the difference between path parameters and query parameters in a REST API?",
+          "What is the difference between a client error status code like four hundred and four and a server error status code like five hundred?",
+          "What is the purpose of an environment variable and why should you not hardcode API keys in your code?",
+        ],
+        focus_completeness: [
+          "What are three common HTTP status codes and what basic message does each represent?",
+          "What are the four main HTTP methods used in REST APIs?",
+          "What are three different data types you can store in a JSON object?",
+        ],
+      },
     },
 
     set2: {
@@ -201,6 +246,15 @@ const ROLE_CONFIG = {
         "What is middleware in Express, and can you give a simple example of when you would use it?",
         "Why do you need to use async and await when reading data from a database instead of writing regular synchronous code?",
         "What does a dot env file do in a Node project and why should it never be uploaded to GitHub?",
+      ],
+
+      mediumExamples: [
+        "If your Express server returns a internal server error code five hundred for a route, what is the first thing you would check?",
+        "Why do we need to use the await keyword when making a database query in an asynchronous function?",
+        "If a database query returns undefined in your route handler, how would you handle it to prevent the server from crashing?",
+        "What is middleware in Express and when would you use it in your application?",
+        "Why should configuration secrets like database passwords never be committed to a public Git repository?",
+        "If a user reports that they can log in but their profile data is not saving, what backend layers would you check?",
       ],
     },
   },
@@ -255,6 +309,24 @@ const ROLE_CONFIG = {
           "What are three different places where you can store data on the client side in a web application?",
         ],
       },
+
+      mediumExamples: {
+        focus_clarity: [
+          "How would you explain the difference between client side rendering and server side rendering to a non technical person?",
+          "How would you describe how the frontend communicates with the backend using fetch requests?",
+          "Can you explain why a browser might block a frontend request due to cross origin resource sharing policies?",
+        ],
+        focus_correctness: [
+          "What is the difference between storing data in local storage and storing it in session storage?",
+          "What is the difference between the JSON dot stringify method and the JSON dot parse method in JavaScript?",
+          "What does the cross origin resource sharing policy do and why do browsers enforce it?",
+        ],
+        focus_completeness: [
+          "What are three basic Git commands you use to save and push your code to a remote repository?",
+          "What are three common HTTP status codes that a server might send back to a client?",
+          "What are three different places where you can store data or state in a fullstack web application?",
+        ],
+      },
     },
 
     set2: {
@@ -289,6 +361,15 @@ const ROLE_CONFIG = {
         "What is the difference between JSON dot stringify and JSON dot parse, and when would you use each one?",
         "What is the difference between a synchronous and an asynchronous function, and why does it matter in web development?",
         "Why would a developer store data in localStorage instead of always fetching it from the server?",
+      ],
+
+      mediumExamples: [
+        "If your frontend application gets a cross origin resource sharing block error when calling the API, how do you resolve it on the backend?",
+        "What would happen if your frontend sent a post request with JSON data but your Express backend did not use the Express JSON middleware?",
+        "If a user logs in successfully but their session is lost when they refresh the browser, what are two things you would check?",
+        "Why is it safer to store API keys on the backend server instead of using them directly in the frontend JavaScript code?",
+        "If a frontend page is calling an API but the response always returns undefined, what is the best way to trace where the data is failing?",
+        "What is the difference between using local storage and sending a request to the database when saving simple user settings?",
       ],
     },
   },

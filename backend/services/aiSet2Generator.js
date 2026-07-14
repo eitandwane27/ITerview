@@ -20,7 +20,7 @@
 const { OpenAI } = require("openai");
 const { getRoleConfig } = require("../config/roleConfig");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
-const { EASY_AVOID_LIST: GLOBAL_EASY_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
+const { EASY_AVOID_LIST: GLOBAL_EASY_AVOID_LIST, MEDIUM_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -50,15 +50,26 @@ async function generateSet2Question(
   const roleData = getRoleConfig(role);
   const formattedRole = roleData.label;
 
-  // ── LOCKED TO EASY ONLY ──────────────────────────────────────────────────
-  const examplePool = roleData.set2.easyExamples || [];
-  const difficultyLabel = "Easy (Entry Level / Fresh Graduate)";
-  const difficultyContext = `The candidate is a fresh IT graduate or IT student who has studied web development in school and built one or two small personal projects.
+  // ── Resolve Difficulty Configurations dynamically ───────────────────────────
+  const isMedium = difficulty === "medium";
+
+  const examplePool = isMedium
+    ? (roleData.set2.mediumExamples || [])
+    : (roleData.set2.easyExamples || []);
+
+  const difficultyLabel = isMedium
+    ? "Medium (Conceptual Application / Junior Developer)"
+    : "Easy (Entry Level / Fresh Graduate)";
+
+  const difficultyContext = isMedium
+    ? `The candidate is an IT graduate ready to tackle basic application scenarios, single-step bug diagnosis, and minor conceptual debugging. They have zero production or commercial team experience, so do not assume advanced tooling knowledge.`
+    : `The candidate is a fresh IT graduate or IT student who has studied web development in school and built one or two small personal projects.
 They have ZERO commercial work experience and have never worked on a production codebase.
 Questions must be answerable by someone who has only studied textbook concepts and done basic lab exercises.
 Do NOT assume they have debugged production bugs, used command-line tools professionally, or memorized API method signatures.
 The question should feel approachable and confidence-building — not intimidating.`;
-  const avoidList = `${roleData.avoidList || ""}\n\n${GLOBAL_EASY_AVOID_LIST}\n\n${TTS_SAFETY}`;
+
+  const avoidList = `${roleData.avoidList || ""}\n\n${isMedium ? MEDIUM_AVOID_LIST : GLOBAL_EASY_AVOID_LIST}\n\n${TTS_SAFETY}`;
 
   // ── Build calibration examples section ────────────────────────────────────
   let examplesSection = "";

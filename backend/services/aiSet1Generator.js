@@ -7,7 +7,7 @@
 const { OpenAI } = require("openai");
 const { getRoleConfig } = require("../config/roleConfig");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
-const { EASY_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
+const { EASY_AVOID_LIST, MEDIUM_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -48,11 +48,22 @@ async function generateSet1Question(
     ? weakness_tag
     : "focus_correctness";
 
-  // ── LOCKED TO EASY ONLY ──────────────────────────────────────────────────
-  const examplePool = roleData.set1.easyExamples?.[safeWeakness] || [];
-  const difficultyLabel = "Easy (Entry Level / Fresh Graduate)";
-  const difficultyContext = `The candidate is a fresh IT graduate or IT student practicing core interview basics. They have mostly academic knowledge and personal project experience — no commercial work experience. Questions MUST be simple, fundamental, and answerable without any industry experience.`;
-  const avoidList = `${roleData.avoidList || ""}\n\n${EASY_AVOID_LIST}\n\n${TTS_SAFETY}`;
+  // ── Resolve Difficulty Configurations dynamically ───────────────────────────
+  const isMedium = difficulty === "medium";
+
+  const examplePool = isMedium
+    ? (roleData.set1.mediumExamples?.[safeWeakness] || [])
+    : (roleData.set1.easyExamples?.[safeWeakness] || []);
+
+  const difficultyLabel = isMedium
+    ? "Medium (Conceptual Application / Junior Developer)"
+    : "Easy (Entry Level / Fresh Graduate)";
+
+  const difficultyContext = isMedium
+    ? `The candidate is a fresh IT graduate who understands core concepts and has completed small projects. They are ready to explain basic logic flow and perform minor conceptual troubleshooting. They have zero production experience, so questions should still remain simple.`
+    : `The candidate is a fresh IT graduate or IT student practicing core interview basics. They have mostly academic knowledge and personal project experience — no commercial work experience. Questions MUST be simple, fundamental, and answerable without any industry experience.`;
+
+  const avoidList = `${roleData.avoidList || ""}\n\n${isMedium ? MEDIUM_AVOID_LIST : EASY_AVOID_LIST}\n\n${TTS_SAFETY}`;
 
   // ── Step 2: Build the weakness-specific instruction ───────────────────────
   let weaknessInstruction = "";

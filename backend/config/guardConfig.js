@@ -35,6 +35,21 @@ const EASY_AVOID_LIST = `STRICT TOPIC BAN — Do NOT ask about any of the follow
 - Multi-step debugging scenarios that require tracing through more than one possible cause — keep it to ONE clear concept per question`;
 
 /**
+ * General technical topic bans to lock question generation to Medium (junior / conceptual application) level.
+ * Slightly more permissive than EASY_AVOID_LIST — allows basic middleware and simple Express routes,
+ * but still bans advanced system design, security internals, DevOps, and complex multi-step debugging.
+ */
+const MEDIUM_AVOID_LIST = `STRICT TOPIC BAN — Do NOT ask about any of the following:
+- Advanced framework internals, complex ORMs, or state-management libraries (e.g., Redux middleware, Sequelize transactions)
+- Enterprise system design, distributed microservices, or cloud architectures (AWS, GCP)
+- Advanced web security (OAuth2 flows, JWT signature details, CSRF mitigation mechanics)
+- DevOps, CI/CD pipelines, Docker, Kubernetes, or server deployment
+- Anything requiring commercial, production-level, or team-collaboration experience
+- LeetCode-style algorithmic puzzles or complex data structure operations
+- Questions where writing or reading long code blocks is REQUIRED — candidates must be able to answer using plain language and concepts
+- Multi-step troubleshooting scenarios requiring more than two debugging steps`;
+
+/**
  * Behavioral prompt restrictions to guide the STAR method generator in Set 3.
  * Prevents technical questions, future-tense hypotheticals, or multi-sentence compounds.
  */
@@ -49,5 +64,6 @@ const BEHAVIORAL_AVOID_LIST = `STRICT TOPIC BAN — Do NOT generate any of the f
 module.exports = {
   TTS_SAFETY,
   EASY_AVOID_LIST,
+  MEDIUM_AVOID_LIST,
   BEHAVIORAL_AVOID_LIST,
 };
