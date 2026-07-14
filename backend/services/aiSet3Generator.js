@@ -23,15 +23,16 @@
 //   plain, natural, conversational English only.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Groq = require("groq-sdk");
+const { OpenAI } = require("openai");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
 const { BEHAVIORAL_AVOID_LIST: GLOBAL_BEHAVIORAL_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+const deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com",
 });
 
-const EVALUATOR_MODEL = "llama-3.3-70b-versatile";
+const EVALUATOR_MODEL = "deepseek-chat";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BEHAVIORAL COMPETENCY PILLARS — 5 total, one per question slot.
@@ -111,8 +112,10 @@ const BEHAVIORAL_AVOID_LIST = `${GLOBAL_BEHAVIORAL_AVOID_LIST}\n\n${TTS_SAFETY}`
  */
 async function generateSet3Question(
   previousQuestions = [],
-  difficulty = "easy",
+  _difficulty = "easy",
 ) {
+  const difficulty = "easy"; // Force to easy to avoid confusion since other levels are not yet implemented
+
   // ── Map the current question slot to a behavioral competency ──────────────
   const competencyIndex = Math.min(
     previousQuestions.length,
@@ -184,15 +187,19 @@ OUTPUT RULE:
     });
   }
 
-  const response = await groq.chat.completions.create({
+  const response = await deepseek.chat.completions.create({
     model: EVALUATOR_MODEL,
     messages,
     temperature: 0.65,
     max_tokens: 140,
   });
 
+  if (!response.choices || response.choices.length === 0 || !response.choices[0]?.message?.content) {
+    console.error("[DeepSeek Error] Received empty choices or error response in generateSet3Question:", JSON.stringify(response));
+  }
+
   const raw =
-    response.choices[0]?.message?.content?.trim() ||
+    response.choices?.[0]?.message?.content?.trim() ||
     "Tell me about a time you had to work closely with a team to complete a project under a tight deadline.";
 
   return sanitizeTTS(raw);
@@ -279,7 +286,7 @@ async function evaluateSet3Answer(question, transcript) {
     };
   }
 
-  const response = await groq.chat.completions.create({
+  const response = await deepseek.chat.completions.create({
     model: EVALUATOR_MODEL,
     messages: [
       { role: "system", content: SET3_SCORING_SYSTEM_PROMPT },
@@ -293,7 +300,7 @@ async function evaluateSet3Answer(question, transcript) {
     response_format: { type: "json_object" },
   });
 
-  const raw = response.choices[0]?.message?.content?.trim() || "{}";
+  const raw = response.choices?.[0]?.message?.content?.trim() || "{}";
 
   let parsed;
   try {
@@ -311,7 +318,7 @@ async function evaluateSet3Answer(question, transcript) {
 
   const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
 
-  console.log(`[aiSet3Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via Groq)`);
+  console.log(`[aiSet3Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via DeepSeek)`);
 
   return {
     situation_score: clamp(parsed.situation_score),

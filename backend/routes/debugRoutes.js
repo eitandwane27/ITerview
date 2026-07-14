@@ -128,7 +128,8 @@ router.get("/generate-question-s3", async (req, res) => {
   const VALID_DIFFS  = ["easy", "medium", "hard"];
 
   const startIndex = Math.min(4, Math.max(0, parseInt(req.query.startIndex) || 0));
-  const difficulty = VALID_DIFFS.includes(req.query.difficulty) ? req.query.difficulty : "easy";
+  // Force to 'easy' for now to avoid confusion until other difficulties are implemented
+  const difficulty = "easy";
   // Cap runs so we never exceed the 5 competency slots
   const runs = Math.min(5 - startIndex, Math.max(1, parseInt(req.query.runs) || 5 - startIndex));
 

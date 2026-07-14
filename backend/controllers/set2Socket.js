@@ -68,9 +68,10 @@ function handleSet2Socket(ws, request) {
   let preGeneratedNextQuestionAudio = null;
   let preGeneratedNextQuestionIndex = -1;
 
-  // ── Performance metrics (matching Set 1 pattern) ──────────────────────────
+  // ── Performance metrics (matching Set 3 pattern) ──────────────────────────
   const startupStart = Date.now();
   const metrics = {
+    questionGenLatencies: [], // per-question LLM latencies (upfront generation)
     ttsLatencies: [],         // individual question audio delivery latency
     replyTtsLatencies: [],    // interviewer reply audio synthesis latency
     evaluationLatencies: [],  // AI evaluation latency
@@ -178,11 +179,14 @@ function handleSet2Socket(ws, request) {
       const genStart = Date.now();
       let q1SynthesisPromise = null;
       for (let i = 0; i < MAX_QUESTIONS; i++) {
+        const qGenStart = Date.now();
         const q = await generateSet2Question(
           sessionRole,
           sessionDifficulty,
           questions,
         );
+        const qGenDuration = Date.now() - qGenStart;
+        metrics.questionGenLatencies.push(qGenDuration);
         questions.push(q);
 
         // Fire Q1 TTS concurrently with LLM generation of Q2-5
@@ -474,14 +478,24 @@ function handleSet2Socket(ws, request) {
             console.timeEnd("[Perf] Final TTS Synthesis");
 
             // ── Print Session Performance Metrics ────────────────────────
+            const totalQgen = metrics.questionGenLatencies.reduce(
+              (a, b) => a + b,
+              0,
+            );
             const totalQtts = metrics.ttsLatencies.reduce((a, b) => a + b, 0);
             const totalRtts = metrics.replyTtsLatencies.reduce((a, b) => a + b, 0);
             const totalEval = metrics.evaluationLatencies.reduce((a, b) => a + b, 0);
-            const systemLatency = totalQtts + totalRtts + totalEval;
+            const systemLatency = totalQgen + totalQtts + totalRtts + totalEval;
 
             console.log(`\n==================================================`);
-            console.log(`📊 SET 2 PERFORMANCE METRICS`);
+            console.log(`📊 SET 2 PERFORMANCE METRICS (OPTIMIZED)`);
             console.log(`Session ID: ${sessionId}`);
+            console.log(`--------------------------------------------------`);
+            metrics.questionGenLatencies.forEach((lat, idx) => {
+              console.log(
+                `  Q${idx + 1} Upfront Question Gen Latency    : ${(lat / 1000).toFixed(2)}s`,
+              );
+            });
             console.log(`--------------------------------------------------`);
             metrics.ttsLatencies.forEach((lat, idx) => {
               console.log(`  Q${idx + 1} Question TTS Delivery Latency: ${(lat / 1000).toFixed(2)}s ${lat === 0 ? "(Cached/Instant)" : ""}`);
@@ -495,6 +509,9 @@ function handleSet2Socket(ws, request) {
               console.log(`  Q${idx + 1} AI Evaluation Latency       : ${(lat / 1000).toFixed(2)}s`);
             });
             console.log(`--------------------------------------------------`);
+            console.log(
+              `  Total Upfront Q-Gen Latency             : ${(totalQgen / 1000).toFixed(2)}s`,
+            );
             console.log(`  Total Question TTS Latency             : ${(totalQtts / 1000).toFixed(2)}s`);
             console.log(`  Total Reply TTS Latency                : ${(totalRtts / 1000).toFixed(2)}s`);
             console.log(`  Total AI Eval Latency                  : ${(totalEval / 1000).toFixed(2)}s`);

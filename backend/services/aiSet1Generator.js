@@ -183,8 +183,15 @@ OUTPUT RULE:
     max_tokens: 300,
   });
 
-  if (!response.choices || response.choices.length === 0 || !response.choices[0]?.message?.content) {
-    console.error("[DeepSeek Error] Received empty choices or error response in generateSet1Question:", JSON.stringify(response));
+  if (
+    !response.choices ||
+    response.choices.length === 0 ||
+    !response.choices[0]?.message?.content
+  ) {
+    console.error(
+      "[DeepSeek Error] Received empty choices or error response in generateSet1Question:",
+      JSON.stringify(response),
+    );
   }
 
   const fallbackQuestions = [
@@ -192,7 +199,7 @@ OUTPUT RULE:
     "What is the difference between client-side and server-side in web development?",
     "How does a browser request and load a webpage from a server?",
     "Why is it important to use semantic HTML tags when building a webpage?",
-    "What are some basic git commands you use to manage your project code?"
+    "What are some basic git commands you use to manage your project code?",
   ];
 
   const raw =

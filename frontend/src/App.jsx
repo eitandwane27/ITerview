@@ -12,6 +12,7 @@ import MainSets from "./pages/MainSets";
 import Results from "./pages/Results";
 import AiAnalysisLoader from "./components/AiAnalysisLoader";
 import Set2TransitionOverlay from "./components/Set2TransitionOverlay";
+import SttTestBench from "./components/SttTestBench";
 import "./components/AiAnalysisLoader.css";
 import "./App.css";
 
@@ -61,6 +62,9 @@ function App() {
               </div>
             } 
           />
+
+          {/* Dev only — STT latency & accuracy testbench */}
+          <Route path="/dev/stt-test" element={<SttTestBench />} />
         </Routes>
       </div>
     </BrowserRouter>

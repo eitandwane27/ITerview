@@ -11,6 +11,7 @@ const { handleSet1Socket } = require("./controllers/set1Socket");
 const { handleSet2Socket } = require("./controllers/set2Socket");
 const { handleSet3Socket } = require("./controllers/set3Socket");
 const { handlePostTestSocket } = require("./controllers/postTestSocket");
+const { handleDevSttSocket } = require("./controllers/devSttSocket");
 
 const app = express();
 
@@ -73,6 +74,10 @@ server.on("upgrade", (request, socket, head) => {
   } else if (pathname === "/ws/posttest") {
     wss.handleUpgrade(request, socket, head, (ws) => {
       handlePostTestSocket(ws, request);
+    });
+  } else if (pathname === "/ws/dev-stt-test") {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      handleDevSttSocket(ws, request);
     });
   } else {
     socket.destroy(); // reject unknown WS paths

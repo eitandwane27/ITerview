@@ -194,7 +194,7 @@ function handleSet3Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        sessionDifficulty = user.difficulty || "easy";
+        sessionDifficulty = "easy"; // Force to 'easy' to avoid confusion until medium/hard are implemented
       }
 
       // 2. Initialize Set3Session in DB (upsert — one doc per user)
