@@ -152,7 +152,7 @@ Generate a single easy-level question. It MUST be one of these two types ONLY:
 Do NOT use scenario-based formats. Do NOT ask "why would you choose", "what would you check", or "what steps would you take".
 The question must be direct, factual, and answerable in one or two sentences.
 
-CRITICAL TTS RULE: Do NOT include backticks, dot-notation, slashes, angle brackets, curly braces, or any programming syntax. Do NOT write method calls like element.textContent or style.display — use plain English names instead (e.g. "the textContent property", "the display style property"). The question is read aloud by a TTS engine — every character you write will be spoken literally.
+CRITICAL TTS RULE: Do NOT include backticks, dot-notation, slashes, angle brackets, curly braces, or any programming syntax. Do NOT write any property or method name using dot access \u2014 always use plain English descriptions (e.g. describe a property by saying "the [name] property" and a method by saying "the [name] method"). The question is read aloud by a TTS engine \u2014 every character you write will be spoken literally.
 
 STRICT CONSTRAINTS:
 ${avoidList}

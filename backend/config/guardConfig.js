@@ -10,15 +10,15 @@
  */
 const TTS_SAFETY = `TTS SAFETY — ABSOLUTE CHARACTER BAN:
 The question will be read aloud by a text-to-speech engine. The following characters and patterns are STRICTLY FORBIDDEN in ANY part of the question text:
-  - Backticks ( \` ) of any kind — NEVER wrap a word in backticks
-  - Dot-notation: writing things like element.textContent, style.display, document.getElementById — write these as plain English instead (e.g. "the textContent property", "the display style", "the getElementById method")
-  - Slash characters ( / ) — do not write "client/server", "HTML/CSS", "show/hide" — use "and" or "or" instead
-  - Angle brackets ( < > ) — do not write HTML tags like <div>, <p>, or <script>
-  - Curly braces ( { } ), square brackets ( [ ] ), or parentheses used as code syntax
-  - Quotes used to wrap code terms (e.g. set it to "none") — just say: set it to none
-  - Arrow notation ( -> or => )
-  - Any camelCase method or property name that requires dot access (e.g. addEventListener, getElementById, innerHTML) — refer to these in plain English only (e.g. "the add event listener method", "the get element by ID method", "the inner HTML property")
-All questions must be written in plain, natural spoken English only. Read the question aloud in your head before outputting it — if any character would sound unnatural when spoken, remove it.`;
+  - Backtick characters of any kind — NEVER wrap a word in backticks
+  - Dot-notation of any kind — never write a property or method name using a dot between two words; always describe it in plain English (e.g. "the textContent property", "the display style property", "the get element by ID method")
+  - Slash characters — do not join two words or acronyms with a slash; use "and" or "or" instead
+  - Angle brackets — do not write HTML tag names using angle brackets; refer to them by their plain English name instead
+  - Curly braces, square brackets, or parentheses used as code syntax
+  - Quotes used to wrap inline code terms — just name the value in plain English
+  - Arrow notation of any kind
+  - CamelCase method or property names — do not write any identifier that combines multiple words without spaces; always convert to plain English words with spaces (e.g. "the add event listener method", "the inner HTML property")
+All questions must be written in plain, natural spoken English only. Read the question aloud in your head before outputting it — if any character or word pattern would sound unnatural when spoken, remove it.`;
 
 /**
  * General technical topic bans to lock down question generation to Easy (junior / fresh graduate) level.

@@ -499,7 +499,7 @@ export default function MainSets() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showNextTransition && (
+        {!showBriefing && showNextTransition && (
           <>
             {setNumber === 1 && (
               <Set2TransitionOverlay onReady={goToNextSet} role={userRole} />
