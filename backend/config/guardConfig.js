@@ -50,6 +50,18 @@ const MEDIUM_AVOID_LIST = `STRICT TOPIC BAN — Do NOT ask about any of the foll
 - Multi-step troubleshooting scenarios requiring more than two debugging steps`;
 
 /**
+ * General technical topic bans for Hard (advanced junior) difficulty questions.
+ * Allows intermediate junior topics (middleware, token auth, database scaling basics)
+ * but bans senior/enterprise-level concepts and anything requiring code to answer.
+ */
+const HARD_AVOID_LIST = `STRICT TOPIC BAN — Do NOT ask about any of the following:
+- High-level enterprise system design or multi-region system scalability (e.g. AWS Multi-AZ setups, CDN edge routing).
+- Complex DevOps pipelines, container orchestrators (Kubernetes clusters, multi-node Docker Swarm), or deep cloud networking (VPCs, Subnets).
+- Highly advanced algorithmic challenges (such as writing self-balancing trees or complex graph traversals).
+- Anything requiring senior-level commercial or team-management experience.
+- Questions where reading or writing long code blocks is REQUIRED — candidates must be able to answer using plain language and concepts.`;
+
+/**
  * Behavioral prompt restrictions to guide the STAR method generator in Set 3.
  * Prevents technical questions, future-tense hypotheticals, or multi-sentence compounds.
  */
@@ -65,5 +77,6 @@ module.exports = {
   TTS_SAFETY,
   EASY_AVOID_LIST,
   MEDIUM_AVOID_LIST,
+  HARD_AVOID_LIST,
   BEHAVIORAL_AVOID_LIST,
 };

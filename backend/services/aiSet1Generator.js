@@ -7,7 +7,7 @@
 const { OpenAI } = require("openai");
 const { getRoleConfig } = require("../config/roleConfig");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
-const { EASY_AVOID_LIST, MEDIUM_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
+const { EASY_AVOID_LIST, MEDIUM_AVOID_LIST, HARD_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -49,21 +49,34 @@ async function generateSet1Question(
     : "focus_correctness";
 
   // ── Resolve Difficulty Configurations dynamically ───────────────────────────
+  const isHard = difficulty === "hard";
   const isMedium = difficulty === "medium";
+  // isEasy is the fallback when neither hard nor medium
 
-  const examplePool = isMedium
-    ? (roleData.set1.mediumExamples?.[safeWeakness] || [])
-    : (roleData.set1.easyExamples?.[safeWeakness] || []);
+  let examplePool = [];
+  if (isHard) {
+    examplePool = roleData.set1.hardExamples?.[safeWeakness] || [];
+  } else if (isMedium) {
+    examplePool = roleData.set1.mediumExamples?.[safeWeakness] || [];
+  } else {
+    examplePool = roleData.set1.easyExamples?.[safeWeakness] || [];
+  }
 
-  const difficultyLabel = isMedium
+  const difficultyLabel = isHard
+    ? "Hard (Advanced Junior Developer)"
+    : isMedium
     ? "Medium (Conceptual Application / Junior Developer)"
     : "Easy (Entry Level / Fresh Graduate)";
 
-  const difficultyContext = isMedium
+  const difficultyContext = isHard
+    ? `The candidate is an advanced junior developer ready to discuss trade-offs, security, and performance optimizations. They understand under-the-hood browser/server mechanics and have applied these concepts in personal or academic projects.`
+    : isMedium
     ? `The candidate is a fresh IT graduate who understands core concepts and has completed small projects. They are ready to explain basic logic flow and perform minor conceptual troubleshooting. They have zero production experience, so questions should still remain simple.`
     : `The candidate is a fresh IT graduate or IT student practicing core interview basics. They have mostly academic knowledge and personal project experience — no commercial work experience. Questions MUST be simple, fundamental, and answerable without any industry experience.`;
 
-  const avoidList = `${roleData.avoidList || ""}\n\n${isMedium ? MEDIUM_AVOID_LIST : EASY_AVOID_LIST}\n\n${TTS_SAFETY}`;
+  const avoidList = `${roleData.avoidList || ""}\n\n${
+    isHard ? HARD_AVOID_LIST : isMedium ? MEDIUM_AVOID_LIST : EASY_AVOID_LIST
+  }\n\n${TTS_SAFETY}`;
 
   // ── Step 2: Build the weakness-specific instruction ───────────────────────
   let weaknessInstruction = "";
@@ -72,32 +85,69 @@ async function generateSet1Question(
 QUESTION FORMAT RULES:
 - ONE concept only. Do not chain concepts with "and", "including", or "from X to Y".
 - Single sentence. No sub-questions. No compound structure.
-- Good: "Can you explain how the CSS box model works?"
-- Bad: "Can you explain how the box model works, including margin and padding, and how it affects layout?"`;
+${
+  isHard
+    ? `- Hard: Ask them to explain trade-offs, rendering cycles, or security flows. Focus on advanced junior topics like event propagation, CSR vs SSR, database transaction properties, or CORS resolution.
+- Good: "How would you explain the browser event loop and the difference between microtasks and macrotasks to a teammate?"
+- Good: "How would you describe the difference between Client-Side Rendering and Server-Side Rendering including the impact on page load speed?"
+- Bad: "Can you explain how flexbox works, including alignment, direction, and wrapping?"`
+    : isMedium
+    ? `- Good: "How would you explain the difference between a block element and an inline element to a teammate?"
+- Good: "How would you describe the flow of an HTTP request passing through a middleware function?"
+- Bad: "Can you explain how flexbox works, including alignment, direction, and wrapping?"`
+    : `- Good: "Can you explain how the CSS box model works?"
+- Bad: "Can you explain how the box model works, including margin and padding, and how it affects layout?"`
+}`;
   } else if (safeWeakness === "focus_correctness") {
     weaknessInstruction = `The question must test ONE simple, fundamental fact — a basic definition, a difference between two basic items, or a "what is / what does X do" question.
-CRITICAL EASY DIFFICULTY RULES:
+${
+  isHard
+    ? `CRITICAL HARD DIFFICULTY RULES:
+- The question must test advanced junior-level concepts such as security mechanics, rendering performance, authentication trade-offs, or intermediate protocol details.
+- Keep the question focused on a single key concept or trade-off.
+- Good: "What is the difference between debouncing and throttling a function in JavaScript?"
+- Good: "What is the purpose of CORS preflight requests and what HTTP method do they use?"`
+    : isMedium
+    ? `CRITICAL MEDIUM DIFFICULTY RULES:
+- The question must test junior-level concepts, such as intermediate JS/CSS/backend behaviors (e.g. query selectors, preventDefault, local vs session storage, basic status code types).
+- Keep the question focused on a single key concept.
+- Keep comparisons to straightforward junior concepts.
+- Good: "What is the difference between storing data in local storage and storing it in session storage?"
+- Good: "What is the difference between the query selector method and the get element by ID method in JavaScript?"`
+    : `CRITICAL EASY DIFFICULTY RULES:
 - The question must be extremely simple and foundational. It must NOT test abstract rendering concepts, CSS cascade conflicts, or advanced JS mechanics.
 - Do NOT ask about the browser's rendering engine or internals.
 - Do NOT ask about CSS specificity calculation, cascading rules, or selector weight.
 - Do NOT ask about JavaScript hoisting, closures, temporal dead zone, function expressions versus declarations, or arrow functions vs regular functions.
 - Keep comparisons to very basic things like: var/let/const, double equals/triple equals, display none/visibility hidden, local storage/session storage, SQL/NoSQL.
+- Good: "What is the difference between let and const in JavaScript?"
+- Good: "What does the textContent property do in JavaScript?"`
+}
 QUESTION FORMAT RULES:
 - ONE fact only. Do not combine two questions into one sentence.
 - Single sentence. Short and direct.
-- Good: "What is the difference between let and const in JavaScript?"
-- Good: "What does the textContent property do in JavaScript?"
 - Bad: "What is the difference between a function expression and a declaration, and how does hoisting affect them?"`;
   } else {
-    weaknessInstruction = `The question must be extremely simple, asking the candidate to list or name MULTIPLE basic things about ONE specific topic. It tests their ability to retrieve foundational items.
+    weaknessInstruction = `The question must ask the candidate to list or name MULTIPLE related things about ONE specific topic. It tests their ability to retrieve foundational items.
 QUESTION FORMAT RULES:
-- Ask them to list or name multiple items of a single basic category (e.g. "What are three basic CSS selectors...", "What are some values for the CSS display property...").
+- Ask them to list or name multiple items of a single category.
 - Keep it to a single, simple sentence.
 - STRICTLY BAN any compound structures or chained sub-questions. Do NOT ask "how they work", "how they affect layout", "when you would use them", "what they are used for", or "and why". The question should only ask to list or name them.
-- Good: "What are three different HTML semantic tags you can use to structure a webpage?"
+${
+  isHard
+    ? `- Hard: Ask them to list three specific technical measures, optimizations, or security steps around an advanced junior topic.
+- Good: "What are three different ways to optimize the loading performance of images and assets on a webpage?"
+- Good: "What are three security measures you can implement to protect a frontend application from cross-site scripting attacks?"
+- Bad: "What are three HTTP methods and how would you choose which one to use?"`
+    : isMedium
+    ? `- Good: "What are three common HTTP status codes and what does each one mean?"
+- Good: "What are three different CSS layout properties you can use to position elements on a page?"
+- Bad: "What are three HTTP methods and how would you choose which one to use?"`
+    : `- Good: "What are three different HTML semantic tags you can use to structure a webpage?"
 - Good: "What are some of the values you can use for the CSS position property?"
 - Bad: "What are some different display properties in CSS, and how do they affect the layout of elements on a webpage?"
-- Bad: "What are some common semantic elements in HTML, and what purpose does each one serve?"`;
+- Bad: "What are some ways to center an element in CSS, and when would each approach be appropriate?"`
+}`;
   }
 
   // ── Step 3: Build the calibration + exclusion section ───────────────────

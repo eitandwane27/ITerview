@@ -16,6 +16,13 @@ function sanitizeTTS(text) {
   // Strip draft-correction arrows (e.g. "Draft -> Corrected")
   if (q.includes(" -> ")) q = q.split(" -> ").pop().trim();
 
+  // Protect common framework/library names with extensions from the dot-notation regex
+  q = q.replace(/\bNode\.js\b/gi, "Node js");
+  q = q.replace(/\bExpress\.js\b/gi, "Express js");
+  q = q.replace(/\bVue\.js\b/gi, "Vue js");
+  q = q.replace(/\bReact\.js\b/gi, "React js");
+  q = q.replace(/\bNext\.js\b/gi, "Next js");
+
   // Remove backticks
   q = q.replace(/`/g, "");
 

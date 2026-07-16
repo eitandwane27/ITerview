@@ -97,6 +97,21 @@ const ROLE_CONFIG = {
           "What are three different types of events you can listen for in JavaScript besides a click event?",
         ],
       },
+
+      hardExamples: {
+        focus_clarity: [
+          "How would you explain the browser event loop and the difference between microtasks and macrotasks to a teammate?",
+          "How would you describe the difference between Client-Side Rendering and Server-Side Rendering including the impact on page load speed?",
+        ],
+        focus_correctness: [
+          "What is the difference between debouncing and throttling a function in JavaScript?",
+          "What is the purpose of CORS preflight requests and what HTTP method do they use?",
+        ],
+        focus_completeness: [
+          "What are three different ways to optimize the loading performance of images and assets on a webpage?",
+          "What are three security measures you can implement to protect a frontend application from cross-site scripting attacks?",
+        ],
+      },
     },
 
     set2: {
@@ -142,6 +157,11 @@ const ROLE_CONFIG = {
         "What is the difference between the double equals and triple equals comparison operators in JavaScript?",
         "How would you use CSS flexbox properties to center a child container inside a parent container?",
         "If an element with absolute positioning is not aligning correctly, what CSS position property must be added to its parent container?",
+      ],
+
+      hardExamples: [
+        "If a component is re-rendering too many times when a user types in an input field, what are two hooks or techniques you would use to optimize it?",
+        "If your application is showing a cross-origin resource sharing blocked error when requesting data, what configuration must be fixed on the server?",
       ],
     },
   },
@@ -204,12 +224,27 @@ const ROLE_CONFIG = {
         focus_correctness: [
           "What is the difference between path parameters and query parameters in a REST API?",
           "What is the difference between a client error status code like four hundred and four and a server error status code like five hundred?",
-          "What is the purpose of an environment variable and why should you not hardcode API keys in your code?",
+          "What is the difference between using local sessions and using JSON Web Tokens for authentication?",
         ],
         focus_completeness: [
-          "What are three common HTTP status codes and what basic message does each represent?",
-          "What are the four main HTTP methods used in REST APIs?",
-          "What are three different data types you can store in a JSON object?",
+          "What are three common HTTP status codes in the four hundred range and what does each one mean?",
+          "What are three common types of database relationships you might configure in a backend application?",
+          "What are three different environment variables you might define when configuring a database connection?",
+        ],
+      },
+
+      hardExamples: {
+        focus_clarity: [
+          "How would you explain the concept of database transactions and the ACID properties to a junior developer?",
+          "How would you describe the flow of a client request passing through a CORS policy block and how a server resolves it?",
+        ],
+        focus_correctness: [
+          "What is the difference between optimistic locking and pessimistic locking when updating database records?",
+          "What is the purpose of hashing a password using salt and how does it protect against rainbow table attacks?",
+        ],
+        focus_completeness: [
+          "What are three distinct measures you must take to secure a REST API from unauthorized access and brute force attacks?",
+          "What are three different database optimization strategies you would use to speed up slow read queries?",
         ],
       },
     },
@@ -255,6 +290,11 @@ const ROLE_CONFIG = {
         "What is middleware in Express and when would you use it in your application?",
         "Why should configuration secrets like database passwords never be committed to a public Git repository?",
         "If a user reports that they can log in but their profile data is not saving, what backend layers would you check?",
+      ],
+
+      hardExamples: [
+        "If your server is crashing due to a database connection pool timeout, what are two configurations you would check or adjust?",
+        "If an API endpoint is vulnerable to SQL injection, what specific programming technique should you use to parameterize queries?",
       ],
     },
   },
@@ -327,6 +367,21 @@ const ROLE_CONFIG = {
           "What are three different places where you can store data or state in a fullstack web application?",
         ],
       },
+
+      hardExamples: {
+        focus_clarity: [
+          "How would you explain the difference between stateless and stateful authentication and when you would use each approach?",
+          "How would you describe the full round-trip of a fetch request from the browser to a backend API and back, including what happens at each step?",
+        ],
+        focus_correctness: [
+          "What is the difference between storing a session on the server and using a JSON Web Token for authentication?",
+          "What is the difference between a four hundred and one unauthorized response and a four hundred and three forbidden response from an API?",
+        ],
+        focus_completeness: [
+          "What are three different strategies you can use to improve the performance of a fullstack web application?",
+          "What are three security risks you must address when building a fullstack application that handles user data?",
+        ],
+      },
     },
 
     set2: {
@@ -370,6 +425,12 @@ const ROLE_CONFIG = {
         "Why is it safer to store API keys on the backend server instead of using them directly in the frontend JavaScript code?",
         "If a frontend page is calling an API but the response always returns undefined, what is the best way to trace where the data is failing?",
         "What is the difference between using local storage and sending a request to the database when saving simple user settings?",
+      ],
+
+      hardExamples: [
+        "If your application is sending user passwords to the backend as plain text, what are two changes you must make to protect them?",
+        "If a frontend fetch request always returns a cross-origin resource sharing blocked error in production but works fine in development, what configuration on the backend must you check?",
+        "If a user's authentication token expires while they are actively using your app, what should the frontend do to handle the expired session gracefully?",
       ],
     },
   },
