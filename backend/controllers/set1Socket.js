@@ -164,6 +164,14 @@ function handleSet1Socket(ws, request) {
         sessionDifficulty = user.difficulty || "easy";
       }
 
+      // Allow dev/testing URL override only in non-production environments
+      if (process.env.NODE_ENV !== "production") {
+        const requestedDifficulty = url.searchParams.get("difficulty");
+        if (requestedDifficulty && ["easy", "medium", "hard"].includes(requestedDifficulty.toLowerCase())) {
+          sessionDifficulty = requestedDifficulty.toLowerCase();
+        }
+      }
+
       // 2. Initialize Set1Session in DB (upsert)
       sessionDoc = await Set1Session.findOneAndUpdate(
         { firebaseUid },
@@ -310,6 +318,7 @@ function handleSet1Socket(ws, request) {
           const evaluation = await evaluateSet1Answer(
             currentQuestionText,
             confirmedText,
+            sessionDifficulty,
           );
           const evalDuration = Date.now() - evalStart;
           metrics.evaluationLatencies.push(evalDuration);
@@ -330,8 +339,16 @@ function handleSet1Socket(ws, request) {
           await sessionDoc.save();
           console.timeEnd("[Perf] DB Record Save");
 
-          // 3. Send tip to frontend
-          send({ type: "coach_tip", tip: evaluation.tip });
+          // 3. Send tip, 3C scores, interviewer reply and difficulty to frontend/client
+          send({
+            type: "coach_tip",
+            tip: evaluation.tip,
+            clarity_score: evaluation.clarity_score,
+            correctness_score: evaluation.correctness_score,
+            completeness_score: evaluation.completeness_score,
+            interviewer_reply: evaluation.interviewer_reply,
+            difficulty: sessionDifficulty,
+          });
 
           currentQuestionIndex++;
           const hasNext = currentQuestionIndex < MAX_QUESTIONS;

@@ -302,6 +302,7 @@ function handleSet2Socket(ws, request) {
           const evaluation = await evaluateSet2Answer(
             currentQuestionText,
             confirmedText,
+            sessionDifficulty,
           );
           const evalDuration = Date.now() - evalStart;
           metrics.evaluationLatencies.push(evalDuration);

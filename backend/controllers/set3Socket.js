@@ -194,7 +194,7 @@ function handleSet3Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        sessionDifficulty = "easy"; // Force to 'easy' to avoid confusion until medium/hard are implemented
+        sessionDifficulty = user.difficulty || "easy";
       }
 
       // 2. Initialize Set3Session in DB (upsert — one doc per user)
@@ -366,6 +366,7 @@ function handleSet3Socket(ws, request) {
           const evaluation = await evaluateSet3Answer(
             currentQuestionText,
             confirmedText,
+            sessionDifficulty,
           );
           const evalDuration = Date.now() - evalStart;
           metrics.evaluationLatencies.push(evalDuration);

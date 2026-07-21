@@ -53,39 +53,9 @@ function createDeepgramLiveSession(onTranscript, onError) {
 
   const live = new WebSocket(url, ["token", apiKey]);
 
-  // ── Performance logger ────────────────────────────────────────────────────
-  // Mirrors the latency metrics shown in SttTestBench.jsx on the frontend.
-  //
-  // Tracked timestamps (all in ms since epoch):
-  //   sessionStart    → when createDeepgramLiveSession() was called
-  //   wsOpenTs        → when Deepgram WS "open" fired
-  //   firstAudioSentTs→ when sendAudio() was first called (first PCM chunk)
-  //   firstInterimTs  → when the very first interim transcript arrived
-  //
-  // Per-utterance:
-  //   utteranceStartTs → timestamp of the first interim for the current utterance
-  //   utteranceLatencies[] → (first-interim → final) in ms, one entry per utterance
-  const perf = {
-    sessionStart: Date.now(),
-    wsOpenTs: null,
-    firstAudioSentTs: null,
-    firstInterimTs: null,
-    utteranceStartTs: null,
-    utteranceCount: 0,
-    utteranceLatencies: [],
-    wordCount: 0,
-    _mark(label) {
-      this[label] = Date.now();
-    },
-  };
-
   // ── Event listeners ───────────────────────────────────────────────────────
   live.on("open", () => {
-    perf._mark("wsOpenTs");
-    const wsOpenMs = perf.wsOpenTs - perf.sessionStart;
-    console.log(
-      `[STT] ✅ Deepgram WS opened  (+${wsOpenMs}ms from session create)`,
-    );
+    console.log("[STT] ✅ Deepgram WS opened");
   });
 
   live.on("message", (data) => {
@@ -104,68 +74,16 @@ function createDeepgramLiveSession(onTranscript, onError) {
       if (!transcript) return;
 
       const isFinal = response.is_final === true;
-      const now = Date.now();
-      let latencyMs = null;
 
       if (!isFinal) {
-        // ── Interim ──────────────────────────────────────────────────────────
-        // Capture the timestamp of the first interim of this utterance
-        if (!perf.utteranceStartTs) {
-          perf.utteranceStartTs = now;
-        }
-        // Capture the global first-interim (full round-trip: mic → backend → Deepgram → backend)
-        if (!perf.firstInterimTs) {
-          perf.firstInterimTs = now;
-          const audioToInterimMs = perf.firstAudioSentTs
-            ? now - perf.firstAudioSentTs
-            : null;
-          console.log(
-            `[STT] ⚡ First interim arrived` +
-              (audioToInterimMs !== null
-                ? `  (${audioToInterimMs}ms from first audio chunk)`
-                : ""),
-          );
-        }
         if (process.env.STT_DEBUG === "true") {
           console.log(`[STT] interim: "${transcript}"`);
         }
       } else {
-        // ── Final ────────────────────────────────────────────────────────────
-        perf.utteranceCount++;
-        const words = transcript.trim().split(/\s+/).filter(Boolean).length;
-        perf.wordCount += words;
-
-        // Calculate true processing/network latency:
-        // We know exactly when the audio segment ended relative to the start of streaming
-        // (response.start + response.duration) * 1000.
-        // True Latency = Now - (First Audio Sent Time + Audio Segment End Time).
-        if (
-          perf.firstAudioSentTs &&
-          response.start !== undefined &&
-          response.duration !== undefined
-        ) {
-          const segmentEndStreamTimeMs = Math.round(
-            (response.start + response.duration) * 1000,
-          );
-          const segmentEndWallTimeMs =
-            perf.firstAudioSentTs + segmentEndStreamTimeMs;
-          latencyMs = now - segmentEndWallTimeMs;
-          perf.utteranceLatencies.push(latencyMs);
-        } else if (perf.utteranceStartTs) {
-          // Fallback if timestamps are missing
-          latencyMs = now - perf.utteranceStartTs;
-          perf.utteranceLatencies.push(latencyMs);
-        }
-        perf.utteranceStartTs = null; // reset for next utterance
-
-        console.log(
-          `[STT] ✅ FINAL #${perf.utteranceCount}` +
-            (latencyMs !== null ? `  ${latencyMs}ms (net/proc)` : "") +
-            `  (${words}w)  "${transcript}"`,
-        );
+        console.log(`[STT] ✅ FINAL: "${transcript}"`);
       }
 
-      onTranscript(transcript, isFinal, latencyMs);
+      onTranscript(transcript, isFinal);
     } catch (e) {
       console.error("[STT] ⚠️ Error parsing Deepgram message:", e.message);
     }
@@ -177,59 +95,7 @@ function createDeepgramLiveSession(onTranscript, onError) {
   });
 
   live.on("close", (code, reason) => {
-    const sessionDurationMs = Date.now() - perf.sessionStart;
-    const lats = perf.utteranceLatencies;
-
-    // ── Performance summary ──────────────────────────────────────────────────
-    console.log("\n┌─────────────────────────────────────────────────┐");
-    console.log("│           STT SESSION PERFORMANCE REPORT        │");
-    console.log("├─────────────────────────────────────────────────┤");
-    console.log(
-      `│  Session duration   : ${(sessionDurationMs / 1000).toFixed(2)}s`.padEnd(
-        50,
-      ) + "│",
-    );
-    console.log(
-      `│  WS open latency    : ${perf.wsOpenTs ? perf.wsOpenTs - perf.sessionStart + "ms" : "—"}`.padEnd(
-        50,
-      ) + "│",
-    );
-
-    if (perf.firstAudioSentTs && perf.firstInterimTs) {
-      const audioToFirst = perf.firstInterimTs - perf.firstAudioSentTs;
-      console.log(`│  Audio→first interim: ${audioToFirst}ms`.padEnd(50) + "│");
-    }
-
-    console.log(
-      `│  Utterances         : ${perf.utteranceCount}`.padEnd(50) + "│",
-    );
-    console.log(`│  Total words        : ${perf.wordCount}`.padEnd(50) + "│");
-    console.log("├─────────────────────────────────────────────────┤");
-
-    if (lats.length > 0) {
-      const avg = Math.round(lats.reduce((a, b) => a + b, 0) / lats.length);
-      const min = Math.min(...lats);
-      const max = Math.max(...lats);
-
-      lats.forEach((ms, i) => {
-        const tag = ms < 400 ? "🟢 fast" : ms < 800 ? "🟡 ok  " : "🔴 slow";
-        console.log(
-          `│  Utterance ${String(i + 1).padStart(2)}  ${tag}  ${String(ms).padStart(5)}ms`.padEnd(
-            50,
-          ) + "│",
-        );
-      });
-
-      console.log("├─────────────────────────────────────────────────┤");
-      console.log(`│  Avg latency        : ${avg}ms`.padEnd(50) + "│");
-      console.log(`│  Best latency       : ${min}ms`.padEnd(50) + "│");
-      console.log(`│  Worst latency      : ${max}ms`.padEnd(50) + "│");
-    } else {
-      console.log("│  No utterances recorded.                         │");
-    }
-
-    console.log(`│  Close code         : ${code}`.padEnd(50) + "│");
-    console.log("└─────────────────────────────────────────────────┘\n");
+    console.log(`[STT] 🔌 Deepgram WS closed (code: ${code})`);
 
     // Propagate unexpected closes as errors so the caller can notify the user
     if (code !== 1000 && code !== 1001) {
@@ -247,10 +113,6 @@ function createDeepgramLiveSession(onTranscript, onError) {
      */
     sendAudio(chunk) {
       if (live.readyState === WebSocket.OPEN) {
-        // Stamp the first audio chunk leaving this backend — used for round-trip latency
-        if (!perf.firstAudioSentTs) {
-          perf._mark("firstAudioSentTs");
-        }
         live.send(chunk);
       }
     },

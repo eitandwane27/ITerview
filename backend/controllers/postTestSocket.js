@@ -105,6 +105,7 @@ function handlePostTestSocket(ws, request) {
   let fullTranscript = "";
   let preGeneratedNextQuestionAudio = null;
   let preGeneratedNextQuestionIndex = -1;
+  let sessionDifficulty = "easy";
   const sessionScores = [];
   const evaluationPromises = [];
 
@@ -190,6 +191,16 @@ function handlePostTestSocket(ws, request) {
   // ── Session startup ──────────────────────────────────────────────────────
   (async () => {
     send({ type: "status", message: "Graduation Challenge started. Preparing your first question…" });
+
+    // Fetch user difficulty
+    try {
+      const user = await User.findOne({ firebaseUid });
+      if (user && user.difficulty) {
+        sessionDifficulty = user.difficulty;
+      }
+    } catch (err) {
+      console.error("[WS/Post] Failed to fetch user difficulty:", err.message);
+    }
 
     // Initialize / reset post-test session document in MongoDB
     try {
@@ -278,7 +289,7 @@ function handlePostTestSocket(ws, request) {
           try {
             console.log(`[AI/Post] 🔄 Background 3C evaluation started for Q${questionNumber}...`);
             const tEval0 = Date.now();
-            const scores = await evaluate3CScores(answeredQuestion, confirmedText);
+            const scores = await evaluate3CScores(answeredQuestion, confirmedText, sessionDifficulty);
             const evalDuration = Date.now() - tEval0;
             metrics.evaluationLatencies.push(evalDuration);
 

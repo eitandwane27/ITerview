@@ -32,6 +32,7 @@ const { createDeepgramLiveSession } = require("../services/sttService");
 const { synthesizeSpeech } = require("../services/ttsService");
 const { evaluate3CScores } = require("../services/aiEvaluator");
 const PreTestSession = require("../models/PreTestSession");
+const User = require("../models/User");
 
 /**
  * Splits a text block into separate sentences.
@@ -124,6 +125,7 @@ function handleInterviewSocket(ws, request) {
   let fullTranscript = ""; // accumulates the current answer
   let preGeneratedNextQuestionAudio = null; // pre-synthesized audio for the next question
   let preGeneratedNextQuestionIndex = -1;  // tracking the question index of pre-generated audio
+  let sessionDifficulty = "easy";
   const sessionScores = [];        // accumulates { questionIndex, clarity_score, … } per answer
   const evaluationPromises = [];   // tracks all background AI evaluation promises
 
@@ -223,6 +225,16 @@ function handleInterviewSocket(ws, request) {
   // ── Session startup ───────────────────────────────────────────────────────
   (async () => {
     send({ type: "status", message: "Session started. Preparing your first question…" });
+
+    // Fetch user difficulty
+    try {
+      const user = await User.findOne({ firebaseUid });
+      if (user && user.difficulty) {
+        sessionDifficulty = user.difficulty;
+      }
+    } catch (err) {
+      console.error("[WS] Failed to fetch user difficulty:", err.message);
+    }
 
     // Create or reset the session document in MongoDB (non-blocking — failure is non-fatal)
     try {
@@ -330,7 +342,7 @@ function handleInterviewSocket(ws, request) {
           try {
             console.log(`[AI] 🔄 Background 3C evaluation started for Q${questionNumber}...`);
             const tEval0 = Date.now();
-            const scores = await evaluate3CScores(answeredQuestion, confirmedText);
+            const scores = await evaluate3CScores(answeredQuestion, confirmedText, sessionDifficulty);
             const evalDuration = Date.now() - tEval0;
             metrics.evaluationLatencies.push(evalDuration);
 

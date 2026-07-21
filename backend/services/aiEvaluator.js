@@ -9,6 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { OpenAI } = require("openai");
+const { getEvaluatorRubric } = require("../config/evaluatorRubrics");
 
 const deepseek = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -18,7 +19,7 @@ const deepseek = new OpenAI({
 // Valid weakness tags — kept as a constant so validation is centralised
 const VALID_TAGS = ["focus_clarity", "focus_correctness", "focus_completeness"];
 
-const SCORING_SYSTEM_PROMPT = `You are a strict, objective IT interview scoring engine.
+const BASE_SCORING_SYSTEM_PROMPT = `You are an objective IT interview scoring engine.
 Your sole task is to evaluate a student's spoken answer against the SPECIFIC interview question.
 You must respond with ONLY a valid JSON object — no markdown, no explanation, no extra text.
 
@@ -68,16 +69,17 @@ Return exactly this shape:
 }`;
 
 /**
- * evaluate3CScores(question, transcript)
+ * evaluate3CScores(question, transcript, difficulty)
  *
- * Calls the Groq LLM with temperature 0.0 and JSON mode to produce
- * deterministic 3C dimension scores for one Pre-Test answer.
+ * Calls DeepSeek LLM with temperature 0.0 and JSON mode to produce
+ * deterministic 3C dimension scores for an answer based on difficulty.
  *
  * @param {string} question   - The interview question asked.
  * @param {string} transcript - The student's STT-transcribed answer.
+ * @param {string} difficulty - Session difficulty level ("easy" | "medium" | "hard").
  * @returns {Promise<{ clarity_score: number, correctness_score: number, completeness_score: number, primary_weakness: string }>}
  */
-async function evaluate3CScores(question, transcript) {
+async function evaluate3CScores(question, transcript, difficulty = "easy") {
   // Guard: empty transcript → lowest scores, flag completeness
   if (!transcript || transcript.trim().length === 0) {
     return {
@@ -88,10 +90,13 @@ async function evaluate3CScores(question, transcript) {
     };
   }
 
+  const difficultyRubric = getEvaluatorRubric(difficulty);
+  const systemPrompt = `${BASE_SCORING_SYSTEM_PROMPT}\n\n${difficultyRubric}`;
+
   const response = await deepseek.chat.completions.create({
     model: "deepseek-chat",
     messages: [
-      { role: "system", content: SCORING_SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       {
         role: "user",
         content: `Score ONLY how well the Student's Answer responds to the specific Interview Question below.

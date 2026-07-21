@@ -19,6 +19,7 @@
 
 const { OpenAI } = require("openai");
 const { getRoleConfig } = require("../config/roleConfig");
+const { getEvaluatorRubric } = require("../config/evaluatorRubrics");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
 const { EASY_AVOID_LIST: GLOBAL_EASY_AVOID_LIST, MEDIUM_AVOID_LIST, HARD_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
@@ -375,9 +376,10 @@ const SET2_SCORING_RESPONSE_FORMAT = {
  *
  * @param {string} question   - The technical question that was asked
  * @param {string} transcript - The user's spoken answer
+ * @param {string} difficulty - Session difficulty level ("easy" | "medium" | "hard")
  * @returns {Promise<{ problem_solving_score, accuracy_score, depth_score, tip, interviewer_reply }>}
  */
-async function evaluateSet2Answer(question, transcript) {
+async function evaluateSet2Answer(question, transcript, difficulty = "easy") {
   if (!transcript || transcript.trim().length === 0) {
     return {
       problem_solving_score: 1,
@@ -388,10 +390,13 @@ async function evaluateSet2Answer(question, transcript) {
     };
   }
 
+  const difficultyRubric = getEvaluatorRubric(difficulty);
+  const systemPrompt = `${SET2_SCORING_SYSTEM_PROMPT}\n\n${difficultyRubric}`;
+
   const response = await deepseek.chat.completions.create({
     model: EVALUATOR_MODEL,
     messages: [
-      { role: "system", content: SET2_SCORING_SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       {
         role: "user",
         content: `Technical Interview Question: "${question}"\n\nStudent's Answer: "${transcript}"`,

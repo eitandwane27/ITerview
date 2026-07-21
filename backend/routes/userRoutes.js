@@ -143,25 +143,25 @@ router.get("/results-summary", async (req, res) => {
       return res.status(400).json({ message: "Firebase UID is required" });
     }
 
-    // Fetch all database documents in parallel
+    // Fetch all database documents in parallel with answers array
     const [preSession, postSession, user, set1, set2, set3] = await Promise.all([
       PreTestSession.findOne({ firebaseUid: uid }).select(
-        "baseline_score_percentage final_weakness_tag"
+        "baseline_score_percentage final_weakness_tag answers"
       ),
       PostTestSession.findOne({ firebaseUid: uid }).select(
-        "final_score_percentage final_weakness_tag"
+        "final_score_percentage final_weakness_tag answers"
       ),
       User.findOne({ firebaseUid: uid }).select(
         "confidenceScore postConfidenceScore role difficulty unlockedDifficulty"
       ),
       Set1Session.findOne({ firebaseUid: uid }).select(
-        "avg_clarity avg_correctness avg_completeness isCompleted"
+        "avg_clarity avg_correctness avg_completeness isCompleted answers"
       ),
       Set2Session.findOne({ firebaseUid: uid }).select(
-        "avg_problem_solving avg_accuracy avg_depth isCompleted"
+        "avg_problem_solving avg_accuracy avg_depth isCompleted answers"
       ),
       Set3Session.findOne({ firebaseUid: uid }).select(
-        "avg_situation avg_action avg_result isCompleted"
+        "avg_situation avg_action avg_result isCompleted answers"
       ),
     ]);
 
@@ -184,15 +184,58 @@ router.get("/results-summary", async (req, res) => {
       ? parseFloat(((set3.avg_situation + set3.avg_action + set3.avg_result) / 3).toFixed(1))
       : null;
 
+    // Calculate overall practice sets average (out of 10 and 100%)
+    const completedPracticeScores = [set1Score, set2Score, set3Score].filter((s) => s !== null);
+    const practiceSetsAvgScore = completedPracticeScores.length > 0
+      ? parseFloat((completedPracticeScores.reduce((a, b) => a + b, 0) / completedPracticeScores.length).toFixed(1))
+      : null;
+    const practiceSetsAvgPercentage = practiceSetsAvgScore !== null
+      ? parseFloat((practiceSetsAvgScore * 10).toFixed(1))
+      : null;
+
+    // Calculate grand average across the entire journey (Pre-Test, Practice Sets Avg, Post-Test)
+    const journeyComponents = [];
+    if (preScore !== null) journeyComponents.push(preScore);
+    if (practiceSetsAvgPercentage !== null) journeyComponents.push(practiceSetsAvgPercentage);
+    if (postScore !== null) journeyComponents.push(postScore);
+    const overallJourneyAveragePercentage = journeyComponents.length > 0
+      ? parseFloat((journeyComponents.reduce((a, b) => a + b, 0) / journeyComponents.length).toFixed(1))
+      : null;
+
+    // Helper for formatting question breakdowns
+    const mapPrePostAnswers = (answers = []) =>
+      answers.map((a) => {
+        const avg = a.clarity_score && a.correctness_score && a.completeness_score
+          ? parseFloat(((a.clarity_score + a.correctness_score + a.completeness_score) / 3).toFixed(1))
+          : null;
+        return {
+          questionIndex: a.questionIndex,
+          questionNumber: a.questionIndex + 1,
+          question: a.question,
+          transcript: a.transcript,
+          metrics: {
+            clarity: a.clarity_score ?? null,
+            correctness: a.correctness_score ?? null,
+            completeness: a.completeness_score ?? null,
+          },
+          questionAverage: avg,
+          questionPercentage: avg !== null ? parseFloat((avg * 10).toFixed(1)) : null,
+        };
+      });
+
     // Determine target difficulty and unlock threshold logic
     const currentDiff = user?.difficulty ?? "easy";
     let nextDifficulty = "medium";
     if (currentDiff === "medium") nextDifficulty = "hard";
     if (currentDiff === "hard") nextDifficulty = "hard";
 
-    // If score >= 70%, update unlockedDifficulty in User model if it's an upgrade
+    // Unlocking requires BOTH Practice Sets Combined Average >= 70% AND Post-Test Graduation Score >= 70%
     const unlockThreshold = 70;
-    const isUnlocked = postScore !== null && postScore >= unlockThreshold;
+    const isUnlocked =
+      postScore !== null &&
+      postScore >= unlockThreshold &&
+      practiceSetsAvgPercentage !== null &&
+      practiceSetsAvgPercentage >= unlockThreshold;
 
     if (isUnlocked && user) {
       let upgradedDiff = user.unlockedDifficulty;
@@ -216,6 +259,17 @@ router.get("/results-summary", async (req, res) => {
       preTestScore:        preScore,
       improvementDelta:    preScore !== null && postScore !== null ? postScore - preScore : null,
 
+      // Overall Session Averages
+      sessionAverages: {
+        preTest: { scorePercentage: preScore, label: "Pre-Test Diagnostic" },
+        set1: { scoreOutOf10: set1Score, scorePercentage: set1Score !== null ? parseFloat((set1Score * 10).toFixed(1)) : null, label: "Set 1 · Personalized" },
+        set2: { scoreOutOf10: set2Score, scorePercentage: set2Score !== null ? parseFloat((set2Score * 10).toFixed(1)) : null, label: "Set 2 · Technical" },
+        set3: { scoreOutOf10: set3Score, scorePercentage: set3Score !== null ? parseFloat((set3Score * 10).toFixed(1)) : null, label: "Set 3 · Behavioral STAR" },
+        postTest: { scorePercentage: postScore, label: "Post-Test Graduation" },
+        practiceSetsAverage: { scoreOutOf10: practiceSetsAvgScore, scorePercentage: practiceSetsAvgPercentage },
+        overallJourneyAveragePercentage,
+      },
+
       // Individual set scores details
       setScores: {
         set1: { label: "Set 1 · Personalized",   score: set1Score, outOf: 10, emoji: "🤖", completed: !!(set1?.isCompleted) },
@@ -228,6 +282,92 @@ router.get("/results-summary", async (req, res) => {
         situation: set3?.avg_situation ?? null,
         action:    set3?.avg_action    ?? null,
         result:    set3?.avg_result    ?? null,
+      },
+
+      // Detailed Question-by-Question Breakdowns for Every Session
+      questionBreakdowns: {
+        preTest: {
+          sessionLabel: "Pre-Test Diagnostic Interview",
+          sessionAveragePercentage: preScore,
+          questions: mapPrePostAnswers(preSession?.answers),
+        },
+        set1: {
+          sessionLabel: "Practice Set 1 · Personalized (3C)",
+          sessionAverageOutOf10: set1Score,
+          sessionAveragePercentage: set1Score !== null ? parseFloat((set1Score * 10).toFixed(1)) : null,
+          metricsAverage: {
+            clarity: set1?.avg_clarity ?? null,
+            correctness: set1?.avg_correctness ?? null,
+            completeness: set1?.avg_completeness ?? null,
+          },
+          questions: (set1?.answers || []).map((a) => {
+            const avg = a.clarity_score && a.correctness_score && a.completeness_score
+              ? parseFloat(((a.clarity_score + a.correctness_score + a.completeness_score) / 3).toFixed(1))
+              : null;
+            return {
+              questionNumber: a.questionIndex + 1,
+              question: a.question,
+              transcript: a.transcript,
+              metrics: { clarity: a.clarity_score, correctness: a.correctness_score, completeness: a.completeness_score },
+              questionAverage: avg,
+              questionPercentage: avg !== null ? parseFloat((avg * 10).toFixed(1)) : null,
+              tip: a.tip,
+            };
+          }),
+        },
+        set2: {
+          sessionLabel: "Practice Set 2 · Technical Mastery",
+          sessionAverageOutOf10: set2Score,
+          sessionAveragePercentage: set2Score !== null ? parseFloat((set2Score * 10).toFixed(1)) : null,
+          metricsAverage: {
+            problemSolving: set2?.avg_problem_solving ?? null,
+            accuracy: set2?.avg_accuracy ?? null,
+            depth: set2?.avg_depth ?? null,
+          },
+          questions: (set2?.answers || []).map((a) => {
+            const avg = a.problem_solving_score && a.accuracy_score && a.depth_score
+              ? parseFloat(((a.problem_solving_score + a.accuracy_score + a.depth_score) / 3).toFixed(1))
+              : null;
+            return {
+              questionNumber: a.questionIndex + 1,
+              question: a.question,
+              transcript: a.transcript,
+              metrics: { problemSolving: a.problem_solving_score, accuracy: a.accuracy_score, depth: a.depth_score },
+              questionAverage: avg,
+              questionPercentage: avg !== null ? parseFloat((avg * 10).toFixed(1)) : null,
+              tip: a.tip,
+            };
+          }),
+        },
+        set3: {
+          sessionLabel: "Practice Set 3 · Behavioral STAR",
+          sessionAverageOutOf10: set3Score,
+          sessionAveragePercentage: set3Score !== null ? parseFloat((set3Score * 10).toFixed(1)) : null,
+          metricsAverage: {
+            situation: set3?.avg_situation ?? null,
+            action: set3?.avg_action ?? null,
+            result: set3?.avg_result ?? null,
+          },
+          questions: (set3?.answers || []).map((a) => {
+            const avg = a.situation_score && a.action_score && a.result_score
+              ? parseFloat(((a.situation_score + a.action_score + a.result_score) / 3).toFixed(1))
+              : null;
+            return {
+              questionNumber: a.questionIndex + 1,
+              question: a.question,
+              transcript: a.transcript,
+              metrics: { situation: a.situation_score, action: a.action_score, result: a.result_score },
+              questionAverage: avg,
+              questionPercentage: avg !== null ? parseFloat((avg * 10).toFixed(1)) : null,
+              tip: a.tip,
+            };
+          }),
+        },
+        postTest: {
+          sessionLabel: "Post-Test Graduation Challenge",
+          sessionAveragePercentage: postScore,
+          questions: mapPrePostAnswers(postSession?.answers),
+        },
       },
 
       targetDifficulty: currentDiff.charAt(0).toUpperCase() + currentDiff.slice(1),
@@ -286,8 +426,15 @@ router.put("/role", async (req, res) => {
       updateFields.difficulty = difficulty;
     }
 
+    if (req.body.unlockedDifficulty !== undefined) {
+      if (!["easy", "medium", "hard"].includes(req.body.unlockedDifficulty)) {
+        return res.status(400).json({ message: "Invalid unlocked difficulty specified" });
+      }
+      updateFields.unlockedDifficulty = req.body.unlockedDifficulty;
+    }
+
     if (Object.keys(updateFields).length === 0) {
-      return res.status(400).json({ message: "Nothing to update. Provide role or difficulty." });
+      return res.status(400).json({ message: "Nothing to update. Provide role, difficulty, or unlockedDifficulty." });
     }
 
     const user = await User.findOneAndUpdate(
