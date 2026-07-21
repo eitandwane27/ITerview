@@ -1,0 +1,22 @@
+/* frontend/src/components/Set2Interview.css */
+
+.s2-interview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+  color: #111827;
+}
+
+.s2-placeholder-area {
+  margin-top: 2rem;
+  padding: 4rem;
+  border: 2px dashed rgba(124, 111, 205, 0.3);
+  border-radius: var(--card-radius, 16px);
+  background: rgba(124, 111, 205, 0.05);
+  color: #6b7280;
+  text-align: center;
+}

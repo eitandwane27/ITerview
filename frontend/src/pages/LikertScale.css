@@ -1,249 +1,521 @@
-/* src/pages/LikertScale.css */
-/* Design language mirrors Dashboard.css — same tokens, same card/button conventions */
+/* =====================================================
+   LikertScale.css — Soft Productivity SaaS
+   ITerview Design System (DESIGN.md)
+   Mirror pattern: MainSets.css / Dashboard.css
+   ===================================================== */
 
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+/* ── Design Tokens ────────────────────────────────── */
+:root {
+  --color-primary: #7c6fcd;
+  --color-primary-light: #eae8f7;
+  --color-primary-hover: #6b5fbc;
+  --color-primary-muted: #b8b0e8;
+
+  --color-canvas: #f4f4f6;
+  --color-surface-card: #ffffff;
+  --color-surface-inner: #f0eff8;
+  --color-surface-input: #f7f7f9;
+
+  --color-ink: #1a1a2e;
+  --color-ink-secondary: #6b6b80;
+  --color-ink-muted: #9b9bad;
+  --color-ink-on-primary: #ffffff;
+
+  --color-border-soft: #e8e8ee;
+  --color-border-card: #efefef;
+
+  --color-badge-green: #22c55e;
+  --color-badge-green-bg: #dcfce7;
+  --color-badge-purple: #7c6fcd;
+  --color-badge-purple-bg: #eae8f7;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  --card-radius: 16px;
+  --lg-radius: 12px;
+  --md-radius: 8px;
+  --sm-radius: 6px;
+  --pill-radius: 9999px;
+
+  --topnav-height: 52px;
+}
+
+/* ── Reset ─────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ════════════════════════════════════════════════════
+   ROOT SHELL
+   ════════════════════════════════════════════════════ */
 .likert-container {
   min-height: 100vh;
-  background-color: #f9fafb;
-  font-family: system-ui, -apple-system, sans-serif;
-  color: #111827;
+  background: var(--color-canvas);
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--color-ink);
   display: flex;
   flex-direction: column;
 }
 
-/* ── Top Bar ─────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   TOP BAR  (mirrors MainSets .pt-topbar)
+   ════════════════════════════════════════════════════ */
 .likert-topbar {
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 1rem 2rem;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--topnav-height);
+  background: var(--color-surface-card);
+  border-bottom: 1px solid var(--color-border-card);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .likert-topbar-content {
-  max-width: 720px;
+  width: 100%;
+  max-width: 680px;
   margin: 0 auto;
+  padding: 0 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+/* Brand wordmark — primary color, matches pt-topbar-brand */
 .likert-topbar-content h1 {
-  font-size: 1.25rem;
+  font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  letter-spacing: -0.3px;
+  color: var(--color-primary);
   margin: 0;
 }
 
+/* Phase badge — pill-shaped, purple tint, mirrors .pt-phase-badge */
 .likert-topbar-content span {
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-badge-purple-bg);
+  color: var(--color-badge-purple);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 3px 10px;
+  border-radius: var(--pill-radius);
 }
 
-/* ── Progress Bar ────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   PROGRESS WRAP
+   ════════════════════════════════════════════════════ */
 .likert-progress-wrap {
-  max-width: 720px;
-  margin: 2rem auto 0;
-  padding: 0 2rem;
+  max-width: 680px;
+  margin: 24px auto 0;
+  padding: 0 20px;
   width: 100%;
-  box-sizing: border-box;
 }
 
 .likert-progress-label {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 8px;
 }
 
+/* Sidebar-section-label style: 11px / 700 / uppercase / ink-secondary */
 .likert-progress-label span {
-  font-size: 0.8rem;
-  color: #6b7280;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--color-ink-secondary);
 }
 
+/* Progress track — mirrors .pt-progress-bar-track */
 .likert-progress-bar {
   width: 100%;
-  height: 8px;
-  background-color: #e5e7eb;
-  border-radius: 9999px;
+  height: 6px;
+  background: var(--color-border-soft);
+  border-radius: var(--pill-radius);
   overflow: hidden;
 }
 
+/* Progress fill — lavender primary */
 .likert-progress-fill {
   height: 100%;
-  background-color: #111827;
-  border-radius: 9999px;
-  transition: width 0.4s ease;
+  background: var(--color-primary);
+  border-radius: var(--pill-radius);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Main Content ────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   MAIN CONTENT
+   ════════════════════════════════════════════════════ */
 .likert-main {
-  max-width: 720px;
-  margin: 2rem auto;
-  padding: 0 2rem 4rem;
+  max-width: 680px;
+  margin: 20px auto;
+  padding: 0 20px 48px;
   width: 100%;
-  box-sizing: border-box;
   flex: 1;
 }
 
-/* ── Question Card ───────────────────────────────────────── */
-/* Mirrors .dashboard-card */
+/* ════════════════════════════════════════════════════
+   QUESTION CARD — outer white card (mirrors .ms-card)
+   ════════════════════════════════════════════════════ */
 .likert-question-card {
-  background: white;
-  padding: 2.5rem 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  border: 1px solid #e5e7eb;
-  margin-bottom: 2rem;
-  animation: fadeSlideIn 0.35s ease;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  margin-bottom: 16px;
+  animation: lk-fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes fadeSlideIn {
+@keyframes lk-fade-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1);
   }
 }
 
+/* Question number — sidebar-section-label style */
 .likert-question-number {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.75rem;
+  color: var(--color-ink-muted);
+  margin-bottom: 10px;
 }
 
+/* Question text — card-title style: 18px / 600 */
 .likert-question-text {
-  font-size: 1.25rem;
+  font-size: 17px;
   font-weight: 600;
-  color: #111827;
-  line-height: 1.5;
-  margin: 0 0 2rem 0;
+  letter-spacing: -0.2px;
+  color: var(--color-ink);
+  line-height: 1.55;
+  margin-bottom: 20px;
 }
 
-/* ── Answer Option Cards ─────────────────────────────────── */
-/* Mirrors .difficulty-option in Dashboard.css */
+/* ════════════════════════════════════════════════════
+   INNER WRAPPER — transparent; options are self-elevated
+   ════════════════════════════════════════════════════ */
+.likert-options-inner {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+
+/* ── Answer Option Rows ─────────────────────────── */
 .likert-options {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 8px;
 }
 
 .likert-option {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--md-radius);
   cursor: pointer;
-  transition: all 0.2s;
-  background: white;
+  background: var(--color-surface-card);
   text-align: left;
   width: 100%;
   font-family: inherit;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    box-shadow 0.18s,
+    transform 0.15s;
 }
 
 .likert-option:hover {
-  border-color: #9ca3af;
-  background-color: #f9fafb;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.06);
+  border-color: var(--color-primary-muted);
+  box-shadow: 0 4px 12px rgba(124, 111, 205, 0.15);
+  transform: translateY(-2px);
 }
 
+.likert-option:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Selected state: lavender bg + primary border + stronger ring */
 .likert-option.selected {
-  border-color: #111827;
-  background-color: #f3f4f6;
-  box-shadow: 0 0 0 2px #111827;
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.18), 0 4px 12px rgba(124, 111, 205, 0.12);
+  transform: translateY(-1px);
 }
 
 .likert-option-emoji {
-  font-size: 1.75rem;
+  font-size: 1.6rem;
   line-height: 1;
   flex-shrink: 0;
+  width: 36px;
+  text-align: center;
 }
 
 .likert-option-label {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 2px;
 }
 
+/* Option title — body 14px / 600 */
 .likert-option-title {
-  font-size: 0.95rem;
+  font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-ink);
+  transition: color 0.15s;
 }
 
+.likert-option.selected .likert-option-title {
+  color: var(--color-primary);
+}
+
+/* Option sub — body-secondary 13px / 400 */
 .likert-option-sub {
-  font-size: 0.8rem;
-  color: #6b7280;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-ink-secondary);
 }
 
-/* ── Navigation ──────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   NAVIGATION FOOTER
+   ════════════════════════════════════════════════════ */
 .likert-nav {
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
 }
 
-/* Mirrors .primary-button from Dashboard.css */
+/* Primary CTA — mirrors .ms-unmute-btn / db-btn-primary */
 .likert-btn-next {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 2rem;
-  background-color: #111827;
-  color: white;
+  gap: 8px;
+  padding: 14px 28px;
+  background: var(--color-primary);
+  color: var(--color-ink-on-primary);
   border: none;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  border-radius: var(--lg-radius);
   font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.1s;
+  letter-spacing: 0;
 }
 
 .likert-btn-next:hover:not(:disabled) {
-  background-color: #374151;
+  background: var(--color-primary-hover);
+  box-shadow: 0 4px 14px rgba(124, 111, 205, 0.35);
+}
+
+.likert-btn-next:active:not(:disabled) {
+  transform: scale(0.99);
 }
 
 .likert-btn-next:disabled {
-  background-color: #9ca3af;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* ── Done / Summary Card ─────────────────────────────────── */
+/* ════════════════════════════════════════════════════
+   DONE / COMPLETION CARD
+   Same outer-card + inner-card structure
+   ════════════════════════════════════════════════════ */
 .likert-done-card {
-  background: white;
-  padding: 3rem 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  border: 1px solid #e5e7eb;
-  text-align: center;
-  animation: fadeSlideIn 0.35s ease;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  animation: lk-fade-in 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.likert-done-emoji {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+/* Done inner — gradient wash instead of flat lavender */
+.likert-done-inner {
+  background: linear-gradient(145deg, #eae8f7 0%, #f3f1fb 60%, #ede9ff 100%);
+  border-radius: var(--lg-radius);
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  border: 1px solid rgba(124, 111, 205, 0.12);
+}
+
+/* Icon wrap — positions pulse ring behind the circle */
+.likert-done-icon-wrap {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Expanding lavender pulse ring */
+.likert-done-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(124, 111, 205, 0.18);
+  animation: lk-pulse 2.2s ease-out infinite;
+}
+
+@keyframes lk-pulse {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  65%  { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Solid lavender circle */
+.likert-done-circle {
+  position: relative;
+  z-index: 1;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(124, 111, 205, 0.45);
+}
+
+/* SVG checkmark */
+.likert-done-check {
+  width: 34px;
+  height: 34px;
+}
+
+/* Stroke-draw animation: hidden then drawn in */
+.likert-done-check-path {
+  stroke: #ffffff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: lk-check-draw 0.45s cubic-bezier(0.4, 0, 0.2, 1) 0.25s forwards;
+}
+
+@keyframes lk-check-draw {
+  to { stroke-dashoffset: 0; }
 }
 
 .likert-done-card h2 {
-  font-size: 1.5rem;
+  font-size: 20px;
   font-weight: 700;
-  color: #111827;
-  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.3px;
+  color: var(--color-ink);
 }
 
 .likert-done-card p {
-  font-size: 1rem;
-  color: #6b7280;
-  margin: 0 0 2rem 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-ink-secondary);
+  max-width: 340px;
+}
+
+/* Continue button — full-width inside done card */
+.likert-done-card .likert-btn-next {
+  width: 100%;
+  max-width: 320px;
+}
+
+/* ── Score Chip (post-test only) ────────────────── */
+.likert-score-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--lg-radius);
+  padding: 16px 32px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  width: 100%;
+  max-width: 220px;
+  animation: lk-fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+
+.likert-score-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.likert-score-number {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.likert-score-denom {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  line-height: 1;
+  padding-bottom: 3px;
+}
+
+.likert-score-tier {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--color-ink-secondary);
+}
+
+/* ════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .likert-topbar-content span {
+    display: none;
+  }
+
+  .likert-main,
+  .likert-progress-wrap {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .likert-question-text {
+    font-size: 15px;
+  }
+
+  .likert-btn-next {
+    width: 100%;
+  }
+
+  .likert-nav {
+    justify-content: stretch;
+  }
 }

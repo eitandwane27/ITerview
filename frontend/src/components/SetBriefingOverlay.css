@@ -1,0 +1,413 @@
+/* src/components/SetBriefingOverlay.css */
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* Set 1 Mission Briefing — Overlay variant                                    */
+/* Aesthetic: Soft Productivity SaaS — ITerview design system                  */
+/* Tone: calm confidence · lavender accent · card-in-card depth                */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+/* ── Design tokens — mirrors DESIGN.md ───────────────────────────────────── */
+.briefing-overlay-wrapper {
+  /* Primary accent */
+  --bp-primary: #7c6fcd;
+  --bp-primary-light: #eae8f7;
+  --bp-primary-hover: #6b5fbc;
+  --bp-primary-muted: #b8b0e8;
+
+  /* Surfaces */
+  --bp-canvas: #f4f4f6;
+  --bp-surface: #ffffff;
+  --bp-surface-inner: #f0eff8;
+  --bp-surface-input: #f7f7f9;
+
+  /* Text */
+  --bp-ink: #1a1a2e;
+  --bp-ink-secondary: #6b6b80;
+  --bp-ink-muted: #9b9bad;
+  --bp-ink-on-primary: #ffffff;
+
+  /* Borders */
+  --bp-border-soft: #e8e8ee;
+  --bp-border-card: #efefef;
+
+  /* Shadows */
+  --bp-shadow-card: rgba(0, 0, 0, 0.06);
+
+  /* Radii */
+  --bp-radius-card: 16px;
+  --bp-radius-lg: 12px;
+  --bp-radius-pill: 9999px;
+
+  /* Font */
+  --bp-font: "Inter", system-ui, sans-serif;
+}
+
+/* ── Overlay scaffold ────────────────────────────────────────────────────── */
+.briefing-overlay-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+
+  /* Frosted pure white backdrop with high blur */
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+
+  font-family: var(--bp-font);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem;
+  box-sizing: border-box;
+}
+
+/* ── Outer card — white, lifts off the canvas ────────────────────────────── */
+.briefing-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  background: var(--bp-surface);
+  border: 1px solid var(--bp-border-card);
+  border-radius: var(--bp-radius-card);
+  box-shadow:
+    0 2px 8px var(--bp-shadow-card),
+    0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Icon-wrap row — light canvas tint header ────────────────────────────── */
+.briefing-icon-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--bp-border-card);
+  background: var(--bp-canvas);
+}
+
+/* Robot icon badge — lavender pill consistent with avatar-chip system */
+.briefing-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--bp-radius-pill);
+  background: var(--bp-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Pulsing outer ring for the AI Bot icon */
+.briefing-icon::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: var(--bp-radius-pill);
+  border: 2px solid var(--bp-primary-muted);
+  opacity: 0;
+  animation: icon-pulse 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+@keyframes icon-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.briefing-icon-svg {
+  color: var(--bp-primary);
+  position: relative;
+  z-index: 2;
+}
+
+/* Eyebrow — sidebar-section-label style: 11px / uppercase / tracked */
+.briefing-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--bp-ink-secondary);
+}
+
+/* Blinking live dot */
+.briefing-eyebrow::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bp-primary);
+  margin-left: 0.55rem;
+  vertical-align: middle;
+  animation: bp-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes bp-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* ── Inner lavender card — card-in-card signature ────────────────────────── */
+.briefing-body {
+  background: var(--bp-surface-inner); /* lavender inner card */
+  border-radius: var(--bp-radius-lg);
+  margin: 1rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Coach message (typewriter) ──────────────────────────────────────────── */
+.briefing-message {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.65;
+  color: var(--bp-ink);
+  cursor: pointer;
+  user-select: none;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.briefing-message:hover {
+  color: var(--bp-ink);
+  opacity: 0.88;
+}
+
+.briefing-message:focus-visible {
+  outline: 2px solid var(--bp-primary);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Blinking cursor — lavender to match accent */
+.cursor-blink {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--bp-primary);
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  border-radius: 1px;
+  animation: cursor-pulse 1s step-end infinite;
+}
+
+@keyframes cursor-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Loading shimmer — lavender-tinted */
+.briefing-message-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.briefing-shimmer-line {
+  height: 1rem;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--bp-border-soft) 0%,
+    var(--bp-primary-light) 50%,
+    var(--bp-border-soft) 100%
+  );
+  background-size: 300% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* ── Focus area chips ────────────────────────────────────────────────────── */
+/* chips-label: sidebar-section-label style */
+.briefing-chips-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--bp-ink-secondary);
+  margin-bottom: 5px;
+}
+
+.briefing-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Filter-chip-active style: lavender bg, primary text, primary-muted border */
+.briefing-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 5px 14px;
+  border-radius: var(--bp-radius-pill);
+  background: var(--bp-primary-light);
+  border: 1px solid var(--bp-primary-muted);
+  font-family: var(--bp-font);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bp-primary);
+  letter-spacing: 0;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.briefing-chip:hover {
+  background: var(--bp-primary-muted);
+  border-color: var(--bp-primary);
+}
+
+.briefing-chip-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Skeleton chips */
+.briefing-chip-skeleton {
+  width: 120px;
+  height: 30px;
+  border-radius: var(--bp-radius-pill);
+  background: linear-gradient(
+    90deg,
+    var(--bp-border-soft) 0%,
+    var(--bp-primary-light) 50%,
+    var(--bp-border-soft) 100%
+  );
+  background-size: 300% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border: 1px solid var(--bp-border-soft);
+}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+.briefing-divider {
+  height: 1px;
+  background: var(--bp-border-soft);
+  border: none;
+  margin: 0;
+}
+
+/* ── Sub-message ─────────────────────────────────────────────────────────── */
+.briefing-sub {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--bp-ink-secondary);
+  margin: 0;
+}
+
+/* ── CTA button — full-width lavender, no gradient, no shadow ────────────── */
+.briefing-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: var(--bp-radius-lg);
+  border: none;
+  cursor: pointer;
+  font-family: var(--bp-font);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--bp-ink-on-primary);
+  background: rgba(124, 111, 205, 0.85); /* primary at 0.85 — per DESIGN.md */
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle shimmer sweep on hover */
+.briefing-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.45s ease;
+}
+
+.briefing-cta:hover::after {
+  transform: translateX(100%);
+}
+
+.briefing-cta:hover {
+  background: var(--bp-primary-hover);
+}
+
+.briefing-cta:active {
+  transform: scale(0.975);
+}
+
+.briefing-cta-arrow {
+  font-size: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.briefing-cta:hover .briefing-cta-arrow {
+  transform: translateX(3px);
+}
+
+
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .briefing-overlay-wrapper {
+    padding: 1rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+    overflow-y: auto;
+  }
+
+  .briefing-body {
+    margin: 0.75rem;
+    padding: 1.25rem;
+  }
+
+  .briefing-message {
+    font-size: 13px;
+  }
+}

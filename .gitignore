@@ -20,6 +20,7 @@ dist-ssr
 # Project specific
 .ai-skills/
 guide/
+scripts/
 
 # Editor directories and files
 .vscode/*

@@ -1,0 +1,328 @@
+/* frontend/src/components/SttTestBench.css */
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* DEV-only styles — intentionally simple so nothing gets in the way of       */
+/* observing transcription speed. Dark background, high contrast text.        */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+.stb-root {
+  min-height: 100vh;
+  background: #0f1117;
+  color: #e2e8f0;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.stb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: #161b27;
+  border-bottom: 1px solid #1e2535;
+}
+
+.stb-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.stb-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: #7c3aed;
+  color: #fff;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.stb-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* WS status dot */
+.stb-ws-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.stb-ws-connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+.stb-ws-connecting   { background: #f59e0b; animation: stb-pulse 1s infinite; }
+.stb-ws-disconnected { background: #64748b; }
+.stb-ws-error        { background: #ef4444; }
+
+@keyframes stb-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.stb-ws-label {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  min-width: 80px;
+}
+
+/* ── Body layout ─────────────────────────────────────────────────────────── */
+.stb-body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.stb-btn {
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.stb-btn:active { transform: scale(0.97); }
+.stb-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.stb-btn-sm { font-size: 0.75rem; padding: 0.3rem 0.75rem; }
+
+.stb-btn-ghost {
+  background: transparent;
+  border: 1px solid #2d3748;
+  color: #94a3b8;
+}
+.stb-btn-ghost:hover { border-color: #4a5568; color: #e2e8f0; }
+
+.stb-btn-record {
+  background: #6366f1;
+  color: #fff;
+  padding: 0.65rem 1.75rem;
+  font-size: 0.95rem;
+  border-radius: 10px;
+}
+.stb-btn-record:hover:not(:disabled) { background: #4f46e5; }
+
+.stb-btn-stop {
+  background: #ef4444;
+  color: #fff;
+  padding: 0.65rem 1.75rem;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  animation: stb-pulse 1.2s infinite;
+}
+
+/* ── Stats row ───────────────────────────────────────────────────────────── */
+.stb-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.stb-stat {
+  background: #161b27;
+  border: 1px solid #1e2535;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.stb-stat-val {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #a78bfa;
+  font-variant-numeric: tabular-nums;
+}
+
+.stb-stat-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Transcript card ─────────────────────────────────────────────────────── */
+.stb-transcript-card {
+  background: #161b27;
+  border: 1px solid #1e2535;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.stb-transcript-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.75rem;
+}
+
+/* THE main box — keep it tall so you can watch letters appear */
+.stb-transcript-box {
+  min-height: 140px;
+  max-height: 280px;
+  overflow-y: auto;
+  font-size: 1.15rem;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.stb-placeholder {
+  color: #334155;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* Finals — white, solid, settled */
+.stb-final-segment {
+  color: #f1f5f9;
+}
+
+/* Partial — faint + italic, visually "in-flight" */
+.stb-partial {
+  color: #6366f1;
+  font-style: italic;
+  /* No transition — intentionally instant so you see every frame */
+}
+
+/* ── Volume bar ──────────────────────────────────────────────────────────── */
+.stb-vol-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.stb-vol-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  width: 24px;
+  text-align: center;
+}
+
+.stb-vol-track {
+  flex: 1;
+  height: 6px;
+  background: #1e2535;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.stb-vol-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.04s linear; /* very fast — ~25fps feel */
+}
+
+.stb-vol-pct {
+  font-size: 0.72rem;
+  color: #475569;
+  width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Controls ────────────────────────────────────────────────────────────── */
+.stb-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Utterance history ───────────────────────────────────────────────────── */
+.stb-history {
+  background: #161b27;
+  border: 1px solid #1e2535;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+}
+
+.stb-history-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.6rem;
+}
+
+.stb-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #1e2535;
+}
+.stb-history-item:last-child { border-bottom: none; }
+
+.stb-history-text {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  flex: 1;
+}
+
+.stb-history-lat {
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+.stb-history-lat.fast { background: #14532d; color: #4ade80; }
+.stb-history-lat.ok   { background: #422006; color: #fb923c; }
+.stb-history-lat.slow { background: #450a0a; color: #f87171; }
+
+/* ── Right: raw log ──────────────────────────────────────────────────────── */
+.stb-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stb-log-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 0.25rem;
+}
+
+.stb-log {
+  flex: 1;
+  background: #0a0d14;
+  border: 1px solid #1e2535;
+  border-radius: 10px;
+  padding: 0.75rem;
+  overflow-y: auto;
+  max-height: calc(100vh - 160px);
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.7rem;
+}
+
+.stb-log-line {
+  color: #475569;
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stb-log-line:first-child { color: #94a3b8; } /* most recent is brighter */

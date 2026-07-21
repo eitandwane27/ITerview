@@ -1,7 +1,7 @@
 // src/pages/LikertScale.jsx
 // Confidence self-assessment (H₀₂ baseline) — 5-item Likert scale
 // Collects scores 1–5 per question → stores in React state → submits to backend (MongoDB)
-// On completion → navigates to /pre-test (Pre-Test Interview Voice Screen)
+// On completion → navigates to /mic-test (Pre-Test) or /results (Post-Test)
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -85,6 +85,9 @@ export default function LikertScale({ phase = "pre" }) {
   // true once all 5 answers are submitted and we show the completion card
   const [isDone, setIsDone] = useState(false);
 
+  // saved total confidence score (1–25) for the done-screen score chip
+  const [doneScore, setDoneScore] = useState(null);
+
   // ── Derived state ───────────────────────────────────────
   const currentQuestion = QUESTIONS[currentIndex];
   const currentAnswer = answers[currentQuestion.id];
@@ -109,10 +112,13 @@ export default function LikertScale({ phase = "pre" }) {
       }));
       const confidenceScore = answersArray.reduce((sum, a) => sum + a.score, 0);
 
-      // POST to /api/users/pretest → saves to MongoDB
+      // POST to the correct endpoint depending on phase
+      // pre  → /api/users/pretest
+      // post → /api/users/posttest
+      const endpoint = phase === "post" ? "/api/users/posttest" : "/api/users/pretest";
       try {
         const user = auth.currentUser;
-        await fetch("/api/users/pretest", {
+        await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -122,11 +128,12 @@ export default function LikertScale({ phase = "pre" }) {
             confidenceScore,
           }),
         });
-        console.log("[LikertScale] Pre-test scores saved to MongoDB ✅");
+        console.log(`[LikertScale] ${phase}-test scores saved to MongoDB ✅`);
       } catch (err) {
-        console.error("[LikertScale] Failed to save pre-test scores:", err);
+        console.error(`[LikertScale] Failed to save ${phase}-test scores:`, err);
       }
 
+      setDoneScore(confidenceScore);
       setIsDone(true);
     }
   };
@@ -143,26 +150,61 @@ export default function LikertScale({ phase = "pre" }) {
 
   // ── Render: Completion Screen ────────────────────────────
   if (isDone) {
+    // Confidence tier label for post-test score chip
+    const tier =
+      doneScore >= 20
+        ? "Strong Confidence"
+        : doneScore >= 13
+          ? "Moderate Confidence"
+          : "Building Confidence";
+
     return (
       <div className="likert-container">
         <TopBar phase={phase} />
         <main className="likert-main">
           <div className="likert-done-card">
-            <div className="likert-done-emoji">✅</div>
-            <h2>Assessment Complete!</h2>
-            <p>
-              Your confidence baseline has been recorded. <br />
-              {phase === "pre"
-                ? "Let's move on to the Pre-Test Interview."
-                : "Let's see your results!"}
-            </p>
-            <button
-              id="likert-continue-btn"
-              className="likert-btn-next"
-              onClick={handleContinue}
-            >
-              {phase === "pre" ? "Start Pre-Test →" : "View Results →"}
-            </button>
+            <div className="likert-done-inner">
+
+              {/* Animated SVG checkmark with pulse ring */}
+              <div className="likert-done-icon-wrap" aria-hidden="true">
+                <div className="likert-done-pulse" />
+                <div className="likert-done-circle">
+                  <svg className="likert-done-check" viewBox="0 0 52 52">
+                    <path
+                      className="likert-done-check-path"
+                      fill="none"
+                      d="M14 27l8 8 16-16"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <h2>Assessment Complete!</h2>
+              <p>
+                {phase === "pre"
+                  ? "Your confidence baseline has been recorded. Time to show what you've got."
+                  : "Great work. Your post-test confidence has been captured."}
+              </p>
+
+              {/* Score chip — post-test only */}
+              {phase === "post" && doneScore !== null && (
+                <div className="likert-score-chip">
+                  <div className="likert-score-main">
+                    <span className="likert-score-number">{doneScore}</span>
+                    <span className="likert-score-denom">/ 25</span>
+                  </div>
+                  <span className="likert-score-tier">{tier}</span>
+                </div>
+              )}
+
+              <button
+                id="likert-continue-btn"
+                className="likert-btn-next"
+                onClick={handleContinue}
+              >
+                {phase === "pre" ? "Start Pre-Test →" : "View Results →"}
+              </button>
+            </div>
           </div>
         </main>
       </div>
@@ -197,35 +239,37 @@ export default function LikertScale({ phase = "pre" }) {
       </div>
 
       <main className="likert-main">
-        {/* Question Card — key forces remount/animation on question change */}
+        {/* Outer white card — key forces remount/animation on question change */}
         <div className="likert-question-card" key={currentQuestion.id}>
           <p className="likert-question-number">Question {currentIndex + 1}</p>
           <p className="likert-question-text">{currentQuestion.text}</p>
 
-          {/* Answer Options */}
-          <div
-            className="likert-options"
-            role="radiogroup"
-            aria-label={`Options for question ${currentIndex + 1}`}
-          >
-            {OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                id={`likert-option-${opt.value}`}
-                className={`likert-option${currentAnswer === opt.value ? " selected" : ""}`}
-                onClick={() => handleSelect(opt.value)}
-                role="radio"
-                aria-checked={currentAnswer === opt.value}
-              >
-                <span className="likert-option-emoji" aria-hidden="true">
-                  {opt.emoji}
-                </span>
-                <span className="likert-option-label">
-                  <span className="likert-option-title">{opt.title}</span>
-                  <span className="likert-option-sub">{opt.sub}</span>
-                </span>
-              </button>
-            ))}
+          {/* Inner lavender card — signature card-in-card pattern */}
+          <div className="likert-options-inner">
+            <div
+              className="likert-options"
+              role="radiogroup"
+              aria-label={`Options for question ${currentIndex + 1}`}
+            >
+              {OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  id={`likert-option-${opt.value}`}
+                  className={`likert-option${currentAnswer === opt.value ? " selected" : ""}`}
+                  onClick={() => handleSelect(opt.value)}
+                  role="radio"
+                  aria-checked={currentAnswer === opt.value}
+                >
+                  <span className="likert-option-emoji" aria-hidden="true">
+                    {opt.emoji}
+                  </span>
+                  <span className="likert-option-label">
+                    <span className="likert-option-title">{opt.title}</span>
+                    <span className="likert-option-sub">{opt.sub}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -247,6 +291,7 @@ export default function LikertScale({ phase = "pre" }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-component: Top Bar
+// Mirrors .pt-topbar / MainSets TopBar pattern
 // ─────────────────────────────────────────────────────────────────────────────
 function TopBar({ phase }) {
   return (

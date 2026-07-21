@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "powershell -Command \"$p = Get-NetTCPConnection -LocalPort 5000 -EA SilentlyContinue | Select -Expand OwningProcess -Unique; if ($p) { Stop-Process -Id $p -Force }\" && nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -12,11 +13,14 @@
   "type": "commonjs",
   "dependencies": {
     "@deepgram/sdk": "^5.4.0",
+    "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "groq-sdk": "^1.2.1",
-    "mongoose": "^9.6.3"
+    "mongoose": "^9.6.3",
+    "openai": "^6.45.0",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
