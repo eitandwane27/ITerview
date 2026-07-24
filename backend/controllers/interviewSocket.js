@@ -202,7 +202,8 @@ function handleInterviewSocket(ws, request) {
       },
       // onError
       (err) => {
-        send({ type: "error", message: `STT error: ${err.message}` });
+        const errMsg = err?.message || String(err) || "Unknown STT error";
+        send({ type: "error", message: `STT error: ${errMsg}` });
         stopKeepAlive();
         sttSession = null;
       },
@@ -224,39 +225,81 @@ function handleInterviewSocket(ws, request) {
 
   // ── Session startup ───────────────────────────────────────────────────────
   (async () => {
-    send({ type: "status", message: "Session started. Preparing your first question…" });
-
-    // Fetch user difficulty
     try {
-      const user = await User.findOne({ firebaseUid });
-      if (user && user.difficulty) {
-        sessionDifficulty = user.difficulty;
+      // Notify client that session is starting
+      send({ type: "status", message: "Session started. Preparing your first question…" });
+
+      // Fetch user difficulty; non‑critical, log errors only
+      try {
+        const user = await User.findOne({ firebaseUid });
+        if (user?.difficulty) {
+          sessionDifficulty = user.difficulty;
+        }
+      } catch (err) {
+        console.error("[WS] Failed to fetch user difficulty:", err.message);
       }
-    } catch (err) {
-      console.error("[WS] Failed to fetch user difficulty:", err.message);
-    }
 
-    // Create or reset the session document in MongoDB (non-blocking — failure is non-fatal)
-    try {
-      await PreTestSession.findOneAndUpdate(
-        { firebaseUid },
-        {
-          sessionId,
-          answers: [],
-          final_weakness_tag: null,
-          baseline_score_percentage: null,
-          completedAt: null,
-          createdAt: new Date()
-        },
-        { upsert: true, returnDocument: "after" }
-      );
-      console.log(`[DB] ✅ Pre-test session initialized/reset: ${sessionId} for user: ${firebaseUid}`);
-    } catch (err) {
-      console.error(`[DB] ❌ Failed to initialize/reset session document:`, err.message);
-    }
+      // Check for an active, incomplete pre-test session
+      let activeSession = null;
+      try {
+        activeSession = await PreTestSession.findOne({ firebaseUid, completedAt: null });
+      } catch (err) {
+        console.error("[WS] Failed to check for active pre-test session:", err.message);
+      }
 
-    await speakQuestion(PRE_TEST_QUESTIONS[currentQuestionIndex]);
-    send({ type: "status", message: "Question ready. Press the mic button to begin your answer." });
+      if (activeSession) {
+        console.log(`[WS] 🔄 Active session found for user: ${firebaseUid}. Resuming session ID: ${activeSession.sessionId} as new session ID: ${sessionId}`);
+        try {
+          await PreTestSession.findOneAndUpdate(
+            { firebaseUid, completedAt: null },
+            { sessionId }
+          );
+
+          currentQuestionIndex = activeSession.answers.length;
+          activeSession.answers.forEach(ans => {
+            sessionScores.push({
+              questionIndex: ans.questionIndex,
+              clarity_score: ans.clarity_score,
+              correctness_score: ans.correctness_score,
+              completeness_score: ans.completeness_score,
+              primary_weakness: ans.primary_weakness,
+            });
+          });
+
+          console.log(`[WS] Resumed session at question index: ${currentQuestionIndex}`);
+          send({ type: "session_resumed", currentQuestionIndex });
+        } catch (err) {
+          console.error(`[DB] ❌ Failed to update resumed session document:`, err.message);
+        }
+      } else {
+        // Initialise or reset the pre‑test session document in MongoDB
+        try {
+          await PreTestSession.findOneAndUpdate(
+            { firebaseUid },
+            {
+              sessionId,
+              answers: [],
+              final_weakness_tag: null,
+              baseline_score_percentage: null,
+              completedAt: null,
+              createdAt: new Date(),
+            },
+            { upsert: true, returnDocument: "after" }
+          );
+          console.log(`[DB] ✅ Pre-test session initialized/reset: ${sessionId} for user: ${firebaseUid}`);
+        } catch (err) {
+          console.error(`[DB] ❌ Failed to initialize/reset session document:`, err.message);
+        }
+      }
+
+      // Play the first question
+      await speakQuestion(PRE_TEST_QUESTIONS[currentQuestionIndex]);
+      send({ type: "status", message: "Question ready. Press the mic button to begin your answer." });
+    } catch (fatalErr) {
+      console.error("[WS] Fatal session startup error:", fatalErr);
+      send({ type: "error", message: `Failed to start session: ${fatalErr.message}` });
+      ws.close();
+    }
   })();
 
   // ── Incoming message handler ──────────────────────────────────────────────
@@ -273,6 +316,10 @@ function handleInterviewSocket(ws, request) {
     let msg;
     try {
       msg = JSON.parse(data.toString());
+      if (!msg || typeof msg !== "object") {
+        console.warn("[WS] Received non-object JSON frame, ignoring.");
+        return;
+      }
     } catch {
       console.warn("[WS] Received non-JSON text frame, ignoring.");
       return;
@@ -416,81 +463,86 @@ function handleInterviewSocket(ws, request) {
       // Client requested the next question (transition triggered by UI button click)
       case "next_question": {
         (async () => {
-          currentQuestionIndex++;
-          const hasNext = currentQuestionIndex < PRE_TEST_QUESTIONS.length;
+          try {
+            currentQuestionIndex++;
+            const hasNext = currentQuestionIndex < PRE_TEST_QUESTIONS.length;
 
-          if (hasNext) {
-            fullTranscript = "";
-            send({
-              type: "status",
-              message: `Moving to question ${currentQuestionIndex + 1}…`,
-            });
+            if (hasNext) {
+              fullTranscript = "";
+              send({
+                type: "status",
+                message: `Moving to question ${currentQuestionIndex + 1}…`,
+              });
 
-            // Send pre-generated question audio immediately if ready and matching the index, otherwise fallback
-            if (preGeneratedNextQuestionAudio && preGeneratedNextQuestionIndex === currentQuestionIndex) {
-              const base64Audio = preGeneratedNextQuestionAudio.toString("base64");
-              send({ type: "tts_audio", data: base64Audio });
-              console.log(
-                `[TTS] 🔊 Sent pre-generated question audio to user — "${PRE_TEST_QUESTIONS[currentQuestionIndex].substring(0, 50)}…"`,
-              );
-              metrics.ttsLatencies.push(0); // 0ms latency since it was pre-cached!
-              preGeneratedNextQuestionAudio = null; // Reset
-              preGeneratedNextQuestionIndex = -1;
+              // Send pre-generated question audio immediately if ready and matching the index, otherwise fallback
+              if (preGeneratedNextQuestionAudio && preGeneratedNextQuestionIndex === currentQuestionIndex) {
+                const base64Audio = preGeneratedNextQuestionAudio.toString("base64");
+                send({ type: "tts_audio", data: base64Audio });
+                console.log(
+                  `[TTS] 🔊 Sent pre-generated question audio to user — "${PRE_TEST_QUESTIONS[currentQuestionIndex].substring(0, 50)}…"`,
+                );
+                metrics.ttsLatencies.push(0); // 0ms latency since it was pre-cached!
+                preGeneratedNextQuestionAudio = null; // Reset
+                preGeneratedNextQuestionIndex = -1;
+              } else {
+                console.warn(`[TTS] ⚠️ Pre-generated TTS was missing, stale, or still synthesizing. Falling back to sequential synthesis.`);
+                preGeneratedNextQuestionAudio = null; // Reset
+                preGeneratedNextQuestionIndex = -1;
+                await speakQuestion(PRE_TEST_QUESTIONS[currentQuestionIndex], `Q${currentQuestionIndex + 1}/Question`);
+              }
             } else {
-              console.warn(`[TTS] ⚠️ Pre-generated TTS was missing, stale, or still synthesizing. Falling back to sequential synthesis.`);
-              preGeneratedNextQuestionAudio = null; // Reset
-              preGeneratedNextQuestionIndex = -1;
-              await speakQuestion(PRE_TEST_QUESTIONS[currentQuestionIndex], `Q${currentQuestionIndex + 1}/Question`);
+              // ── All 5 questions answered — finalise session ───────────────
+              send({ type: "status", message: "Finalising your Pre-Test results…" });
+
+              // Wait for any still-running AI evaluations before computing the final scores
+              await Promise.allSettled(evaluationPromises);
+
+              const { weakness_tag, percentage } = computeFinalScores(sessionScores);
+              console.log(`[Session] 🏁 Pre-test complete. Weakness: ${weakness_tag} | Baseline: ${percentage}%`);
+
+              // Persist final result to MongoDB
+              try {
+                await PreTestSession.findOneAndUpdate(
+                  { sessionId },
+                  { 
+                    final_weakness_tag: weakness_tag,
+                    baseline_score_percentage: percentage,
+                    completedAt: new Date() 
+                  }
+                );
+                console.log(`[DB] ✅ Session finalised — ${sessionId}`);
+              } catch (err) {
+                console.error(`[DB] ❌ Failed to finalise session:`, err.message);
+              }
+
+              // ── Print Session Performance Metrics ────────────────────────
+              const totalTtsLatency = metrics.ttsLatencies.reduce((a, b) => a + b, 0);
+              const totalEvalLatency = metrics.evaluationLatencies.reduce((a, b) => a + b, 0);
+              const systemLatency = totalTtsLatency + totalEvalLatency;
+
+              console.log(`\n==================================================`);
+              console.log(`📊 PRE-TEST PERFORMANCE METRICS`);
+              console.log(`Session ID: ${sessionId}`);
+              console.log(`--------------------------------------------------`);
+              metrics.ttsLatencies.forEach((lat, idx) => {
+                console.log(`  Q${idx + 1} TTS Delivery Latency : ${(lat / 1000).toFixed(2)}s ${lat === 0 ? '(Cached/Instant)' : ''}`);
+              });
+              console.log(`--------------------------------------------------`);
+              metrics.evaluationLatencies.forEach((lat, idx) => {
+                console.log(`  Q${idx + 1} AI Evaluation Latency: ${(lat / 1000).toFixed(2)}s`);
+              });
+              console.log(`--------------------------------------------------`);
+              console.log(`  Total TTS Latency        : ${(totalTtsLatency / 1000).toFixed(2)}s`);
+              console.log(`  Total AI Eval Latency    : ${(totalEvalLatency / 1000).toFixed(2)}s`);
+              console.log(`  Overall System Latency   : ${(systemLatency / 1000).toFixed(2)}s (excl. user response time)`);
+              console.log(`==================================================\n`);
+
+              send({ type: "status", message: "All questions answered! Pre-test complete." });
+              send({ type: "session_complete", weakness_tag, baseline_score: percentage });
             }
-          } else {
-            // ── All 5 questions answered — finalise session ───────────────
-            send({ type: "status", message: "Finalising your Pre-Test results…" });
-
-            // Wait for any still-running AI evaluations before computing the final scores
-            await Promise.allSettled(evaluationPromises);
-
-            const { weakness_tag, percentage } = computeFinalScores(sessionScores);
-            console.log(`[Session] 🏁 Pre-test complete. Weakness: ${weakness_tag} | Baseline: ${percentage}%`);
-
-            // Persist final result to MongoDB
-            try {
-              await PreTestSession.findOneAndUpdate(
-                { sessionId },
-                { 
-                  final_weakness_tag: weakness_tag,
-                  baseline_score_percentage: percentage,
-                  completedAt: new Date() 
-                }
-              );
-              console.log(`[DB] ✅ Session finalised — ${sessionId}`);
-            } catch (err) {
-              console.error(`[DB] ❌ Failed to finalise session:`, err.message);
-            }
-
-            // ── Print Session Performance Metrics ────────────────────────
-            const totalTtsLatency = metrics.ttsLatencies.reduce((a, b) => a + b, 0);
-            const totalEvalLatency = metrics.evaluationLatencies.reduce((a, b) => a + b, 0);
-            const systemLatency = totalTtsLatency + totalEvalLatency;
-
-            console.log(`\n==================================================`);
-            console.log(`📊 PRE-TEST PERFORMANCE METRICS`);
-            console.log(`Session ID: ${sessionId}`);
-            console.log(`--------------------------------------------------`);
-            metrics.ttsLatencies.forEach((lat, idx) => {
-              console.log(`  Q${idx + 1} TTS Delivery Latency : ${(lat / 1000).toFixed(2)}s ${lat === 0 ? '(Cached/Instant)' : ''}`);
-            });
-            console.log(`--------------------------------------------------`);
-            metrics.evaluationLatencies.forEach((lat, idx) => {
-              console.log(`  Q${idx + 1} AI Evaluation Latency: ${(lat / 1000).toFixed(2)}s`);
-            });
-            console.log(`--------------------------------------------------`);
-            console.log(`  Total TTS Latency        : ${(totalTtsLatency / 1000).toFixed(2)}s`);
-            console.log(`  Total AI Eval Latency    : ${(totalEvalLatency / 1000).toFixed(2)}s`);
-            console.log(`  Overall System Latency   : ${(systemLatency / 1000).toFixed(2)}s (excl. user response time)`);
-            console.log(`==================================================\n`);
-
-            send({ type: "status", message: "All questions answered! Pre-test complete." });
-            send({ type: "session_complete", weakness_tag, baseline_score: percentage });
+          } catch (err) {
+            console.error("[WS] Error during next_question progression:", err);
+            send({ type: "error", message: `Question transition failed: ${err?.message || err}` });
           }
         })();
         break;

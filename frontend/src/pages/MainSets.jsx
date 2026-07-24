@@ -331,6 +331,19 @@ export default function MainSets() {
   };
 
   const cleanupAudio = () => {
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+        currentAudioRef.current.src = "";
+      } catch (e) {}
+      currentAudioRef.current = null;
+    }
+
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    setIsPlayingAudio(false);
+
     cancelAnimationFrame(animFrameRef.current);
     processorRef.current?.disconnect();
     processorRef.current = null;
