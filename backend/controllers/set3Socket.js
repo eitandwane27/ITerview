@@ -197,13 +197,73 @@ function handleSet3Socket(ws, request) {
         sessionDifficulty = user.difficulty || "easy";
       }
 
-      // 2. Initialize Set3Session in DB (upsert — one doc per user)
+      // Check if user requested a reset via URL
+      const isResetRequested = url.searchParams.get("reset") === "true";
+
+      // 2. Check if an in-progress session doc already exists in DB
+      const existingDoc = await Set3Session.findOne({ firebaseUid });
+      const isResuming =
+        !isResetRequested &&
+        existingDoc &&
+        !existingDoc.isCompleted &&
+        existingDoc.answers &&
+        existingDoc.answers.length > 0;
+
+      if (isResuming) {
+        sessionDoc = existingDoc;
+        sessionDoc.sessionId = sessionId;
+        await sessionDoc.save();
+
+        if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
+          questions = existingDoc.questions;
+        } else {
+          questions = existingDoc.answers.map((a) => a.question);
+          while (questions.length < MAX_QUESTIONS) {
+            const q = await generateSet3Question(questions, sessionDifficulty);
+            questions.push(q);
+          }
+          sessionDoc.questions = questions;
+          await sessionDoc.save();
+        }
+
+        currentQuestionIndex = existingDoc.answers.length;
+
+        console.log(
+          `[DB] ⏯️ Resuming Set 3 session for user ${firebaseUid} at Question ${currentQuestionIndex + 1} (${currentQuestionIndex} previous answers saved)`
+        );
+
+        send({
+          type: "status",
+          message: `Resuming behavioral session at Question ${currentQuestionIndex + 1}...`,
+        });
+
+        currentQuestionText = questions[currentQuestionIndex];
+
+        send({
+          type: "question_text",
+          text: currentQuestionText,
+          index: currentQuestionIndex + 1,
+        });
+
+        const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
+        send({ type: "tts_audio", data: audioBuffer.toString("base64") });
+
+        send({
+          type: "status",
+          message: "Question ready. Click Unmute to answer.",
+        });
+
+        return;
+      }
+
+      // Initialize fresh Set3Session in DB if not resuming
       sessionDoc = await Set3Session.findOneAndUpdate(
         { firebaseUid },
         {
           sessionId,
           role: sessionRole,
           difficulty: sessionDifficulty,
+          questions: [],
           answers: [],
           avg_situation: null,
           avg_action: null,
@@ -213,7 +273,7 @@ function handleSet3Socket(ws, request) {
           completedAt: null,
           createdAt: new Date(),
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       );
       console.log(
         `[DB] ✅ Set 3 session initialized: ${sessionId} for user: ${firebaseUid}`,
@@ -248,6 +308,10 @@ function handleSet3Socket(ws, request) {
       questions.forEach((q, idx) => {
         console.log(`  Q${idx + 1}: "${q}"`);
       });
+
+      // Save generated questions array to DB for resumption persistence
+      sessionDoc.questions = questions;
+      await sessionDoc.save();
 
       // 4. Set Q1 as current question and send text to frontend
       currentQuestionText = questions[0];

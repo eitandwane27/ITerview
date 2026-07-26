@@ -172,7 +172,71 @@ function handleSet1Socket(ws, request) {
         }
       }
 
-      // 2. Initialize Set1Session in DB (upsert)
+      // Check if user requested a reset via URL
+      const isResetRequested = url.searchParams.get("reset") === "true";
+
+      // 2. Check if an in-progress session doc already exists in DB
+      const existingDoc = await Set1Session.findOne({ firebaseUid });
+      const isResuming =
+        !isResetRequested &&
+        existingDoc &&
+        !existingDoc.isCompleted &&
+        existingDoc.answers &&
+        existingDoc.answers.length > 0;
+
+      if (isResuming) {
+        sessionDoc = existingDoc;
+        sessionDoc.sessionId = sessionId;
+        await sessionDoc.save();
+
+        if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
+          questions = existingDoc.questions;
+        } else {
+          questions = existingDoc.answers.map((a) => a.question);
+          while (questions.length < MAX_QUESTIONS) {
+            const q = await generateSet1Question(
+              sessionWeaknessTag,
+              sessionRole,
+              sessionDifficulty,
+              questions
+            );
+            questions.push(q);
+          }
+          sessionDoc.questions = questions;
+          await sessionDoc.save();
+        }
+
+        currentQuestionIndex = existingDoc.answers.length;
+
+        console.log(
+          `[DB] ⏯️ Resuming Set 1 session for user ${firebaseUid} at Question ${currentQuestionIndex + 1} (${currentQuestionIndex} previous answers saved)`
+        );
+
+        send({
+          type: "status",
+          message: `Resuming your Set 1 session at Question ${currentQuestionIndex + 1}...`,
+        });
+
+        currentQuestionText = questions[currentQuestionIndex];
+
+        send({
+          type: "question_text",
+          text: currentQuestionText,
+          index: currentQuestionIndex + 1,
+        });
+
+        const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
+        send({ type: "tts_audio", data: audioBuffer.toString("base64") });
+
+        send({
+          type: "status",
+          message: "Question ready. Click Unmute to answer.",
+        });
+
+        return;
+      }
+
+      // Initialize fresh Set1Session in DB if not resuming
       sessionDoc = await Set1Session.findOneAndUpdate(
         { firebaseUid },
         {
@@ -180,6 +244,7 @@ function handleSet1Socket(ws, request) {
           weakness_tag: sessionWeaknessTag,
           role: sessionRole,
           difficulty: sessionDifficulty,
+          questions: [],
           answers: [],
           avg_clarity: null,
           avg_correctness: null,
@@ -189,7 +254,7 @@ function handleSet1Socket(ws, request) {
           completedAt: null,
           createdAt: new Date(),
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       );
 
       // 3. Generate all 5 questions sequentially
@@ -222,6 +287,10 @@ function handleSet1Socket(ws, request) {
       questions.forEach((q, idx) => {
         console.log(`  Q${idx + 1}: "${q}"`);
       });
+
+      // Save generated questions array to DB for resumption persistence
+      sessionDoc.questions = questions;
+      await sessionDoc.save();
 
       currentQuestionText = questions[0];
 
@@ -458,6 +527,51 @@ function handleSet1Socket(ws, request) {
             console.time("[Perf] Finalise Session");
             sessionDoc.finalise(preTestBaseline);
             await sessionDoc.save();
+
+            // Record completed practice attempt to User rolling 5-session history
+            try {
+              const userDoc = await User.findOne({ firebaseUid });
+              if (userDoc) {
+                const existingHist = userDoc.practiceHistory || [];
+                const lastAttemptNum = existingHist.length > 0 ? (existingHist[existingHist.length - 1].attemptNumber || existingHist.length) : 0;
+                const nextAttempt = lastAttemptNum + 1;
+                const threeCAvg = (sessionDoc.avg_clarity !== null && sessionDoc.avg_correctness !== null && sessionDoc.avg_completeness !== null)
+                  ? parseFloat(((sessionDoc.avg_clarity + sessionDoc.avg_correctness + sessionDoc.avg_completeness) / 3).toFixed(1))
+                  : null;
+                const overallScore = threeCAvg !== null ? parseFloat((threeCAvg * 10).toFixed(1)) : null;
+
+                await User.findOneAndUpdate(
+                  { firebaseUid },
+                  {
+                    $push: {
+                      practiceHistory: {
+                        $each: [
+                          {
+                            attemptNumber: nextAttempt,
+                            completedAt: new Date(),
+                            role: sessionRole,
+                            difficulty: sessionDifficulty,
+                            focusArea: userDoc.focusArea || "auto",
+                            overallScorePercentage: overallScore,
+                            threeCBreakdown: {
+                              clarity: sessionDoc.avg_clarity,
+                              correctness: sessionDoc.avg_correctness,
+                              completeness: sessionDoc.avg_completeness,
+                              averageOutOf10: threeCAvg,
+                            },
+                            weaknessTag: sessionWeaknessTag,
+                          },
+                        ],
+                        $slice: -5,
+                      },
+                    },
+                  }
+                );
+                console.log(`[DB] ⏱️ Appended practice history attempt #${nextAttempt} for user: ${firebaseUid}`);
+              }
+            } catch (errHist) {
+              console.error("[DB] Failed to record practice history:", errHist.message);
+            }
             console.timeEnd("[Perf] Finalise Session");
 
             // Synthesize and speak the final reply sentence-by-sentence concurrently

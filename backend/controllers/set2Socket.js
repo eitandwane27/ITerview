@@ -146,13 +146,77 @@ function handleSet2Socket(ws, request) {
         sessionDifficulty = user.difficulty || "easy";
       }
 
-      // 2. Initialize Set2Session in DB (upsert — one doc per user)
+      // Check if user requested a reset via URL
+      const isResetRequested = url.searchParams.get("reset") === "true";
+
+      // 2. Check if an in-progress session doc already exists in DB
+      const existingDoc = await Set2Session.findOne({ firebaseUid });
+      const isResuming =
+        !isResetRequested &&
+        existingDoc &&
+        !existingDoc.isCompleted &&
+        existingDoc.answers &&
+        existingDoc.answers.length > 0;
+
+      if (isResuming) {
+        sessionDoc = existingDoc;
+        sessionDoc.sessionId = sessionId;
+        await sessionDoc.save();
+
+        if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
+          questions = existingDoc.questions;
+        } else {
+          questions = existingDoc.answers.map((a) => a.question);
+          while (questions.length < MAX_QUESTIONS) {
+            const q = await generateSet2Question(
+              sessionRole,
+              sessionDifficulty,
+              questions
+            );
+            questions.push(q);
+          }
+          sessionDoc.questions = questions;
+          await sessionDoc.save();
+        }
+
+        currentQuestionIndex = existingDoc.answers.length;
+
+        console.log(
+          `[DB] ⏯️ Resuming Set 2 session for user ${firebaseUid} at Question ${currentQuestionIndex + 1} (${currentQuestionIndex} previous answers saved)`
+        );
+
+        send({
+          type: "status",
+          message: `Resuming technical session at Question ${currentQuestionIndex + 1}...`,
+        });
+
+        currentQuestionText = questions[currentQuestionIndex];
+
+        send({
+          type: "question_text",
+          text: currentQuestionText,
+          index: currentQuestionIndex + 1,
+        });
+
+        const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
+        send({ type: "tts_audio", data: audioBuffer.toString("base64") });
+
+        send({
+          type: "status",
+          message: "Question ready. Click Unmute to answer.",
+        });
+
+        return;
+      }
+
+      // Initialize fresh Set2Session in DB if not resuming
       sessionDoc = await Set2Session.findOneAndUpdate(
         { firebaseUid },
         {
           sessionId,
           role: sessionRole,
           difficulty: sessionDifficulty,
+          questions: [],
           answers: [],
           avg_problem_solving: null,
           avg_accuracy: null,
@@ -162,15 +226,13 @@ function handleSet2Socket(ws, request) {
           completedAt: null,
           createdAt: new Date(),
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       );
       console.log(
         `[DB] ✅ Set 2 session initialized: ${sessionId} for user: ${firebaseUid}`,
       );
 
-      // 3. Generate ALL 5 questions sequentially.
-      //    Start Q1 TTS synthesis as soon as Q1 is ready — runs concurrently
-      //    while the LLM generates Q2-5 (cold-start overlap optimization).
+      // 3. Generate ALL 5 questions sequentially
       send({
         type: "status",
         message: "Generating your technical questions...",
@@ -199,6 +261,10 @@ function handleSet2Socket(ws, request) {
       questions.forEach((q, idx) => {
         console.log(`  Q${idx + 1}: "${q}"`);
       });
+
+      // Save generated questions array to DB for resumption persistence
+      sessionDoc.questions = questions;
+      await sessionDoc.save();
 
       currentQuestionText = questions[0];
 

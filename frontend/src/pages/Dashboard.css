@@ -909,3 +909,69 @@
     display: none;
   }
 }
+
+/* ── 3C Focus Area Selector & AI Insight Card ────────── */
+.db-focus-section {
+  width: 100%;
+}
+
+.db-auto-insight-card {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--md-radius, 8px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.db-auto-insight-card:hover {
+  border-color: var(--color-primary-muted);
+}
+
+.db-auto-insight-header {
+  user-select: none;
+}
+
+.db-auto-insight-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-ink);
+}
+
+.db-auto-insight-highlight {
+  font-weight: 700;
+}
+
+.db-auto-insight-body {
+  border-top: 1px dashed var(--color-border-soft);
+  padding-top: 8px;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 1st Run Baseline Hero Card ───────────────────────── */
+.db-first-run-hero {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.db-first-run-hero:hover {
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.18) !important;
+}
+
+/* ── Rolling 5-Session Attempt Card ────────────────────── */
+.db-attempt-card {
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.db-attempt-card:hover {
+  border-color: var(--color-primary-muted) !important;
+  box-shadow: 0 3px 10px rgba(124, 111, 205, 0.1) !important;
+  transform: translateY(-1px);
+}
+

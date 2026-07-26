@@ -137,7 +137,7 @@ router.get("/pretest-profile", async (req, res) => {
 // Must be declared BEFORE /:firebaseUid to avoid the wildcard swallowing it.
 router.get("/results-summary", async (req, res) => {
   try {
-    const { uid } = req.query;
+    const { uid, mode } = req.query;
 
     if (!uid) {
       return res.status(400).json({ message: "Firebase UID is required" });
@@ -152,7 +152,7 @@ router.get("/results-summary", async (req, res) => {
         "final_score_percentage final_weakness_tag answers"
       ),
       User.findOne({ firebaseUid: uid }).select(
-        "confidenceScore postConfidenceScore role difficulty unlockedDifficulty"
+        "confidenceScore postConfidenceScore role difficulty unlockedDifficulty practiceHistory"
       ),
       Set1Session.findOne({ firebaseUid: uid }).select(
         "avg_clarity avg_correctness avg_completeness isCompleted answers"
@@ -229,17 +229,19 @@ router.get("/results-summary", async (req, res) => {
     if (currentDiff === "medium") nextDifficulty = "hard";
     if (currentDiff === "hard") nextDifficulty = "hard";
 
-    // Unlocking requires BOTH Practice Sets Combined Average >= 70% AND Post-Test Graduation Score >= 70%
+    // Unlocking requires BOTH Practice Sets Combined Average >= 70% AND Post-Test Graduation Score >= 70% (or in practice mode, Practice Average >= 70%)
     const unlockThreshold = 70;
-    const isUnlocked =
-      postScore !== null &&
-      postScore >= unlockThreshold &&
-      practiceSetsAvgPercentage !== null &&
-      practiceSetsAvgPercentage >= unlockThreshold;
+    const isPracticeMode = mode === "practice";
+    const isUnlocked = isPracticeMode
+      ? (practiceSetsAvgPercentage !== null && practiceSetsAvgPercentage >= unlockThreshold)
+      : (postScore !== null &&
+         postScore >= unlockThreshold &&
+         practiceSetsAvgPercentage !== null &&
+         practiceSetsAvgPercentage >= unlockThreshold);
 
     if (isUnlocked && user) {
       let upgradedDiff = user.unlockedDifficulty;
-      if (currentDiff === "easy" && user.unlockedDifficulty === "easy") {
+      if (currentDiff === "easy" && (user.unlockedDifficulty === "easy" || !user.unlockedDifficulty)) {
         upgradedDiff = "medium";
       } else if (currentDiff === "medium" && (user.unlockedDifficulty === "easy" || user.unlockedDifficulty === "medium")) {
         upgradedDiff = "hard";
@@ -252,12 +254,55 @@ router.get("/results-summary", async (req, res) => {
       }
     }
 
+    // Compute baseline 3C dimension breakdown from pre-test session or set1
+    let preClarity = null, preCorrectness = null, preCompleteness = null;
+    if (preSession?.answers && preSession.answers.length > 0) {
+      const valid = preSession.answers.filter(
+        (a) => a.clarity_score != null && a.correctness_score != null && a.completeness_score != null
+      );
+      if (valid.length > 0) {
+        preClarity = parseFloat((valid.reduce((sum, a) => sum + a.clarity_score, 0) / valid.length).toFixed(1));
+        preCorrectness = parseFloat((valid.reduce((sum, a) => sum + a.correctness_score, 0) / valid.length).toFixed(1));
+        preCompleteness = parseFloat((valid.reduce((sum, a) => sum + a.completeness_score, 0) / valid.length).toFixed(1));
+      }
+    }
+
+    if (preClarity === null && set1?.avg_clarity != null) {
+      preClarity = set1.avg_clarity;
+      preCorrectness = set1.avg_correctness;
+      preCompleteness = set1.avg_completeness;
+    }
+
+    let threeCAvgOutOf10 = null;
+    let threeCAvgPercentage = null;
+    let lowestThreeCMetric = null;
+
+    if (preClarity !== null && preCorrectness !== null && preCompleteness !== null) {
+      threeCAvgOutOf10 = parseFloat(((preClarity + preCorrectness + preCompleteness) / 3).toFixed(1));
+      threeCAvgPercentage = parseFloat((threeCAvgOutOf10 * 10).toFixed(1));
+
+      const minVal = Math.min(preClarity, preCorrectness, preCompleteness);
+      if (minVal === preClarity) lowestThreeCMetric = "clarity";
+      else if (minVal === preCorrectness) lowestThreeCMetric = "correctness";
+      else lowestThreeCMetric = "completeness";
+    }
+
     return res.status(200).json({
       preConfidenceScore:  preConf,
       postConfidenceScore: postConf,
       masteryScore:        postScore,
       preTestScore:        preScore,
       improvementDelta:    preScore !== null && postScore !== null ? postScore - preScore : null,
+
+      // 3C Baseline & Practice Breakdown
+      threeCBreakdown: {
+        clarity: preClarity,
+        correctness: preCorrectness,
+        completeness: preCompleteness,
+        averageOutOf10: threeCAvgOutOf10,
+        averagePercentage: threeCAvgPercentage,
+        lowestMetric: lowestThreeCMetric,
+      },
 
       // Overall Session Averages
       sessionAverages: {
@@ -375,6 +420,9 @@ router.get("/results-summary", async (req, res) => {
       unlocked:         isUnlocked,
       unlockThreshold,
       role:             user?.role ?? null,
+      preWeaknessTag:   preSession?.final_weakness_tag ?? null,
+      postWeaknessTag:  postSession?.final_weakness_tag ?? null,
+      practiceHistory:  user?.practiceHistory ?? [],
     });
   } catch (error) {
     console.error("❌ Error fetching results summary:", error);
@@ -383,17 +431,22 @@ router.get("/results-summary", async (req, res) => {
 });
 
 // GET /api/users/:firebaseUid
-// Retrieves user profile including their role.
+// Retrieves user profile including their role and diagnostic status.
 router.get("/:firebaseUid", async (req, res) => {
   try {
     const { firebaseUid } = req.params;
-    const user = await User.findOne({ firebaseUid });
+    const [user, postSession] = await Promise.all([
+      User.findOne({ firebaseUid }),
+      PostTestSession.findOne({ firebaseUid }).select("completedAt"),
+    ]);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.status(200).json({ user });
+    const hasCompletedDiagnostic = !!(postSession && postSession.completedAt);
+
+    res.status(200).json({ user, hasCompletedDiagnostic });
   } catch (error) {
     console.error("❌ Error fetching user:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
@@ -433,8 +486,15 @@ router.put("/role", async (req, res) => {
       updateFields.unlockedDifficulty = req.body.unlockedDifficulty;
     }
 
+    if (req.body.focusArea !== undefined) {
+      if (!["auto", "clarity", "correctness", "completeness", "star"].includes(req.body.focusArea)) {
+        return res.status(400).json({ message: "Invalid focus area specified" });
+      }
+      updateFields.focusArea = req.body.focusArea;
+    }
+
     if (Object.keys(updateFields).length === 0) {
-      return res.status(400).json({ message: "Nothing to update. Provide role, difficulty, or unlockedDifficulty." });
+      return res.status(400).json({ message: "Nothing to update. Provide role, difficulty, unlockedDifficulty, or focusArea." });
     }
 
     const user = await User.findOneAndUpdate(
@@ -443,14 +503,85 @@ router.put("/role", async (req, res) => {
       { returnDocument: "after" }
     );
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
     console.log(`✅ User updated: role=${user.role}, difficulty=${user.difficulty} for:`, user.email);
     res.status(200).json({ message: "User profile updated successfully", user });
   } catch (error) {
     console.error("❌ Error updating user role:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// GET /api/users/active-practice-session?uid=...
+// Checks if the user has an in-progress practice session (Set 1, Set 2, or Set 3)
+router.get("/active-practice-session", async (req, res) => {
+  try {
+    const { uid } = req.query;
+    if (!uid) {
+      return res.status(400).json({ message: "UID is required" });
+    }
+
+    const [set1, set2, set3] = await Promise.all([
+      Set1Session.findOne({ firebaseUid: uid }).select("isCompleted answers sessionId"),
+      Set2Session.findOne({ firebaseUid: uid }).select("isCompleted answers sessionId"),
+      Set3Session.findOne({ firebaseUid: uid }).select("isCompleted answers sessionId"),
+    ]);
+
+    if (set1 && !set1.isCompleted && set1.answers && set1.answers.length > 0) {
+      return res.status(200).json({
+        hasActiveSession: true,
+        activeSet: 1,
+        answersCount: set1.answers.length,
+        totalQuestions: 5,
+        sessionId: set1.sessionId,
+      });
+    }
+
+    if (set2 && !set2.isCompleted && set2.answers && set2.answers.length > 0) {
+      return res.status(200).json({
+        hasActiveSession: true,
+        activeSet: 2,
+        answersCount: set2.answers.length,
+        totalQuestions: 5,
+        sessionId: set2.sessionId,
+      });
+    }
+
+    if (set3 && !set3.isCompleted && set3.answers && set3.answers.length > 0) {
+      return res.status(200).json({
+        hasActiveSession: true,
+        activeSet: 3,
+        answersCount: set3.answers.length,
+        totalQuestions: 5,
+        sessionId: set3.sessionId,
+      });
+    }
+
+    return res.status(200).json({ hasActiveSession: false });
+  } catch (error) {
+    console.error("❌ Error fetching active practice session:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// POST /api/users/reset-practice-session
+// Resets Set1, Set2, and Set3 sessions for the user to start a fresh practice run from Set 1, Q1
+router.post("/reset-practice-session", async (req, res) => {
+  try {
+    const { firebaseUid } = req.body;
+    if (!firebaseUid) {
+      return res.status(400).json({ message: "firebaseUid is required" });
+    }
+
+    await Promise.all([
+      Set1Session.deleteMany({ firebaseUid }),
+      Set2Session.deleteMany({ firebaseUid }),
+      Set3Session.deleteMany({ firebaseUid }),
+    ]);
+
+    console.log(`✅ Practice sessions reset for user: ${firebaseUid}`);
+    res.status(200).json({ message: "Practice sessions reset successfully!" });
+  } catch (error) {
+    console.error("❌ Error resetting practice session:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 });
@@ -481,6 +612,69 @@ router.post("/posttest", async (req, res) => {
     res.status(200).json({ message: "Post-test scores saved successfully!", user });
   } catch (error) {
     console.error("Error saving post-test scores:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// POST /api/users/practice-history
+// Appends a completed practice session entry to practiceHistory.
+// Enforces a strict 5-session rolling cap using $push with $slice: -5.
+router.post("/practice-history", async (req, res) => {
+  try {
+    const {
+      firebaseUid,
+      role,
+      difficulty,
+      focusArea,
+      overallScorePercentage,
+      threeCBreakdown,
+      weaknessTag,
+    } = req.body;
+
+    if (!firebaseUid) {
+      return res.status(400).json({ message: "Firebase UID is required" });
+    }
+
+    const user = await User.findOne({ firebaseUid });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const existingHistory = user.practiceHistory || [];
+    const lastAttempt = existingHistory.length > 0 ? (existingHistory[existingHistory.length - 1].attemptNumber || existingHistory.length) : 0;
+    const nextAttemptNumber = lastAttempt + 1;
+
+    const newAttempt = {
+      attemptNumber: nextAttemptNumber,
+      completedAt: new Date(),
+      role: role || user.role || "fullstack",
+      difficulty: difficulty || user.difficulty || "easy",
+      focusArea: focusArea || user.focusArea || "auto",
+      overallScorePercentage: overallScorePercentage ?? null,
+      threeCBreakdown: threeCBreakdown || null,
+      weaknessTag: weaknessTag || null,
+    };
+
+    const updatedUser = await User.findOneAndUpdate(
+      { firebaseUid },
+      {
+        $push: {
+          practiceHistory: {
+            $each: [newAttempt],
+            $slice: -5,
+          },
+        },
+      },
+      { returnDocument: "after" }
+    );
+
+    console.log(`✅ Saved practice attempt #${nextAttemptNumber} for user: ${firebaseUid}`);
+    res.status(201).json({
+      message: "Practice attempt saved successfully",
+      practiceHistory: updatedUser.practiceHistory,
+    });
+  } catch (error) {
+    console.error("❌ Error saving practice history:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 });

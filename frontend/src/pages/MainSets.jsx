@@ -34,6 +34,7 @@ export default function MainSets() {
   const voice = location.state?.voice || "aura-2-luna-en";
   const query = new URLSearchParams(location.search);
   const setNumber = parseInt(query.get("set")) || 1;
+  const mode = query.get("mode") || "diagnostic";
   const preview =
     query.get("preview") === "true" || location.pathname.includes("/dev/");
 
@@ -280,7 +281,8 @@ export default function MainSets() {
   const goToNextSet = () => {
     setShowNextTransition(false);
     const nextSet = setNumber + 1;
-    navigate(`/interview?set=${nextSet}`, { state: { voice } });
+    const modeParam = mode === "practice" ? "&mode=practice" : "";
+    navigate(`/interview?set=${nextSet}${modeParam}`, { state: { voice } });
   };
 
   // ── Reset on route change ──────────────────────────────────────────────────
@@ -627,7 +629,9 @@ export default function MainSets() {
                       className="pt-btn pt-btn-primary"
                       id="btn-session-complete"
                       onClick={() => {
-                        if (setNumber === 3) {
+                        if (mode === "practice" && setNumber === 3) {
+                          navigate("/results?mode=practice");
+                        } else if (setNumber === 3) {
                           navigate("/post-test", { state: { voice } });
                         } else {
                           navigate("/dashboard");
@@ -635,7 +639,7 @@ export default function MainSets() {
                       }}
                     >
                       {setNumber === 3
-                        ? "🎓 Start Graduation Challenge"
+                        ? (mode === "practice" ? "📊 View Practice Summary" : "🎓 Start Graduation Challenge")
                         : "Return to Dashboard"}
                     </button>
                   )}

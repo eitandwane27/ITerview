@@ -30,6 +30,12 @@ const userSchema = new mongoose.Schema({
     default: "easy",
   },
 
+  focusArea: {
+    type: String,
+    enum: ["auto", "clarity", "correctness", "completeness", "star"],
+    default: "auto",
+  },
+
   // Stores the pre-test Likert Scale baseline (H₀₂)
   // Shape mirrors the LikertScale.jsx payload:
   //   preConfidenceAnswers: [{ questionId: "q1", score: 3 }, ...]
@@ -57,6 +63,28 @@ const userSchema = new mongoose.Schema({
     default: [],
   },
   postConfidenceScore: { type: Number, default: null },
+
+  // Capped rolling 5-session practice history log
+  practiceHistory: {
+    type: [
+      {
+        attemptNumber: { type: Number },
+        completedAt: { type: Date, default: Date.now },
+        role: { type: String },
+        difficulty: { type: String },
+        focusArea: { type: String },
+        overallScorePercentage: { type: Number },
+        threeCBreakdown: {
+          clarity: Number,
+          correctness: Number,
+          completeness: Number,
+          averageOutOf10: Number,
+        },
+        weaknessTag: { type: String },
+      },
+    ],
+    default: [],
+  },
 
   createdAt: {
     type: Date,
