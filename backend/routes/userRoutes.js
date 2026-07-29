@@ -463,7 +463,15 @@ router.put("/role", async (req, res) => {
       return res.status(400).json({ message: "Firebase UID is required" });
     }
 
+    // Fetch existing user to check unlockedDifficulty enforcement
+    const currentUser = await User.findOne({ firebaseUid });
+    if (!currentUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     const updateFields = {};
+    const difficultyRank = { easy: 1, medium: 2, hard: 3 };
+    const targetUnlocked = req.body.unlockedDifficulty || currentUser.unlockedDifficulty || "easy";
 
     if (role !== undefined) {
       if (!["frontend", "backend", "fullstack"].includes(role)) {
@@ -475,6 +483,12 @@ router.put("/role", async (req, res) => {
     if (difficulty !== undefined) {
       if (!["easy", "medium", "hard"].includes(difficulty)) {
         return res.status(400).json({ message: "Invalid difficulty specified" });
+      }
+      if (difficultyRank[difficulty] > difficultyRank[targetUnlocked]) {
+        return res.status(403).json({
+          message: `Cannot select '${difficulty}' difficulty because higher level is locked. Unlocked level is '${targetUnlocked}'.`,
+          unlockedDifficulty: targetUnlocked,
+        });
       }
       updateFields.difficulty = difficulty;
     }

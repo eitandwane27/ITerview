@@ -115,6 +115,7 @@ function handleInterviewSocket(ws, request) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
   const firebaseUid = url.searchParams.get("uid") || "anonymous_user";
+  const isResetRequested = url.searchParams.get("reset") === "true";
 
   // ── Session state ─────────────────────────────────────────────────────────
   const sessionId = `pts_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`; // unique per WS connection
@@ -188,11 +189,11 @@ function handleInterviewSocket(ws, request) {
     sttSession = createDeepgramLiveSession(
       // onTranscript
       (transcript, isFinal) => {
-        if (transcript) {
+        if (transcript || isFinal) {
           // Echo back to the browser for real-time display
           send({ type: "transcript", text: transcript, isFinal });
 
-          if (isFinal) {
+          if (isFinal && transcript) {
             // Accumulate final segments
             fullTranscript = fullTranscript
               ? `${fullTranscript} ${transcript}`
@@ -242,7 +243,9 @@ function handleInterviewSocket(ws, request) {
       // Check for an active, incomplete pre-test session
       let activeSession = null;
       try {
-        activeSession = await PreTestSession.findOne({ firebaseUid, completedAt: null });
+        if (!isResetRequested) {
+          activeSession = await PreTestSession.findOne({ firebaseUid, completedAt: null });
+        }
       } catch (err) {
         console.error("[WS] Failed to check for active pre-test session:", err.message);
       }

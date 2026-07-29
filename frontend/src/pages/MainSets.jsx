@@ -425,15 +425,23 @@ export default function MainSets() {
       wsRef.current?.send(JSON.stringify({ type: "stop_recording" }));
       setIsRecording(false);
       setIsEvaluating(true);
+      const combinedText = (
+        finalTranscriptRef.current +
+        (partialTranscript ? (finalTranscriptRef.current ? " " : "") + partialTranscript : "")
+      ).trim();
       wsRef.current?.send(
         JSON.stringify({
           type: "submit_answer",
-          final_text: finalTranscriptRef.current,
+          final_text: combinedText,
         }),
       );
       setStatus("Answer submitted. Evaluating...");
     } else {
       try {
+        setFinalTranscript("");
+        setPartialTranscript("");
+        finalTranscriptRef.current = "";
+
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             channelCount: 1,

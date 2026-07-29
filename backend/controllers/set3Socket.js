@@ -30,6 +30,8 @@ const {
   getCompetencyTopic,
 } = require("../services/aiSet3Generator");
 const Set3Session = require("../models/Set3Session");
+const Set1Session = require("../models/Set1Session");
+const Set2Session = require("../models/Set2Session");
 const User = require("../models/User");
 
 const MAX_QUESTIONS = 5;
@@ -109,9 +111,9 @@ function handleSet3Socket(ws, request) {
     fullTranscript = "";
     sttSession = createDeepgramLiveSession(
       (transcript, isFinal) => {
-        if (transcript) {
+        if (transcript || isFinal) {
           send({ type: "transcript", text: transcript, isFinal });
-          if (isFinal) {
+          if (isFinal && transcript) {
             fullTranscript = fullTranscript
               ? `${fullTranscript} ${transcript}`
               : transcript;
@@ -194,7 +196,10 @@ function handleSet3Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        sessionDifficulty = user.difficulty || "easy";
+        const difficultyRank = { easy: 1, medium: 2, hard: 3 };
+        const userDiff = user.difficulty || "easy";
+        const userUnlocked = user.unlockedDifficulty || "easy";
+        sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
       }
 
       // Check if user requested a reset via URL
@@ -205,9 +210,7 @@ function handleSet3Socket(ws, request) {
       const isResuming =
         !isResetRequested &&
         existingDoc &&
-        !existingDoc.isCompleted &&
-        existingDoc.answers &&
-        existingDoc.answers.length > 0;
+        !existingDoc.isCompleted;
 
       if (isResuming) {
         sessionDoc = existingDoc;
@@ -533,6 +536,70 @@ function handleSet3Socket(ws, request) {
             console.log(
               `[Session] 🏁 Set 3 complete. Overall Score: ${sessionDoc.overall_score_percentage}% | Avg Situation: ${sessionDoc.avg_situation} | Avg Action: ${sessionDoc.avg_action} | Avg Result: ${sessionDoc.avg_result}`,
             );
+
+            // Record completed 3-set practice attempt to User rolling 5-session history
+            try {
+              const [set1Doc, set2Doc, userDoc] = await Promise.all([
+                Set1Session.findOne({ firebaseUid }),
+                Set2Session.findOne({ firebaseUid }),
+                User.findOne({ firebaseUid }),
+              ]);
+
+              if (userDoc) {
+                const set1Score = set1Doc && set1Doc.isCompleted && set1Doc.avg_clarity !== null
+                  ? parseFloat(((set1Doc.avg_clarity + set1Doc.avg_correctness + set1Doc.avg_completeness) / 3).toFixed(1))
+                  : null;
+                const set2Score = set2Doc && set2Doc.isCompleted && set2Doc.avg_problem_solving !== null
+                  ? parseFloat(((set2Doc.avg_problem_solving + set2Doc.avg_accuracy + set2Doc.avg_depth) / 3).toFixed(1))
+                  : null;
+                const set3Score = sessionDoc.avg_situation !== null
+                  ? parseFloat(((sessionDoc.avg_situation + sessionDoc.avg_action + sessionDoc.avg_result) / 3).toFixed(1))
+                  : null;
+
+                const completedScores = [set1Score, set2Score, set3Score].filter((s) => s !== null);
+                const avgScoreOutOf10 = completedScores.length > 0
+                  ? parseFloat((completedScores.reduce((a, b) => a + b, 0) / completedScores.length).toFixed(1))
+                  : (set3Score ?? 0);
+                const overallScorePercentage = parseFloat((avgScoreOutOf10 * 10).toFixed(1));
+
+                const existingHist = userDoc.practiceHistory || [];
+                const lastAttemptNum = existingHist.length > 0 ? (existingHist[existingHist.length - 1].attemptNumber || existingHist.length) : 0;
+                const nextAttempt = lastAttemptNum + 1;
+
+                const threeCBreakdown = set1Doc ? {
+                  clarity: set1Doc.avg_clarity,
+                  correctness: set1Doc.avg_correctness,
+                  completeness: set1Doc.avg_completeness,
+                  averageOutOf10: set1Doc.avg_clarity !== null ? parseFloat(((set1Doc.avg_clarity + set1Doc.avg_correctness + set1Doc.avg_completeness) / 3).toFixed(1)) : null,
+                } : null;
+
+                await User.findOneAndUpdate(
+                  { firebaseUid },
+                  {
+                    $push: {
+                      practiceHistory: {
+                        $each: [
+                          {
+                            attemptNumber: nextAttempt,
+                            completedAt: new Date(),
+                            role: sessionRole,
+                            difficulty: sessionDifficulty,
+                            focusArea: userDoc.focusArea || "auto",
+                            overallScorePercentage,
+                            threeCBreakdown,
+                            weaknessTag: sessionDoc.final_weakness_tag || "focus_completeness",
+                          },
+                        ],
+                        $slice: -5,
+                      },
+                    },
+                  }
+                );
+                console.log(`[DB] ⏱️ Appended practice history attempt #${nextAttempt} for user: ${firebaseUid}`);
+              }
+            } catch (errHist) {
+              console.error("[DB] Failed to record practice history:", errHist.message);
+            }
 
             // Step 6: Concurrent sentence TTS for final closing speech
             const finalSpeech = `${evaluation.interviewer_reply} That concludes our behavioral round. Excellent effort!`;

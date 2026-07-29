@@ -103,9 +103,9 @@ function handleSet2Socket(ws, request) {
     fullTranscript = "";
     sttSession = createDeepgramLiveSession(
       (transcript, isFinal) => {
-        if (transcript) {
+        if (transcript || isFinal) {
           send({ type: "transcript", text: transcript, isFinal });
-          if (isFinal) {
+          if (isFinal && transcript) {
             fullTranscript = fullTranscript
               ? `${fullTranscript} ${transcript}`
               : transcript;
@@ -143,7 +143,10 @@ function handleSet2Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        sessionDifficulty = user.difficulty || "easy";
+        const difficultyRank = { easy: 1, medium: 2, hard: 3 };
+        const userDiff = user.difficulty || "easy";
+        const userUnlocked = user.unlockedDifficulty || "easy";
+        sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
       }
 
       // Check if user requested a reset via URL
@@ -154,9 +157,7 @@ function handleSet2Socket(ws, request) {
       const isResuming =
         !isResetRequested &&
         existingDoc &&
-        !existingDoc.isCompleted &&
-        existingDoc.answers &&
-        existingDoc.answers.length > 0;
+        !existingDoc.isCompleted;
 
       if (isResuming) {
         sessionDoc = existingDoc;

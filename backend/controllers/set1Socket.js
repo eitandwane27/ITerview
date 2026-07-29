@@ -111,9 +111,9 @@ function handleSet1Socket(ws, request) {
     fullTranscript = "";
     sttSession = createDeepgramLiveSession(
       (transcript, isFinal) => {
-        if (transcript) {
+        if (transcript || isFinal) {
           send({ type: "transcript", text: transcript, isFinal });
-          if (isFinal) {
+          if (isFinal && transcript) {
             fullTranscript = fullTranscript
               ? `${fullTranscript} ${transcript}`
               : transcript;
@@ -161,7 +161,10 @@ function handleSet1Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        sessionDifficulty = user.difficulty || "easy";
+        const difficultyRank = { easy: 1, medium: 2, hard: 3 };
+        const userDiff = user.difficulty || "easy";
+        const userUnlocked = user.unlockedDifficulty || "easy";
+        sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
       }
 
       // Allow dev/testing URL override only in non-production environments
@@ -180,9 +183,7 @@ function handleSet1Socket(ws, request) {
       const isResuming =
         !isResetRequested &&
         existingDoc &&
-        !existingDoc.isCompleted &&
-        existingDoc.answers &&
-        existingDoc.answers.length > 0;
+        !existingDoc.isCompleted;
 
       if (isResuming) {
         sessionDoc = existingDoc;
@@ -527,51 +528,6 @@ function handleSet1Socket(ws, request) {
             console.time("[Perf] Finalise Session");
             sessionDoc.finalise(preTestBaseline);
             await sessionDoc.save();
-
-            // Record completed practice attempt to User rolling 5-session history
-            try {
-              const userDoc = await User.findOne({ firebaseUid });
-              if (userDoc) {
-                const existingHist = userDoc.practiceHistory || [];
-                const lastAttemptNum = existingHist.length > 0 ? (existingHist[existingHist.length - 1].attemptNumber || existingHist.length) : 0;
-                const nextAttempt = lastAttemptNum + 1;
-                const threeCAvg = (sessionDoc.avg_clarity !== null && sessionDoc.avg_correctness !== null && sessionDoc.avg_completeness !== null)
-                  ? parseFloat(((sessionDoc.avg_clarity + sessionDoc.avg_correctness + sessionDoc.avg_completeness) / 3).toFixed(1))
-                  : null;
-                const overallScore = threeCAvg !== null ? parseFloat((threeCAvg * 10).toFixed(1)) : null;
-
-                await User.findOneAndUpdate(
-                  { firebaseUid },
-                  {
-                    $push: {
-                      practiceHistory: {
-                        $each: [
-                          {
-                            attemptNumber: nextAttempt,
-                            completedAt: new Date(),
-                            role: sessionRole,
-                            difficulty: sessionDifficulty,
-                            focusArea: userDoc.focusArea || "auto",
-                            overallScorePercentage: overallScore,
-                            threeCBreakdown: {
-                              clarity: sessionDoc.avg_clarity,
-                              correctness: sessionDoc.avg_correctness,
-                              completeness: sessionDoc.avg_completeness,
-                              averageOutOf10: threeCAvg,
-                            },
-                            weaknessTag: sessionWeaknessTag,
-                          },
-                        ],
-                        $slice: -5,
-                      },
-                    },
-                  }
-                );
-                console.log(`[DB] ⏱️ Appended practice history attempt #${nextAttempt} for user: ${firebaseUid}`);
-              }
-            } catch (errHist) {
-              console.error("[DB] Failed to record practice history:", errHist.message);
-            }
             console.timeEnd("[Perf] Finalise Session");
 
             // Synthesize and speak the final reply sentence-by-sentence concurrently

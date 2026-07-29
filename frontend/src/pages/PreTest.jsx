@@ -335,7 +335,11 @@ export default function PreTest() {
     setStatus("Review your answer before confirming.");
 
     // Phase 2: let the user review the transcript
-    setConfirmedTranscript(finalTranscriptRef.current);
+    const combined = (
+      finalTranscriptRef.current +
+      (partialTranscript ? (finalTranscriptRef.current ? " " : "") + partialTranscript : "")
+    ).trim();
+    setConfirmedTranscript(combined);
     setAwaitingConfirmation(true);
   };
 

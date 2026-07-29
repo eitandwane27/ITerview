@@ -146,6 +146,9 @@ export default function PostTest() {
         case "status":
           setStatus(msg.message);
           break;
+        case "session_resumed":
+          setCurrentQuestion(msg.currentQuestionIndex + 1);
+          break;
         case "tts_audio":
           enqueueBase64Audio(msg.data);
           break;
@@ -281,7 +284,12 @@ export default function PostTest() {
     wsRef.current?.send(JSON.stringify({ type: "stop_recording" }));
     setIsRecording(false);
     setStatus("Review your answer before confirming.");
-    setConfirmedTranscript(finalTranscriptRef.current);
+    setConfirmedTranscript(
+      (
+        finalTranscriptRef.current +
+        (partialTranscript ? (finalTranscriptRef.current ? " " : "") + partialTranscript : "")
+      ).trim()
+    );
     setAwaitingConfirmation(true);
   };
 

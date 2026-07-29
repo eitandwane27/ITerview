@@ -1,0 +1,590 @@
+/* frontend/src/components/FluxDebugger.css */
+
+.flux-debugger-root {
+  min-height: 100vh;
+  background-color: #0b0f19;
+  color: #f3f4f6;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+/* ── Header Bar ────────────────────────────────────────────────────────── */
+.fd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 20px;
+}
+
+.fd-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fd-badge {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.fd-brand h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+}
+
+.fd-controls-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.fd-mode-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.fd-mode-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fd-mode-btn.active {
+  background: #374151;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.fd-conn-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fd-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.fd-dot-disconnected { background-color: #6b7280; }
+.fd-dot-connecting   { background-color: #f59e0b; animation: fdPulse 1s infinite alternate; }
+.fd-dot-connected    { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
+.fd-dot-error        { background-color: #ef4444; }
+
+@keyframes fdPulse {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+.fd-btn {
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fd-btn-start {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+}
+
+.fd-btn-start:hover {
+  filter: brightness(1.1);
+}
+
+.fd-btn-stop {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+}
+
+.fd-btn-stop:hover {
+  filter: brightness(1.1);
+}
+
+.fd-btn-sm {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  border-radius: 6px;
+}
+
+.fd-btn-ghost {
+  background: transparent;
+  color: #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+
+.fd-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+/* ── Banners ───────────────────────────────────────────────────────────── */
+.fd-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.fd-banner-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.fd-btn-icon {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ── Tuning Panel ──────────────────────────────────────────────────────── */
+.fd-tuning-panel {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.fd-tuning-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  margin-bottom: 14px;
+}
+
+.fd-tuning-hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+.fd-tuning-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.fd-param-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fd-param-group label {
+  font-size: 0.85rem;
+  color: #e2e8f0;
+}
+
+.fd-param-group input[type="range"] {
+  width: 100%;
+  accent-color: #6366f1;
+  cursor: pointer;
+}
+
+.fd-param-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+/* ── Main Dashboard Layout ─────────────────────────────────────────────── */
+.fd-main-grid {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .fd-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fd-card {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.fd-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.fd-card-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  color: #f3f4f6;
+}
+
+/* ── Turn Inspector Card ───────────────────────────────────────────────── */
+.fd-turn-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.fd-turn-SPEAKING    { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+.fd-turn-END_OF_TURN { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
+.fd-turn-IDLE        { background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.4); }
+
+.fd-turn-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.fd-metric-mini {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fd-metric-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.fd-metric-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #6366f1;
+}
+
+/* Volume Meter */
+.fd-vol-bar-container {
+  margin-bottom: 16px;
+}
+
+.fd-vol-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  margin-bottom: 6px;
+}
+
+.fd-vol-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.fd-vol-fill {
+  height: 100%;
+  transition: width 0.08s ease;
+  border-radius: 4px;
+}
+
+/* Live Transcript Box */
+.fd-transcript-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 14px;
+  min-height: 90px;
+}
+
+.fd-transcript-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.fd-transcript-content {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.fd-text-completed {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.fd-text-interim {
+  color: #818cf8;
+  font-style: italic;
+}
+
+.fd-placeholder {
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.fd-placeholder-center {
+  color: #6b7280;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 24px;
+  font-style: italic;
+}
+
+/* ── History Card & Summary Tiles ──────────────────────────────────────── */
+.fd-summary-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.fd-tile {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 10px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fd-tile-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.fd-tile-label {
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.fd-history-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fd-history-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.fd-turn-item-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+}
+
+.fd-turn-num {
+  font-weight: 700;
+  color: #818cf8;
+}
+
+.fd-turn-time {
+  color: #6b7280;
+}
+
+.fd-conf-pill {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.fd-conf-pill.high { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.fd-conf-pill.low  { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+.fd-duration-pill {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.fd-turn-item-text {
+  font-size: 0.88rem;
+  color: #e5e7eb;
+}
+
+/* ── Events Stream Card (Right Column) ─────────────────────────────────── */
+.fd-events-card {
+  min-height: 600px;
+}
+
+.fd-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.fd-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fd-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fd-pill.active {
+  background: #6366f1;
+  color: #ffffff;
+  border-color: #6366f1;
+}
+
+.fd-search-input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #ffffff;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fd-search-input:focus {
+  outline: none;
+  border-color: #818cf8;
+}
+
+.fd-event-log-container {
+  max-height: 520px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.fd-event-row {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  font-family: monospace;
+  overflow: hidden;
+}
+
+.fd-event-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.fd-event-row-main:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.fd-event-time {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.fd-event-type-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.fd-event-type-badge.StartOfTurn { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.fd-event-type-badge.EndOfTurn   { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+.fd-event-type-badge.Interim     { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+.fd-event-type-badge.Final       { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+.fd-event-type-badge.Error       { background: rgba(239, 68, 68, 0.3); color: #ef4444; }
+.fd-event-type-badge.System      { background: rgba(107, 114, 128, 0.2); color: #cbd5e1; }
+.fd-event-type-badge.Payload     { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+
+.fd-event-label {
+  color: #e5e7eb;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fd-expand-icon {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.fd-event-json-wrap {
+  background: rgba(0, 0, 0, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 10px 14px;
+}
+
+.fd-json-code {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #a7f3d0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

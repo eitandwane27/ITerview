@@ -21,6 +21,7 @@ dist-ssr
 .ai-skills/
 guide/
 scripts/
+.agents/
 
 # Editor directories and files
 .vscode/*

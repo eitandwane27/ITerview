@@ -39,6 +39,10 @@ function handleDevSttSocket(ws) {
         send({ type: "error", message: `STT error: ${err.message}` });
         sttSession = null;
         isRecording = false;
+      },
+      // onEvent (raw Deepgram payload)
+      (event) => {
+        send({ type: "flux_event", event });
       }
     );
     isRecording = true;
