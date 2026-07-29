@@ -84,6 +84,9 @@ export default function Results() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const query = new URLSearchParams(window.location.search);
+  const isPracticeMode = query.get("mode") === "practice";
+
   // Fetch results-summary once user is authenticated
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -92,7 +95,8 @@ export default function Results() {
         return;
       }
       try {
-        const response = await fetch(`/api/users/results-summary?uid=${user.uid}`);
+        const endpoint = `/api/users/results-summary?uid=${user.uid}${isPracticeMode ? "&mode=practice" : ""}`;
+        const response = await fetch(endpoint);
         if (!response.ok) {
           throw new Error("Failed to load results summary.");
         }
@@ -107,7 +111,7 @@ export default function Results() {
     });
 
     return () => unsubscribe();
-  }, [navigate]);
+  }, [navigate, isPracticeMode]);
 
   // Derived confidence delta values
   const deltaRaw  = data ? (data.postConfidenceScore - data.preConfidenceScore) : 0;
@@ -117,7 +121,10 @@ export default function Results() {
 
   // Animated values
   const animDelta   = useCountUp(deltaPct,                                     1600);
-  const animMastery = useCountUp(data ? data.masteryScore : null,              1400);
+  const displayScore = isPracticeMode
+    ? (data?.sessionAverages?.practiceSetsAverage?.scorePercentage ?? null)
+    : (data?.masteryScore ?? null);
+  const animMastery = useCountUp(displayScore, 1400);
   const animPre     = useCountUp(preLabel,                                     1200);
   const animPost    = useCountUp(postLabel,                                    1200);
 
@@ -166,7 +173,9 @@ export default function Results() {
       {/* ── Top Bar ─────────────────────────────────────────── */}
       <header className="rs-topbar">
         <div className="rs-topbar-brand">ITerview</div>
-        <span className="rs-topbar-badge">Session Results</span>
+        <span className="rs-topbar-badge">
+          {isPracticeMode ? "Practice Session Summary" : "Session Results"}
+        </span>
       </header>
 
       {/* ── Confetti / Grad Banner ─────────────────────────── */}
@@ -183,42 +192,46 @@ export default function Results() {
       {/* ── Scroll Canvas ───────────────────────────────────── */}
       <main className="rs-main">
 
-        {/* ─── 1. Hero Delta Card ──────────────────────────── */}
-        <section className="rs-card rs-hero-card" aria-labelledby="hero-heading">
-          <div className="rs-card-header">
-            <div className="rs-card-icon rs-card-icon--purple">📈</div>
-            <h2 id="hero-heading" className="rs-card-title">Confidence Growth</h2>
-          </div>
-
-          <div className="rs-inner-card rs-hero-inner">
-            {/* Giant delta number */}
-            <div className="rs-delta-hero">
-              <span className="rs-delta-sign">{deltaPct >= 0 ? "+" : ""}</span>
-              <span className="rs-delta-num">{animDelta}</span>
-              <span className="rs-delta-unit">%</span>
+        {/* ─── 1. Hero Delta Card (Diagnostic Only) ──────────── */}
+        {!isPracticeMode && (
+          <section className="rs-card rs-hero-card" aria-labelledby="hero-heading">
+            <div className="rs-card-header">
+              <div className="rs-card-icon rs-card-icon--purple">📈</div>
+              <h2 id="hero-heading" className="rs-card-title">Confidence Growth</h2>
             </div>
-            <p className="rs-delta-label">Improvement from Pre-Test to Post-Test</p>
 
-            {/* Before / after pills */}
-            <div className="rs-confidence-compare">
-              <div className="rs-conf-pill">
-                <span className="rs-conf-pill-label">Before</span>
-                <span className="rs-conf-pill-value">{animPre}%</span>
+            <div className="rs-inner-card rs-hero-inner">
+              {/* Giant delta number */}
+              <div className="rs-delta-hero">
+                <span className="rs-delta-sign">{deltaPct >= 0 ? "+" : ""}</span>
+                <span className="rs-delta-num">{animDelta}</span>
+                <span className="rs-delta-unit">%</span>
               </div>
-              <div className="rs-conf-arrow">→</div>
-              <div className="rs-conf-pill rs-conf-pill--after">
-                <span className="rs-conf-pill-label">After</span>
-                <span className="rs-conf-pill-value">{animPost}%</span>
+              <p className="rs-delta-label">Improvement from Pre-Test to Post-Test</p>
+
+              {/* Before / after pills */}
+              <div className="rs-confidence-compare">
+                <div className="rs-conf-pill">
+                  <span className="rs-conf-pill-label">Before</span>
+                  <span className="rs-conf-pill-value">{animPre}%</span>
+                </div>
+                <div className="rs-conf-arrow">→</div>
+                <div className="rs-conf-pill rs-conf-pill--after">
+                  <span className="rs-conf-pill-label">After</span>
+                  <span className="rs-conf-pill-value">{animPost}%</span>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
-        {/* ─── 2. Interview Mastery Score ──────────────────── */}
+        {/* ─── 2. Interview Mastery / Practice Performance ─── */}
         <section className="rs-card" aria-labelledby="mastery-heading">
           <div className="rs-card-header">
             <div className="rs-card-icon rs-card-icon--green">🏆</div>
-            <h2 id="mastery-heading" className="rs-card-title">Interview Mastery Score</h2>
+            <h2 id="mastery-heading" className="rs-card-title">
+              {isPracticeMode ? "Practice Session Performance" : "Interview Mastery Score"}
+            </h2>
           </div>
 
           <div className="rs-inner-card">
@@ -228,28 +241,32 @@ export default function Results() {
               <span className="rs-mastery-denom">/100</span>
             </div>
 
-            {/* 📈 Pre-Test vs Post-Test performance comparison */}
-            <div className="rs-performance-compare" style={{ display: "flex", gap: "16px", marginTop: "12px", width: "100%", justifyContent: "center", alignItems: "center" }}>
-              <div className="rs-conf-pill">
-                <span className="rs-conf-pill-label">Pre-Test Baseline</span>
-                <span className="rs-conf-pill-value" style={{ color: "var(--color-ink-secondary)" }}>
-                  {data.preTestScore !== null ? `${data.preTestScore}%` : "—"}
-                </span>
-              </div>
-              <div className="rs-conf-arrow">→</div>
-              <div className="rs-conf-pill rs-conf-pill--after">
-                <span className="rs-conf-pill-label">Post-Test Graduation</span>
-                <span className="rs-conf-pill-value" style={{ color: "var(--color-badge-green)" }}>
-                  {data.masteryScore !== null ? `${data.masteryScore}%` : "—"}
-                </span>
-              </div>
-            </div>
+            {/* 📈 Pre-Test vs Post-Test performance comparison (Diagnostic Only) */}
+            {!isPracticeMode && (
+              <>
+                <div className="rs-performance-compare" style={{ display: "flex", gap: "16px", marginTop: "12px", width: "100%", justifyContent: "center", alignItems: "center" }}>
+                  <div className="rs-conf-pill">
+                    <span className="rs-conf-pill-label">Pre-Test Baseline</span>
+                    <span className="rs-conf-pill-value" style={{ color: "var(--color-ink-secondary)" }}>
+                      {data.preTestScore !== null ? `${data.preTestScore}%` : "—"}
+                    </span>
+                  </div>
+                  <div className="rs-conf-arrow">→</div>
+                  <div className="rs-conf-pill rs-conf-pill--after">
+                    <span className="rs-conf-pill-label">Post-Test Graduation</span>
+                    <span className="rs-conf-pill-value" style={{ color: "var(--color-badge-green)" }}>
+                      {data.masteryScore !== null ? `${data.masteryScore}%` : "—"}
+                    </span>
+                  </div>
+                </div>
 
-            {data.improvementDelta !== null && (
-              <p className="rs-delta-label" style={{ color: data.improvementDelta >= 0 ? "var(--color-badge-green)" : "var(--color-badge-orange)", marginTop: "8px", fontWeight: "600" }}>
-                {data.improvementDelta >= 0 ? "📊 Score Improvement: " : "📊 Score Decrease: "}
-                <strong>{data.improvementDelta >= 0 ? "+" : ""}{data.improvementDelta}%</strong>
-              </p>
+                {data.improvementDelta !== null && (
+                  <p className="rs-delta-label" style={{ color: data.improvementDelta >= 0 ? "var(--color-badge-green)" : "var(--color-badge-orange)", marginTop: "8px", fontWeight: "600" }}>
+                    {data.improvementDelta >= 0 ? "📊 Score Improvement: " : "📊 Score Decrease: "}
+                    <strong>{data.improvementDelta >= 0 ? "+" : ""}{data.improvementDelta}%</strong>
+                  </p>
+                )}
+              </>
             )}
 
             {/* Per-set breakdown */}
@@ -289,9 +306,9 @@ export default function Results() {
             <button
               id="btn-back-dashboard"
               className="rs-btn rs-btn--primary"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(isPracticeMode ? "/interview?set=1&mode=practice" : "/dashboard")}
             >
-              🏠 Back to Dashboard
+              {isPracticeMode ? "🚀 Continue Practice Session" : "🏠 Back to Dashboard"}
             </button>
           )}
 
@@ -300,7 +317,7 @@ export default function Results() {
             className="rs-btn rs-btn--secondary"
             onClick={() => navigate("/dashboard")}
           >
-            Back to Dashboard
+            🏠 Return to Dashboard
           </button>
         </div>
 

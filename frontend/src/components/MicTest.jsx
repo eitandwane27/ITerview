@@ -200,9 +200,9 @@ export default function MicTest() {
         throw new Error("Failed to get Deepgram token from backend");
       const { token } = await tokenRes.json();
 
-      // 4. Open Deepgram WebSocket (browser → Deepgram directly)
+      // 4. Open Deepgram WebSocket (browser → Deepgram directly using Flux)
       const ws = new WebSocket(
-        "wss://api.deepgram.com/v1/listen?model=nova-2&language=en-US&encoding=linear16&sample_rate=16000&interim_results=true&smart_format=true&numerals=true&dictation=true&endpointing=300",
+        "wss://api.deepgram.com/v2/listen?model=flux-general-en&eot_threshold=0.7&eot_timeout_ms=5000&encoding=linear16&sample_rate=16000",
         ["token", token],
       );
       ws.binaryType = "arraybuffer";
@@ -227,19 +227,46 @@ export default function MicTest() {
 
       ws.onmessage = (event) => {
         if (typeof event.data !== "string") return;
-        const msg = JSON.parse(event.data);
-        const alt = msg?.channel?.alternatives?.[0];
-        if (!alt) return;
+        let msg;
+        try {
+          msg = JSON.parse(event.data);
+        } catch {
+          return;
+        }
 
-        if (msg.is_final) {
-          const text = alt.transcript?.trim();
+        // Flux turn events
+        if (msg.event === "StartOfTurn") {
+          console.log(`[Flux] --- StartOfTurn (Turn ${msg.turn_index}) ---`);
+          setPartialTranscript("");
+          return;
+        }
+
+        if (msg.event === "EndOfTurn") {
+          const turn = msg.turn_index;
+          const confidence = msg.end_of_turn_confidence;
+          console.log(`[Flux] --- EndOfTurn (Turn ${turn}, Confidence: ${confidence}) ---`);
+          const text = (msg.transcript || partialTranscript)?.trim();
           if (text) {
             setFinalTranscript((prev) => (prev ? `${prev} ${text}` : text));
             setPartialTranscript("");
             setStatus("ok");
           }
-        } else {
-          setPartialTranscript(alt.transcript || "");
+          return;
+        }
+
+        // Extract transcript from Flux payload or fallback channel alternative
+        const text = msg.transcript ?? msg?.channel?.alternatives?.[0]?.transcript;
+        if (text) {
+          if (msg.is_final) {
+            const trimmed = text.trim();
+            if (trimmed) {
+              setFinalTranscript((prev) => (prev ? `${prev} ${trimmed}` : trimmed));
+              setPartialTranscript("");
+              setStatus("ok");
+            }
+          } else {
+            setPartialTranscript(text);
+          }
         }
       };
 

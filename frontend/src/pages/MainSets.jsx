@@ -34,6 +34,7 @@ export default function MainSets() {
   const voice = location.state?.voice || "aura-2-luna-en";
   const query = new URLSearchParams(location.search);
   const setNumber = parseInt(query.get("set")) || 1;
+  const mode = query.get("mode") || "diagnostic";
   const preview =
     query.get("preview") === "true" || location.pathname.includes("/dev/");
 
@@ -280,7 +281,8 @@ export default function MainSets() {
   const goToNextSet = () => {
     setShowNextTransition(false);
     const nextSet = setNumber + 1;
-    navigate(`/interview?set=${nextSet}`, { state: { voice } });
+    const modeParam = mode === "practice" ? "&mode=practice" : "";
+    navigate(`/interview?set=${nextSet}${modeParam}`, { state: { voice } });
   };
 
   // ── Reset on route change ──────────────────────────────────────────────────
@@ -331,6 +333,19 @@ export default function MainSets() {
   };
 
   const cleanupAudio = () => {
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+        currentAudioRef.current.src = "";
+      } catch (e) {}
+      currentAudioRef.current = null;
+    }
+
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    setIsPlayingAudio(false);
+
     cancelAnimationFrame(animFrameRef.current);
     processorRef.current?.disconnect();
     processorRef.current = null;
@@ -410,15 +425,23 @@ export default function MainSets() {
       wsRef.current?.send(JSON.stringify({ type: "stop_recording" }));
       setIsRecording(false);
       setIsEvaluating(true);
+      const combinedText = (
+        finalTranscriptRef.current +
+        (partialTranscript ? (finalTranscriptRef.current ? " " : "") + partialTranscript : "")
+      ).trim();
       wsRef.current?.send(
         JSON.stringify({
           type: "submit_answer",
-          final_text: finalTranscriptRef.current,
+          final_text: combinedText,
         }),
       );
       setStatus("Answer submitted. Evaluating...");
     } else {
       try {
+        setFinalTranscript("");
+        setPartialTranscript("");
+        finalTranscriptRef.current = "";
+
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             channelCount: 1,
@@ -614,7 +637,9 @@ export default function MainSets() {
                       className="pt-btn pt-btn-primary"
                       id="btn-session-complete"
                       onClick={() => {
-                        if (setNumber === 3) {
+                        if (mode === "practice" && setNumber === 3) {
+                          navigate("/results?mode=practice");
+                        } else if (setNumber === 3) {
                           navigate("/post-test", { state: { voice } });
                         } else {
                           navigate("/dashboard");
@@ -622,7 +647,7 @@ export default function MainSets() {
                       }}
                     >
                       {setNumber === 3
-                        ? "🎓 Start Graduation Challenge"
+                        ? (mode === "practice" ? "📊 View Practice Summary" : "🎓 Start Graduation Challenge")
                         : "Return to Dashboard"}
                     </button>
                   )}

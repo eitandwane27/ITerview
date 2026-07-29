@@ -155,6 +155,10 @@ export default function PreTest() {
           setStatus(msg.message);
           break;
 
+        case "session_resumed":
+          setCurrentQuestion(msg.currentQuestionIndex + 1);
+          break;
+
         case "tts_audio":
           enqueueBase64Audio(msg.data);
           break;
@@ -222,6 +226,19 @@ export default function PreTest() {
   };
 
   const cleanupAudio = () => {
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+        currentAudioRef.current.src = "";
+      } catch (e) {}
+      currentAudioRef.current = null;
+    }
+
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    setIsPlayingAudio(false);
+
     cancelAnimationFrame(animFrameRef.current);
     processorRef.current?.disconnect();
     processorRef.current = null;
@@ -318,7 +335,11 @@ export default function PreTest() {
     setStatus("Review your answer before confirming.");
 
     // Phase 2: let the user review the transcript
-    setConfirmedTranscript(finalTranscriptRef.current);
+    const combined = (
+      finalTranscriptRef.current +
+      (partialTranscript ? (finalTranscriptRef.current ? " " : "") + partialTranscript : "")
+    ).trim();
+    setConfirmedTranscript(combined);
     setAwaitingConfirmation(true);
   };
 

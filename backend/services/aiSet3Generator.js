@@ -26,6 +26,7 @@
 const { OpenAI } = require("openai");
 const { getEvaluatorRubric } = require("../config/evaluatorRubrics");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
+const { safeParseJSON } = require("../utils/jsonParser");
 const { BEHAVIORAL_AVOID_LIST: GLOBAL_BEHAVIORAL_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
@@ -33,7 +34,7 @@ const deepseek = new OpenAI({
   baseURL: "https://api.deepseek.com",
 });
 
-const EVALUATOR_MODEL = "deepseek-chat";
+const EVALUATOR_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BEHAVIORAL COMPETENCY PILLARS — 5 total, one per question slot.
@@ -193,7 +194,8 @@ OUTPUT RULE:
     model: EVALUATOR_MODEL,
     messages,
     temperature: 0.65,
-    max_tokens: 140,
+    max_tokens: 2000,
+    thinking: { type: "disabled" },
   });
 
   if (!response.choices || response.choices.length === 0 || !response.choices[0]?.message?.content) {
@@ -302,16 +304,15 @@ async function evaluateSet3Answer(question, transcript, difficulty = "easy") {
       },
     ],
     temperature: 0.0,
-    max_tokens: 220,
+    max_tokens: 2000,
+    thinking: { type: "disabled" },
     response_format: { type: "json_object" },
   });
 
-  const raw = response.choices?.[0]?.message?.content?.trim() || "{}";
+  const raw = response.choices?.[0]?.message?.content || "";
+  const parsed = safeParseJSON(raw);
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
+  if (!parsed) {
     console.error("[aiSet3Generator] JSON parse error. Raw response:", raw);
     return {
       situation_score: 5,

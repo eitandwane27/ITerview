@@ -8,6 +8,7 @@ const { OpenAI } = require("openai");
 const { getRoleConfig } = require("../config/roleConfig");
 const { getEvaluatorRubric } = require("../config/evaluatorRubrics");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
+const { safeParseJSON } = require("../utils/jsonParser");
 const { EASY_AVOID_LIST, MEDIUM_AVOID_LIST, HARD_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
@@ -15,7 +16,7 @@ const deepseek = new OpenAI({
   baseURL: "https://api.deepseek.com",
 });
 
-const EVALUATOR_MODEL = "deepseek-chat";
+const EVALUATOR_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Role data (examples, topic scope, keywords) is now sourced from
@@ -242,7 +243,8 @@ OUTPUT RULE:
     model: EVALUATOR_MODEL,
     messages,
     temperature: 0.85,
-    max_tokens: 300,
+    max_tokens: 2000,
+    thinking: { type: "disabled" },
   });
 
   if (
@@ -374,16 +376,15 @@ async function evaluateSet1Answer(question, transcript, difficulty = "easy") {
       },
     ],
     temperature: 0.0,
-    max_tokens: 1000,
+    max_tokens: 2000,
+    thinking: { type: "disabled" },
     response_format: { type: "json_object" },
   });
 
-  const raw = response.choices[0]?.message?.content?.trim() || "{}";
+  const raw = response.choices?.[0]?.message?.content || "";
+  const parsed = safeParseJSON(raw);
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
+  if (!parsed) {
     console.error("[aiSet1Generator] JSON parse error. Raw response:", raw);
     return {
       clarity_score: 5,

@@ -10,6 +10,7 @@
 
 const { OpenAI } = require("openai");
 const { getEvaluatorRubric } = require("../config/evaluatorRubrics");
+const { safeParseJSON } = require("../utils/jsonParser");
 
 const deepseek = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -93,39 +94,50 @@ async function evaluate3CScores(question, transcript, difficulty = "easy") {
   const difficultyRubric = getEvaluatorRubric(difficulty);
   const systemPrompt = `${BASE_SCORING_SYSTEM_PROMPT}\n\n${difficultyRubric}`;
 
-  const response = await deepseek.chat.completions.create({
-    model: "deepseek-chat",
-    messages: [
-      { role: "system", content: systemPrompt },
-      {
-        role: "user",
-        content: `Score ONLY how well the Student's Answer responds to the specific Interview Question below.
+  try {
+    const response = await deepseek.chat.completions.create({
+      model: process.env.DEEPSEEK_MODEL || "deepseek-v4-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: `Score ONLY how well the Student's Answer responds to the specific Interview Question below.
 An answer that talks about a different topic entirely must receive low correctness and completeness scores.
 
 Interview Question: "${question}"
 
 Student's Answer: "${transcript}"`,
-      },
-    ],
-    temperature: 0.0, // deterministic scoring
-    max_tokens: 300,
-    response_format: { type: "json_object" }, // forces valid JSON output
-  });
+        },
+      ],
+      temperature: 0.0, // deterministic scoring
+      max_tokens: 2000,
+      thinking: { type: "disabled" }, // Disables native reasoning CoT for sub-second/1s latency
+      response_format: { type: "json_object" }, // forces valid JSON output
+    });
 
-  const raw = response.choices[0]?.message?.content?.trim() || "{}";
-  const parsed = JSON.parse(raw);
+    const raw = response.choices?.[0]?.message?.content || "";
+    const parsed = safeParseJSON(raw) || {};
 
-  // Clamp scores to 1–10 and validate the weakness tag
-  const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
+    // Clamp scores to 1–10 and validate the weakness tag
+    const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
 
-  return {
-    clarity_score: clamp(parsed.clarity_score),
-    correctness_score: clamp(parsed.correctness_score),
-    completeness_score: clamp(parsed.completeness_score),
-    primary_weakness: VALID_TAGS.includes(parsed.primary_weakness)
-      ? parsed.primary_weakness
-      : "focus_completeness",
-  };
+    return {
+      clarity_score: clamp(parsed.clarity_score),
+      correctness_score: clamp(parsed.correctness_score),
+      completeness_score: clamp(parsed.completeness_score),
+      primary_weakness: VALID_TAGS.includes(parsed.primary_weakness)
+        ? parsed.primary_weakness
+        : "focus_completeness",
+    };
+  } catch (err) {
+    console.error("[aiEvaluator] Error evaluating 3C scores:", err.message);
+    return {
+      clarity_score: 5,
+      correctness_score: 5,
+      completeness_score: 5,
+      primary_weakness: "focus_completeness",
+    };
+  }
 }
 
 module.exports = { evaluate3CScores };

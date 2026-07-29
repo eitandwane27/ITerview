@@ -72,6 +72,9 @@ const set3SessionSchema = new mongoose.Schema({
     default: "easy",
   },
 
+  // Array of dynamically generated question texts (all 5 upfront questions)
+  questions: { type: [String], default: [] },
+
   // Array of dynamically generated questions + scored answers (up to 5)
   answers: { type: [set3AnswerSchema], default: [] },
 

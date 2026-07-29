@@ -111,9 +111,9 @@ function handleSet1Socket(ws, request) {
     fullTranscript = "";
     sttSession = createDeepgramLiveSession(
       (transcript, isFinal) => {
-        if (transcript) {
+        if (transcript || isFinal) {
           send({ type: "transcript", text: transcript, isFinal });
-          if (isFinal) {
+          if (isFinal && transcript) {
             fullTranscript = fullTranscript
               ? `${fullTranscript} ${transcript}`
               : transcript;
@@ -161,7 +161,10 @@ function handleSet1Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        sessionDifficulty = user.difficulty || "easy";
+        const difficultyRank = { easy: 1, medium: 2, hard: 3 };
+        const userDiff = user.difficulty || "easy";
+        const userUnlocked = user.unlockedDifficulty || "easy";
+        sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
       }
 
       // Allow dev/testing URL override only in non-production environments
@@ -172,7 +175,69 @@ function handleSet1Socket(ws, request) {
         }
       }
 
-      // 2. Initialize Set1Session in DB (upsert)
+      // Check if user requested a reset via URL
+      const isResetRequested = url.searchParams.get("reset") === "true";
+
+      // 2. Check if an in-progress session doc already exists in DB
+      const existingDoc = await Set1Session.findOne({ firebaseUid });
+      const isResuming =
+        !isResetRequested &&
+        existingDoc &&
+        !existingDoc.isCompleted;
+
+      if (isResuming) {
+        sessionDoc = existingDoc;
+        sessionDoc.sessionId = sessionId;
+        await sessionDoc.save();
+
+        if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
+          questions = existingDoc.questions;
+        } else {
+          questions = existingDoc.answers.map((a) => a.question);
+          while (questions.length < MAX_QUESTIONS) {
+            const q = await generateSet1Question(
+              sessionWeaknessTag,
+              sessionRole,
+              sessionDifficulty,
+              questions
+            );
+            questions.push(q);
+          }
+          sessionDoc.questions = questions;
+          await sessionDoc.save();
+        }
+
+        currentQuestionIndex = existingDoc.answers.length;
+
+        console.log(
+          `[DB] ⏯️ Resuming Set 1 session for user ${firebaseUid} at Question ${currentQuestionIndex + 1} (${currentQuestionIndex} previous answers saved)`
+        );
+
+        send({
+          type: "status",
+          message: `Resuming your Set 1 session at Question ${currentQuestionIndex + 1}...`,
+        });
+
+        currentQuestionText = questions[currentQuestionIndex];
+
+        send({
+          type: "question_text",
+          text: currentQuestionText,
+          index: currentQuestionIndex + 1,
+        });
+
+        const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
+        send({ type: "tts_audio", data: audioBuffer.toString("base64") });
+
+        send({
+          type: "status",
+          message: "Question ready. Click Unmute to answer.",
+        });
+
+        return;
+      }
+
+      // Initialize fresh Set1Session in DB if not resuming
       sessionDoc = await Set1Session.findOneAndUpdate(
         { firebaseUid },
         {
@@ -180,6 +245,7 @@ function handleSet1Socket(ws, request) {
           weakness_tag: sessionWeaknessTag,
           role: sessionRole,
           difficulty: sessionDifficulty,
+          questions: [],
           answers: [],
           avg_clarity: null,
           avg_correctness: null,
@@ -189,7 +255,7 @@ function handleSet1Socket(ws, request) {
           completedAt: null,
           createdAt: new Date(),
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       );
 
       // 3. Generate all 5 questions sequentially
@@ -222,6 +288,10 @@ function handleSet1Socket(ws, request) {
       questions.forEach((q, idx) => {
         console.log(`  Q${idx + 1}: "${q}"`);
       });
+
+      // Save generated questions array to DB for resumption persistence
+      sessionDoc.questions = questions;
+      await sessionDoc.save();
 
       currentQuestionText = questions[0];
 

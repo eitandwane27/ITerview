@@ -159,9 +159,9 @@ function handlePostTestSocket(ws, request) {
 
     sttSession = createDeepgramLiveSession(
       (transcript, isFinal) => {
-        if (transcript) {
+        if (transcript || isFinal) {
           send({ type: "transcript", text: transcript, isFinal });
-          if (isFinal) {
+          if (isFinal && transcript) {
             fullTranscript = fullTranscript
               ? `${fullTranscript} ${transcript}`
               : transcript;
@@ -192,6 +192,8 @@ function handlePostTestSocket(ws, request) {
   (async () => {
     send({ type: "status", message: "Graduation Challenge started. Preparing your first question…" });
 
+    const isResetRequested = url.searchParams.get("reset") === "true";
+
     // Fetch user difficulty
     try {
       const user = await User.findOne({ firebaseUid });
@@ -202,23 +204,61 @@ function handlePostTestSocket(ws, request) {
       console.error("[WS/Post] Failed to fetch user difficulty:", err.message);
     }
 
-    // Initialize / reset post-test session document in MongoDB
+    // Check for an active, incomplete post-test session
+    let activeSession = null;
     try {
-      await PostTestSession.findOneAndUpdate(
-        { firebaseUid },
-        {
-          sessionId,
-          answers: [],
-          final_weakness_tag: null,
-          final_score_percentage: null,
-          completedAt: null,
-          createdAt: new Date(),
-        },
-        { upsert: true, returnDocument: "after" }
-      );
-      console.log(`[DB/Post] ✅ Post-test session initialized: ${sessionId} for user: ${firebaseUid}`);
+      if (!isResetRequested) {
+        activeSession = await PostTestSession.findOne({ firebaseUid, completedAt: null });
+      }
     } catch (err) {
-      console.error(`[DB/Post] ❌ Failed to initialize session:`, err.message);
+      console.error("[WS/Post] Failed to check for active post-test session:", err.message);
+    }
+
+    if (activeSession) {
+      console.log(`[WS/Post] 🔄 Active session found for user: ${firebaseUid}. Resuming session ID: ${activeSession.sessionId} as new session ID: ${sessionId}`);
+      try {
+        await PostTestSession.findOneAndUpdate(
+          { firebaseUid, completedAt: null },
+          { sessionId }
+        );
+
+        currentQuestionIndex = activeSession.answers ? activeSession.answers.length : 0;
+        if (activeSession.answers) {
+          activeSession.answers.forEach(ans => {
+            sessionScores.push({
+              questionIndex: ans.questionIndex,
+              clarity_score: ans.clarity_score,
+              correctness_score: ans.correctness_score,
+              completeness_score: ans.completeness_score,
+              primary_weakness: ans.primary_weakness,
+            });
+          });
+        }
+
+        console.log(`[WS/Post] Resumed post-test session at question index: ${currentQuestionIndex}`);
+        send({ type: "session_resumed", currentQuestionIndex });
+      } catch (err) {
+        console.error(`[DB/Post] ❌ Failed to update resumed post-test session document:`, err.message);
+      }
+    } else {
+      // Initialize / reset post-test session document in MongoDB
+      try {
+        await PostTestSession.findOneAndUpdate(
+          { firebaseUid },
+          {
+            sessionId,
+            answers: [],
+            final_weakness_tag: null,
+            final_score_percentage: null,
+            completedAt: null,
+            createdAt: new Date(),
+          },
+          { upsert: true, returnDocument: "after" }
+        );
+        console.log(`[DB/Post] ✅ Post-test session initialized: ${sessionId} for user: ${firebaseUid}`);
+      } catch (err) {
+        console.error(`[DB/Post] ❌ Failed to initialize session:`, err.message);
+      }
     }
 
     await speakQuestion(POST_TEST_QUESTIONS[currentQuestionIndex]);
