@@ -173,44 +173,51 @@ export default function Dashboard() {
   const [activeSession, setActiveSession] = useState(null);
 
   // Fetch saved role + user display info + diagnostic summary on mount
+  const fetchUserData = useCallback(async (user) => {
+    if (!user) return;
+    const initial = (user.displayName || user.email || "U")[0].toUpperCase();
+    setUserName(initial);
+
+    try {
+      const [res, summaryRes, activeRes] = await Promise.all([
+        fetch(`/api/users/${user.uid}`),
+        fetch(`/api/users/results-summary?uid=${user.uid}`),
+        fetch(`/api/users/active-practice-session?uid=${user.uid}`),
+      ]);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user?.role) setSelectedRole(data.user.role);
+        if (data.user?.unlockedDifficulty) setUnlockedDifficulty(data.user.unlockedDifficulty);
+        if (data.user?.focusArea) setSelectedFocus(data.user.focusArea);
+        if (data.hasCompletedDiagnostic !== undefined) setHasCompletedDiagnostic(data.hasCompletedDiagnostic);
+      }
+
+      if (summaryRes.ok) {
+        const summaryData = await summaryRes.json();
+        setDiagnosticData(summaryData);
+      }
+
+      if (activeRes && activeRes.ok) {
+        const activeData = await activeRes.json();
+        setActiveSession(activeData);
+      }
+    } catch (err) {
+      console.error("Error fetching user details or summary:", err);
+    }
+  }, []);
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (auth.currentUser) {
+      fetchUserData(auth.currentUser);
+    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        // Derive a single-letter initial from email or displayName
-        const initial = (user.displayName || user.email || "U")[0].toUpperCase();
-        setUserName(initial);
-
-        try {
-          const [res, summaryRes, activeRes] = await Promise.all([
-            fetch(`/api/users/${user.uid}`),
-            fetch(`/api/users/results-summary?uid=${user.uid}`),
-            fetch(`/api/users/active-practice-session?uid=${user.uid}`),
-          ]);
-
-          if (res.ok) {
-            const data = await res.json();
-            if (data.user?.role) setSelectedRole(data.user.role);
-            if (data.user?.unlockedDifficulty) setUnlockedDifficulty(data.user.unlockedDifficulty);
-            if (data.user?.focusArea) setSelectedFocus(data.user.focusArea);
-            if (data.hasCompletedDiagnostic !== undefined) setHasCompletedDiagnostic(data.hasCompletedDiagnostic);
-          }
-
-          if (summaryRes.ok) {
-            const summaryData = await summaryRes.json();
-            setDiagnosticData(summaryData);
-          }
-
-          if (activeRes && activeRes.ok) {
-            const activeData = await activeRes.json();
-            setActiveSession(activeData);
-          }
-        } catch (err) {
-          console.error("Error fetching user details or summary:", err);
-        }
+        fetchUserData(user);
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [fetchUserData]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -243,8 +250,22 @@ export default function Dashboard() {
 
       if (!res.ok) throw new Error("Failed to save role");
       console.log("Role & focus area saved to MongoDB.");
+
       if (hasCompletedDiagnostic) {
-        navigate(`/interview?set=1&mode=practice&focusArea=${selectedFocus}`);
+        let targetSet = activeSession?.hasActiveSession ? activeSession.activeSet : 1;
+        try {
+          const activeCheckRes = await fetch(`/api/users/active-practice-session?uid=${user.uid}`);
+          if (activeCheckRes.ok) {
+            const activeCheckData = await activeCheckRes.json();
+            if (activeCheckData.hasActiveSession && activeCheckData.activeSet) {
+              targetSet = activeCheckData.activeSet;
+            }
+          }
+        } catch (e) {
+          console.error("Active session check fallback error:", e);
+        }
+
+        navigate(`/interview?set=${targetSet}&mode=practice&focusArea=${selectedFocus}`);
       } else {
         navigate("/likert-pre");
       }
@@ -252,7 +273,7 @@ export default function Dashboard() {
       console.error("Error saving role & focus area:", err);
       alert("Failed to save target role. Please try again.");
     }
-  }, [selectedRole, selectedDifficulty, selectedFocus, hasCompletedDiagnostic, navigate]);
+  }, [selectedRole, selectedDifficulty, selectedFocus, hasCompletedDiagnostic, activeSession, navigate]);
 
   const handleResumeSession = useCallback(() => {
     const targetSet = activeSession?.activeSet || 1;
@@ -270,12 +291,12 @@ export default function Dashboard() {
         });
         setActiveSession({ hasActiveSession: false });
       }
-      handleStartSession();
     } catch (err) {
       console.error("Error resetting session:", err);
-      handleStartSession();
     }
-  }, [handleStartSession]);
+  }, []);
+
+  const isSessionActive = !!(activeSession?.hasActiveSession && hasCompletedDiagnostic);
 
   const difficultyChips = [
     { label: "Easy",   value: "easy",   locked: false },
@@ -582,13 +603,15 @@ export default function Dashboard() {
 
               {/* Role selector */}
               <label htmlFor="role-select" className="db-role-select-label">
-                Target Role
+                Target Role {isSessionActive && <span style={{ textTransform: "none", fontWeight: 400, color: "var(--color-primary)" }}>(Locked — Active Session)</span>}
               </label>
               <select
                 id="role-select"
                 className="db-role-select"
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
+                disabled={isSessionActive}
+                title={isSessionActive ? "Target Role is locked during active practice session. Click 'Start Fresh Session' to edit." : ""}
               >
                 {ROLE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value} disabled={o.value === ""}>
@@ -601,7 +624,7 @@ export default function Dashboard() {
               <div className="db-focus-section" style={{ marginTop: 12, marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <label htmlFor="focus-select" className="db-role-select-label" style={{ margin: 0 }}>
-                    Practice Focus Area
+                    Practice Focus Area {isSessionActive && <span style={{ textTransform: "none", fontWeight: 400, color: "var(--color-primary)" }}>(Locked)</span>}
                   </label>
                   <span
                     className="db-3c-tooltip-trigger"
@@ -617,6 +640,8 @@ export default function Dashboard() {
                   className="db-role-select"
                   value={selectedFocus}
                   onChange={(e) => setSelectedFocus(e.target.value)}
+                  disabled={isSessionActive}
+                  title={isSessionActive ? "Focus Area is locked during active practice session. Click 'Start Fresh Session' to edit." : ""}
                 >
                   {FOCUS_OPTIONS.map((f) => (
                     <option key={f.value} value={f.value}>
@@ -624,6 +649,13 @@ export default function Dashboard() {
                     </option>
                   ))}
                 </select>
+
+                {isSessionActive && (
+                  <div style={{ fontSize: 11, color: "var(--color-ink-muted)", fontStyle: "italic", marginTop: -8, marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                    <Lock size={12} style={{ color: "var(--color-primary)", flexShrink: 0 }} />
+                    <span>Target Role & Focus Area are locked for your active session. Click <strong>"Start Fresh Session"</strong> in the banner above to reset & enable options.</span>
+                  </div>
+                )}
 
                 {/* Auto-Detect Insight Box */}
                 {selectedFocus === "auto" && (
@@ -689,7 +721,11 @@ export default function Dashboard() {
                 onClick={handleStartSession}
                 disabled={!selectedRole}
               >
-                {hasCompletedDiagnostic ? "Start Practice Session" : "Start Pre-Test"}
+                {hasCompletedDiagnostic
+                  ? (activeSession?.hasActiveSession
+                      ? `▶ Resume Set ${activeSession.activeSet} Practice`
+                      : "Start Practice Session")
+                  : "Start Pre-Test"}
               </button>
 
               {/* Company filter */}

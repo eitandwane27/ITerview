@@ -430,101 +430,6 @@ router.get("/results-summary", async (req, res) => {
   }
 });
 
-// GET /api/users/:firebaseUid
-// Retrieves user profile including their role and diagnostic status.
-router.get("/:firebaseUid", async (req, res) => {
-  try {
-    const { firebaseUid } = req.params;
-    const [user, postSession] = await Promise.all([
-      User.findOne({ firebaseUid }),
-      PostTestSession.findOne({ firebaseUid }).select("completedAt"),
-    ]);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const hasCompletedDiagnostic = !!(postSession && postSession.completedAt);
-
-    res.status(200).json({ user, hasCompletedDiagnostic });
-  } catch (error) {
-    console.error("❌ Error fetching user:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
-  }
-});
-
-// PUT /api/users/role
-// Updates the user's target role and/or difficulty.
-router.put("/role", async (req, res) => {
-  try {
-    const { firebaseUid, role, difficulty } = req.body;
-
-    if (!firebaseUid) {
-      return res.status(400).json({ message: "Firebase UID is required" });
-    }
-
-    // Fetch existing user to check unlockedDifficulty enforcement
-    const currentUser = await User.findOne({ firebaseUid });
-    if (!currentUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const updateFields = {};
-    const difficultyRank = { easy: 1, medium: 2, hard: 3 };
-    const targetUnlocked = req.body.unlockedDifficulty || currentUser.unlockedDifficulty || "easy";
-
-    if (role !== undefined) {
-      if (!["frontend", "backend", "fullstack"].includes(role)) {
-        return res.status(400).json({ message: "Invalid role specified" });
-      }
-      updateFields.role = role;
-    }
-
-    if (difficulty !== undefined) {
-      if (!["easy", "medium", "hard"].includes(difficulty)) {
-        return res.status(400).json({ message: "Invalid difficulty specified" });
-      }
-      if (difficultyRank[difficulty] > difficultyRank[targetUnlocked]) {
-        return res.status(403).json({
-          message: `Cannot select '${difficulty}' difficulty because higher level is locked. Unlocked level is '${targetUnlocked}'.`,
-          unlockedDifficulty: targetUnlocked,
-        });
-      }
-      updateFields.difficulty = difficulty;
-    }
-
-    if (req.body.unlockedDifficulty !== undefined) {
-      if (!["easy", "medium", "hard"].includes(req.body.unlockedDifficulty)) {
-        return res.status(400).json({ message: "Invalid unlocked difficulty specified" });
-      }
-      updateFields.unlockedDifficulty = req.body.unlockedDifficulty;
-    }
-
-    if (req.body.focusArea !== undefined) {
-      if (!["auto", "clarity", "correctness", "completeness", "star"].includes(req.body.focusArea)) {
-        return res.status(400).json({ message: "Invalid focus area specified" });
-      }
-      updateFields.focusArea = req.body.focusArea;
-    }
-
-    if (Object.keys(updateFields).length === 0) {
-      return res.status(400).json({ message: "Nothing to update. Provide role, difficulty, unlockedDifficulty, or focusArea." });
-    }
-
-    const user = await User.findOneAndUpdate(
-      { firebaseUid },
-      { $set: updateFields },
-      { returnDocument: "after" }
-    );
-
-    console.log(`✅ User updated: role=${user.role}, difficulty=${user.difficulty} for:`, user.email);
-    res.status(200).json({ message: "User profile updated successfully", user });
-  } catch (error) {
-    console.error("❌ Error updating user role:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
-  }
-});
-
 // GET /api/users/active-practice-session?uid=...
 // Checks if the user has an in-progress practice session (Set 1, Set 2, or Set 3)
 router.get("/active-practice-session", async (req, res) => {
@@ -540,39 +445,95 @@ router.get("/active-practice-session", async (req, res) => {
       Set3Session.findOne({ firebaseUid: uid }).select("isCompleted answers sessionId"),
     ]);
 
-    if (set1 && !set1.isCompleted && set1.answers && set1.answers.length > 0) {
-      return res.status(200).json({
-        hasActiveSession: true,
-        activeSet: 1,
-        answersCount: set1.answers.length,
-        totalQuestions: 5,
-        sessionId: set1.sessionId,
-      });
+    let activeDoc = null;
+    let activeSet = null;
+
+    if (set3 && !set3.isCompleted) {
+      activeDoc = set3;
+      activeSet = 3;
+    } else if (set2 && !set2.isCompleted) {
+      activeDoc = set2;
+      activeSet = 2;
+    } else if (set1 && !set1.isCompleted) {
+      activeDoc = set1;
+      activeSet = 1;
+    } else if (set1 && set1.isCompleted) {
+      if (!set2 || !set2.isCompleted) {
+        activeDoc = set2;
+        activeSet = 2;
+      } else if (!set3 || !set3.isCompleted) {
+        activeDoc = set3;
+        activeSet = 3;
+      }
     }
 
-    if (set2 && !set2.isCompleted && set2.answers && set2.answers.length > 0) {
+    if (activeSet) {
       return res.status(200).json({
         hasActiveSession: true,
-        activeSet: 2,
-        answersCount: set2.answers.length,
+        activeSet,
+        answersCount: activeDoc?.answers ? activeDoc.answers.length : 0,
         totalQuestions: 5,
-        sessionId: set2.sessionId,
-      });
-    }
-
-    if (set3 && !set3.isCompleted && set3.answers && set3.answers.length > 0) {
-      return res.status(200).json({
-        hasActiveSession: true,
-        activeSet: 3,
-        answersCount: set3.answers.length,
-        totalQuestions: 5,
-        sessionId: set3.sessionId,
+        sessionId: activeDoc?.sessionId || null,
       });
     }
 
     return res.status(200).json({ hasActiveSession: false });
   } catch (error) {
     console.error("❌ Error fetching active practice session:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// PUT /api/users/role
+// Updates user's target role, difficulty, and focus area in MongoDB.
+router.put("/role", async (req, res) => {
+  try {
+    const { firebaseUid, role, difficulty, focusArea } = req.body;
+
+    if (!firebaseUid) {
+      return res.status(400).json({ message: "Firebase UID is required" });
+    }
+
+    const updateFields = {};
+    if (role) updateFields.role = role;
+    if (difficulty) updateFields.difficulty = difficulty;
+    if (focusArea) updateFields.focusArea = focusArea;
+
+    const user = await User.findOneAndUpdate(
+      { firebaseUid },
+      { $set: updateFields },
+      { returnDocument: "after", upsert: true }
+    );
+
+    console.log(`✅ Updated role/difficulty/focusArea for user ${firebaseUid}:`, updateFields);
+    res.status(200).json({ message: "Role and focus area updated successfully!", user });
+  } catch (error) {
+    console.error("❌ Error updating role:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// GET /api/users/:firebaseUid
+// Retrieves user profile including their role and diagnostic status.
+router.get("/:firebaseUid", async (req, res) => {
+  try {
+    const { firebaseUid } = req.params;
+    const [user, preSession] = await Promise.all([
+      User.findOne({ firebaseUid }),
+      PreTestSession.findOne({ firebaseUid }).select("completedAt baseline_score_percentage"),
+    ]);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const hasCompletedDiagnostic = !!(
+      preSession && (preSession.completedAt || preSession.baseline_score_percentage !== null)
+    );
+
+    res.status(200).json({ user, hasCompletedDiagnostic });
+  } catch (error) {
+    console.error("❌ Error fetching user:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 });

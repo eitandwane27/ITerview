@@ -511,6 +511,13 @@
   border-color: var(--color-primary-muted);
 }
 
+.db-role-select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background-color: var(--color-surface-inner, #f3f4f6);
+  border-color: var(--color-border-soft);
+}
+
 /* Primary CTA */
 .db-btn-primary {
   width: 100%;

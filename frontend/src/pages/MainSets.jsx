@@ -538,7 +538,14 @@ export default function MainSets() {
           {/* ── Top Bar ── */}
           <header className="pt-topbar">
             {/* Brand wordmark — mirrors db-topnav__wordmark */}
-            <div className="pt-topbar-brand">ITerview</div>
+            <div
+              className="pt-topbar-brand"
+              onClick={() => navigate("/dashboard")}
+              style={{ cursor: "pointer" }}
+              title="Return to Dashboard"
+            >
+              ITerview
+            </div>
 
             {/* Center meta cluster */}
             <div className="pt-topbar-meta">
@@ -558,6 +565,32 @@ export default function MainSets() {
                 </span>
               )}
             </div>
+
+            {/* Back to Dashboard button */}
+            <button
+              onClick={() => navigate("/dashboard")}
+              style={{
+                background: "var(--color-surface-card)",
+                border: "1px solid var(--color-border-soft)",
+                borderRadius: "var(--md-radius, 8px)",
+                padding: "6px 14px",
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "var(--color-ink-secondary)",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-primary)";
+                e.currentTarget.style.color = "var(--color-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border-soft)";
+                e.currentTarget.style.color = "var(--color-ink-secondary)";
+              }}
+            >
+              ← Dashboard
+            </button>
           </header>
 
           {/* ── Interview Arena ── */}
