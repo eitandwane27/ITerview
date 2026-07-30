@@ -54,43 +54,66 @@ export default function PreTest() {
   const audioQueueRef = useRef([]); // pending audio items (base64 or stream objects)
   const isPlayingRef = useRef(false); // true while any audio clip is playing
   const currentAudioRef = useRef(null); // active playing HTML5 Audio element
+  const currentObjectUrlRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // ── Playback Functions ─────────────────────────────────────────────────────
 
   const playBase64 = useCallback((base64Data, onEnded, onError) => {
+    if (!isMountedRef.current) return;
     try {
       fetch(`data:audio/mpeg;base64,${base64Data}`)
         .then((r) => r.blob())
         .then((blob) => {
+          if (!isMountedRef.current) return;
+
+          if (currentObjectUrlRef.current) {
+            URL.revokeObjectURL(currentObjectUrlRef.current);
+            currentObjectUrlRef.current = null;
+          }
+
           const url = URL.createObjectURL(blob);
+          currentObjectUrlRef.current = url;
           const audio = new Audio(url);
           currentAudioRef.current = audio;
 
-          audio.onended = () => {
-            if (currentAudioRef.current === audio)
+          const cleanupThisAudio = () => {
+            if (currentAudioRef.current === audio) {
               currentAudioRef.current = null;
-            URL.revokeObjectURL(url);
-            onEnded();
+            }
+            if (currentObjectUrlRef.current === url) {
+              URL.revokeObjectURL(url);
+              currentObjectUrlRef.current = null;
+            }
+          };
+
+          audio.onended = () => {
+            cleanupThisAudio();
+            if (isMountedRef.current) onEnded();
           };
 
           audio.onerror = () => {
-            if (currentAudioRef.current === audio)
-              currentAudioRef.current = null;
-            URL.revokeObjectURL(url);
-            onError(new Error("Audio playback failed."));
+            cleanupThisAudio();
+            if (isMountedRef.current) onError(new Error("Audio playback failed."));
           };
 
           audio.play().catch((err) => {
-            if (currentAudioRef.current === audio)
-              currentAudioRef.current = null;
-            onError(err);
+            cleanupThisAudio();
+            if (isMountedRef.current) onError(err);
           });
         })
         .catch((err) => {
-          onError(err);
+          if (isMountedRef.current) onError(err);
         });
     } catch (err) {
-      onError(err);
+      if (isMountedRef.current) onError(err);
     }
   }, []);
 
@@ -233,6 +256,13 @@ export default function PreTest() {
         currentAudioRef.current.src = "";
       } catch (e) {}
       currentAudioRef.current = null;
+    }
+
+    if (currentObjectUrlRef.current) {
+      try {
+        URL.revokeObjectURL(currentObjectUrlRef.current);
+      } catch (e) {}
+      currentObjectUrlRef.current = null;
     }
 
     audioQueueRef.current = [];

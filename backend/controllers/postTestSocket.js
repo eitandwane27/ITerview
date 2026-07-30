@@ -123,10 +123,12 @@ function handlePostTestSocket(ws, request) {
   }
 
   async function speakQuestion(text) {
+    if (ws.readyState !== ws.OPEN) return;
     try {
       send({ type: "status", message: "Generating question audio…" });
       const t0 = Date.now();
       const audioBuffer = await synthesizeSpeech(text, voiceModel);
+      if (ws.readyState !== ws.OPEN) return;
       const latency = Date.now() - t0;
       metrics.ttsLatencies.push(latency);
       const base64Audio = audioBuffer.toString("base64");
@@ -135,6 +137,7 @@ function handlePostTestSocket(ws, request) {
         `[TTS/Post] 🔊 Sent audio in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`
       );
     } catch (err) {
+      if (ws.readyState !== ws.OPEN) return;
       console.error("[WS/Post] TTS error:", err.message);
       send({ type: "error", message: `TTS failed: ${err.message}` });
     }
@@ -367,13 +370,13 @@ function handlePostTestSocket(ws, request) {
 
         // Pre-generate next question TTS
         const nextIndex = currentQuestionIndex + 1;
-        if (nextIndex < POST_TEST_QUESTIONS.length) {
+        if (ws.readyState === ws.OPEN && nextIndex < POST_TEST_QUESTIONS.length) {
           if (preGeneratedNextQuestionIndex !== nextIndex) {
             preGeneratedNextQuestionIndex = nextIndex;
             preGeneratedNextQuestionAudio = null;
             synthesizeSpeech(POST_TEST_QUESTIONS[nextIndex], voiceModel)
               .then((buf) => {
-                if (preGeneratedNextQuestionIndex === nextIndex) {
+                if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
                   preGeneratedNextQuestionAudio = buf;
                   console.log(`[TTS/Post] ✅ Background Q${nextIndex + 1} audio ready.`);
                 }

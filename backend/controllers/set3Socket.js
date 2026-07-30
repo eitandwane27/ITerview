@@ -149,6 +149,7 @@ function handleSet3Socket(ws, request) {
    * @returns {Promise<number>}  - Total wall-clock time in ms
    */
   async function speakSentencesConcurrently(text, label = "") {
+    if (ws.readyState !== ws.OPEN) return 0;
     const sentences = (text.match(/[^.!?]+[.!?]*/g) || [text])
       .map((s) => s.trim())
       .filter(Boolean);
@@ -156,19 +157,23 @@ function handleSet3Socket(ws, request) {
     const t0 = Date.now();
 
     // Launch all TTS requests in parallel
-    const promises = sentences.map((sentence) =>
-      synthesizeSpeech(sentence, voiceModel)
+    const promises = sentences.map((sentence) => {
+      if (ws.readyState !== ws.OPEN) {
+        return Promise.resolve({ sentence, buffer: null });
+      }
+      return synthesizeSpeech(sentence, voiceModel)
         .then((buffer) => ({ sentence, buffer }))
         .catch((err) => {
           console.error(`[TTS] ❌ Error on "${sentence.substring(0, 40)}…": ${err.message}`);
           return { sentence, buffer: null };
-        }),
-    );
+        });
+    });
 
     // Stream sequentially to the client as each resolves in order
     for (let i = 0; i < promises.length; i++) {
+      if (ws.readyState !== ws.OPEN) break;
       const { sentence, buffer } = await promises[i];
-      if (buffer) {
+      if (buffer && ws.readyState === ws.OPEN) {
         send({ type: "tts_audio", data: buffer.toString("base64") });
         if (label) {
           console.log(
@@ -329,6 +334,7 @@ function handleSet3Socket(ws, request) {
 
       // 5. Await Q1 TTS (was running concurrently with Q2-5 generation)
       const q1AudioBuffer = await q1SynthesisPromise;
+      if (ws.readyState !== ws.OPEN) return;
       const q1TtsLatency = Date.now() - startupStart;
       metrics.ttsLatencies.push(q1TtsLatency);
 
@@ -374,6 +380,7 @@ function handleSet3Socket(ws, request) {
         // Fire background synthesis of the next question (if not already cached)
         const nextIndex = currentQuestionIndex + 1;
         if (
+          ws.readyState === ws.OPEN &&
           nextIndex < MAX_QUESTIONS &&
           preGeneratedNextQuestionIndex !== nextIndex &&
           questions[nextIndex]
@@ -383,7 +390,7 @@ function handleSet3Socket(ws, request) {
 
           synthesizeSpeech(questions[nextIndex], voiceModel)
             .then((audioBuffer) => {
-              if (preGeneratedNextQuestionIndex === nextIndex) {
+              if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
                 preGeneratedNextQuestionAudio = audioBuffer;
                 console.log(
                   `[Cache] ✅ Pre-cached Q${nextIndex + 1} audio ready`,
@@ -457,6 +464,11 @@ function handleSet3Socket(ws, request) {
           await sessionDoc.save();
           console.timeEnd("[Perf] DB Record Save");
 
+          if (ws.readyState !== ws.OPEN) {
+            console.log("[WS] Client disconnected during evaluation, skipping TTS and next question.");
+            return;
+          }
+
           // 3. Send STAR scores + coaching tip to frontend
           send({
             type: "coach_tip",
@@ -493,6 +505,8 @@ function handleSet3Socket(ws, request) {
             metrics.replyTtsLatencies.push(replyTtsDuration);
             console.timeEnd("[Perf] Reply TTS (Concurrent Sentences)");
 
+            if (ws.readyState !== ws.OPEN) return;
+
             // 6. Step 4: Play next-question audio — cache hit or on-the-fly fallback
             if (
               preGeneratedNextQuestionAudio &&
@@ -507,6 +521,7 @@ function handleSet3Socket(ws, request) {
               preGeneratedNextQuestionAudio = null;
               preGeneratedNextQuestionIndex = -1;
             } else {
+              if (ws.readyState !== ws.OPEN) return;
               console.log(`[TTS] ⚠️ Next question audio not pre-cached. Synthesizing on-the-fly.`);
               console.time("[Perf] Next Question TTS Synthesis");
               const qTtsStart = Date.now();
@@ -514,6 +529,7 @@ function handleSet3Socket(ws, request) {
                 currentQuestionText,
                 voiceModel,
               );
+              if (ws.readyState !== ws.OPEN) return;
               const qTtsDuration = Date.now() - qTtsStart;
               metrics.ttsLatencies.push(qTtsDuration);
               console.timeEnd("[Perf] Next Question TTS Synthesis");
@@ -563,8 +579,11 @@ function handleSet3Socket(ws, request) {
                 const overallScorePercentage = parseFloat((avgScoreOutOf10 * 10).toFixed(1));
 
                 const existingHist = userDoc.practiceHistory || [];
-                const lastAttemptNum = existingHist.length > 0 ? (existingHist[existingHist.length - 1].attemptNumber || existingHist.length) : 0;
-                const nextAttempt = lastAttemptNum + 1;
+                const maxAttempt = existingHist.reduce((max, item) => {
+                  const num = typeof item.attemptNumber === "number" ? item.attemptNumber : 0;
+                  return Math.max(max, num);
+                }, 0);
+                const nextAttempt = maxAttempt > 0 ? maxAttempt + 1 : existingHist.length + 1;
 
                 const threeCBreakdown = set1Doc ? {
                   clarity: set1Doc.avg_clarity,

@@ -147,10 +147,12 @@ function handleInterviewSocket(ws, request) {
 
   /** Speak a question via TTS and send the MP3 back over the WebSocket. */
   async function speakQuestion(text, label = "TTS") {
+    if (ws.readyState !== ws.OPEN) return;
     try {
       send({ type: "status", message: "Generating question audio…" });
       const t0 = Date.now();
       const audioBuffer = await synthesizeSpeech(text, voiceModel);
+      if (ws.readyState !== ws.OPEN) return;
       const latency = Date.now() - t0;
       metrics.ttsLatencies.push(latency);
       const base64Audio = audioBuffer.toString("base64");
@@ -159,6 +161,7 @@ function handleInterviewSocket(ws, request) {
         `[TTS] 🔊 Sent audio to user in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`,
       );
     } catch (err) {
+      if (ws.readyState !== ws.OPEN) return;
       console.error("[WS] TTS error:", err.message);
       send({ type: "error", message: `TTS failed: ${err.message}` });
     }
@@ -339,7 +342,7 @@ function handleInterviewSocket(ws, request) {
 
           // ── Early pre-generate next-question TTS (fire-and-forget) ──────
           const nextIndex = currentQuestionIndex + 1;
-          if (nextIndex < PRE_TEST_QUESTIONS.length) {
+          if (ws.readyState === ws.OPEN && nextIndex < PRE_TEST_QUESTIONS.length) {
             // Only trigger if not already pre-generating or pre-generated for this index
             if (preGeneratedNextQuestionIndex !== nextIndex) {
               console.log(`[TTS] 🚀 Early triggering background next-question synthesis for Q${nextIndex + 1}...`);
@@ -348,7 +351,7 @@ function handleInterviewSocket(ws, request) {
               
               synthesizeSpeech(PRE_TEST_QUESTIONS[nextIndex], voiceModel)
                 .then((audioBuffer) => {
-                  if (preGeneratedNextQuestionIndex === nextIndex) {
+                  if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
                     preGeneratedNextQuestionAudio = audioBuffer;
                     console.log(`[TTS] ✅ Early background Q${nextIndex + 1} audio ready.`);
                   }
@@ -427,7 +430,7 @@ function handleInterviewSocket(ws, request) {
 
         // ── Pre-generate next-question TTS (fire-and-forget) ──────────────
         const nextIndex = currentQuestionIndex + 1;
-        if (nextIndex < PRE_TEST_QUESTIONS.length) {
+        if (ws.readyState === ws.OPEN && nextIndex < PRE_TEST_QUESTIONS.length) {
           // Only trigger if not already pre-generating or pre-generated (e.g. from start_recording)
           if (preGeneratedNextQuestionIndex !== nextIndex) {
             console.log(`[TTS] 🚀 Triggering background next-question synthesis for Q${nextIndex + 1}...`);
@@ -437,11 +440,11 @@ function handleInterviewSocket(ws, request) {
             synthesizeSpeech(PRE_TEST_QUESTIONS[nextIndex], voiceModel)
               .then((audioBuffer) => {
                 // Ensure we only save it if the user hasn't already advanced past this question
-                if (preGeneratedNextQuestionIndex === nextIndex) {
+                if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
                   preGeneratedNextQuestionAudio = audioBuffer;
                   console.log(`[TTS] ✅ Background Q${nextIndex + 1} audio ready.`);
                 } else {
-                  console.log(`[TTS] ⚠️ Background Q${nextIndex + 1} audio ready, but discarded (user already advanced).`);
+                  console.log(`[TTS] ⚠️ Background Q${nextIndex + 1} audio ready, but discarded (user already advanced or disconnected).`);
                 }
               })
               .catch((err) => {

@@ -278,6 +278,7 @@ function handleSet2Socket(ws, request) {
 
       // 5. Await Q1 audio (should already be resolved or very close)
       const q1AudioBuffer = await q1SynthesisPromise;
+      if (ws.readyState !== ws.OPEN) return;
       const q1TtsLatency = Date.now() - startupStart;
       metrics.ttsLatencies.push(q1TtsLatency);
 
@@ -319,14 +320,14 @@ function handleSet2Socket(ws, request) {
           // Step 2 — Background next-question TTS pre-synthesis (fire-and-forget)
           // Triggered on start_recording so synthesis runs during the user's answer.
           const nextIndex = currentQuestionIndex + 1;
-          if (nextIndex < MAX_QUESTIONS && preGeneratedNextQuestionIndex !== nextIndex) {
+          if (ws.readyState === ws.OPEN && nextIndex < MAX_QUESTIONS && preGeneratedNextQuestionIndex !== nextIndex) {
             console.log(`[TTS] 🚀 Early triggering background next-question synthesis for Q${nextIndex + 1}...`);
             preGeneratedNextQuestionIndex = nextIndex;
             preGeneratedNextQuestionAudio = null;
 
             synthesizeSpeech(questions[nextIndex], voiceModel)
               .then((audioBuffer) => {
-                if (preGeneratedNextQuestionIndex === nextIndex) {
+                if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
                   preGeneratedNextQuestionAudio = audioBuffer;
                   console.log(`[TTS] ✅ Early background Q${nextIndex + 1} audio ready.`);
                 }
@@ -392,6 +393,11 @@ function handleSet2Socket(ws, request) {
           await sessionDoc.save();
           console.timeEnd("[Perf] DB Record Save");
 
+          if (ws.readyState !== ws.OPEN) {
+            console.log("[WS] Client disconnected during evaluation, skipping TTS and next question.");
+            return;
+          }
+
           // 3. Send scores + coaching tip to frontend
           send({
             type: "coach_tip",
@@ -427,18 +433,22 @@ function handleSet2Socket(ws, request) {
               .map((s) => s.trim())
               .filter(Boolean);
 
-            const replyPromises = replySentences.map((sentence) =>
-              synthesizeSpeech(sentence, voiceModel)
+            const replyPromises = replySentences.map((sentence) => {
+              if (ws.readyState !== ws.OPEN) {
+                return Promise.resolve({ sentence, buffer: null });
+              }
+              return synthesizeSpeech(sentence, voiceModel)
                 .then((buffer) => ({ sentence, buffer }))
                 .catch((err) => {
                   console.error(`[TTS] Error synthesizing sentence "${sentence}":`, err.message);
                   return { sentence, buffer: null };
-                }),
-            );
+                });
+            });
 
             for (let i = 0; i < replyPromises.length; i++) {
+              if (ws.readyState !== ws.OPEN) break;
               const { sentence, buffer } = await replyPromises[i];
-              if (buffer) {
+              if (buffer && ws.readyState === ws.OPEN) {
                 send({ type: "tts_audio", data: buffer.toString("base64") });
                 console.log(`[TTS] 🔊 Sent concurrent sentence audio: "${sentence}"`);
               }
@@ -447,6 +457,8 @@ function handleSet2Socket(ws, request) {
             const replyTtsDuration = Date.now() - replyTtsStart;
             metrics.replyTtsLatencies.push(replyTtsDuration);
             console.timeEnd("[Perf] Reply TTS Synthesis");
+
+            if (ws.readyState !== ws.OPEN) return;
 
             // Step 4 — Fallback next-question audio delivery (cache hit or on-the-fly)
             if (
@@ -462,6 +474,7 @@ function handleSet2Socket(ws, request) {
               preGeneratedNextQuestionAudio = null;
               preGeneratedNextQuestionIndex = -1;
             } else {
+              if (ws.readyState !== ws.OPEN) return;
               console.log(`[TTS] ⚠️ Next question audio not pre-cached. Synthesizing on-the-fly.`);
               console.time("[Perf] Next Question TTS Synthesis");
               const qTtsStart = Date.now();
@@ -469,6 +482,7 @@ function handleSet2Socket(ws, request) {
                 currentQuestionText,
                 voiceModel,
               );
+              if (ws.readyState !== ws.OPEN) return;
               const qTtsDuration = Date.now() - qTtsStart;
               metrics.ttsLatencies.push(qTtsDuration);
               console.timeEnd("[Perf] Next Question TTS Synthesis");
@@ -477,14 +491,14 @@ function handleSet2Socket(ws, request) {
 
             // Safety-net: trigger background pre-generation of Q(N+1) after delivery
             const nextIndex = currentQuestionIndex + 1;
-            if (nextIndex < MAX_QUESTIONS && preGeneratedNextQuestionIndex !== nextIndex) {
+            if (ws.readyState === ws.OPEN && nextIndex < MAX_QUESTIONS && preGeneratedNextQuestionIndex !== nextIndex) {
               console.log(`[TTS] 🚀 Triggering background next-question synthesis for Q${nextIndex + 1}...`);
               preGeneratedNextQuestionIndex = nextIndex;
               preGeneratedNextQuestionAudio = null;
 
               synthesizeSpeech(questions[nextIndex], voiceModel)
                 .then((audioBuffer) => {
-                  if (preGeneratedNextQuestionIndex === nextIndex) {
+                  if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
                     preGeneratedNextQuestionAudio = audioBuffer;
                     console.log(`[TTS] ✅ Background Q${nextIndex + 1} audio ready.`);
                   }
@@ -515,6 +529,8 @@ function handleSet2Socket(ws, request) {
               `[Session] 🏁 Set 2 complete. Overall Score: ${sessionDoc.overall_score_percentage}% | Avg Problem Solving: ${sessionDoc.avg_problem_solving} | Avg Accuracy: ${sessionDoc.avg_accuracy} | Avg Depth: ${sessionDoc.avg_depth}`,
             );
 
+            if (ws.readyState !== ws.OPEN) return;
+
             // Step 6 — Session conclusion synthesis (concurrent sentence-level)
             const finalSpeech = `${evaluation.interviewer_reply} That concludes our technical round. Excellent effort!`;
             console.time("[Perf] Final TTS Synthesis");
@@ -524,18 +540,22 @@ function handleSet2Socket(ws, request) {
               .map((s) => s.trim())
               .filter(Boolean);
 
-            const finalPromises = finalSentences.map((sentence) =>
-              synthesizeSpeech(sentence, voiceModel)
+            const finalPromises = finalSentences.map((sentence) => {
+              if (ws.readyState !== ws.OPEN) {
+                return Promise.resolve({ sentence, buffer: null });
+              }
+              return synthesizeSpeech(sentence, voiceModel)
                 .then((buffer) => ({ sentence, buffer }))
                 .catch((err) => {
                   console.error(`[TTS] Error synthesizing sentence "${sentence}":`, err.message);
                   return { sentence, buffer: null };
-                }),
-            );
+                });
+            });
 
             for (let i = 0; i < finalPromises.length; i++) {
+              if (ws.readyState !== ws.OPEN) break;
               const { sentence, buffer } = await finalPromises[i];
-              if (buffer) {
+              if (buffer && ws.readyState === ws.OPEN) {
                 send({ type: "tts_audio", data: buffer.toString("base64") });
                 console.log(`[TTS] 🔊 Sent concurrent final sentence audio: "${sentence}"`);
               }

@@ -41,9 +41,14 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
     return null;
   }
 
+  // Max audio chunks to buffer while waiting for connection (50 × 250ms ≈ 12.5s)
+  const MAX_QUEUE_SIZE = 50;
+
   const deepgram = new DeepgramClient({ apiKey });
   let socket = null;
   let isOpen = false;
+  // Guard: set to true by finish() so a connection resolved after finish() is immediately closed
+  let isCancelled = false;
   let audioQueue = [];
   let currentTurnInterimText = "";
 
@@ -56,6 +61,12 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
       sample_rate: 16000,
     })
     .then((conn) => {
+      // If finish() was called before the connection resolved, close the orphaned conn immediately
+      if (isCancelled) {
+        console.log("[STT] 🛑 Connection resolved after finish() was called; closing immediately.");
+        try { conn.close(); } catch (_) { /* ignore */ }
+        return;
+      }
       socket = conn;
 
       socket.on("open", () => {
@@ -147,6 +158,9 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
      * @param {Buffer | ArrayBuffer} chunk
      */
     sendAudio(chunk) {
+      // Drop audio silently if this session has already been torn down
+      if (isCancelled) return;
+
       if (socket && isOpen) {
         try {
           socket.sendMedia(chunk);
@@ -154,6 +168,10 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
           console.error("[STT] Error sending media chunk:", e.message);
         }
       } else {
+        // Enforce cap: evict oldest chunk if queue is full to prevent unbounded growth
+        if (audioQueue.length >= MAX_QUEUE_SIZE) {
+          audioQueue.shift();
+        }
         audioQueue.push(chunk);
       }
     },
@@ -175,7 +193,10 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
      * Gracefully close the Deepgram connection.
      */
     finish() {
+      // Mark cancelled first so the async .then() callback can detect it
+      isCancelled = true;
       isOpen = false;
+      audioQueue = [];
       if (socket) {
         try {
           socket.close();
@@ -184,7 +205,6 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
         }
         socket = null;
       }
-      audioQueue = [];
     },
   };
 }

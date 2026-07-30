@@ -14,6 +14,7 @@ import AiAnalysisLoader from "./components/AiAnalysisLoader";
 import Set2TransitionOverlay from "./components/Set2TransitionOverlay";
 import SttTestBench from "./components/SttTestBench";
 import FluxDebugger from "./components/FluxDebugger";
+import LandingPage from "./components/LandingPage";
 import "./components/AiAnalysisLoader.css";
 import "./App.css";
 
@@ -22,7 +23,8 @@ function App() {
     <BrowserRouter>
       <div className="app-layout">
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/landing" replace />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />

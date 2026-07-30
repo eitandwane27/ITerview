@@ -205,7 +205,7 @@ router.get("/results-summary", async (req, res) => {
     // Helper for formatting question breakdowns
     const mapPrePostAnswers = (answers = []) =>
       answers.map((a) => {
-        const avg = a.clarity_score && a.correctness_score && a.completeness_score
+        const avg = a.clarity_score != null && a.correctness_score != null && a.completeness_score != null
           ? parseFloat(((a.clarity_score + a.correctness_score + a.completeness_score) / 3).toFixed(1))
           : null;
         return {
@@ -248,8 +248,13 @@ router.get("/results-summary", async (req, res) => {
       }
 
       if (upgradedDiff !== user.unlockedDifficulty) {
+        // Atomic update avoids Mongoose VersionError / ParallelSaveError on concurrent GET requests
+        await User.updateOne(
+          { firebaseUid: uid, unlockedDifficulty: { $ne: upgradedDiff } },
+          { $set: { unlockedDifficulty: upgradedDiff } }
+        );
+        // Also update local in-memory property so the current response payload reflects the new tier
         user.unlockedDifficulty = upgradedDiff;
-        await user.save();
         console.log(`[DB] 🎓 Upgraded unlockedDifficulty to '${upgradedDiff}' for user: ${uid}`);
       }
     }
@@ -346,7 +351,7 @@ router.get("/results-summary", async (req, res) => {
             completeness: set1?.avg_completeness ?? null,
           },
           questions: (set1?.answers || []).map((a) => {
-            const avg = a.clarity_score && a.correctness_score && a.completeness_score
+            const avg = a.clarity_score != null && a.correctness_score != null && a.completeness_score != null
               ? parseFloat(((a.clarity_score + a.correctness_score + a.completeness_score) / 3).toFixed(1))
               : null;
             return {
@@ -370,7 +375,7 @@ router.get("/results-summary", async (req, res) => {
             depth: set2?.avg_depth ?? null,
           },
           questions: (set2?.answers || []).map((a) => {
-            const avg = a.problem_solving_score && a.accuracy_score && a.depth_score
+            const avg = a.problem_solving_score != null && a.accuracy_score != null && a.depth_score != null
               ? parseFloat(((a.problem_solving_score + a.accuracy_score + a.depth_score) / 3).toFixed(1))
               : null;
             return {
@@ -394,7 +399,7 @@ router.get("/results-summary", async (req, res) => {
             result: set3?.avg_result ?? null,
           },
           questions: (set3?.answers || []).map((a) => {
-            const avg = a.situation_score && a.action_score && a.result_score
+            const avg = a.situation_score != null && a.action_score != null && a.result_score != null
               ? parseFloat(((a.situation_score + a.action_score + a.result_score) / 3).toFixed(1))
               : null;
             return {
@@ -616,8 +621,11 @@ router.post("/practice-history", async (req, res) => {
     }
 
     const existingHistory = user.practiceHistory || [];
-    const lastAttempt = existingHistory.length > 0 ? (existingHistory[existingHistory.length - 1].attemptNumber || existingHistory.length) : 0;
-    const nextAttemptNumber = lastAttempt + 1;
+    const maxAttempt = existingHistory.reduce((max, item) => {
+      const num = typeof item.attemptNumber === "number" ? item.attemptNumber : 0;
+      return Math.max(max, num);
+    }, 0);
+    const nextAttemptNumber = maxAttempt > 0 ? maxAttempt + 1 : existingHistory.length + 1;
 
     const newAttempt = {
       attemptNumber: nextAttemptNumber,
