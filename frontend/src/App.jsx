@@ -14,7 +14,7 @@ import AiAnalysisLoader from "./components/AiAnalysisLoader";
 import Set2TransitionOverlay from "./components/Set2TransitionOverlay";
 import SttTestBench from "./components/SttTestBench";
 import FluxDebugger from "./components/FluxDebugger";
-import LandingPage from "./components/LandingPage";
+import LandingPage from "./pages/LandingPage";
 import "./components/AiAnalysisLoader.css";
 import "./App.css";
 

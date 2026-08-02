@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import AuthModal from "../components/AuthModal";
+import logoSrc from "../assets/logo.png";
 import "./LandingPage.css";
 
 /* ─── SVG Icons ─── */
@@ -144,15 +147,15 @@ const HowItStep = ({ num, title, desc, showConnector }) => (
   </>
 );
 
-const MobileMenu = ({ open, onClose }) => (
+const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => (
   <div className={`lp-mobile-menu${open ? " lp-mobile-menu--open" : ""}`} role="dialog" aria-modal="true" aria-label="Navigation menu">
     <nav className="lp-mobile-nav">
       <a href="#features" onClick={onClose} className="lp-mobile-nav-link">Features</a>
       <a href="#how-it-works" onClick={onClose} className="lp-mobile-nav-link">How It Works</a>
       <a href="#about" onClick={onClose} className="lp-mobile-nav-link">About</a>
       <div className="lp-mobile-nav-actions">
-        <button className="lp-btn-ghost lp-btn-full">Sign In</button>
-        <button className="lp-btn-cta lp-btn-full">Get Started</button>
+        <button className="lp-btn-ghost lp-btn-full" onClick={() => { onClose(); onSignIn(); }}>Sign In</button>
+        <button className="lp-btn-cta lp-btn-full" onClick={() => { onClose(); onGetStarted(); }}>Get Started</button>
       </div>
     </nav>
   </div>
@@ -161,13 +164,34 @@ const MobileMenu = ({ open, onClose }) => (
 /* ─── Main Component ─── */
 const LandingPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
+
+  const openLoginModal = () => {
+    setAuthMode("login");
+    setAuthModalOpen(true);
+  };
+
+  const openRegisterModal = () => {
+    setAuthMode("register");
+    setAuthModalOpen(true);
+  };
 
   return (
     <div className="lp-root">
       {/* ── Navbar ── */}
       <header className="lp-nav" role="banner">
         <div className="lp-nav-inner">
-          <span className="lp-logo">ITerview</span>
+          <a href="/" className="lp-logo" aria-label="ITerview home">
+            <div className="lp-logo-container">
+              <img
+                src={logoSrc}
+                alt="ITerview Logo"
+                className="lp-logo-img"
+              />
+            </div>
+            <span className="lp-logo-text">ITerview</span>
+          </a>
 
           <nav className="lp-nav-links" aria-label="Main navigation">
             <a href="#features" className="lp-nav-link">Features</a>
@@ -178,8 +202,8 @@ const LandingPage = () => {
           <div className="lp-nav-spacer" />
 
           <div className="lp-nav-cta">
-            <button className="lp-btn-ghost" aria-label="Sign in">Sign In</button>
-            <button className="lp-btn-cta" aria-label="Get started">Get Started</button>
+            <button className="lp-btn-ghost" aria-label="Sign in" onClick={openLoginModal}>Sign In</button>
+            <button className="lp-btn-cta" aria-label="Get started" onClick={openRegisterModal}>Get Started</button>
           </div>
 
           <button
@@ -193,7 +217,12 @@ const LandingPage = () => {
             <span className={`lp-ham-bar${menuOpen ? " lp-ham-bar--bot" : ""}`} />
           </button>
         </div>
-        <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <MobileMenu
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          onSignIn={openLoginModal}
+          onGetStarted={openRegisterModal}
+        />
       </header>
 
       {/* ── Hero Section ── */}
@@ -221,7 +250,7 @@ const LandingPage = () => {
         </p>
 
         <div className="lp-hero-ctas">
-          <button className="lp-btn-hero-primary" aria-label="Start mock session">
+          <button className="lp-btn-hero-primary" aria-label="Start mock session" onClick={openRegisterModal}>
             Start Mock Session
           </button>
           <button className="lp-btn-hero-ghost" aria-label="Explore tracks">
@@ -443,7 +472,7 @@ const LandingPage = () => {
           Join thousands of engineers who transformed their interview performance with AI-powered
           voice simulation and deterministic 3C rubric scoring.
         </p>
-        <button className="lp-btn-cta-final" aria-label="Start mock session now">
+        <button className="lp-btn-cta-final" aria-label="Start mock session now" onClick={openRegisterModal}>
           Start Mock Session
         </button>
       </section>
@@ -469,6 +498,13 @@ const LandingPage = () => {
           &copy; 2025 ITerview. All rights reserved. AI-powered interview preparation platform.
         </p>
       </footer>
+
+      {/* ── Auth Modal Overlay ── */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        initialMode={authMode}
+      />
     </div>
   );
 };

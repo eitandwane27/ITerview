@@ -1,0 +1,503 @@
+/* --- AuthModal Styles --------------------------------------------------- */
+/* Namespace: am- (AuthModal)                                               */
+
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Inter:wght@100..900&display=swap");
+
+/* -- Design Tokens -- */
+:root {
+  --am-bg-page:     #09090b;
+  --am-bg-card:     #111116;
+  --am-bg-input:    #0d0d13;
+  --am-border:      rgba(255, 255, 255, 0.08);
+  --am-border-md:   rgba(255, 255, 255, 0.12);
+  --am-accent:      #06b6d4;
+  --am-accent-ring: rgba(6, 182, 212, 0.22);
+  --am-text-1:      #f4f4f5;
+  --am-text-2:      #9ca3af;
+  --am-text-3:      #6b6b80;
+  --am-radius-card: 20px;
+  --am-radius-btn:  10px;
+  --am-radius-input:10px;
+}
+
+/* -- Modal Backdrop -- */
+.am-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: rgba(9, 9, 11, 0.80);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  overflow-y: auto;
+  animation: amBackdropFadeIn 0.2s ease-out forwards;
+}
+
+@keyframes amBackdropFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* -- Standalone Page Shell -- */
+.am-page-root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--am-bg-page);
+  font-family: "Figtree", Inter, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.am-bg-glow {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.am-bg-glow--top {
+  width: 640px;
+  height: 320px;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(6, 182, 212, 0.05) 0%, transparent 70%);
+  filter: blur(20px);
+}
+
+.am-bg-glow--bottom {
+  display: none;
+}
+
+/* -- Top-bar -- */
+.am-topbar {
+  position: relative;
+  z-index: 4;
+  background-color: rgba(9, 9, 11, 0.90);
+  border-bottom: 1px solid var(--am-border);
+  height: 56px;
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+.am-topbar-inner {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.am-logo-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.am-logo-img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.am-logo-text {
+  font-family: "Figtree", Geist, system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--am-text-1);
+}
+
+.am-back-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--am-text-2);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.am-back-link:hover {
+  color: var(--am-text-1);
+}
+
+.am-page-centered {
+  position: relative;
+  z-index: 5;
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+/* -- Auth Card -- */
+.am-card {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  background-color: var(--am-bg-card);
+  border: 1px solid var(--am-border-md);
+  border-radius: var(--am-radius-card);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 20px 60px rgba(0, 0, 0, 0.55);
+  padding: 40px 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  animation: amModalScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes amModalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (max-width: 520px) {
+  .am-card {
+    padding: 28px 22px;
+  }
+}
+
+/* -- Close Button -- */
+.am-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--am-border);
+  border-radius: 8px;
+  color: var(--am-text-2);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.am-close-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--am-text-1);
+}
+
+/* -- Centered Brand Hero --
+   Hierarchy uses the proximity ladder (spacing.md):
+   L1 (8px)  — eyebrow label to title (same semantic unit)
+   L2 (16px) — title to subtitle (coupled)
+   L3 (24px) — hero block to first action row (sibling components)
+   ------------------------------------------------------------ */
+.am-brand-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  /* 24px below hero before SSO row — L3 sibling gap */
+  margin-bottom: 24px;
+}
+
+/* Product eyebrow: "ITerview" in accent, sets brand context */
+.am-brand-eyebrow {
+  font-family: "Figtree", Geist, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--am-accent);
+  /* 8px below = L1 (same unit as title) */
+  margin: 0 0 8px 0;
+}
+
+.am-title {
+  font-family: "Figtree", Geist, Inter, system-ui, sans-serif;
+  /* Stepped up from 22px → 26px: it is the primary focus point */
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--am-text-1);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  /* Asymmetric heading rule: 0 above (eyebrow already separates), 8px below → tight coupling to subtitle */
+  margin: 0 0 8px 0;
+}
+
+.am-subheading {
+  font-family: "Figtree", Inter, system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--am-text-3);
+  line-height: 1.5;
+  margin: 0;
+  /* Slightly narrower than full width keeps it from feeling like a paragraph wall */
+  max-width: 320px;
+}
+
+/* -- Spacers (kept for backward compat but no longer used in hero) -- */
+.am-spacer-md {
+  height: 20px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.am-spacer-lg {
+  height: 24px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* -- SSO Buttons -- */
+.am-sso-row {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  width: 100%;
+  /* L2 gap (20px) before divider — SSO is a sibling component within the card */
+  margin-bottom: 20px;
+}
+
+.am-sso-btn {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 10px 0;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--am-border-md);
+  border-radius: var(--am-radius-btn);
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, transform 0.14s;
+}
+
+.am-sso-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.am-sso-label {
+  font-family: "Figtree", Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--am-text-1);
+}
+
+/* -- Divider -- */
+.am-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  /* L2 gap (20px) before email form */
+  margin-bottom: 20px;
+}
+
+.am-divider-line {
+  flex: 1 1 0;
+  height: 1px;
+  background-color: var(--am-border);
+}
+
+.am-divider-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--am-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* -- Error Banner -- */
+.am-error {
+  width: 100%;
+  padding: 10px 14px;
+  background-color: rgba(239, 68, 68, 0.10);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #fca5a5;
+  margin-bottom: 12px;
+}
+
+/* -- Form & Fields -- */
+.am-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.am-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.am-field-fade-in {
+  animation: amFieldFadeIn 0.2s ease-out forwards;
+}
+
+@keyframes amFieldFadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.am-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--am-text-2);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+.am-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.am-input-icon {
+  position: absolute;
+  left: 14px;
+  pointer-events: none;
+  color: var(--am-text-3);
+}
+
+.am-input {
+  width: 100%;
+  padding: 11px 40px 11px 42px;
+  background-color: var(--am-bg-input);
+  border: 1px solid var(--am-border-md);
+  border-radius: var(--am-radius-input);
+  font-family: "Figtree", Inter, system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--am-text-1);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.am-input::placeholder {
+  color: var(--am-text-3);
+}
+
+.am-input:focus {
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 0 3px var(--am-accent-ring);
+}
+
+.am-eye-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* -- Forgot Password -- */
+.am-forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: -4px;
+}
+
+.am-forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--am-text-3);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.am-forgot-link:hover {
+  color: var(--am-accent);
+}
+
+/* -- Submit Button - solid, no gradient -- */
+.am-submit-btn {
+  width: 100%;
+  padding: 13px 0;
+  border: none;
+  border-radius: var(--am-radius-btn);
+  background-color: var(--am-accent);
+  font-family: "Figtree", Inter, system-ui, sans-serif;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #09090b;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: background-color 0.18s, transform 0.14s, box-shadow 0.18s;
+}
+
+.am-submit-btn:hover:not(:disabled) {
+  background-color: #22d3ee;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(6, 182, 212, 0.28);
+}
+
+.am-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.am-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* -- Footer -- */
+.am-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.am-footer-text {
+  font-size: 13.5px;
+  color: var(--am-text-3);
+}
+
+.am-toggle-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: "Figtree", Inter, system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--am-accent);
+  cursor: pointer;
+  transition: color 0.18s;
+}
+
+.am-toggle-link:hover {
+  color: #22d3ee;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

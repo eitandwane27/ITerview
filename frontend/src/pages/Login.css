@@ -1,117 +1,457 @@
-/* src/pages/Login.css */
+/* ─── Login Page Styles ─────────────────────────────────────────────────── */
+/* Namespace: ln- (login) to avoid collisions with other page styles.        */
 
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #f9fafb;
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
-}
+/* ── Fonts ── */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Inter:wght@100..900&display=swap");
 
-.login-card {
-  background: white;
-  padding: 2.5rem;
-  border-radius: 12px;
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.1),
-    0 2px 4px -2px rgb(0 0 0 / 0.1);
-  width: 100%;
-  max-width: 400px;
-  border: 1px solid #e5e7eb;
-}
-
-.login-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.login-header h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #111827;
-  margin-bottom: 0.5rem;
-}
-
-.login-header p {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0;
-}
-
-.login-form {
+/* ── Root / Page Shell ── */
+.ln-root {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  min-height: 100vh;
+  background-color: #09090b;
+  font-family: Inter, system-ui, sans-serif;
+  overflow: hidden;
 }
 
-.input-group {
+/* ── Ambient Background Glows ── */
+.ln-bg-glow {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  z-index: 0;
+}
+
+.ln-bg-glow--top {
+  width: 500px;
+  height: 500px;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, #6c5ce720 0%, #6c5ce700 100%);
+}
+
+.ln-bg-glow--bottom {
+  width: 400px;
+  height: 280px;
+  top: 540px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, #06b6d415 0%, #06b6d400 100%);
+  filter: blur(30px);
+}
+
+/* ── Decorative Dots ── */
+.ln-deco-dot {
+  pointer-events: none;
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  filter: blur(1px);
+  z-index: 2;
+}
+
+.ln-deco-dot--1 {
+  background-color: #8b5cf660;
+  left: 160px;
+  top: 120px;
+}
+
+.ln-deco-dot--2 {
+  background-color: #06b6d460;
+  right: 190px;
+  top: 700px;
+}
+
+/* ── Top Bar ── */
+.ln-topbar {
+  position: relative;
+  z-index: 4;
+  background-color: #0d0d15a0;
+  /* Subtle gradient border-bottom */
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(-90deg, #ffffff00 0%, #ffffff08 50%, #ffffff00 100%) 1;
+  height: 56px;
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+.ln-topbar-inner {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Logo ── */
+.ln-logo-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ln-logo-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: linear-gradient(-135deg, #06b6d4 14.645%, #8b5cf6 85.355%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ln-logo-text {
+  font-family: Geist, system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ── Back to Home link ── */
+.ln-back-link {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #9ca3af;
+  text-decoration: none;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.ln-back-link:hover {
+  color: #e5e7eb;
+}
+
+/* ── Main Centered Area ── */
+.ln-centered {
+  position: relative;
+  z-index: 5;
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+/* ── Login Card ── */
+.ln-card {
+  width: 100%;
+  max-width: 480px;
+  background-color: #18181b99;
+  border: 1px solid #ffffff10;
+  border-radius: 24px;
+  box-shadow: 0 0 60px 0 #8b5cf620;
+  padding: 44px 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* Subtle backdrop blur for glassmorphism */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+@media (max-width: 560px) {
+  .ln-card {
+    padding: 32px 24px;
+  }
+}
+
+/* ── Brand Mark (large icon inside card) ── */
+.ln-brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(-135deg, #06b6d4 14.645%, #8b5cf6 85.355%);
+  box-shadow: 0 4px 16px 0 #8b5cf640;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Spacers ── */
+.ln-spacer-md {
+  height: 24px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.ln-spacer-lg {
+  height: 28px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* ── Heading ── */
+.ln-heading {
+  font-family: Geist, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #fff;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* ── Subheading ── */
+.ln-subheading {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #9ca3af;
+  line-height: 23px;
+  margin: 0;
+  width: 100%;
+}
+
+/* ── SSO Row ── */
+.ln-sso-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  width: 100%;
+}
+
+.ln-sso-btn {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 0;
+  background-color: #ffffff08;
+  border: 1px solid #ffffff12;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.ln-sso-btn:hover {
+  background-color: #ffffff14;
+  border-color: #ffffff25;
+  transform: translateY(-1px);
+}
+
+.ln-sso-btn:active {
+  transform: translateY(0);
+}
+
+.ln-google-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ln-sso-label {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ── Divider ── */
+.ln-divider {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.ln-divider-line {
+  flex: 1 1 0;
+  height: 1px;
+  background-color: #ffffff0e;
+}
+
+.ln-divider-text {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b6b80;
+  white-space: nowrap;
+}
+
+/* ── Error Banner ── */
+.ln-error {
+  width: 100%;
+  padding: 10px 14px;
+  background-color: #ef444420;
+  border: 1px solid #ef444440;
+  border-radius: 8px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  color: #fca5a5;
+  margin-bottom: 4px;
+}
+
+/* ── Form ── */
+.ln-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+/* ── Field ── */
+.ln-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.ln-label {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #9ca3af;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* ── Input Wrapper ── */
+.ln-input-wrap {
   position: relative;
   display: flex;
   align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 1rem;
-  color: #9ca3af;
-}
-
-.input-group input {
   width: 100%;
-  padding: 0.75rem 1rem 0.75rem 3rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.875rem;
+}
+
+.ln-input-icon {
+  position: absolute;
+  left: 15px;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.ln-input {
+  width: 100%;
+  padding: 13px 15px 13px 43px;
+  background-color: #12121a;
+  border: 1px solid #ffffff15;
+  border-radius: 10px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #fff;
   outline: none;
-  transition: border-color 0.2s;
   box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.input-group input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.ln-input::placeholder {
+  color: #6b6b80;
 }
 
-.login-button {
+.ln-input:focus {
+  border-color: #8b5cf660;
+  box-shadow: 0 0 0 3px #8b5cf620;
+}
+
+/* ── Forgot Password ── */
+.ln-forgot-row {
   display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  /* Negative top margin to tighten gap after password input */
+  margin-top: -6px;
+}
+
+.ln-forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #06b6d4;
+  cursor: pointer;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.ln-forgot-link:hover {
+  color: #22d3ee;
+  text-decoration: underline;
+}
+
+/* ── Submit / Sign-in Button ── */
+.ln-submit-btn {
+  width: 100%;
+  padding: 15px 0;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(-90deg, #06b6d4 0%, #8b5cf6 100%);
+  box-shadow: 0 4px 20px 0 #8b5cf640;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+
+.ln-submit-btn:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 28px 0 #8b5cf650;
+}
+
+.ln-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.ln-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Footer ── */
+.ln-footer {
+  display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 6px;
   width: 100%;
-  padding: 0.75rem;
-  background-color: #111827;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.login-button:hover {
-  background-color: #374151;
+.ln-footer-text {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
-.login-footer {
-  margin-top: 1.5rem;
-  text-align: center;
-  font-size: 0.875rem;
-  color: #6b7280;
+.ln-register-link {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #06b6d4;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s;
 }
 
-.register-link {
-  color: #3b82f6;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.register-link:hover {
+.ln-register-link:hover {
+  color: #22d3ee;
   text-decoration: underline;
 }
