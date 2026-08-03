@@ -770,7 +770,7 @@ export default function Dashboard() {
                   View your past practice performance, 3C metric breakdowns, and rolling attempt history.
                 </p>
               </div>
-              <span className="db-history-badge">Max 5 Rolling History</span>
+              <span className="db-history-badge">Max 20 Rolling History</span>
             </div>
 
             {diagnosticData?.practiceHistory && diagnosticData.practiceHistory.length > 0 ? (
@@ -823,7 +823,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="db-empty">
-                No practice attempts logged yet. Launch a practice session above to begin your rolling 5-session
+                No practice attempts logged yet. Launch a practice session above to begin your rolling 20-session
                 history!
               </div>
             )}

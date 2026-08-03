@@ -64,7 +64,7 @@ const userSchema = new mongoose.Schema({
   },
   postConfidenceScore: { type: Number, default: null },
 
-  // Capped rolling 5-session practice history log
+  // Capped rolling 20-session practice history log
   practiceHistory: {
     type: [
       {

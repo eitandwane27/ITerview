@@ -553,7 +553,7 @@ function handleSet3Socket(ws, request) {
               `[Session] 🏁 Set 3 complete. Overall Score: ${sessionDoc.overall_score_percentage}% | Avg Situation: ${sessionDoc.avg_situation} | Avg Action: ${sessionDoc.avg_action} | Avg Result: ${sessionDoc.avg_result}`,
             );
 
-            // Record completed 3-set practice attempt to User rolling 5-session history
+            // Record completed 3-set practice attempt to User rolling 20-session history
             try {
               const [set1Doc, set2Doc, userDoc] = await Promise.all([
                 Set1Session.findOne({ firebaseUid }),
@@ -609,7 +609,7 @@ function handleSet3Socket(ws, request) {
                             weaknessTag: sessionDoc.final_weakness_tag || "focus_completeness",
                           },
                         ],
-                        $slice: -5,
+                        $slice: -20,
                       },
                     },
                   }

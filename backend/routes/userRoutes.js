@@ -598,7 +598,7 @@ router.post("/posttest", async (req, res) => {
 
 // POST /api/users/practice-history
 // Appends a completed practice session entry to practiceHistory.
-// Enforces a strict 5-session rolling cap using $push with $slice: -5.
+// Enforces a strict 20-session rolling cap using $push with $slice: -20.
 router.post("/practice-history", async (req, res) => {
   try {
     const {
@@ -644,7 +644,7 @@ router.post("/practice-history", async (req, res) => {
         $push: {
           practiceHistory: {
             $each: [newAttempt],
-            $slice: -5,
+            $slice: -20,
           },
         },
       },
