@@ -16,17 +16,22 @@ const express = require("express");
 const router = express.Router();
 const { synthesizeSpeech } = require("../services/ttsService");
 
+let ttsCallCounter = 0;
+
 // POST /api/tts/speak
 router.post("/speak", async (req, res) => {
   const { text, voice } = req.body;
+  const reqId = ++ttsCallCounter;
+  const timeStr = new Date().toLocaleTimeString();
 
   // ── Input validation ────────────────────────────────────────────────────
   if (!text || typeof text !== "string" || text.trim() === "") {
+    console.log(`[TTS #${reqId} | ${timeStr}] ⚠️ Rejected empty text request`);
     return res.status(400).json({ error: "'text' field is required and must be a non-empty string." });
   }
 
   try {
-    console.log(`[TTS] Synthesizing speech for: "${text.substring(0, 60)}…" with voice ${voice || "default"}`);
+    console.log(`[TTS #${reqId} | ${timeStr}] 🔊 Request for: "${text.substring(0, 60)}…" (voice: ${voice || "default"})`);
 
     const audioBuffer = await synthesizeSpeech(text, voice);
 
@@ -39,9 +44,9 @@ router.post("/speak", async (req, res) => {
     });
 
     res.send(audioBuffer);
-    console.log(`[TTS] ✅ Streamed ${audioBuffer.length} bytes of audio`);
+    console.log(`[TTS #${reqId} | ${timeStr}] ✅ Streamed ${audioBuffer.length} bytes of audio`);
   } catch (err) {
-    console.error("[TTS] ❌ Error:", err.message);
+    console.error(`[TTS #${reqId} | ${timeStr}] ❌ Error:`, err.message);
     res.status(500).json({ error: err.message });
   }
 });

@@ -12,6 +12,7 @@ const { handleSet2Socket } = require("./controllers/set2Socket");
 const { handleSet3Socket } = require("./controllers/set3Socket");
 const { handlePostTestSocket } = require("./controllers/postTestSocket");
 const { handleDevSttSocket } = require("./controllers/devSttSocket");
+const { handleDemoSocket } = require("./controllers/demoSocket");
 
 const app = express();
 
@@ -79,6 +80,10 @@ server.on("upgrade", (request, socket, head) => {
     wss.handleUpgrade(request, socket, head, (ws) => {
       handleDevSttSocket(ws, request);
     });
+  } else if (pathname === "/ws/demo") {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      handleDemoSocket(ws, request);
+    });
   } else {
     socket.destroy(); // reject unknown WS paths
   }
@@ -104,6 +109,6 @@ server.on("error", (err) => {
 server.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
   console.log(
-    `🔌 WebSockets ready at ws://localhost:${PORT}/ws/interview | /ws/set1 | /ws/set2 | /ws/set3 | /ws/posttest`
+    `🔌 WebSockets ready at ws://localhost:${PORT}/ws/interview | /ws/set1 | /ws/set2 | /ws/set3 | /ws/posttest | /ws/demo`
   );
 });
