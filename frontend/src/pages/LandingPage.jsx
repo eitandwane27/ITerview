@@ -1,109 +1,35 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import AuthModal from "../components/AuthModal";
 import TryItLiveDemo from "../components/TryItLiveDemo";
 import logoSrc from "../assets/logo.png";
 import "./LandingPage.css";
+import { Sparkles, ShieldCheck, Layers, Check, Lock, Mic, AlignLeft, Gauge, Layers3, TrendingUp, Clock, Target, Code2, MessageSquare, ArrowRight } from "lucide-react";
 
-/* ─── SVG Icons ─── */
-const SparklesIcon = ({ size = 30, fill = "#fff" }) => (
-  <svg viewBox="0 0 14 14" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.846 0.588q-0.28 0.041-0.547 0.226-0.294 0.208-0.407 0.574l-0.342 1.757-0.359 1.764-0.109 0.161-0.154 0.113-0.475 0.123-1.289 0.239-1.777 0.349q-0.239 0.072-0.444 0.27-0.202 0.195-0.294 0.441-0.089 0.243-0.062 0.502 0.027 0.256 0.167 0.496 0.099 0.167 0.273 0.308 0.174 0.14 0.359 0.198 0.096 0.027 1.764 0.349l1.285 0.253 0.506 0.109 0.154 0.113 0.099 0.167 0.109 0.506 0.239 1.244 0.349 1.764q0.154 0.465 0.588 0.673 0.267 0.14 0.52 0.14 0.253 0 0.52-0.14 0.434-0.208 0.588-0.673l0.342-1.747 0.342-1.723 0.126-0.208 0.212-0.144 1.733-0.342 1.75-0.342q0.465-0.154 0.673-0.588 0.267-0.52 0-1.039-0.099-0.208-0.28-0.362-0.181-0.154-0.393-0.226-0.096-0.027-1.777-0.349l-1.23-0.239-0.506-0.109-0.154-0.085-0.154-0.239-0.342-1.733-0.342-1.75q-0.14-0.465-0.605-0.687-0.14-0.072-0.314-0.099-0.174-0.027-0.342-0.014z" fill={fill}/>
-  </svg>
-);
-
-const ShieldCheckIcon = () => (
-  <svg viewBox="0 0 14 14" width="30" height="30" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.846 0.602q-0.349 0.027-0.687 0.308-0.516 0.42-1.001 0.701-0.482 0.28-1.015 0.475-0.308 0.113-0.588 0.171-0.28 0.055-0.67 0.082-0.239 0.014-0.366 0.072-0.195 0.068-0.379 0.222-0.181 0.154-0.263 0.349l-0.014 0.031-0.085 0.222-0.027 0.602 0 1.781q0 2.252 0.014 2.461 0.14 1.654 1.107 2.885 0.14 0.167 0.434 0.461 0.294 0.294 0.489 0.448 0.923 0.742 2.283 1.275 0.461 0.181 0.656 0.239 0.239 0.055 0.434 0.014 0.167-0.027 0.533-0.154 1.357-0.52 2.28-1.203 0.379-0.267 0.714-0.605 1.374-1.371 1.542-3.374 0.014-0.236 0.014-2.461 0-2.229-0.027-2.355-0.072-0.321-0.318-0.564-0.243-0.246-0.55-0.318-0.099-0.027-0.379-0.041-0.489-0.027-0.964-0.181-0.813-0.267-1.555-0.773-0.267-0.181-0.643-0.489-0.42-0.335-0.967-0.28z" fill="#fff"/>
-  </svg>
-);
-
-const LayersIcon = () => (
-  <svg viewBox="0 0 14 14" width="30" height="30" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.846 0.602q-0.267 0.014-0.506 0.113-0.137 0.055-2.574 1.169-2.437 1.114-2.557 1.169-0.12 0.055-0.26 0.195-0.137 0.14-0.208 0.253-0.239 0.434-0.099 0.919 0.14 0.482 0.574 0.69 0.154 0.085 2.625 1.207 2.471 1.118 2.57 1.159 0.267 0.099 0.567 0.106 0.301 0.007 0.581-0.092l2.526-1.131 2.444-1.107 2.666-1.22q0.267-0.126 0.407-0.321 0.267-0.335 0.267-0.735 0-0.4-0.267-0.735-0.14-0.181-0.376-0.294l-2.55-1.176-2.574-1.162q-0.226-0.099-0.451-0.113l-0.167-0.014z M0.71 6.252l-0.267 0.185-0.126 0.168-0.041 0.42 0.027 0.209 0.103 0.366 0.159 0.307 0.232 0.228 0.311 0.222 2.669 1.213 2.484 1.125q0.547 0.185 1.097 0.014l2.519-1.131 2.451-1.107 2.687-1.234q0.311-0.14 0.485-0.42 0.174-0.28 0.174-0.615 0-0.14-0.041-0.253l-0.294-0.294-0.219-0.041-0.229 0.027-0.246 0.191-0.133 0.27v0.099l-2.505 1.135-2.563 1.148q-0.181 0.068-0.376 0-0.085-0.027-2.563-1.162l-2.478-1.121-0.027-0.113q-0.041-0.222-0.205-0.349-0.161-0.126-0.369-0.126-0.113 0-0.181 0.027z M0.806 9.15l-0.123 0.014-0.243 0.099-0.191 0.195-0.082 0.42 0.027 0.208 0.103 0.365 0.233 0.308 0.155 0.153 0.311 0.222 2.775 1.275 2.403 1.077q0.557 0.171 1.118-0.041l2.659-1.203 2.509-1.148 2.577-1.19q0.212-0.126 0.359-0.349 0.147-0.226 0.181-0.479 0.034-0.253-0.058-0.427-0.089-0.174-0.27-0.26-0.099-0.041-0.226-0.048-0.126-0.007-0.208 0.021-0.154 0.058-0.26 0.191-0.106 0.13-0.133 0.284l-0.014 0.085-2.492 1.135-2.492 1.135q-0.167 0.055-0.362-0.014l-2.577-1.162-2.478-1.135v-0.041q0-0.058-0.044-0.161-0.041-0.106-0.082-0.147-0.208-0.267-0.547-0.212z" fill="#fff"/>
-  </svg>
-);
-
-const BotIcon = () => (
-  <svg viewBox="0 0 14 14" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4.522 1.764q-0.14 0.041-0.267 0.167-0.167 0.154-0.174 0.373-0.007 0.215 0.126 0.386 0.133 0.167 0.355 0.222 0.099 0.014 0.981 0.014l0.882 0 0 1.148-1.429 0q-1.104 0-1.449 0.014-0.342 0.014-0.496 0.055-0.434 0.126-0.749 0.42-0.314 0.294-0.455 0.714-0.072 0.198-0.085 0.4-0.014 0.202-0.014 0.96l0 0.937-0.349 0q-0.267 0.014-0.332 0.021-0.062 0.007-0.133 0.048-0.236 0.099-0.321 0.338-0.082 0.236 0.027 0.461 0.044 0.068 0.12 0.14 0.079 0.068 0.154 0.106 0.079 0.034 0.14 0.041 0.065 0.007 0.332 0.021l0.362 0 0 1.791q0.014 0.167 0.027 0.294 0.099 0.448 0.379 0.786 0.28 0.335 0.701 0.502 0.154 0.058 0.308 0.099 0.126 0.014 0.643 0.027l3.192 0 3.192 0q0.516-0.014 0.643-0.041 0.533-0.099 0.902-0.468 0.373-0.373 0.485-0.906 0.014-0.126 0.027-0.294l0-1.791 0.362 0q0.267-0.014 0.328-0.021 0.065-0.007 0.14-0.041 0.079-0.038 0.154-0.106 0.079-0.072 0.113-0.14 0.038-0.072 0.051-0.181 0.041-0.198-0.051-0.366-0.089-0.167-0.284-0.267-0.072-0.027-0.137-0.034-0.062-0.007-0.328-0.021l-0.349 0 0-0.937q0-0.759-0.014-0.96-0.014-0.202-0.085-0.4-0.14-0.42-0.455-0.714-0.314-0.294-0.749-0.42-0.154-0.041-0.499-0.055-0.342-0.014-1.446-0.014l-1.429 0 0-0.923q0-0.673 0-0.813 0-0.14-0.027-0.208-0.085-0.212-0.294-0.325l-0.099-0.041-1.289-0.014q-1.275 0-1.343 0.014z M3.678 5.305l0.099 0.041 0 4.648-0.055 0.085q-0.099 0.181-0.267 0.28l-0.085 0.041-7.335 0 0 0-7.335 0 0 0 0 0-0.085-0.041q-0.167-0.099-0.267-0.28l-0.055-0.085 0-4.635 0.027-0.403 0.167-0.232 0.119-0.133 0.239-0.133 3.681-0.014 3.613 0.014z M5.111 7.014q-0.126 0.027-0.239 0.133-0.109 0.106-0.167 0.232-0.027 0.068-0.027 0.181 0 0.113 0 0.629l0 0.728 0.041 0.085 0.126 0.154 0.161 0.126 0.246 0.041 0.243-0.041 0.161-0.126 0.13-0.154 0.041-0.085 0-0.728q0-0.516 0-0.629 0-0.113-0.027-0.181-0.085-0.198-0.273-0.301-0.188-0.106-0.414-0.065z M8.611 7.014q-0.126 0.027-0.239 0.133-0.109 0.106-0.167 0.232-0.027 0.068-0.027 0.181 0 0.113 0 0.629l0 0.728 0.041 0.085 0.126 0.154 0.161 0.126 0.246 0.041 0.243-0.041 0.161-0.126 0.13-0.154 0.041-0.085 0-0.728q0-0.516 0-0.629 0-0.113-0.027-0.181-0.085-0.198-0.273-0.301-0.188-0.106-0.414-0.065z" fill="#09090B"/>
-  </svg>
-);
-
-const MicIcon = ({ size = 16, fill = "#9CA3AF" }) => (
-  <svg viewBox="0 0 14 14" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.9 0.588q-0.643 0.027-1.183 0.386-0.537 0.355-0.803 0.93-0.14 0.28-0.198 0.547-0.027 0.096-0.027 0.475l-0.014 4.409 0.041 0.167q0.198 0.786 0.759 1.261 0.434 0.366 1.022 0.52 0.109 0.027 0.191 0.034 0.085 0.007 0.311 0.007 0.28 0 0.434-0.027 0.154-0.027 0.379-0.113 0.461-0.167 0.824-0.523 0.366-0.359 0.547-0.834 0.041-0.126 0.085-0.294l0.055-0.171 0-4.156q0-0.489-0.027-0.687-0.014-0.126-0.072-0.294l-0.014-0.027q-0.236-0.701-0.803-1.135-0.567-0.434-1.309-0.475l-0.198 0z" fill={fill}/>
-  </svg>
-);
-
-const VideoIcon = () => (
-  <svg viewBox="0 0 14 14" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M1.976 2.953q-0.561 0.126-0.933 0.54-0.369 0.414-0.441 0.988-0.027 0.154-0.027 2.519 0 2.365 0.027 2.519 0.027 0.308 0.167 0.588 0.154 0.325 0.441 0.564 0.287 0.236 0.653 0.349l0.154 0.055 6.467 0 0.154-0.055q0.366-0.113 0.653-0.349 0.287-0.239 0.441-0.564 0.109-0.236 0.15-0.451 0.044-0.219 0.044-0.625l0-0.349 1.094 0.728q1.104 0.742 1.203 0.769 0.335 0.126 0.643 0 0.181-0.072 0.321-0.226 0.14-0.154 0.198-0.335 0.014-0.072 0.027-0.448l0-2.184 0-2.17q-0.014-0.379-0.027-0.461-0.085-0.308-0.366-0.489-0.28-0.185-0.602-0.126-0.126 0.014-0.232 0.062-0.103 0.048-1.183 0.68l-1.077 0.629 0-0.239q0-0.236-0.027-0.39-0.072-0.574-0.451-0.995-0.376-0.42-0.937-0.533-0.109-0.027-0.574-0.027l-2.7 0-2.673 0q-0.479 0.014-0.588 0.027z" fill="#9CA3AF"/>
-  </svg>
-);
-
-const MessageIcon = () => (
-  <svg viewBox="0 0 14 14" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M1.976 1.203q-0.393 0.085-0.718 0.338-0.321 0.25-0.502 0.615-0.126 0.28-0.167 0.588-0.014 0.167 0 5.011l0 4.173q0.014 0.684 0.027 0.755 0.113 0.335 0.373 0.533 0.26 0.195 0.581 0.195 0.236 0 0.461-0.113 0.099-0.041 0.222-0.161 0.126-0.12 0.66-0.636l0.827-0.786 0.082-0.041 8.094-0.014 0.167-0.041q0.253-0.072 0.441-0.181 0.188-0.113 0.369-0.294 0.185-0.185 0.294-0.373 0.113-0.188 0.185-0.441l0.041-0.167 0.014-6.299q-0.014-0.813-0.027-1.08-0.014-0.195-0.041-0.335-0.14-0.475-0.506-0.81-0.362-0.338-0.841-0.438" fill="#9CA3AF"/>
-  </svg>
-);
-
-const HandIcon = () => (
-  <svg viewBox="0 0 14 14" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.833 0.602q-0.506 0.041-0.919 0.373-0.41 0.328-0.564 0.79l-0.044 0.099-0.123-0.027q-0.434-0.14-0.885-0.041-0.448 0.096-0.79 0.396-0.342 0.301-0.482 0.721l-0.014 0.027-0.058 0.239-0.027 0.547 0 3.233-0.14-0.044q-0.267-0.082-0.588-0.068-0.643 0.027-1.121 0.475-0.475 0.448-0.547 1.094-0.068 0.643 0.325 1.189 0.055 0.082 1.005 1.049 0.954 0.967 1.306 1.289 0.656 0.615 1.292 0.94 0.639 0.321 1.507 0.458 0.222 0.044 0.496 0.058 0.273 0.014 0.875 0.014 0.827 0.014 1.21-0.014 0.386-0.027 0.766-0.113 0.855-0.195 1.589-0.643 0.735-0.448 1.295-1.107 1.09-1.302 1.203-3.025 0.027-0.25 0.027-2.068 0-1.822-0.027-1.962-0.058-0.547-0.393-0.937-0.335-0.393-0.834-0.547-0.496-0.157-1.012 0l-0.126 0.027-0.058-0.113q-0.14-0.434-0.482-0.728-0.342-0.294-0.793-0.39-0.448-0.099-0.882 0.041l-0.123 0.027-0.044-0.099q-0.14-0.461-0.561-0.79-0.417-0.332-0.882-0.373l-0.167-0.014z" fill="#9CA3AF"/>
-  </svg>
-);
-
-const PhoneOffIcon = () => (
-  <svg viewBox="0 0 14 14" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M2.157 0.602q-0.294 0.027-0.588 0.167-0.294 0.14-0.506 0.366-0.308 0.321-0.434 0.783-0.027 0.126-0.034 0.212-0.007 0.082-0.007 0.362 0 1.401 0.407 2.83 0.407 1.425 1.148 2.687 0.14 0.222 0.208 0.308 0.072 0.085 0.181 0.14 0.239 0.099 0.482-0.007 0.246-0.106 0.318-0.373 0.041-0.154 0.007-0.277-0.034-0.126-0.188-0.393-0.66-1.094-1.025-2.352-0.362-1.261-0.362-2.492l0-0.366 0.055-0.113q0.085-0.195 0.28-0.28l0.099-0.041 2.03 0 0.099 0.041 0.157 0.123 0.12 0.161 0.058 0.301 0 0.916 0 0.714-0.034 0.28-0.267 0.239-0.287 0.239-0.155 0.325-0.026 0.287 0.041 0.287 0.14 0.325 0.164 0.263 0.096 0.14 0.308 0.198 0.362-0.044 0.338-0.407 0.027-0.109 0.007-0.215-0.021-0.106-0.113-0.273-0.092-0.167-0.079-0.167 0.28-0.208 0.414-0.335 0.133-0.126 0.232-0.253 0.222-0.335 0.294-0.742 0.014-0.126 0.014-1.234l0-1.104-0.055-0.154q-0.113-0.366-0.352-0.646-0.236-0.28-0.561-0.448-0.294-0.14-0.629-0.167-0.167-0.027-1.029-0.027-0.861 0-1.042 0.027z M12.725 0.602q-0.096 0.014-0.181 0.058-0.085 0.041-5.971 5.937-5.886 5.893-5.913 5.961-0.14 0.267-0.017 0.533 0.126 0.267 0.42 0.321 0.198 0.027 0.379-0.072 0.068-0.027 1.432-1.391 1.367-1.364 1.381-1.364 0.014 0 0.212 0.167 1.425 1.244 3.288 1.945 1.863 0.701 3.767 0.714 0.267 0 0.349-0.007 0.085-0.007 0.212-0.034 0.253-0.072 0.441-0.181 0.188-0.113 0.369-0.294 0.185-0.185 0.294-0.373 0.113-0.188 0.185-0.441l0.041-0.167 0-1.008 0-0.926-0.051-0.468-0.116-0.355-0.188-0.365-0.506-0.615-0.728-0.338-0.294-0.027-0.923 0-1.046 0.014-0.383 0.072-0.492 0.253-0.417 0.444-0.14 0.171-0.113-0.044-0.68-0.403-0.663-0.479-0.126-0.113 3.292-3.288 3.333-3.36 0.082-0.181-0.055-0.379-0.246-0.369-0.441-0.092z" fill="#fff"/>
-  </svg>
-);
-
-const VolumeIcon = () => (
-  <svg viewBox="0 0 14 14" width="15" height="15" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M5.85156 1.76367q-0.16748 0.02734-0.30761 0.11279-0.08545 0.04102-0.27344 0.21875-0.18799 0.17432-0.91602 0.90235-1.08008 1.06299-1.12109 1.06982-0.04102 0.00684-0.85449 0.02051-0.66992 0-0.82373 0.01367-0.15381 0.01367-0.30762 0.09912-0.23926 0.11279-0.3999 0.30762-0.16064 0.19482-0.23243 0.44775-0.01367 0.08545-0.02734 0.3794l0 1.66455 0 1.66455q0.01367 0.29395 0.02734 0.3794 0.08545 0.30762 0.30762 0.52636 0.22559 0.21533 0.51953 0.31446 0.06836 0.01367 0.22217 0.02734l0.70068 0q0.82715 0.01367 0.86817 0.02051 0.04102 0.00684 1.09717 1.05957 1.05957 1.04932 1.12793 1.09033 0.22559 0.15381 0.48535 0.16748 0.25977 0.01367 0.50927-0.11279 0.11279-0.05469 0.2461-0.18116 0.1333-0.12646 0.18799-0.25292l0.02734-0.04102q0.04443-0.08545 0.05811-0.25293 0.01367-0.2085 0.02734-0.97754l0-7.07178q-0.01367-0.76904-0.02734-0.84082-0.08545-0.33496-0.35889-0.55029-0.27344-0.21875-0.6084-0.21875-0.11279 0-0.15381 0.01367z m5.27735 0.96729q-0.10938 0.02734-0.2085 0.11279-0.09912 0.08203-0.14014 0.16064-0.04101 0.0752-0.0581 0.17432-0.01367 0.0957-0.01367 0.16748 0.03076 0.19482 0.25293 0.43408 1.06299 1.14844 1.26123 2.67285 0.01367 0.19824 0.01367 0.54688 0 0.34863-0.01367 0.54687-0.19824 1.52441-1.26123 2.67286-0.16748 0.18115-0.21875 0.32129-0.04785 0.14014-0.01368 0.29394 0.0376 0.15381 0.15381 0.28027 0.11963 0.12647 0.31446 0.16407 0.19824 0.03418 0.35205-0.05127 0.11279-0.05469 0.34179-0.30078 0.23242-0.24609 0.42725-0.5127 0.81348-1.13135 1.02881-2.51562 0.21875-1.3877-0.21533-2.70362-0.19482-0.57422-0.45459-1.03564-0.25977-0.46484-0.63575-0.92627-0.32471-0.39307-0.49218-0.4751-0.08203-0.02734-0.22901-0.03418-0.14697-0.00684-0.1914 0.00684z m-5.30469 4.26904l0 3.83496-0.89551-0.89551q-0.89551-0.88184-0.96728-0.93652-0.2085-0.14014-0.43409-0.19824-0.08203-0.02734-0.21533-0.03418-0.1333-0.00684-0.73486-0.02051l-0.82715 0 0-3.5 0.82715 0q0.60156-0.01367 0.73486-0.02051 0.1333-0.00684 0.21533-0.03418 0.2666-0.07178 0.46143-0.21191 0.07178-0.05469 0.95361-0.93653l0.88184-0.88183q0 0 0 3.83496z m3.33252-2.31055q-0.16748 0.07178-0.28028 0.20508-0.11279 0.12988-0.12646 0.30078 0 0.12305 0.02734 0.21533 0.02734 0.09229 0.12647 0.2461 0.22559 0.33496 0.32129 0.61523 0.05811 0.19482 0.07861 0.33496 0.02051 0.14014 0.02051 0.39307 0 0.25293-0.02051 0.39307-0.02051 0.14014-0.07861 0.33496-0.0957 0.28027-0.32129 0.61523-0.11279 0.18115-0.14014 0.2666-0.05469 0.2666 0.09912 0.48535 0.15381 0.21533 0.40332 0.22901 0.25293 0.01367 0.42041-0.11279 0.11279-0.09912 0.29395-0.39307 0.18457-0.29395 0.28027-0.55713 0.30762-0.81348 0.21533-1.65088-0.08887-0.84082-0.57763-1.56885-0.19482-0.28027-0.3794-0.33837-0.08203-0.02734-0.19482-0.02735-0.11279 0-0.16748 0.01367z" fill="#FFFFFF"/>
-  </svg>
-);
 
 /* ─── Sub-components ─── */
 
-const ScoreBar = ({ filled, empty, color, score }) => (
-  <div className="lp-score-bar-row">
-    <span className="lp-score-label">Score:</span>
-    {Array.from({ length: filled }).map((_, i) => (
-      <div key={`f-${i}`} className="lp-bar-seg" style={{ backgroundColor: color }} />
-    ))}
-    {Array.from({ length: empty }).map((_, i) => (
-      <div key={`e-${i}`} className="lp-bar-seg lp-bar-empty" />
-    ))}
-    <span className="lp-score-val" style={{ color }}>{score}</span>
-  </div>
-);
-
-const RubricRow = ({ color, label, fillPct, score }) => (
-  <div className="lp-rubric-row">
-    <div className="lp-rubric-dot" style={{ backgroundColor: color }} />
-    <span className="lp-rubric-label">{label}</span>
-    <div className="lp-rubric-track" style={{ backgroundColor: `${color}15` }}>
-      <div
-        className="lp-rubric-fill"
-        style={{
-          background: `linear-gradient(-90deg, ${color} 0%, ${color}CC 100%)`,
-          boxShadow: `0 0 8px 1px ${color}60`,
-          width: fillPct,
-        }}
-      />
+const MetricBar = ({ score, color, bar }) => {
+  const pct = Math.round((score / 5) * 100);
+  return (
+    <div className="lp-metric">
+      <div className="lp-metric-head">
+        <span className="lp-metric-label">Sample score</span>
+        <span className="lp-metric-value" style={{ color }}>
+          {score}
+          <span className="lp-metric-max"> / 5</span>
+        </span>
+      </div>
+      <div className="lp-metric-track" aria-hidden="true">
+        <div className="lp-metric-fill" style={{ width: `${pct}%`, background: bar }} />
+      </div>
     </div>
-    <div className="lp-score-pill" style={{ backgroundColor: `${color}18`, border: `1px solid ${color}50` }}>
-      <span style={{ color }}>{score}</span>
-    </div>
-  </div>
-);
+  );
+};
 
 const RoleChip = ({ color, name, desc }) => (
   <div className="lp-role-chip" style={{ backgroundColor: `${color}0C`, border: `1px solid ${color}40` }}>
-    <div className="lp-role-accent" style={{ background: color, boxShadow: `0 0 4px ${color}50` }} />
-    <div className="lp-role-dot" style={{ background: color, boxShadow: `0 0 6px ${color}50` }} />
+    <div className="lp-role-accent" style={{ background: color }} />
+    <div className="lp-role-dot" style={{ background: color }} />
     <div className="lp-role-text">
       <span className="lp-role-name">{name}</span>
       <span className="lp-role-desc">{desc}</span>
@@ -119,14 +45,13 @@ const TierRow = ({ unlocked, name, status, color }) => (
       border: `1px solid ${unlocked ? `${color}50` : "#FFFFFF15"}`,
     }}
   >
-    <div
-      className="lp-tier-icon"
-      style={{
-        background: unlocked ? `radial-gradient(ellipse at 50% 50%, ${color} 0%, ${color} 100%)` : "#FFFFFF10",
-        boxShadow: unlocked ? `0 0 8px ${color}50` : "none",
-      }}
-    >
-      {unlocked ? <div className="lp-check-inner" /> : <div className="lp-lock-inner" />}
+      <div
+        className="lp-tier-icon"
+        style={{
+          background: unlocked ? `${color}1A` : "#FFFFFF10",
+        }}
+      >
+      {unlocked ? <Check size={16} strokeWidth={1.8} color="#fff" /> : <Lock size={16} strokeWidth={1.8} color="#9CA3AF" />}
     </div>
     <div className="lp-tier-text">
       <span className="lp-tier-name" style={{ color: unlocked ? "#fff" : "#6B6B80" }}>{name}</span>
@@ -136,19 +61,20 @@ const TierRow = ({ unlocked, name, status, color }) => (
   </div>
 );
 
-const HowItStep = ({ num, title, desc, showConnector }) => (
+const HowItStep = ({ num, title, desc, icon, showConnector }) => (
   <>
-    <div className="lp-step-row">
-      <div className="lp-step-num"><span>{num}</span></div>
+    <li className="lp-step-row">
+      <div className="lp-step-num">{icon}</div>
       <div className="lp-step-content">
+        <span className="lp-step-eyebrow">Step {num}</span>
         <span className="lp-step-title">{title}</span>
         <span className="lp-step-desc">{desc}</span>
       </div>
-    </div>
+    </li>
     {showConnector && (
-      <div className="lp-step-connector">
+      <li aria-hidden="true" className="lp-step-connector">
         <div className="lp-step-line" />
-      </div>
+      </li>
     )}
   </>
 );
@@ -157,14 +83,23 @@ const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => (
   <div className={`lp-mobile-menu${open ? " lp-mobile-menu--open" : ""}`} role="dialog" aria-modal="true" aria-label="Navigation menu">
     <nav className="lp-mobile-nav">
       <a href="#features" onClick={onClose} className="lp-mobile-nav-link">Features</a>
+      <a href="#about" onClick={onClose} className="lp-mobile-nav-link">Objective</a>
       <a href="#how-it-works" onClick={onClose} className="lp-mobile-nav-link">How It Works</a>
-      <a href="#about" onClick={onClose} className="lp-mobile-nav-link">About</a>
       <div className="lp-mobile-nav-actions">
         <button className="lp-btn-ghost lp-btn-full" onClick={() => { onClose(); onSignIn(); }}>Sign In</button>
-        <button className="lp-btn-cta lp-btn-full" onClick={() => { onClose(); onGetStarted(); }}>Get Started</button>
+        <button className="lp-btn-solid lp-btn-full" onClick={() => { onClose(); onGetStarted(); }}>Start practicing</button>
       </div>
     </nav>
   </div>
+);
+
+/* ─── Hero headline split-word reveal ─── */
+const HERO_WORDS = ["Practice", "IT", "interviews.", "Get", "scored", "objectively", "."];
+
+const HeroWord = ({ index, children, accent }) => (
+  <span className="lp-hero-word-mask" style={{ "--i": index }}>
+    <span className={`lp-hero-word${accent ? " lp-hero-accent" : ""}`}>{children}</span>
+  </span>
 );
 
 /* ─── Main Component ─── */
@@ -172,6 +107,77 @@ const LandingPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
+  const [navScrolled, setNavScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
+  const heroSentinelRef = useRef(null);
+
+  /* Scroll-aware nav backdrop via IntersectionObserver on a sentinel div in the hero */
+  useEffect(() => {
+    const sentinel = heroSentinelRef.current;
+    if (!sentinel) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setNavScrolled(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, []);
+
+  /* Scroll-spy for active nav link via IntersectionObserver on sections */
+  useEffect(() => {
+    const sectionIds = ["features", "how-it-works", "about"];
+    const observers = [];
+    const visible = new Set();
+
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            visible.add(id);
+          } else {
+            visible.delete(id);
+          }
+          // The first visible section in DOM order wins
+          const first = sectionIds.find((s) => visible.has(s));
+          setActiveSection(first || "");
+        },
+        { threshold: 0.25 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
+
+  /* Reveal-on-scroll for bento cards + eval section (respects prefers-reduced-motion) */
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    document.querySelector(".lp-root")?.classList.add("lp-anim-ready");
+    const targets = [
+      ...Array.from(document.querySelectorAll(".lp-bento-card")),
+      ...Array.from(document.querySelectorAll(".lp-reveal")),
+    ];
+    if (!targets.length) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            if (entry.target.classList.contains("lp-bento-card")) {
+              entry.target.classList.add("lp-bento-card--revealed");
+            }
+            entry.target.classList.add("lp-reveal--shown");
+            obs.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+    );
+    targets.forEach((target) => obs.observe(target));
+    return () => obs.disconnect();
+  }, []);
 
   const openLoginModal = () => {
     setAuthMode("login");
@@ -185,8 +191,10 @@ const LandingPage = () => {
 
   return (
     <div className="lp-root">
+      {/* Film grain overlay - fixed, pointer-events-none, subtle texture */}
+      <div className="lp-grain" aria-hidden="true" />
       {/* ── Navbar ── */}
-      <header className="lp-nav" role="banner">
+      <header className={`lp-nav${navScrolled ? " lp-nav--scrolled" : ""}`} role="banner">
         <div className="lp-nav-inner">
           <a href="/" className="lp-logo" aria-label="ITerview home">
             <div className="lp-logo-container">
@@ -200,16 +208,16 @@ const LandingPage = () => {
           </a>
 
           <nav className="lp-nav-links" aria-label="Main navigation">
-            <a href="#features" className="lp-nav-link">Features</a>
-            <a href="#how-it-works" className="lp-nav-link">How It Works</a>
-            <a href="#about" className="lp-nav-link">About</a>
+            <a href="#features" className={`lp-nav-link${activeSection === "features" ? " lp-nav-link--active" : ""}`} aria-current={activeSection === "features" ? "true" : undefined}>Features</a>
+            <a href="#about" className={`lp-nav-link${activeSection === "about" ? " lp-nav-link--active" : ""}`} aria-current={activeSection === "about" ? "true" : undefined}>Objective</a>
+            <a href="#how-it-works" className={`lp-nav-link${activeSection === "how-it-works" ? " lp-nav-link--active" : ""}`} aria-current={activeSection === "how-it-works" ? "true" : undefined}>How It Works</a>
           </nav>
 
           <div className="lp-nav-spacer" />
 
           <div className="lp-nav-cta">
             <button className="lp-btn-ghost" aria-label="Sign in" onClick={openLoginModal}>Sign In</button>
-            <button className="lp-btn-cta" aria-label="Get started" onClick={openRegisterModal}>Get Started</button>
+            <button className="lp-btn-solid" aria-label="Start practicing" onClick={openRegisterModal}>Start practicing</button>
           </div>
 
           <button
@@ -229,52 +237,54 @@ const LandingPage = () => {
           onSignIn={openLoginModal}
           onGetStarted={openRegisterModal}
         />
+        {/* Scroll progress hairline - scroll-driven CSS, no JS listeners */}
+        <div className="lp-nav-progress" aria-hidden="true" />
       </header>
 
       {/* ── Hero Section ── */}
-      <section className="lp-hero" aria-label="Hero">
-        <div className="lp-glow lp-glow--top-center" aria-hidden="true" />
-        <div className="lp-glow lp-glow--right" aria-hidden="true" />
-        <div className="lp-glow lp-glow--left" aria-hidden="true" />
-        <div className="lp-glow lp-glow--bottom" aria-hidden="true" />
-        <div className="lp-deco-line-top" aria-hidden="true" />
-        <div className="lp-deco-dot lp-deco-dot--1" aria-hidden="true" />
-        <div className="lp-deco-dot lp-deco-dot--2" aria-hidden="true" />
-        <div className="lp-deco-ring" aria-hidden="true" />
-        <div className="lp-deco-dot lp-deco-dot--3" aria-hidden="true" />
-        <div className="lp-glow lp-glow--center-accent" aria-hidden="true" />
-        <div className="lp-accent-line lp-accent-line--left" aria-hidden="true" />
-        <div className="lp-accent-line lp-accent-line--right" aria-hidden="true" />
+      <section className="lp-hero" id="try-it-live" aria-label="Hero - Try It Live demo">
+        {/* Sentinel for scroll-aware nav: becomes non-visible when scrolled past */}
+        <div ref={heroSentinelRef} aria-hidden="true" style={{ position: "absolute", top: 0, height: "1px", width: "1px", pointerEvents: "none" }} />
+        {/* Ambient depth - even chromatic bloom + blueprint grid (no cut-off orbs) */}
+        <div className="lp-hero-ambient" aria-hidden="true" />
+        <div className="lp-hero-grid" aria-hidden="true" />
 
-        <div className="lp-badge" role="note">
-          <div className="lp-badge-dot" aria-hidden="true" />
-          <span>AI-Powered Mock Interviews</span>
-        </div>
+        <div className="lp-hero-inner">
+          <div className="lp-hero-left">
+            <div className="lp-hero-badge">
+              <Mic size={14} strokeWidth={2} />
+              <span>Voice-first mock interviews</span>
+            </div>
+            <h1 className="lp-hero-headline">
+              <span className="lp-sr-only">Practice IT interviews. Get scored objectively.</span>
+              <span className="lp-hero-headline-visual" aria-hidden="true">
+                {HERO_WORDS.map((word, i) => (
+                  <HeroWord key={word + i} index={i} accent={word === "objectively"}>
+                    {word === "objectively" || word === "." ? word : `${word}\u00A0`}
+                  </HeroWord>
+                ))}
+              </span>
+            </h1>
+            <p className="lp-hero-sub">
+              Speak your answer. The AI listens, transcribes, and scores you on the 3C rubric: Clarity, Correctness, Completeness.
+            </p>
+            <div className="lp-hero-ctas">
+              <button className="lp-btn-hero-primary" aria-label="Start practicing" onClick={openRegisterModal}>
+                <span>Start practicing</span>
+                <ArrowRight size={16} strokeWidth={2.5} className="lp-btn-hero-arrow" />
+              </button>
+              <a className="lp-btn-hero-ghost" href="#how-it-works">
+                See how it works
+              </a>
+            </div>
+          </div>
 
-        <h1 className="lp-hero-headline">
-          Master Tech Job Interviews with AI Voice Simulation &amp; 3C&apos;s Objective Evaluation
-        </h1>
-
-        <p className="lp-hero-sub">
-          Conquer interview freeze with real-time AI mock sessions that listen, respond, and score
-          your answers — just like a real interviewer would.
-        </p>
-
-        <div className="lp-hero-ctas">
-          <button className="lp-btn-hero-primary" aria-label="Start mock session" onClick={openRegisterModal}>
-            Start Mock Session
-          </button>
-          <button className="lp-btn-hero-ghost" aria-label="Explore tracks">
-            Explore Tracks
-          </button>
-        </div>
-
-        {/* ── Try It Live Demo (interactive) ── */}
-        <TryItLiveDemo onOpenAuth={openRegisterModal} />
-
-        <div className="lp-scroll-indicator" aria-hidden="true">
-          <span className="lp-scroll-text">Scroll to explore</span>
-          <div className="lp-scroll-line" />
+          <div className="lp-hero-right">
+            {/* Soft breathing halo behind the demo */}
+            <div className="lp-demo-halo" aria-hidden="true" />
+            {/* ── Try It Live Demo (interactive) ── */}
+            <TryItLiveDemo onOpenAuth={openRegisterModal} />
+          </div>
         </div>
       </section>
 
@@ -284,233 +294,383 @@ const LandingPage = () => {
       <section className="lp-arena" id="features" aria-labelledby="arena-heading">
         <div className="lp-section-label lp-section-label--amber">
           <div className="lp-label-dot lp-label-dot--amber" aria-hidden="true" />
-          <span id="arena-heading">THE AI GRADING FRAMEWORK</span>
+          <h2 id="arena-heading">THE 3C RUBRIC</h2>
         </div>
 
         <p className="lp-section-subtitle">
-          Every answer is graded on three dimensions. Master all three to level up.
+          Every answer is graded on three dimensions - here's what the AI listens for.
         </p>
 
         <div className="lp-cards-3c">
-          <article className="lp-card-3c lp-card-3c--clarity" aria-label="Clarity dimension">
-            <div className="lp-card-icon lp-card-icon--clarity">
-              <SparklesIcon />
+          <article className="lp-card-3c lp-card-3c--clarity lp-reveal" aria-label="Clarity dimension">
+            <div className="lp-card-head">
+              <div className="lp-icon-tile lp-icon-tile--cyan">
+                <Sparkles size={18} strokeWidth={1.8} />
+              </div>
+              <h3 className="lp-card-title">Clarity</h3>
             </div>
-            <h3 className="lp-card-title">Clarity</h3>
             <p className="lp-card-desc">
               How organized and professional is your delivery? Do you use clear structure and proper IT terminology?
             </p>
             <div className="lp-card-spacer" />
-            <ScoreBar filled={4} empty={1} color="#8B5CF6" score="4/5" />
+            <MetricBar score={4.2} color="#67E8F9" bar="linear-gradient(90deg, #06B6D4, #22D3EE)" />
           </article>
 
-          <article className="lp-card-3c lp-card-3c--correctness" aria-label="Correctness dimension">
-            <div className="lp-card-icon lp-card-icon--correctness">
-              <ShieldCheckIcon />
+          <article className="lp-card-3c lp-card-3c--correctness lp-reveal" aria-label="Correctness dimension">
+            <div className="lp-card-head">
+              <div className="lp-icon-tile lp-icon-tile--green">
+                <ShieldCheck size={18} strokeWidth={1.8} />
+              </div>
+              <h3 className="lp-card-title">Correctness</h3>
             </div>
-            <h3 className="lp-card-title">Correctness</h3>
             <p className="lp-card-desc">
               Is your answer technically accurate? Does it reflect real-world IT practices?
             </p>
             <div className="lp-card-spacer" />
-            <ScoreBar filled={4} empty={1} color="#10B981" score="4/5" />
+            <MetricBar score={3.8} color="#6EE7B7" bar="linear-gradient(90deg, #10B981, #34D399)" />
           </article>
 
-          <article className="lp-card-3c lp-card-3c--completeness" aria-label="Completeness dimension">
-            <div className="lp-card-icon lp-card-icon--completeness">
-              <LayersIcon />
+          <article className="lp-card-3c lp-card-3c--completeness lp-reveal" aria-label="Completeness dimension">
+            <div className="lp-card-head">
+              <div className="lp-icon-tile lp-icon-tile--amber">
+                <Layers size={18} strokeWidth={1.8} />
+              </div>
+              <h3 className="lp-card-title">Completeness</h3>
             </div>
-            <h3 className="lp-card-title">Completeness</h3>
             <p className="lp-card-desc">
               Did you fully address the question? Do you back your answer up with specific examples?
             </p>
             <div className="lp-card-spacer" />
-            <ScoreBar filled={4} empty={1} color="#FDCB6E" score="4/5" />
+            <MetricBar score={3.5} color="#FDE68A" bar="linear-gradient(90deg, #FBBF24, #FACC15)" />
           </article>
+        </div>
+
+        <div className="lp-arena-foot">
+          <p className="lp-score-note">
+            Sample scores shown to illustrate the rubric.
+          </p>
+          <a href="#try-it-live" className="lp-section-cta">
+            Hear how the AI scores your voice <span aria-hidden="true">→</span>
+          </a>
         </div>
       </section>
 
       <div className="lp-divider lp-divider--purple" aria-hidden="true" />
 
       {/* ── Objective Evaluation Heading ── */}
-      <section className="lp-eval-heading" id="about" aria-labelledby="eval-heading">
-        <div className="lp-eval-left">
-          <span className="lp-eval-label">OBJECTIVE EVALUATION</span>
-          <h2 className="lp-eval-headline" id="eval-heading">
-            Who said tech interview prep has to be subjective?
-          </h2>
+      <section className="lp-eval-heading" id="about" aria-label="Objective evaluation">
+        {/* Ambient background - blueprint grid + construction hairlines (decorative) */}
+        <div className="lp-eval-bg" aria-hidden="true">
+          <div className="lp-eval-line lp-eval-line--tr" />
+          <div className="lp-eval-line lp-eval-line--bl" />
+          <div className="lp-eval-grid" />
         </div>
-        <div className="lp-eval-right">
-          <p className="lp-eval-body">
-            Every response you give is scored against our proprietary 3C rubric — Clarity,
-            Correctness, and Completeness — on a transparent 1.0 to 5.0 scale. No more guessing
-            what the interviewer wants to hear. Get actionable feedback that pinpoints exactly
-            where you need to improve, so every practice session moves you forward.
-          </p>
-        </div>
-      </section>
 
-      <div className="lp-divider lp-divider--cyan" aria-hidden="true" />
-
-      {/* ── Bento Grid Section ── */}
-      <section className="lp-bento" id="how-it-works" aria-label="Features overview">
-
-        {/* Row 1 — 3C Rubric Card */}
-        <div className="lp-bento-row lp-bento-row--1">
-          <div className="lp-bento-card lp-bento-card--rubric">
-            <div className="lp-bento-title-row">
-              <div className="lp-glow-dot lp-glow-dot--cyan" aria-hidden="true" />
-              <h3>The 3C&apos;s Evaluation Rubric</h3>
+        <div className="lp-eval-inner">
+          <div className="lp-eval-left">
+            <div className="lp-section-label lp-section-label--cyan">
+              <div className="lp-label-dot lp-label-dot--cyan" aria-hidden="true" />
+              <span>Objective evaluation</span>
             </div>
-            <RubricRow color="#06B6D4" label="Clarity" fillPct="84%" score="4.2" />
-            <RubricRow color="#4F46E5" label="Correctness" fillPct="76%" score="3.8" />
-            <RubricRow color="#F8961E" label="Completeness" fillPct="70%" score="3.5" />
-            <div className="lp-rubric-scale">
-              {["1.0", "2.0", "3.0", "4.0", "5.0"].map((s) => (
-                <span key={s} className="lp-scale-tick">{s}</span>
-              ))}
+            <h2 className="lp-eval-headline lp-reveal">
+              Who said tech interview prep has to be{" "}
+              <span className="lp-eval-accent">subjective</span>?
+            </h2>
+            <p className="lp-eval-body lp-reveal">
+              No more guessing what an interviewer wants to hear. A silent pre-test sets
+              your baseline, and a scored post-test shows how far you've come.
+            </p>
+          </div>
+          <div className="lp-eval-right">
+            <div className="lp-eval-proof lp-reveal" aria-label="Sample evaluation journey">
+              <div className="lp-live-header">
+                <div className="lp-live-title-group">
+                  <div className="lp-glow-dot lp-glow-dot--neutral" aria-hidden="true" />
+                  <h3>One journey, measured at every step.</h3>
+                </div>
+                <div className="lp-live-badge" aria-label="Static illustration">
+                  <div className="lp-live-dot" aria-hidden="true" />
+                  <span>SAMPLE</span>
+                </div>
+              </div>
+
+              <ol className="lp-eval-journey">
+                <li className="lp-eval-journey-step">
+                  <div className="lp-icon-tile lp-icon-tile--cyan">
+                    <Gauge size={20} strokeWidth={1.8} />
+                  </div>
+                  <div className="lp-eval-journey-text">
+                    <span className="lp-eval-journey-name">Silent pre-test</span>
+                    <span className="lp-eval-journey-desc">
+                      Five fixed questions that set your starting line. They never lock or unlock anything.
+                    </span>
+                  </div>
+                </li>
+                <li className="lp-eval-journey-step">
+                  <div className="lp-icon-tile lp-icon-tile--purple">
+                    <Mic size={20} strokeWidth={1.8} />
+                  </div>
+                  <div className="lp-eval-journey-text">
+                    <span className="lp-eval-journey-name">Scored mock interview</span>
+                    <span className="lp-eval-journey-desc">
+                      Three rounds, fifteen answers, each scored on the 3C rubric as you go.
+                    </span>
+                  </div>
+                </li>
+                <li className="lp-eval-journey-step">
+                  <div className="lp-icon-tile lp-icon-tile--green">
+                    <TrendingUp size={20} strokeWidth={1.8} />
+                  </div>
+                  <div className="lp-eval-journey-text">
+                    <span className="lp-eval-journey-name">Graduation post-test</span>
+                    <span className="lp-eval-journey-desc">
+                      The same five questions again. The gap between the two is your improvement.
+                    </span>
+                  </div>
+                </li>
+              </ol>
+
+              <div className="lp-eval-delta">
+                <span className="lp-eval-delta-baseline">Baseline 55%</span>
+                <span className="lp-eval-delta-line" aria-hidden="true" />
+                <span className="lp-eval-delta-growth">Graduation 80%</span>
+                <span className="lp-eval-delta-chip">+25%</span>
+              </div>
+
+              <p className="lp-eval-proof-note">Sample figures from one practice journey.</p>
             </div>
           </div>
         </div>
 
-        {/* Row 2 — Role Tracks, Mastery, How It Works */}
-        <div className="lp-bento-row lp-bento-row--2">
-          <div className="lp-bento-card lp-bento-card--roles">
-            <div className="lp-bento-title-row">
-              <div className="lp-glow-dot lp-glow-dot--purple" aria-hidden="true" />
+        {/* Evidence strip — divider-separated fact wall under the proof */}
+        <ul className="lp-eval-facts lp-reveal" aria-label="Evaluation highlights">
+          <li className="lp-eval-fact">
+            <span className="lp-eval-fact-icon lp-eval-fact-icon--cyan"><Target size={18} strokeWidth={1.8} /></span>
+            <div className="lp-eval-fact-text">
+              <strong>Silent baseline</strong>
+              <span>The pre-test draws your starting line. It never gates difficulty.</span>
+            </div>
+          </li>
+          <li className="lp-eval-fact">
+            <span className="lp-eval-fact-icon lp-eval-fact-icon--green"><TrendingUp size={18} strokeWidth={1.8} /></span>
+            <div className="lp-eval-fact-text">
+              <strong>Deterministic unlock</strong>
+              <span>Averaging 75%+ across the full mock interview opens the next tier.</span>
+            </div>
+          </li>
+          <li className="lp-eval-fact">
+            <span className="lp-eval-fact-icon lp-eval-fact-icon--purple"><Gauge size={18} strokeWidth={1.8} /></span>
+            <div className="lp-eval-fact-text">
+              <strong>Measured growth</strong>
+              <span>The post-test replays your first five questions so the improvement shows.</span>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <div className="lp-divider lp-divider--cyan" aria-hidden="true" />
+
+      {/* ── How It Works + Features Overview (Bento Grid) ── */}
+      <section className="lp-bento" id="how-it-works" aria-labelledby="how-it-works-label">
+
+        {/* Section header — the process is the spine of the overview */}
+        <div className="lp-bento-head">
+          <div className="lp-section-label lp-section-label--cyan">
+            <div className="lp-label-dot lp-label-dot--cyan" aria-hidden="true" />
+            <span id="how-it-works-label">How it works</span>
+          </div>
+          <h2 className="lp-bento-headline">From your first word to your 3C score.</h2>
+          <p className="lp-bento-sub">
+            Three steps between you and objective feedback - built on IT-specific role tracks, mastery tiers, and a three-round mock interview.
+          </p>
+        </div>
+
+        <div className="lp-bento-grid">
+
+          {/* Card 1 — Process spine (Speak → Transcribe → Score) */}
+          <article className="lp-bento-card lp-bento-card--spine">
+            <div className="lp-card-head">
+              <div className="lp-icon-tile lp-icon-tile--cyan">
+                <Mic size={20} strokeWidth={1.8} />
+              </div>
+              <h3>Speak, transcribe, get scored. No typing.</h3>
+            </div>
+
+            <ol className="lp-steps lp-steps--spine">
+              <HowItStep num="1" title="Speak" desc="Answer interview questions naturally via voice - no typing required." icon={<Mic size={18} strokeWidth={1.8} />} showConnector />
+              <HowItStep num="2" title="Transcribe" desc="Your answer is transcribed in real time, then checked against the 3C rubric." icon={<AlignLeft size={18} strokeWidth={1.8} />} showConnector />
+              <HowItStep num="3" title="Get scored" desc="Clarity, Correctness, and Completeness - on the transparent 1.0-5.0 scale." icon={<Gauge size={18} strokeWidth={1.8} />} showConnector={false} />
+            </ol>
+
+            {/* Static transcript illustration — a voice-first moment the demo can't pause to show */}
+            <div className="lp-live-strip" aria-hidden="true">
+              <div className="lp-live-strip-row">
+                <span className="lp-live-pill"><span className="lp-live-dot" />YOU</span>
+                <p className="lp-live-quote">
+                  &ldquo;I&apos;d use a cleanup function to clear the interval when the component unmounts.&rdquo;
+                </p>
+              </div>
+              <div className="lp-live-strip-meta">
+                <div className="lp-wave">
+                  {Array.from({ length: 14 }).map((_, i) => (
+                    <span key={i} className="lp-wave-bar" style={{ animationDelay: (i * 0.08) + "s" }} />
+                  ))}
+                </div>
+                <span className="lp-live-status">Transcribing<span className="lp-caret" /></span>
+              </div>
+            </div>
+
+            <div className="lp-how-foot">
+              <a href="#try-it-live" className="lp-section-cta">
+                Try the live demo <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </article>
+
+          {/* Card 2 — Role Tracks */}
+          <article className="lp-bento-card lp-bento-card--roles">
+            <div className="lp-card-head">
+              <div className="lp-icon-tile lp-icon-tile--purple">
+                <Layers3 size={20} strokeWidth={1.8} />
+              </div>
               <h3>IT Role Tracks</h3>
             </div>
             <div className="lp-role-list">
-              <RoleChip color="#06B6D4" name="Frontend" desc="React, Vue, Angular, CSS" />
-              <RoleChip color="#4F46E5" name="Backend" desc="Node.js, Python, Java, Go" />
-              <RoleChip color="#10B981" name="DevOps" desc="CI/CD, Docker, Kubernetes, AWS" />
+              <RoleChip color="#8B5CF6" name="Frontend" desc="React, Vue, Angular, CSS" />
+              <RoleChip color="#8B5CF6" name="Backend" desc="Node.js, Python, Java, Go" />
+              <RoleChip color="#8B5CF6" name="DevOps" desc="CI/CD, Docker, Kubernetes, AWS" />
             </div>
             <div className="lp-coming-soon">
               <div className="lp-cs-dot" />
               <span className="lp-cs-label">+ More Roles</span>
               <div className="lp-cs-badge">Coming Soon</div>
             </div>
-          </div>
+          </article>
 
-          <div className="lp-bento-card lp-bento-card--mastery">
-            <div className="lp-bento-title-row">
-              <div className="lp-glow-dot lp-glow-dot--amber" aria-hidden="true" />
+          {/* Card 3 — Mastery progression */}
+          <article className="lp-bento-card lp-bento-card--mastery">
+            <div className="lp-card-head">
+              <div className="lp-icon-tile lp-icon-tile--green">
+                <TrendingUp size={20} strokeWidth={1.8} />
+              </div>
               <h3>Mastery-Based Difficulty Progression</h3>
             </div>
+
+            <div className="lp-tier-ladder" aria-hidden="true">
+              <div className="lp-tier-ladder-step lp-tier-ladder-step--done"><span>E</span><em>Easy</em></div>
+              <div className="lp-tier-ladder-line" />
+              <div className="lp-tier-ladder-step"><span>M</span><em>Medium</em></div>
+              <div className="lp-tier-ladder-line" />
+              <div className="lp-tier-ladder-step"><span>H</span><em>Hard</em></div>
+            </div>
+
             <div className="lp-tier-list">
-              <TierRow unlocked color="#10B981" name="Easy" status="Unlocked — Start here" />
-              <TierRow unlocked={false} color="#6B7280" name="Medium" status="Requires >= 75% avg. on Easy" />
-              <TierRow unlocked={false} color="#6B7280" name="Hard" status="Requires >= 75% avg. on Medium" />
+              <TierRow unlocked color="#10B981" name="Easy" status="Unlocked - Start here" />
+              <TierRow unlocked={false} color="#6B7280" name="Medium" status="Requires a 75%+ average across a full mock interview" />
+              <TierRow unlocked={false} color="#6B7280" name="Hard" status="Requires a 75%+ average on Medium" />
             </div>
-          </div>
+          </article>
 
-          <div className="lp-bento-card lp-bento-card--how">
-            <div className="lp-bento-title-row">
-              <div className="lp-glow-dot lp-glow-dot--cyan" aria-hidden="true" />
-              <h3>How it Works</h3>
-            </div>
-            <div className="lp-steps">
-              <HowItStep num="1" title="Speak" desc="Answer interview questions naturally via voice — no typing required." showConnector />
-              <HowItStep num="2" title="Verify" desc="Your answer is transcribed and checked for clarity and completeness." showConnector />
-              <HowItStep num="3" title="AI Scores" desc="The 3C rubric scores your answer on Clarity, Correctness, and Completeness." showConnector={false} />
-            </div>
-          </div>
-        </div>
-
-        {/* Row 3 — Live Interview Experience */}
-        <div className="lp-bento-row lp-bento-row--3">
-          <div className="lp-bento-card lp-bento-card--live">
-            <div className="lp-live-header">
-              <div className="lp-live-title-group">
-                <div className="lp-glow-dot lp-glow-dot--cyan" aria-hidden="true" />
-                <h3>Live Interview Experience</h3>
+          {/* Card 4 — One session, three rounds */}
+          <article className="lp-bento-card lp-bento-card--session">
+            <div className="lp-card-head">
+              <div className="lp-icon-tile lp-icon-tile--cyan">
+                <Clock size={20} strokeWidth={1.8} />
               </div>
-              <div className="lp-live-badge" aria-label="Live demo indicator">
-                <div className="lp-live-dot" aria-hidden="true" />
-                <span>LIVE DEMO</span>
-              </div>
+              <h3>One session, three rounds</h3>
             </div>
 
-            <div className="lp-interview-area">
-              <div className="lp-avatar" aria-label="AI interviewer avatar">
-                <BotIcon />
-              </div>
-              <div className="lp-question-stack">
-                <span className="lp-ai-label">AI Interviewer</span>
-                <p className="lp-question-text">
-                  How would you optimize a React app for performance? Walk me through your approach.
-                </p>
-              </div>
-            </div>
+            <ol className="lp-sets-list">
+              <li className="lp-set-row">
+                <div className="lp-set-icon"><Target size={16} strokeWidth={1.8} /></div>
+                <div className="lp-set-text">
+                  <span className="lp-set-name">Personalized</span>
+                  <span className="lp-set-desc">
+                    Five questions aimed at the weak spots your pre-test diagnostic found.
+                  </span>
+                </div>
+              </li>
+              <li className="lp-set-row">
+                <div className="lp-set-icon"><Code2 size={16} strokeWidth={1.8} /></div>
+                <div className="lp-set-text">
+                  <span className="lp-set-name">Technical</span>
+                  <span className="lp-set-desc">
+                    Role-based questions for Frontend, Backend, or DevOps - HTML/CSS/React for a frontend role.
+                  </span>
+                </div>
+              </li>
+              <li className="lp-set-row">
+                <div className="lp-set-icon"><MessageSquare size={16} strokeWidth={1.8} /></div>
+                <div className="lp-set-text">
+                  <span className="lp-set-name">Behavioral</span>
+                  <span className="lp-set-desc">
+                    STAR-method questions about real conflicts, deadlines, and project risk.
+                  </span>
+                </div>
+              </li>
+            </ol>
 
-            <div className="lp-transcript" aria-live="polite">
-              <div className="lp-ticker-badge" aria-label="Transcribing indicator">
-                <div className="lp-ticker-dot" aria-hidden="true" />
-                <span>TRANSCRIBING</span>
-              </div>
-              <p className="lp-transcript-line">
-                &quot;Well, I&apos;d start with code splitting using React.lazy and Suspense to reduce the initial bundle size...&quot;
-              </p>
-            </div>
+            <p className="lp-session-note">
+              <Check size={14} strokeWidth={1.8} color="#fff" />
+              <span>Instant feedback after every answer.</span>
+            </p>
 
-            <div className="lp-controls" role="toolbar" aria-label="Interview controls">
-              <button className="lp-ctrl-btn" aria-label="Toggle microphone">
-                <MicIcon /><span>Mic</span>
-              </button>
-              <button className="lp-ctrl-btn" aria-label="Toggle camera">
-                <VideoIcon /><span>Camera</span>
-              </button>
-              <button className="lp-ctrl-btn" aria-label="Open chat">
-                <MessageIcon /><span>Chat</span>
-              </button>
-              <button className="lp-ctrl-btn" aria-label="Raise hand">
-                <HandIcon /><span>Raise</span>
-              </button>
-              <div className="lp-ctrl-divider" aria-hidden="true" />
-              <button className="lp-ctrl-btn lp-ctrl-btn--end" aria-label="End call">
-                <PhoneOffIcon /><span>End</span>
-              </button>
+            <div className="lp-unlock-line">
+              Averaging <strong>75%+</strong> across all three rounds unlocks the next difficulty.
             </div>
-          </div>
+          </article>
+
         </div>
       </section>
 
       {/* ── Final CTA Section ── */}
       <section className="lp-final-cta" aria-labelledby="cta-heading">
+        {/* Single restrained brand-accent wash - mirrors the hero ambient, no purple */}
         <div className="lp-cta-glow-top" aria-hidden="true" />
-        <div className="lp-cta-glow-bottom" aria-hidden="true" />
         <h2 className="lp-cta-headline" id="cta-heading">
-          Stop freezing in technical interviews. Start building objective mastery today.
+          Stop freezing in interviews. Start practicing with a{" "}
+          <span className="lp-cta-accent">score</span>.
         </h2>
         <p className="lp-cta-sub">
-          Join thousands of engineers who transformed their interview performance with AI-powered
-          voice simulation and deterministic 3C rubric scoring.
+          Answer real IT questions out loud and get instant 3C feedback after every answer.
         </p>
-        <button className="lp-btn-cta-final" aria-label="Start mock session now" onClick={openRegisterModal}>
-          Start Mock Session
+        <button className="lp-btn-cta-final" aria-label="Start practicing" onClick={openRegisterModal}>
+          Start practicing
         </button>
+        <div className="lp-cta-trust">
+          <Check size={14} strokeWidth={2} color="#22D3EE" aria-hidden="true" />
+          <span>Free to start. No credit card required.</span>
+        </div>
       </section>
 
       {/* ── Footer ── */}
       <footer className="lp-footer" role="contentinfo">
         <div className="lp-footer-divider" aria-hidden="true" />
         <div className="lp-footer-content">
-          <div className="lp-footer-left">
-            <span className="lp-footer-brand">ITerview</span>
-            <div className="lp-footer-badge" role="note">
-              100% Friction-Free &amp; Free Access — No Credit Card Required
-            </div>
+          <div className="lp-footer-brand-block">
+            <a href="/" className="lp-logo" aria-label="ITerview home">
+              <div className="lp-logo-container">
+                <img src={logoSrc} alt="ITerview Logo" className="lp-logo-img" />
+              </div>
+              <span className="lp-logo-text">ITerview</span>
+            </a>
+            <p className="lp-footer-tagline">
+              Practice IT interviews out loud. Get scored on the 3C rubric.
+            </p>
           </div>
           <nav className="lp-footer-links" aria-label="Footer navigation">
-            <a href="#" className="lp-footer-link">3C Rubric Guide</a>
+            <a href="#features" className="lp-footer-link">3C Rubric Guide</a>
+            {/* FAQ / Privacy / Terms have no dedicated routes yet - keep placeholders until they ship */}
             <a href="#" className="lp-footer-link">FAQ</a>
             <a href="#" className="lp-footer-link">Privacy Policy</a>
             <a href="#" className="lp-footer-link">Terms</a>
           </nav>
         </div>
-        <p className="lp-footer-copy">
-          &copy; 2025 ITerview. All rights reserved. AI-powered interview preparation platform.
-        </p>
+        <div className="lp-footer-bottom">
+          <p className="lp-footer-copy">
+            &copy; 2026 ITerview. All rights reserved.
+          </p>
+        </div>
       </footer>
 
       {/* ── Auth Modal Overlay ── */}

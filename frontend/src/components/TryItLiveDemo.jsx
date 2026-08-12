@@ -28,33 +28,27 @@ const PREMADE_QUESTIONS = [
 ];
 
 // ── Icons ────────────────────────────────────────────────────────────────────
-const StopIcon = () => (
+const StopIcon = ({ fill = "#FFFFFF" }) => (
   <svg viewBox="0 0 14 14" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="2" y="2" width="10" height="10" rx="2" fill="#FFFFFF"/>
+    <rect x="2" y="2" width="10" height="10" rx="2" fill={fill} />
   </svg>
 );
 
-const SparklesIcon = ({ size = 11, fill = "#06B6D4" }) => (
+const MicIcon = ({ size = 15, fill = "#081318" }) => (
   <svg viewBox="0 0 14 14" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.846 0.588q-0.28 0.041-0.547 0.226-0.294 0.208-0.407 0.574l-0.342 1.757-0.359 1.764-0.109 0.161-0.154 0.113-0.475 0.123-1.289 0.239-1.777 0.349q-0.239 0.072-0.444 0.27-0.202 0.195-0.294 0.441-0.089 0.243-0.062 0.502 0.027 0.256 0.167 0.496 0.099 0.167 0.273 0.308 0.174 0.14 0.359 0.198 0.096 0.027 1.764 0.349l1.285 0.253 0.506 0.109 0.154 0.113 0.099 0.167 0.109 0.506 0.239 1.244 0.349 1.764q0.154 0.465 0.588 0.673 0.267 0.14 0.52 0.14 0.253 0 0.52-0.14 0.434-0.208 0.588-0.673l0.342-1.747 0.342-1.723 0.126-0.208 0.212-0.144 1.733-0.342 1.75-0.342q0.465-0.154 0.673-0.588 0.267-0.52 0-1.039-0.099-0.208-0.28-0.362-0.181-0.154-0.393-0.226-0.096-0.027-1.777-0.349l-1.23-0.239-0.506-0.109-0.154-0.085-0.154-0.239-0.342-1.733-0.342-1.75q-0.14-0.465-0.605-0.687-0.14-0.072-0.314-0.099-0.174-0.027-0.342-0.014z" fill={fill}/>
-  </svg>
-);
-
-const MicIcon = ({ size = 15, fill = "#080712" }) => (
-  <svg viewBox="0 0 14 14" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.9 0.588q-0.643 0.027-1.183 0.386-0.537 0.355-0.803 0.93-0.14 0.28-0.198 0.547-0.027 0.096-0.027 0.475l-0.014 4.409 0.041 0.167q0.198 0.786 0.759 1.261 0.434 0.366 1.022 0.52 0.109 0.027 0.191 0.034 0.085 0.007 0.311 0.007 0.28 0 0.434-0.027 0.154-0.027 0.379-0.113 0.461-0.167 0.824-0.523 0.366-0.359 0.547-0.834 0.041-0.126 0.085-0.294l0.055-0.171 0-4.156q0-0.489-0.027-0.687-0.014-0.126-0.072-0.294l-0.014-0.027q-0.236-0.701-0.803-1.135-0.567-0.434-1.309-0.475l-0.198 0z" fill={fill}/>
+    <path d="M6.9 0.588q-0.643 0.027-1.183 0.386-0.537 0.355-0.803 0.93-0.14 0.28-0.198 0.547-0.027 0.096-0.027 0.475l-0.014 4.409 0.041 0.167q0.198 0.786 0.759 1.261 0.434 0.366 1.022 0.52 0.109 0.027 0.191 0.034 0.085 0.007 0.311 0.007 0.28 0 0.434-0.027 0.154-0.027 0.379-0.113 0.461-0.167 0.824-0.523 0.366-0.359 0.547-0.834 0.041-0.126 0.085-0.294l0.055-0.171 0-4.156q0-0.489-0.027-0.687-0.014-0.126-0.072-0.294l-0.014-0.027q-0.236-0.701-0.803-1.135-0.567-0.434-1.309-0.475l-0.198 0z" fill={fill} />
   </svg>
 );
 
 const VolumeIcon = () => (
   <svg viewBox="0 0 14 14" width="15" height="15" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M5.85156 1.76367q-0.16748 0.02734-0.30761 0.11279-0.08545 0.04102-0.27344 0.21875-0.18799 0.17432-0.91602 0.90235-1.08008 1.06299-1.12109 1.06982-0.04102 0.00684-0.85449 0.02051-0.66992 0-0.82373 0.01367-0.15381 0.01367-0.30762 0.09912-0.23926 0.11279-0.3999 0.30762-0.16064 0.19482-0.23243 0.44775-0.01367 0.08545-0.02734 0.3794l0 1.66455 0 1.66455q0.01367 0.29395 0.02734 0.3794 0.08545 0.30762 0.30762 0.52636 0.22559 0.21533 0.51953 0.31446 0.06836 0.01367 0.22217 0.02734l0.70068 0q0.82715 0.01367 0.86817 0.02051 0.04102 0.00684 1.09717 1.05957 1.05957 1.04932 1.12793 1.09033 0.22559 0.15381 0.48535 0.16748 0.25977 0.01367 0.50927-0.11279 0.11279-0.05469 0.2461-0.18116 0.1333-0.12646 0.18799-0.25292l0.02734-0.04102q0.04443-0.08545 0.05811-0.25293 0.01367-0.2085 0.02734-0.97754l0-7.07178q-0.01367-0.76904-0.02734-0.84082-0.08545-0.33496-0.35889-0.55029-0.27344-0.21875-0.6084-0.21875-0.11279 0-0.15381 0.01367z m5.27735 0.96729q-0.10938 0.02734-0.2085 0.11279-0.09912 0.08203-0.14014 0.16064-0.04101 0.0752-0.0581 0.17432-0.01367 0.0957-0.01367 0.16748 0.03076 0.19482 0.25293 0.43408 1.06299 1.14844 1.26123 2.67285 0.01367 0.19824 0.01367 0.54688 0 0.34863-0.01367 0.54687-0.19824 1.52441-1.26123 2.67286-0.16748 0.18115-0.21875 0.32129-0.04785 0.14014-0.01368 0.29394 0.0376 0.15381 0.15381 0.28027 0.11963 0.12647 0.31446 0.16407 0.19824 0.03418 0.35205-0.05127 0.11279-0.05469 0.34179-0.30078 0.23242-0.24609 0.42725-0.5127 0.81348-1.13135 1.02881-2.51562 0.21875-1.3877-0.21533-2.70362-0.19482-0.57422-0.45459-1.03564-0.25977-0.46484-0.63575-0.92627-0.32471-0.39307-0.49218-0.4751-0.08203-0.02734-0.22901-0.03418-0.14697-0.00684-0.1914 0.00684z m-5.30469 4.26904l0 3.83496-0.89551-0.89551q-0.89551-0.88184-0.96728-0.93652-0.2085-0.14014-0.43409-0.19824-0.08203-0.02734-0.21533-0.03418-0.1333-0.00684-0.73486-0.02051l-0.82715 0 0-3.5 0.82715 0q0.60156-0.01367 0.73486-0.02051 0.1333-0.00684 0.21533-0.03418 0.2666-0.07178 0.46143-0.21191 0.07178-0.05469 0.95361-0.93653l0.88184-0.88183q0 0 0 3.83496z m3.33252-2.31055q-0.16748 0.07178-0.28028 0.20508-0.11279 0.12988-0.12646 0.30078 0 0.12305 0.02734 0.21533 0.02734 0.09229 0.12647 0.2461 0.22559 0.33496 0.32129 0.61523 0.05811 0.19482 0.07861 0.33496 0.02051 0.14014 0.02051 0.39307 0 0.25293-0.02051 0.39307-0.02051 0.14014-0.07861 0.33496-0.0957 0.28027-0.32129 0.61523-0.11279 0.18115-0.14014 0.2666-0.05469 0.2666 0.09912 0.48535 0.15381 0.21533 0.40332 0.22901 0.25293 0.01367 0.42041-0.11279 0.11279-0.09912 0.29395-0.39307 0.18457-0.29395 0.28027-0.55713 0.30762-0.81348 0.21533-1.65088-0.08887-0.84082-0.57763-1.56885-0.19482-0.28027-0.3794-0.33837-0.08203-0.02734-0.19482-0.02735-0.11279 0-0.16748 0.01367z" fill="#FFFFFF"/>
+    <path d="M5.85156 1.76367q-0.16748 0.02734-0.30761 0.11279-0.08545 0.04102-0.27344 0.21875-0.18799 0.17432-0.91602 0.90235-1.08008 1.06299-1.12109 1.06982-0.04102 0.00684-0.85449 0.02051-0.66992 0-0.82373 0.01367-0.15381 0.01367-0.30762 0.09912-0.23926 0.11279-0.3999 0.30762-0.16064 0.19482-0.23243 0.44775-0.01367 0.08545-0.02734 0.3794l0 1.66455 0 1.66455q0.01367 0.29395 0.02734 0.3794 0.08545 0.30762 0.30762 0.52636 0.22559 0.21533 0.51953 0.31446 0.06836 0.01367 0.22217 0.02734l0.70068 0q0.82715 0.01367 0.86817 0.02051 0.04102 0.00684 1.09717 1.05957 1.05957 1.04932 1.12793 1.09033 0.22559 0.15381 0.48535 0.16748 0.25977 0.01367 0.50927-0.11279 0.11279-0.05469 0.2461-0.18116 0.1333-0.12646 0.18799-0.25292l0.02734-0.04102q0.04443-0.08545 0.05811-0.25293 0.01367-0.2085 0.02734-0.97754l0-7.07178q-0.01367-0.76904-0.02734-0.84082-0.08545-0.33496-0.35889-0.55029-0.27344-0.21875-0.6084-0.21875-0.11279 0-0.15381 0.01367z m5.27735 0.96729q-0.10938 0.02734-0.2085 0.11279-0.09912 0.08203-0.14014 0.16064-0.04101 0.0752-0.0581 0.17432-0.01367 0.0957-0.01367 0.16748 0.03076 0.19482 0.25293 0.43408 1.06299 1.14844 1.26123 2.67285 0.01367 0.19824 0.01367 0.54688 0 0.34863-0.01367 0.54687-0.19824 1.52441-1.26123 2.67286-0.16748 0.18115-0.21875 0.32129-0.04785 0.14014-0.01368 0.29394 0.0376 0.15381 0.15381 0.28027 0.11963 0.12647 0.31446 0.16407 0.19824 0.03418 0.35205-0.05127 0.11279-0.05469 0.34179-0.30078 0.23242-0.24609 0.42725-0.5127 0.81348-1.13135 1.02881-2.51562 0.21875-1.3877-0.21533-2.70362-0.19482-0.57422-0.45459-1.03564-0.25977-0.46484-0.63575-0.92627-0.32471-0.39307-0.49218-0.4751-0.08203-0.02734-0.22901-0.03418-0.14697-0.00684-0.1914 0.00684z m-5.30469 4.26904l0 3.83496-0.89551-0.89551q-0.89551-0.88184-0.96728-0.93652-0.2085-0.14014-0.43409-0.19824-0.08203-0.02734-0.21533-0.03418-0.1333-0.00684-0.73486-0.02051l-0.82715 0 0-3.5 0.82715 0q0.60156-0.01367 0.73486-0.02051 0.1333-0.00684 0.21533-0.03418 0.2666-0.07178 0.46143-0.21191 0.07178-0.05469 0.95361-0.93653l0.88184-0.88183q0 0 0 3.83496z m3.33252-2.31055q-0.16748 0.07178-0.28028 0.20508-0.11279 0.12988-0.12646 0.30078 0 0.12305 0.02734 0.21533 0.02734 0.09229 0.12647 0.2461 0.22559 0.33496 0.32129 0.61523 0.05811 0.19482 0.07861 0.33496 0.02051 0.14014 0.02051 0.39307 0 0.25293-0.02051 0.39307-0.02051 0.14014-0.07861 0.33496-0.0957 0.28027-0.32129 0.61523-0.11279 0.18115-0.14014 0.2666-0.05469 0.2666 0.09912 0.48535 0.15381 0.21533 0.40332 0.22901 0.25293 0.01367 0.42041-0.11279 0.11279-0.09912 0.29395-0.39307 0.18457-0.29395 0.28027-0.55713 0.30762-0.81348 0.21533-1.65088-0.08887-0.84082-0.57763-1.56885-0.19482-0.28027-0.3794-0.33837-0.08203-0.02734-0.19482-0.02735-0.11279 0-0.16748 0.01367z" fill="#FFFFFF" />
   </svg>
 );
 
-const RefreshIcon = ({ size = 13, fill = "#9CA3AF" }) => (
-  <svg viewBox="0 0 16 16" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M13.65 2.35A7.958 7.958 0 008 0C3.58 0 0 3.58 0 8s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 018 14A6 6 0 1112.24 3.76L9 7h7V0l-2.35 2.35z" fill={fill}/>
+const ChevronRightIcon = ({ size = 11, fill = "#9CA3AF" }) => (
+  <svg viewBox="0 0 12 12" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4.5 2.25 8.25 6 4.5 9.75" stroke={fill} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -65,7 +59,7 @@ const DemoScaleBar = ({ color, filled }) => (
       <div
         key={i}
         className="lp-demo-scale-seg"
-        style={i < filled ? { backgroundColor: `${color}CC` } : undefined}
+        style={i < filled ? { backgroundColor: color } : undefined}
       />
     ))}
   </div>
@@ -80,7 +74,9 @@ export default function TryItLiveDemo({ onOpenAuth }) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTimer, setRecordingTimer] = useState(MAX_RECORDING_SECONDS);
   const [transcriptText, setTranscriptText] = useState("");
-  const [scores, setScores] = useState({ clarity: 92, correctness: 87, completeness: 84 });
+  // null until the first real 3C result arrives — nothing is pre-claimed
+  const [scores, setScores] = useState(null);
+  const [micError, setMicError] = useState("");
   const [attemptCount, setAttemptCount] = useState(0);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
@@ -153,6 +149,9 @@ export default function TryItLiveDemo({ onOpenAuth }) {
       });
       streamRef.current = stream;
 
+      // Only a real, successful capture counts against the free-attempt cap
+      setAttemptCount((prev) => prev + 1);
+      setMicError("");
       setTranscriptText("");
 
       if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -203,6 +202,13 @@ export default function TryItLiveDemo({ onOpenAuth }) {
       }, 1000);
     } catch (err) {
       console.error("[TryItLive] Mic error:", err.message);
+      const userFacing =
+        err?.name === "NotAllowedError"
+          ? "Microphone access is blocked. Allow the mic in your browser, then try again."
+          : err?.name === "NotFoundError"
+            ? "No microphone was found. Connect one, then try again."
+            : "Couldn't start the microphone. Check your browser settings and try again.";
+      setMicError(userFacing);
       setIsRecording(false);
     }
   }, [cleanupAudio]);
@@ -214,7 +220,6 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     }
 
     stopAudio();
-    setAttemptCount((prev) => prev + 1);
 
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       const ws = new WebSocket(WS_URL);
@@ -254,7 +259,9 @@ export default function TryItLiveDemo({ onOpenAuth }) {
         }
       };
 
-      ws.onerror = () => {};
+      ws.onerror = () => {
+        setMicError("Couldn't reach the speech server. Check your connection and try again.");
+      };
 
       ws.onclose = () => {
         cleanupAudio();
@@ -272,6 +279,10 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     stopRecording();
     stopAudio();
     setSelectedQuestion((prev) => (prev + 1) % PREMADE_QUESTIONS.length);
+    // A new prompt deserves a clean slate — never show the previous answer
+    setTranscriptText("");
+    setScores(null);
+    setMicError("");
   }, [stopRecording, stopAudio]);
 
   const playQuestionAudio = useCallback(async () => {
@@ -374,6 +385,21 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
+  // Backend scores arrive on the 0–100 scale; the product rubric speaks 1.0–5.0
+  const toRubricScore = (score100) => (score100 / 20).toFixed(1);
+  const rubricFill = (score100) => Math.max(0, Math.round(score100 / 10));
+
+  // One live-region sentence so screen readers track the demo's state
+  // Mic errors announce via the visible role="alert" node — keep this polite
+  // region for state changes only, so screen readers don't double-report.
+  const statusAnnouncement = isAudioLoading
+    ? "Loading the question audio."
+    : isAudioPlaying
+      ? "The AI is speaking the question."
+      : isRecording
+        ? "Listening. Recording your answer."
+        : "Ready. Tap and speak to try the live demo.";
+
   // Derive composite status for CSS data-attribute targeting
   const demoStatus = isRecording ? "recording" : (isAudioPlaying || isAudioLoading) ? "speaking" : "idle";
 
@@ -385,26 +411,22 @@ export default function TryItLiveDemo({ onOpenAuth }) {
       aria-label="Live AI interview demo"
       data-status={demoStatus}
     >
-      {/* Ambient glow layers */}
-      <div className="lp-demo-glow lp-demo-glow--cyan" aria-hidden="true" />
-      <div className="lp-demo-glow lp-demo-glow--purple" aria-hidden="true" />
-
       {/* ── Header bar ── */}
       <div className="lp-demo-header">
         <div className="lp-demo-header-left">
-          <div className="lp-demo-mini-orb" aria-hidden="true">
-            <div className="lp-demo-orb-fill" />
-            <div className="lp-demo-orb-core" />
+          <div className="lp-demo-mark" aria-hidden="true">
+            <div className="lp-demo-mark-ring" />
+            <div className="lp-demo-mark-dot" />
           </div>
           <div className="lp-demo-title-group">
-            <span className="lp-demo-title">Try it live</span>
-            <span className="lp-demo-subtitle">Live STT &amp; Voice Engine · Zero Setup</span>
+            <span className="lp-demo-title">Live voice demo</span>
+            <span className="lp-demo-subtitle">No sign-up · 3 free attempts</span>
           </div>
         </div>
 
         <div className="lp-demo-header-right">
           <div className="lp-demo-attempt-pill" title="Free demo attempt limit">
-            <span>{attemptCount}/{MAX_ATTEMPTS} attempts</span>
+            <span>{attemptCount}/{MAX_ATTEMPTS} used</span>
           </div>
           <div className="lp-demo-live-badge" aria-label="Live demo indicator">
             <div className="lp-demo-live-dot" aria-hidden="true" />
@@ -418,39 +440,24 @@ export default function TryItLiveDemo({ onOpenAuth }) {
 
         {/* Left — AI Speaker panel */}
         <div className="lp-demo-speaker">
-          {/* Avatar orb */}
+          {/* Calm interviewer mark */}
           <div className="lp-demo-avatar-wrap">
-            <div className="lp-demo-avatar">
-              <svg className="lp-demo-ring" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="lp-demo-ring-grad" gradientUnits="userSpaceOnUse" x1="85.355" y1="14.645" x2="14.645" y2="85.355">
-                    <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.5" />
-                    <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.6" />
-                  </linearGradient>
-                  <linearGradient id="lp-demo-ring-grad-2" gradientUnits="userSpaceOnUse" x1="85" y1="15" x2="15" y2="85">
-                    <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.15" />
-                    <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.15" />
-                  </linearGradient>
-                </defs>
-                <circle cx="50" cy="50" r="47" fill="none" stroke="url(#lp-demo-ring-grad-2)" strokeWidth="6" />
-                <circle cx="50" cy="50" r="46" fill="none" stroke="url(#lp-demo-ring-grad)" strokeWidth="1.5" />
-              </svg>
+            <div className="lp-demo-avatar" aria-hidden="true">
+              <div className="lp-demo-orb-ring" />
               <div className="lp-demo-orb" />
-              <div className="lp-demo-core" />
-              <div className="lp-demo-eye lp-demo-eye--left" />
-              <div className="lp-demo-eye lp-demo-eye--right" />
-            </div>
-
-            {/* Status indicator below avatar */}
-            <div className="lp-demo-status-row">
-              <div className="lp-demo-waveform" aria-hidden="true">
+              <div className="lp-demo-waveform">
                 <div className="lp-demo-wave-bar lp-demo-wave-bar--1" />
                 <div className="lp-demo-wave-bar lp-demo-wave-bar--2" />
                 <div className="lp-demo-wave-bar lp-demo-wave-bar--3" />
                 <div className="lp-demo-wave-bar lp-demo-wave-bar--4" />
                 <div className="lp-demo-wave-bar lp-demo-wave-bar--5" />
               </div>
-              <span className="lp-demo-speaking-label">
+            </div>
+
+            {/* Status indicator below avatar */}
+            <div className="lp-demo-status-row">
+              <span className={`lp-demo-status-chip${demoStatus !== "idle" ? " lp-demo-status-chip--active" : ""}`}>
+                <span className="lp-demo-status-dot" aria-hidden="true" />
                 {isAudioLoading ? "LOADING" : isAudioPlaying ? "SPEAKING" : isRecording ? "LISTENING" : "READY"}
               </span>
             </div>
@@ -459,14 +466,14 @@ export default function TryItLiveDemo({ onOpenAuth }) {
           {/* Question card */}
           <div className="lp-demo-question-container">
             <div className="lp-demo-question-header">
-              <span className="lp-demo-question-tag">Q {selectedQuestion + 1}/{PREMADE_QUESTIONS.length}</span>
+              <span className="lp-demo-question-tag">Question {selectedQuestion + 1} of {PREMADE_QUESTIONS.length}</span>
               <button
                 className="lp-demo-question-cycle"
                 onClick={handleNextQuestion}
                 title="Switch question prompt"
                 aria-label="Switch question prompt"
               >
-                <RefreshIcon size={11} fill="#A8A0C0" />
+                <ChevronRightIcon />
                 <span>Next</span>
               </button>
             </div>
@@ -475,7 +482,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
             </p>
             {/* Hear the AI — contextually placed in speaker panel */}
             <button
-              className="lp-demo-play-btn"
+              className={`lp-demo-play-btn${isAudioPlaying || isAudioLoading ? " lp-demo-play-btn--active" : ""}`}
               aria-label={isAudioPlaying || isAudioLoading ? "Stop AI audio" : "Hear the AI"}
               onClick={playQuestionAudio}
             >
@@ -492,7 +499,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
         <div className="lp-demo-right">
 
           {/* Transcript box */}
-          <div className="lp-demo-transcript-box">
+          <div className={`lp-demo-transcript-box${micError ? " lp-demo-transcript-box--error" : ""}`}>
             <div className="lp-demo-transcript-meta">
               <div className="lp-demo-transcribing" aria-label="Transcribing indicator">
                 <div className="lp-demo-transcribing-dot" aria-hidden="true" />
@@ -505,44 +512,53 @@ export default function TryItLiveDemo({ onOpenAuth }) {
                 <span>{isRecording ? formatTimer(recordingTimer) : "00:30 MAX"}</span>
               </div>
             </div>
-            <p className="lp-demo-transcript-text">
-              {transcriptText
-                ? `"${transcriptText}"`
-                : "Tap & speak into your mic to test real-time speech recognition and instant 3C evaluation."}
-            </p>
+            {micError ? (
+              <p className="lp-demo-error-text" role="alert">
+                {micError}
+              </p>
+            ) : (
+              <p className="lp-demo-transcript-text" aria-live="polite" aria-atomic="true">
+                {transcriptText
+                  ? `"${transcriptText}"`
+                  : "Tap & speak into your mic to try real-time speech recognition and instant 3C evaluation."}
+              </p>
+            )}
+            <span className="lp-demo-sr-only" aria-live="polite">
+              {statusAnnouncement}
+            </span>
           </div>
 
-          {/* 3C Score chips */}
+          {/* 3C Score chips — neutral until the first real result; cyan as the single live accent */}
           <div className="lp-demo-feedback">
-            <div className="lp-demo-chip lp-demo-chip--clarity">
+            <div className={`lp-demo-chip${scores ? " lp-demo-chip--active" : " lp-demo-chip--neutral"}`}>
               <div className="lp-demo-chip-top">
                 <div className="lp-demo-chip-label-row">
-                  <div className="lp-demo-chip-dot lp-demo-chip-dot--clarity" aria-hidden="true" />
+                  <div className="lp-demo-chip-dot" aria-hidden="true" />
                   <span className="lp-demo-chip-label">CLARITY</span>
                 </div>
-                <span className="lp-demo-chip-score lp-demo-chip-score--clarity">{scores.clarity}%</span>
+                <span className="lp-demo-chip-score">{scores ? toRubricScore(scores.clarity) : "—"}</span>
               </div>
-              <DemoScaleBar color="#06B6D4" filled={Math.max(1, Math.round(scores.clarity / 10))} />
+              <DemoScaleBar color="#22D3EE" filled={scores ? rubricFill(scores.clarity) : 0} />
             </div>
-            <div className="lp-demo-chip lp-demo-chip--correctness">
+            <div className={`lp-demo-chip${scores ? " lp-demo-chip--active" : " lp-demo-chip--neutral"}`}>
               <div className="lp-demo-chip-top">
                 <div className="lp-demo-chip-label-row">
-                  <div className="lp-demo-chip-dot lp-demo-chip-dot--correctness" aria-hidden="true" />
+                  <div className="lp-demo-chip-dot" aria-hidden="true" />
                   <span className="lp-demo-chip-label">CORRECTNESS</span>
                 </div>
-                <span className="lp-demo-chip-score lp-demo-chip-score--correctness">{scores.correctness}%</span>
+                <span className="lp-demo-chip-score">{scores ? toRubricScore(scores.correctness) : "—"}</span>
               </div>
-              <DemoScaleBar color="#4F46E5" filled={Math.max(1, Math.round(scores.correctness / 10))} />
+              <DemoScaleBar color="#22D3EE" filled={scores ? rubricFill(scores.correctness) : 0} />
             </div>
-            <div className="lp-demo-chip lp-demo-chip--completeness">
+            <div className={`lp-demo-chip${scores ? " lp-demo-chip--active" : " lp-demo-chip--neutral"}`}>
               <div className="lp-demo-chip-top">
                 <div className="lp-demo-chip-label-row">
-                  <div className="lp-demo-chip-dot lp-demo-chip-dot--completeness" aria-hidden="true" />
+                  <div className="lp-demo-chip-dot" aria-hidden="true" />
                   <span className="lp-demo-chip-label">COMPLETENESS</span>
                 </div>
-                <span className="lp-demo-chip-score lp-demo-chip-score--completeness">{scores.completeness}%</span>
+                <span className="lp-demo-chip-score">{scores ? toRubricScore(scores.completeness) : "—"}</span>
               </div>
-              <DemoScaleBar color="#F8961E" filled={Math.max(1, Math.round(scores.completeness / 10))} />
+              <DemoScaleBar color="#22D3EE" filled={scores ? rubricFill(scores.completeness) : 0} />
             </div>
           </div>
 
@@ -553,13 +569,15 @@ export default function TryItLiveDemo({ onOpenAuth }) {
               aria-label={isRecording ? "Stop speaking" : "Start speaking"}
               onClick={isRecording ? stopRecording : startRecording}
             >
-              {isRecording ? <StopIcon /> : <MicIcon size={15} fill="#080712" />}
+              {isRecording ? <StopIcon fill="#67E8F9" /> : <MicIcon size={15} fill="#081318" />}
               <span>{isRecording ? `Stop · ${formatTimer(recordingTimer)}` : "Tap & speak"}</span>
             </button>
             <p className="lp-demo-controls-hint">
-              {attemptCount >= MAX_ATTEMPTS
-                ? "Sign up for unlimited practice"
-                : `${MAX_ATTEMPTS - attemptCount} free attempt${MAX_ATTEMPTS - attemptCount !== 1 ? "s" : ""} remaining`}
+              {micError
+                ? "Fix the issue above, then tap & speak to retry."
+                : attemptCount >= MAX_ATTEMPTS
+                  ? "Unlimited practice with a free account"
+                  : `${MAX_ATTEMPTS - attemptCount} free attempt${MAX_ATTEMPTS - attemptCount !== 1 ? "s" : ""} remaining`}
             </p>
           </div>
         </div>
@@ -567,9 +585,8 @@ export default function TryItLiveDemo({ onOpenAuth }) {
 
       {/* ── Footer caption ── */}
       <div className="lp-demo-caption">
-        <SparklesIcon size={11} fill="#06B6D4" />
         <span className="lp-demo-caption-text">
-          Real-time speech-to-text · instant 3C scoring · no sign-up needed
+          Real-time speech-to-text · instant 3C scoring
         </span>
       </div>
     </div>

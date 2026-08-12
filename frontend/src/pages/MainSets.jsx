@@ -542,28 +542,27 @@ export default function MainSets() {
   return (
     <div className="pt-root">
       {/* ── Overlay gates (Briefing / Transition) ── */}
+      {/* AnimatePresence needs keyed motion components as DIRECT children —
+          fragments break mount/unmount tracking, so exit animations don't run
+          and the overlay can stay stuck at its hidden state. */}
       <AnimatePresence>
-        {showBriefing && (
-          <>
-            {setNumber === 1 && <SetBriefingOverlay onReady={startSession} />}
-            {setNumber === 2 && (
-              <Set2TransitionOverlay onReady={startSession} role={userRole} />
-            )}
-            {setNumber === 3 && (
-              <Set3TransitionOverlay onReady={startSession} />
-            )}
-          </>
+        {showBriefing && setNumber === 1 && (
+          <SetBriefingOverlay key="briefing-1" onReady={startSession} />
+        )}
+        {showBriefing && setNumber === 2 && (
+          <Set2TransitionOverlay key="start-2" onReady={startSession} role={userRole} />
+        )}
+        {showBriefing && setNumber === 3 && (
+          <Set3TransitionOverlay key="start-3" onReady={startSession} />
         )}
       </AnimatePresence>
 
       <AnimatePresence>
-        {!showBriefing && showNextTransition && (
-          <>
-            {setNumber === 1 && (
-              <Set2TransitionOverlay onReady={goToNextSet} role={userRole} />
-            )}
-            {setNumber === 2 && <Set3TransitionOverlay onReady={goToNextSet} />}
-          </>
+        {!showBriefing && showNextTransition && setNumber === 1 && (
+          <Set2TransitionOverlay key="next-2" onReady={goToNextSet} role={userRole} />
+        )}
+        {!showBriefing && showNextTransition && setNumber === 2 && (
+          <Set3TransitionOverlay key="next-3" onReady={goToNextSet} />
         )}
       </AnimatePresence>
 
