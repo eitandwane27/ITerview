@@ -12,6 +12,11 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
 
+  displayName: {
+    type: String,
+    default: "",
+  },
+
   role: {
     type: String,
     enum: ["frontend", "backend", "fullstack"],

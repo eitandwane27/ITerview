@@ -13,7 +13,7 @@ const Set3Session = require("../models/Set3Session");
 // Saves the user to MongoDB so we have a record there too.
 router.post("/register", async (req, res) => {
   try {
-    const { firebaseUid, email } = req.body;
+    const { firebaseUid, email, displayName } = req.body;
 
     if (!firebaseUid || !email) {
       return res
@@ -21,10 +21,14 @@ router.post("/register", async (req, res) => {
         .json({ message: "Firebase UID and Email are required" });
     }
 
+    // Build the update payload — only include displayName if provided
+    const updatePayload = { firebaseUid, email };
+    if (displayName !== undefined) updatePayload.displayName = displayName;
+
     // upsert: true → create if not found, update if already there (safe for re-runs)
     const user = await User.findOneAndUpdate(
       { firebaseUid },
-      { firebaseUid, email },
+      updatePayload,
       { returnDocument: "after", upsert: true },
     );
 
@@ -43,7 +47,7 @@ router.post("/register", async (req, res) => {
 // Ensures the user document exists in MongoDB (handles edge cases).
 router.post("/login", async (req, res) => {
   try {
-    const { firebaseUid, email } = req.body;
+    const { firebaseUid, email, displayName } = req.body;
 
     if (!firebaseUid || !email) {
       return res
@@ -51,10 +55,14 @@ router.post("/login", async (req, res) => {
         .json({ message: "Firebase UID and Email are required" });
     }
 
+    // Build the update payload — only include displayName if provided
+    const updatePayload = { firebaseUid, email };
+    if (displayName !== undefined) updatePayload.displayName = displayName;
+
     // upsert: true → creates the doc if it somehow doesn't exist yet
     const user = await User.findOneAndUpdate(
       { firebaseUid },
-      { firebaseUid, email },
+      updatePayload,
       { returnDocument: "after", upsert: true },
     );
 
@@ -490,10 +498,10 @@ router.get("/active-practice-session", async (req, res) => {
 });
 
 // PUT /api/users/role
-// Updates user's target role, difficulty, and focus area in MongoDB.
+// Updates user's target role, difficulty, focus area, and optionally displayName in MongoDB.
 router.put("/role", async (req, res) => {
   try {
-    const { firebaseUid, role, difficulty, focusArea } = req.body;
+    const { firebaseUid, role, difficulty, focusArea, displayName } = req.body;
 
     if (!firebaseUid) {
       return res.status(400).json({ message: "Firebase UID is required" });
@@ -503,6 +511,8 @@ router.put("/role", async (req, res) => {
     if (role) updateFields.role = role;
     if (difficulty) updateFields.difficulty = difficulty;
     if (focusArea) updateFields.focusArea = focusArea;
+    // Allow updating displayName (including empty string to clear it)
+    if (displayName !== undefined) updateFields.displayName = displayName;
 
     const user = await User.findOneAndUpdate(
       { firebaseUid },
@@ -510,10 +520,10 @@ router.put("/role", async (req, res) => {
       { returnDocument: "after", upsert: true }
     );
 
-    console.log(`✅ Updated role/difficulty/focusArea for user ${firebaseUid}:`, updateFields);
-    res.status(200).json({ message: "Role and focus area updated successfully!", user });
+    console.log(`✅ Updated profile for user ${firebaseUid}:`, updateFields);
+    res.status(200).json({ message: "Profile updated successfully!", user });
   } catch (error) {
-    console.error("❌ Error updating role:", error);
+    console.error("❌ Error updating profile:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 });

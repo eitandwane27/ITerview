@@ -22,7 +22,7 @@ import {
   RotateCcw,
   AlertCircle,
 } from "lucide-react";
-import { signOut, onAuthStateChanged } from "firebase/auth";
+import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { auth } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
@@ -363,6 +363,14 @@ export default function Dashboard() {
   const [activeSession, setActiveSession] = useState(null);
   const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ready" | "empty" | "error"
   const [formError, setFormError] = useState(null);
+
+  // Profile modal state
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [editFocus, setEditFocus] = useState("auto");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState(null);
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem("iterview-theme") || "dark";
@@ -377,7 +385,10 @@ export default function Dashboard() {
     setDataStatus("loading");
     const initial = (user.displayName || user.email || "U")[0].toUpperCase();
     setUserName(initial);
-    setFullName(user.displayName || "Alex");
+    setFullName(
+      user.displayName ||
+      (user.email ? user.email.split("@")[0] : "User")
+    );
 
     let userLoadOk = false;
     let summaryOk = false;
@@ -466,6 +477,65 @@ export default function Dashboard() {
 
   // Stable navigation callback so memoized children (BaselineCard) skip re-renders.
   const handleViewResults = useCallback(() => navigate("/results"), [navigate]);
+
+  // Open profile modal — seed edit fields from current state
+  const handleOpenProfileModal = useCallback(() => {
+    setEditName(fullName);
+    setEditRole(selectedRole);
+    setEditFocus(selectedFocus);
+    setProfileError(null);
+    setIsProfileModalOpen(true);
+  }, [fullName, selectedRole, selectedFocus]);
+
+  const handleCloseProfileModal = useCallback(() => {
+    if (isSavingProfile) return; // prevent close during save
+    setIsProfileModalOpen(false);
+    setProfileError(null);
+  }, [isSavingProfile]);
+
+  // Save profile: update Firebase Auth displayName + MongoDB via PUT /api/users/role
+  const handleSaveProfile = useCallback(async () => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) return;
+
+    const trimmedName = editName.trim();
+    setIsSavingProfile(true);
+    setProfileError(null);
+
+    try {
+      // 1. Update Firebase Auth profile (displayName field)
+      await updateProfile(firebaseUser, { displayName: trimmedName || null });
+
+      // 2. Persist displayName + role + focusArea to MongoDB in one atomic call
+      const res = await fetch("/api/users/role", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firebaseUid: firebaseUser.uid,
+          displayName: trimmedName,
+          role: editRole || selectedRole,
+          focusArea: editFocus || selectedFocus,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to save profile");
+
+      // 3. Update local state immediately for a snappy UX
+      const displayedName = trimmedName ||
+        (firebaseUser.email ? firebaseUser.email.split("@")[0] : "User");
+      setFullName(displayedName);
+      setUserName(displayedName[0].toUpperCase());
+      if (editRole) setSelectedRole(editRole);
+      if (editFocus) setSelectedFocus(editFocus);
+
+      setIsProfileModalOpen(false);
+    } catch (err) {
+      console.error("Error saving profile:", err);
+      setProfileError("Failed to save your profile. Please try again.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }, [editName, editRole, editFocus, selectedRole, selectedFocus]);
 
   // WAI-ARIA tabs pattern: arrow-key navigation across the tablist
   const handleTabKeyDown = useCallback(
@@ -636,9 +706,16 @@ export default function Dashboard() {
           >
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <div className="db-user-avatar" aria-hidden="true">
+          <button
+            type="button"
+            className="db-user-avatar"
+            onClick={handleOpenProfileModal}
+            title="Edit profile"
+            aria-label="Open profile settings"
+            id="btn-profile-avatar"
+          >
             {userName}
-          </div>
+          </button>
           <button type="button" className="db-signout-btn" title="Sign Out" id="btn-logout" onClick={handleLogout}>
             <LogOut size={16} />
             <span className="db-signout-label">Sign out</span>
@@ -1005,6 +1082,138 @@ export default function Dashboard() {
         </div>
 
       </main>{/* /db-content */}
+
+      {/* ── Profile Settings Modal ── */}
+      {isProfileModalOpen && (
+        <div
+          className="db-modal-backdrop"
+          onClick={handleCloseProfileModal}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Profile settings"
+        >
+          <div
+            className="db-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="db-modal__header">
+              <div className="db-modal__header-text">
+                <h2 className="db-modal__title">Profile Settings</h2>
+                <p className="db-modal__sub">Update your display name, role, and focus area.</p>
+              </div>
+              <button
+                type="button"
+                className="db-modal__close"
+                onClick={handleCloseProfileModal}
+                aria-label="Close profile settings"
+                disabled={isSavingProfile}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="db-modal__body">
+              {/* Display Name */}
+              <div className="db-modal__field">
+                <label htmlFor="modal-display-name" className="db-modal__label">
+                  DISPLAY NAME
+                </label>
+                <input
+                  id="modal-display-name"
+                  type="text"
+                  className="db-modal__input"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Your name (shown in greeting)"
+                  maxLength={60}
+                  disabled={isSavingProfile}
+                  autoComplete="off"
+                />
+                <p className="db-modal__hint">
+                  Shown as &ldquo;Good morning, {editName || "…"}&rdquo;
+                </p>
+              </div>
+
+              {/* Target Role */}
+              <div className="db-modal__field">
+                <label htmlFor="modal-role" className="db-modal__label">
+                  TARGET ROLE
+                </label>
+                <div className="db-select-wrap">
+                  <Briefcase size={17} className="db-select-wrap__icon db-select-wrap__icon--violet" />
+                  <select
+                    id="modal-role"
+                    className="db-select"
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    disabled={isSavingProfile}
+                  >
+                    {ROLE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value} disabled={o.value === ""}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={17} className="db-select-wrap__chevron" />
+                </div>
+              </div>
+
+              {/* Focus Area */}
+              <div className="db-modal__field">
+                <label htmlFor="modal-focus" className="db-modal__label">
+                  3C FOCUS AREA
+                </label>
+                <div className="db-select-wrap">
+                  <Sparkles size={17} className="db-select-wrap__icon db-select-wrap__icon--violet" />
+                  <select
+                    id="modal-focus"
+                    className="db-select"
+                    value={editFocus}
+                    onChange={(e) => setEditFocus(e.target.value)}
+                    disabled={isSavingProfile}
+                  >
+                    {FOCUS_OPTIONS.map((f) => (
+                      <option key={f.value} value={f.value}>{f.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={17} className="db-select-wrap__chevron" />
+                </div>
+              </div>
+
+              {/* Error message */}
+              {profileError && (
+                <p className="db-form-error" role="alert">
+                  <AlertCircle size={15} />
+                  {profileError}
+                </p>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="db-modal__footer">
+              <button
+                type="button"
+                className="db-btn-secondary"
+                onClick={handleCloseProfileModal}
+                disabled={isSavingProfile}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="db-cta-btn"
+                onClick={handleSaveProfile}
+                disabled={isSavingProfile}
+                id="btn-save-profile"
+              >
+                {isSavingProfile ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
