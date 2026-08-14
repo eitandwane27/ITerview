@@ -22,6 +22,8 @@ dist-ssr
 guide/
 scripts/
 .agents/
+DESIGN.md
+PRODUCT.md
 
 # Editor directories and files
 .vscode/*
