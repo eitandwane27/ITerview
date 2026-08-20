@@ -15,10 +15,10 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
 import { AnimatePresence } from "framer-motion";
-import SetBriefingOverlay from "../components/SetBriefingOverlay";
 import Set2TransitionOverlay from "../components/Set2TransitionOverlay";
 import Set3TransitionOverlay from "../components/Set3TransitionOverlay";
 import AiAnalysisLoader from "../components/AiAnalysisLoader";
+import OrganicSphereCanvas from "../prototypes/organic-sphere/OrganicSphereCanvas";
 import "./MainSets.css";
 
 // ── Set metadata ───────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ export default function MainSets() {
   const meta = SET_META[setNumber] || SET_META[1];
 
   // ── UI State ───────────────────────────────────────────────────────────────
-  const [showBriefing, setShowBriefing] = useState(true);
+  const [showBriefing, setShowBriefing] = useState(setNumber !== 1);
   const [status, setStatus] = useState("Waiting to start...");
   const [error, setError] = useState("");
   const [isConnected, setIsConnected] = useState(false);
@@ -52,6 +52,9 @@ export default function MainSets() {
   const [isSessionComplete, setIsSessionComplete] = useState(false);
   const [showNextTransition, setShowNextTransition] = useState(false);
   const [userRole, setUserRole] = useState("Frontend");
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [sessionWeakness, setSessionWeakness] = useState(focusArea || "focus_completeness");
+  const [hasReceivedQ1Audio, setHasReceivedQ1Audio] = useState(false);
 
   // Volume & Transcript state
   const [volume, setVolume] = useState(0);
@@ -63,6 +66,41 @@ export default function MainSets() {
     "Your personalized AI feedback will appear here after each answer.",
   );
   const [scores, setScores] = useState(null);
+
+  // 3D AI avatar experience instance (driven via onExperienceReady, not re-renders)
+  const [experience, setExperience] = useState(null);
+
+  const handleExperienceReady = useCallback((expInstance) => {
+    setExperience(expInstance);
+  }, []);
+
+  // ── Pause the 3D avatar when the tab is hidden or the orb is off-screen ──
+  const orbRef = useRef(null);
+
+  useEffect(() => {
+    if (!experience || !orbRef.current) return;
+    const exp = experience;
+    const el = orbRef.current;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        exp.setPaused?.(!entries[0].isIntersecting);
+      },
+      { threshold: 0 },
+    );
+    observer.observe(el);
+
+    const onVisibilityChange = () => {
+      exp.setPaused?.(document.hidden);
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      exp.setPaused?.(false);
+    };
+  }, [experience]);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const wsRef = useRef(null);
@@ -187,12 +225,13 @@ export default function MainSets() {
     }
   }, []);
 
-  // ── WebSocket connection (Starts AFTER briefing) ───────────────────────────
-  const startSession = () => {
+  // ── WebSocket connection (Starts automatically for Set 1, or after transition) ──
+  const startSession = useCallback(() => {
     setShowBriefing(false);
 
     if (preview) {
       setIsConnected(true);
+      setIsGeneratingQuestions(false);
       setStatus("Question ready. Click Unmute to answer.");
       setCurrentQuestion(1);
       setCurrentQuestionText(
@@ -203,6 +242,11 @@ export default function MainSets() {
             : "Tell me about a time you worked on a group programming project and how your team divided the tasks.",
       );
       return;
+    }
+
+    if (setNumber === 1 || setNumber === 2) {
+      setIsGeneratingQuestions(true);
+      setHasReceivedQ1Audio(false);
     }
 
     setStatus(`Connecting to Set ${setNumber} session...`);
@@ -231,10 +275,19 @@ export default function MainSets() {
       }
 
       switch (msg.type) {
+        case "generation_progress":
+          if (msg.weakness) setSessionWeakness(msg.weakness);
+          if (msg.role) setUserRole(msg.role.charAt(0).toUpperCase() + msg.role.slice(1));
+          if (msg.message) setStatus(msg.message);
+          break;
+        case "generation_complete":
+          if (msg.weakness) setSessionWeakness(msg.weakness);
+          break;
         case "status":
           setStatus(msg.message);
           break;
         case "tts_audio":
+          setHasReceivedQ1Audio(true);
           enqueueBase64Audio(msg.data);
           break;
         case "question_text":
@@ -303,7 +356,7 @@ export default function MainSets() {
     ws.onclose = () => {
       setIsConnected(false);
     };
-  };
+  }, [preview, setNumber, voice, focusArea, enqueueBase64Audio]);
 
   const goToNextSet = () => {
     setShowNextTransition(false);
@@ -313,10 +366,9 @@ export default function MainSets() {
     navigate(`/interview?set=${nextSet}${modeParam}${focusParam}`, { state: { voice } });
   };
 
-  // ── Reset on route change ──────────────────────────────────────────────────
+  // ── Reset & Initialize on route change ────────────────────────────────────
   useEffect(() => {
     isSessionCompleteRef.current = false;
-    setShowBriefing(true);
     setStatus(preview ? "Preview mode active" : "Waiting to start...");
     setError("");
     setIsConnected(preview);
@@ -339,6 +391,13 @@ export default function MainSets() {
     );
     setScores(null);
 
+    if (setNumber === 1) {
+      setShowBriefing(false);
+      startSession();
+    } else {
+      setShowBriefing(true);
+    }
+
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
@@ -346,7 +405,7 @@ export default function MainSets() {
       }
       cleanupAudio();
     };
-  }, [location.search, location.pathname]);
+  }, [location.search, location.pathname, setNumber, startSession]);
 
   // ── Volume meter ─────────────────────────────────────────────────────────
   const startVolumeMeter = (analyser) => {
@@ -498,6 +557,9 @@ export default function MainSets() {
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
         analyserRef.current = analyser;
+        // Feed the SAME analyser into the 3D avatar so it reacts to the mic
+        // without opening a second getUserMedia stream / AudioContext.
+        experience?.setExternalAnalyser?.(analyser);
         const processor = audioCtx.createScriptProcessor(4096, 1, 1);
         processorRef.current = processor;
         source.connect(analyser);
@@ -546,9 +608,6 @@ export default function MainSets() {
           fragments break mount/unmount tracking, so exit animations don't run
           and the overlay can stay stuck at its hidden state. */}
       <AnimatePresence>
-        {showBriefing && setNumber === 1 && (
-          <SetBriefingOverlay key="briefing-1" onReady={startSession} />
-        )}
         {showBriefing && setNumber === 2 && (
           <Set2TransitionOverlay key="start-2" onReady={startSession} role={userRole} />
         )}
@@ -566,8 +625,22 @@ export default function MainSets() {
         )}
       </AnimatePresence>
 
-      {/* ── Main interview arena (shown after briefing) ── */}
-      {!showBriefing && (
+      {/* ── Set 1 & Set 2 AI Question Synthesis Loader ── */}
+      {!showBriefing && isGeneratingQuestions && (
+        <AiAnalysisLoader
+          role={userRole}
+          weakness={sessionWeakness}
+          statusMessage={status}
+          isReady={hasReceivedQ1Audio && Boolean(currentQuestionText)}
+          error={error}
+          onComplete={() => setIsGeneratingQuestions(false)}
+          onRetry={startSession}
+          onSkip={() => setIsGeneratingQuestions(false)}
+        />
+      )}
+
+      {/* ── Main interview arena (shown after briefing and synthesis) ── */}
+      {!showBriefing && !isGeneratingQuestions && (
         <>
           {/* ── Top Bar ── */}
           <header className="pt-topbar">
@@ -651,9 +724,19 @@ export default function MainSets() {
 
                 {/* Lavender inner card — db-inner-card equivalent */}
                 <div className="ms-inner-card">
-                  {/* Animated avatar orb */}
-                  <div className={`ms-avatar-orb ${orbState}`}>
-                    {meta.emoji}
+                  {/* Animated 3D AI spirit orb — organic-sphere prototype.
+                      The orb is the faceless face of the AI's text-to-speech
+                      voice; it never captures audio itself. MainSets feeds its
+                      shared session analyser in via setExternalAnalyser so the
+                      orb reacts without opening a second stream/AudioContext.
+                      High default quality; AdaptiveQuality backs off only if
+                      the frame budget can't be held. */}
+                  <div ref={orbRef} className={`ms-avatar-orb ${orbState}`}>
+                    <OrganicSphereCanvas
+                      subdivision={512}
+                      onExperienceReady={handleExperienceReady}
+                    />
+                    <span className="ms-avatar-orb-emoji">{meta.emoji}</span>
                   </div>
 
                   {/* Question text */}

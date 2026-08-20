@@ -451,7 +451,7 @@ export default function PreTest() {
       </div>
 
       {isAnalyzing ? (
-        <AiAnalysisLoader onComplete={() => navigate('/interview')} />
+        <AiAnalysisLoader onComplete={() => navigate('/interview?set=1', { state: { voice } })} />
       ) : (
       <main className="pt-main">
         {/* Left Column */}

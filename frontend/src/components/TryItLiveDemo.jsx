@@ -35,8 +35,8 @@ const StopIcon = ({ fill = "#FFFFFF" }) => (
 );
 
 const MicIcon = ({ size = 15, fill = "#081318" }) => (
-  <svg viewBox="0 0 14 14" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.9 0.588q-0.643 0.027-1.183 0.386-0.537 0.355-0.803 0.93-0.14 0.28-0.198 0.547-0.027 0.096-0.027 0.475l-0.014 4.409 0.041 0.167q0.198 0.786 0.759 1.261 0.434 0.366 1.022 0.52 0.109 0.027 0.191 0.034 0.085 0.007 0.311 0.007 0.28 0 0.434-0.027 0.154-0.027 0.379-0.113 0.461-0.167 0.824-0.523 0.366-0.359 0.547-0.834 0.041-0.126 0.085-0.294l0.055-0.171 0-4.156q0-0.489-0.027-0.687-0.014-0.126-0.072-0.294l-0.014-0.027q-0.236-0.701-0.803-1.135-0.567-0.434-1.309-0.475l-0.198 0z" fill={fill} />
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c0 3.03-2.76 5.25-5.91 5.25S6.09 14.03 6.09 11H4c0 3.59 2.9 6.5 6.5 6.5V20h3v-2.5C17.1 17.5 20 14.59 20 11h-2.09z" fill={fill} />
   </svg>
 );
 
@@ -90,6 +90,8 @@ export default function TryItLiveDemo({ onOpenAuth }) {
   const isTTSActiveRef = useRef(false);
   const timerIntervalRef = useRef(null);
   const recordingStartRef = useRef(null);
+  // Accumulated finalized speech — only the live in-progress turn rides on top
+  const finalTranscriptRef = useRef("");
 
   // ── TTS: "Hear the AI" ─────────────────────────────────────────────────────
   const stopAudio = useCallback(() => {
@@ -153,6 +155,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
       setAttemptCount((prev) => prev + 1);
       setMicError("");
       setTranscriptText("");
+      finalTranscriptRef.current = "";
 
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: "start_recording" }));
@@ -240,9 +243,21 @@ export default function TryItLiveDemo({ onOpenAuth }) {
 
         if (msg.type === "transcript") {
           if (msg.isFinal) {
-            setTranscriptText((prev) => (prev ? `${prev} ${msg.text}` : msg.text));
-          } else {
-            setTranscriptText(msg.text || "");
+            // Commit the finished turn once — never append the interim preview again.
+            if (msg.text) {
+              finalTranscriptRef.current = finalTranscriptRef.current
+                ? `${finalTranscriptRef.current} ${msg.text}`
+                : msg.text;
+            }
+            setTranscriptText(finalTranscriptRef.current);
+          } else if (msg.text) {
+            // Interim: overlay the live in-progress turn on the accumulated result
+            // so finalized speech stays stable instead of flickering word-by-word.
+            setTranscriptText(
+              finalTranscriptRef.current
+                ? `${finalTranscriptRef.current} ${msg.text}`
+                : msg.text
+            );
           }
         } else if (msg.type === "scores") {
           setScores({
@@ -281,6 +296,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     setSelectedQuestion((prev) => (prev + 1) % PREMADE_QUESTIONS.length);
     // A new prompt deserves a clean slate — never show the previous answer
     setTranscriptText("");
+    finalTranscriptRef.current = "";
     setScores(null);
     setMicError("");
   }, [stopRecording, stopAudio]);
@@ -443,6 +459,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
           {/* Calm interviewer mark */}
           <div className="lp-demo-avatar-wrap">
             <div className="lp-demo-avatar" aria-hidden="true">
+              <div className="lp-demo-orb-halo" />
               <div className="lp-demo-orb-ring" />
               <div className="lp-demo-orb" />
               <div className="lp-demo-waveform">

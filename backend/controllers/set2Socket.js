@@ -235,13 +235,29 @@ function handleSet2Socket(ws, request) {
 
       // 3. Generate ALL 5 questions sequentially
       send({
+        type: "generation_progress",
+        stage: "loading_topics",
+        message: `Loading Technical Mastery topics for ${sessionRole}...`,
+        role: sessionRole,
+      });
+
+      send({
         type: "status",
-        message: "Generating your technical questions...",
+        message: "Generating technical mastery questions...",
       });
 
       const genStart = Date.now();
       let q1SynthesisPromise = null;
       for (let i = 0; i < MAX_QUESTIONS; i++) {
+        send({
+          type: "generation_progress",
+          stage: "generating_questions",
+          current: i + 1,
+          total: MAX_QUESTIONS,
+          role: sessionRole,
+          message: `Synthesizing technical question ${i + 1} of ${MAX_QUESTIONS}...`,
+        });
+
         const qGenStart = Date.now();
         const q = await generateSet2Question(
           sessionRole,
@@ -281,6 +297,11 @@ function handleSet2Socket(ws, request) {
       if (ws.readyState !== ws.OPEN) return;
       const q1TtsLatency = Date.now() - startupStart;
       metrics.ttsLatencies.push(q1TtsLatency);
+
+      send({
+        type: "generation_complete",
+        role: sessionRole,
+      });
 
       send({ type: "tts_audio", data: q1AudioBuffer.toString("base64") });
       console.log(`[TTS] 🔊 Q1 audio sent in ${(q1TtsLatency / 1000).toFixed(2)}s (total startup)`);

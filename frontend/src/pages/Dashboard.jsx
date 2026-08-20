@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useCallback, memo } from "react";
+import React, { useState, useEffect, useCallback, useRef, memo } from "react";
 import {
   LogOut,
-  BarChart2,
   Lock,
   Zap,
   Mic,
   History,
   Gauge,
-  Check,
   Briefcase,
   Sparkles,
   ChevronDown,
@@ -25,6 +23,8 @@ import {
 import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { auth } from "../firebase";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import SetBriefingOverlay from "../components/SetBriefingOverlay";
 import "./Dashboard.css";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -44,10 +44,11 @@ const FOCUS_OPTIONS = [
   { value: "star",         label: "STAR Behavioral — Situation/Action/Result", desc: "Focuses on structured behavioral storytelling" },
 ];
 
-const NAV_TABS = ["Interview Prep", "History"];
+const NAV_TABS = ["Interview Prep", "My Progress", "History"];
 
 const TAB_ICONS = {
   "Interview Prep": Mic,
+  "My Progress": TrendingUp,
   History: History,
 };
 
@@ -133,7 +134,7 @@ const BaselineCard = memo(function BaselineCard({
     <section className="db-baseline-card">
       <div className="db-baseline-card__header">
         <div className="db-baseline-card__text">
-          <h2 className="db-baseline-card__title">Your diagnostic baseline</h2>
+          <h2 className="db-baseline-card__title">Your progress at a glance</h2>
           <p className="db-baseline-card__sub">
             <Lock size={12} className="db-baseline-card__lock" />
             Locked from your pre-test — every session builds on this start line.
@@ -147,7 +148,7 @@ const BaselineCard = memo(function BaselineCard({
       <div className="db-baseline-card__body">
         {/* Baseline → Mastery journey */}
         <div className="db-progression">
-          <div className="db-progression__label">BASELINE → MASTERY</div>
+          <div className="db-progression__label">Your journey so far</div>
           <div className="db-progression__scores">
             <div className="db-progression__baseline">{baseline != null ? `${baseline}%` : "—"}</div>
             <ArrowRight size={18} className="db-progression__arrow" aria-hidden="true" />
@@ -198,6 +199,10 @@ const BaselineCard = memo(function BaselineCard({
             <div className="db-3c-cell__score db-3c-cell__score--completeness">{completeness != null ? `${completeness} / 10` : "—"}</div>
           </div>
         </div>
+
+        <p className="db-3c-grid__foot">
+          Dimension scores are out of 10 — your overall progress is shown as a percentage.
+        </p>
       </div>
     </section>
   );
@@ -263,7 +268,7 @@ const AttemptCard = memo(function AttemptCard({ attempt }) {
         </span>
         <div>
           <div className="db-attempt-card__title">
-            <span style={{ textTransform: "capitalize" }}>{attempt.role || "Developer"}</span>
+            <span>{attempt.role || "Developer"}</span>
             {" · "}{attempt.difficulty || "Easy"}
             <span className="db-badge db-badge--purple">
               <Mic size={11} strokeWidth={2.2} />
@@ -346,6 +351,88 @@ const HistoryPanel = memo(function HistoryPanel({ dataStatus, practiceHistory })
   );
 });
 
+// ─── My Progress digest — the diagnostic baseline lives here now ────────────
+// The launch surface stays single-task; review surfaces (this panel + History)
+// own the numbers. Same dataStatus machine, same components, same world.
+
+const ProgressPanel = memo(function ProgressPanel({
+  dataStatus,
+  onRetry,
+  onViewReport,
+  baseline,
+  mastery,
+  growth,
+  clarity,
+  correctness,
+  completeness,
+  average3C,
+  lowestMetric,
+  weakTopic,
+  sessionsCount,
+}) {
+  if (dataStatus === "loading" || dataStatus === "error" || dataStatus === "empty") {
+    return <MetricsStates dataStatus={dataStatus} onRetry={onRetry} />;
+  }
+
+  return (
+    <div className="db-progress-deck">
+      {/* Journey hero — baseline → mastery + 3C grid (the digest centrepiece) */}
+      <BaselineCard
+        baseline={baseline}
+        mastery={mastery}
+        growth={growth}
+        clarity={clarity}
+        correctness={correctness}
+        completeness={completeness}
+        lowest={lowestMetric}
+        onViewDetails={onViewReport}
+      />
+
+      {/* Supplementary summary — the numbers behind the journey */}
+      <div className="db-stats-row">
+        <div className="db-stat-card">
+          <div className="db-stat-card__label">
+            <span className="db-stat-dot db-stat-dot--mint" aria-hidden="true" />
+            3C Average
+          </div>
+          <div className="db-stat-card__value-row">
+            <span className="db-stat-card__value">{average3C != null ? `${average3C}%` : "—"}</span>
+            {growth != null && (
+              <span className="db-stat-card__delta">
+                {growth >= 0 ? "+" : ""}{growth}% vs pre-test
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="db-stat-card">
+          <div className="db-stat-card__label">
+            <span className="db-stat-dot db-stat-dot--violet" aria-hidden="true" />
+            Sessions
+          </div>
+          <div className="db-stat-card__value-row">
+            <span className="db-stat-card__value">{sessionsCount}</span>
+            <span className="db-stat-card__meta">completed</span>
+          </div>
+        </div>
+
+        <div className="db-stat-card">
+          <div className="db-stat-card__label">
+            <span className="db-stat-dot db-stat-dot--amber" aria-hidden="true" />
+            Weak topic
+          </div>
+          <div className="db-stat-card__value-row">
+            <span className="db-stat-card__value db-stat-card__value--topic">
+              {weakTopic ? weakTopic.charAt(0).toUpperCase() + weakTopic.slice(1) : "—"}
+            </span>
+            {weakTopic && <span className="db-stat-card__delta">AI targeted</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -354,7 +441,6 @@ export default function Dashboard() {
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("easy");
   const [selectedFocus, setSelectedFocus] = useState("auto");
-  const [showAutoDetectInsight, setShowAutoDetectInsight] = useState(false);
   const [userName, setUserName] = useState("U");
   const [fullName, setFullName] = useState("Alex");
   const [unlockedDifficulty, setUnlockedDifficulty] = useState("easy");
@@ -363,6 +449,13 @@ export default function Dashboard() {
   const [activeSession, setActiveSession] = useState(null);
   const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ready" | "empty" | "error"
   const [formError, setFormError] = useState(null);
+  const [isConfirmFresh, setIsConfirmFresh] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [freshResetError, setFreshResetError] = useState(null);
+
+  // Pre-Flight Mission Calibration modal state
+  const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
+
 
   // Profile modal state
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -378,6 +471,25 @@ export default function Dashboard() {
       return "dark";
     }
   });
+
+  // Profile dialog keyboard story: move focus into the dialog on open and
+  // restore it to the avatar trigger when it closes (the Tab trap + Escape
+  // handling live on the dialog node itself so they always see fresh state).
+  const profileModalRef = useRef(null);
+  const avatarBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (!isProfileModalOpen) return;
+    const modal = profileModalRef.current;
+    const avatarBtn = avatarBtnRef.current;
+    const firstFocusable = modal?.querySelector(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    (firstFocusable || modal)?.focus();
+    return () => {
+      avatarBtn?.focus();
+    };
+  }, [isProfileModalOpen]);
 
   // Fetch saved role + user display info + diagnostic summary on mount
   const fetchUserData = useCallback(async (user) => {
@@ -563,8 +675,54 @@ export default function Dashboard() {
     }
     setFormError(null);
 
+    if (!hasCompletedDiagnostic) {
+      try {
+        await fetch("/api/users/role", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firebaseUid: user.uid,
+            role: selectedRole,
+            difficulty: selectedDifficulty,
+            focusArea: selectedFocus,
+          }),
+        });
+      } catch (err) {
+        console.error("Error saving role:", err);
+      }
+      navigate("/likert-pre");
+      return;
+    }
+
+    // Check if there is an in-progress active session for Set 2 or Set 3
+    let targetSet = activeSession?.hasActiveSession ? activeSession.activeSet : 1;
     try {
-      const res = await fetch("/api/users/role", {
+      const activeCheckRes = await fetch(`/api/users/active-practice-session?uid=${user.uid}`);
+      if (activeCheckRes.ok) {
+        const activeCheckData = await activeCheckRes.json();
+        if (activeCheckData.hasActiveSession && activeCheckData.activeSet) {
+          targetSet = activeCheckData.activeSet;
+        }
+      }
+    } catch (e) {
+      console.error("Active session check fallback error:", e);
+    }
+
+    if (targetSet > 1) {
+      // Resume directly into in-progress set 2 or 3
+      navigate(`/interview?set=${targetSet}&mode=practice&focusArea=${selectedFocus}`);
+      return;
+    }
+
+    // For Set 1 practice kickoff, open the Pre-Flight Mission Calibration Modal
+    setIsBriefingModalOpen(true);
+  }, [selectedRole, selectedDifficulty, selectedFocus, hasCompletedDiagnostic, activeSession, navigate]);
+
+  const handleConfirmLaunch = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      await fetch("/api/users/role", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -574,51 +732,52 @@ export default function Dashboard() {
           focusArea: selectedFocus,
         }),
       });
-
-      if (!res.ok) throw new Error("Failed to save role");
-
-      if (hasCompletedDiagnostic) {
-        let targetSet = activeSession?.hasActiveSession ? activeSession.activeSet : 1;
-        try {
-          const activeCheckRes = await fetch(`/api/users/active-practice-session?uid=${user.uid}`);
-          if (activeCheckRes.ok) {
-            const activeCheckData = await activeCheckRes.json();
-            if (activeCheckData.hasActiveSession && activeCheckData.activeSet) {
-              targetSet = activeCheckData.activeSet;
-            }
-          }
-        } catch (e) {
-          console.error("Active session check fallback error:", e);
-        }
-
-        navigate(`/interview?set=${targetSet}&mode=practice&focusArea=${selectedFocus}`);
-      } else {
-        navigate("/likert-pre");
-      }
     } catch (err) {
       console.error("Error saving role & focus area:", err);
-      setFormError("Failed to save your target role. Please try again.");
     }
-  }, [selectedRole, selectedDifficulty, selectedFocus, hasCompletedDiagnostic, activeSession, navigate]);
+    setIsBriefingModalOpen(false);
+    navigate(`/interview?set=1&mode=practice&focusArea=${selectedFocus}`);
+  }, [selectedRole, selectedDifficulty, selectedFocus, navigate]);
 
-  const handleResumeSession = useCallback(() => {
-    const targetSet = activeSession?.activeSet || 1;
-    navigate(`/interview?set=${targetSet}&mode=practice&focusArea=${selectedFocus}`);
-  }, [activeSession, selectedFocus, navigate]);
+  const handleCloseBriefing = useCallback(() => {
+    setIsBriefingModalOpen(false);
+  }, []);
+
+  // "Start Fresh Session" is destructive — it wipes the in-progress session
+  // and unlocks the locked selects. It always passes through an explicit
+  // confirmation gate before the reset endpoint runs.
+  const handleRequestFresh = useCallback(() => {
+    setFreshResetError(null);
+    setIsConfirmFresh(true);
+  }, []);
+
+  const handleCancelFresh = useCallback(() => {
+    setFreshResetError(null);
+    setIsConfirmFresh(false);
+  }, []);
 
   const handleResetAndStartNew = useCallback(async () => {
+    setIsResetting(true);
+    setFreshResetError(null);
     try {
       const user = auth.currentUser;
-      if (user) {
-        await fetch("/api/users/reset-practice-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ firebaseUid: user.uid }),
-        });
-        setActiveSession({ hasActiveSession: false });
+      if (!user) {
+        setIsConfirmFresh(false);
+        return;
       }
+      const res = await fetch("/api/users/reset-practice-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firebaseUid: user.uid }),
+      });
+      if (!res.ok) throw new Error("Reset failed");
+      setActiveSession({ hasActiveSession: false });
+      setIsConfirmFresh(false);
     } catch (err) {
       console.error("Error resetting session:", err);
+      setFreshResetError("Couldn't discard the session. Check your connection and try again.");
+    } finally {
+      setIsResetting(false);
     }
   }, []);
 
@@ -713,6 +872,7 @@ export default function Dashboard() {
             title="Edit profile"
             aria-label="Open profile settings"
             id="btn-profile-avatar"
+            ref={avatarBtnRef}
           >
             {userName}
           </button>
@@ -730,7 +890,7 @@ export default function Dashboard() {
         <div className="db-page-header">
           <div className="db-page-header__text">
             <h1 className="db-greeting">{getGreeting()}, {fullName}</h1>
-            <p className="db-sub-greeting">Ready for your next mock interview?</p>
+            <p className="db-sub-greeting">Let's get you interview-ready — one friendly practice at a time.</p>
           </div>
           <div className="db-page-header__actions">
             {dataStatus !== "loading" &&
@@ -742,13 +902,13 @@ export default function Dashboard() {
                   title="View your diagnostic results"
                 >
                   <span className="db-pulse-dot" aria-hidden="true" />
-                  <span className="db-status-chip__label">Diagnostic active — practice mode</span>
+                  <span className="db-status-chip__label">Practice unlocked — keep going</span>
                   <ArrowRight size={13} className="db-status-chip__arrow" aria-hidden="true" />
                 </button>
               ) : (
                 <span className="db-status-chip db-status-chip--pending" role="status">
                   <span className="db-pulse-dot" aria-hidden="true" />
-                  <span className="db-status-chip__label">Pre-test pending</span>
+                  <span className="db-status-chip__label">Kickoff pre-test next</span>
                 </span>
               ))}
             <LiveClock />
@@ -764,52 +924,12 @@ export default function Dashboard() {
         >
           {activeTab === "Interview Prep" && (
             <div className="db-practice-grid">
-            {/* ── Snapshot strip — full-width glance (real data only) ── */}
-            {dataStatus === "ready" && (
-              <div className="db-stats-row">
-                <div className="db-stat-card">
-                  <div className="db-stat-card__label">
-                    <span className="db-stat-dot db-stat-dot--cyan" aria-hidden="true" />
-                    AVG 3C SCORE
-                  </div>
-                  <div className="db-stat-card__value-row">
-                    <span className="db-stat-card__value">{avg3C != null ? `${avg3C}%` : "—"}</span>
-                    {growthDelta != null && (
-                      <span className="db-stat-card__delta">
-                        {growthDelta >= 0 ? "+" : ""}{growthDelta}% vs baseline
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="db-stat-card">
-                  <div className="db-stat-card__label">
-                    <span className="db-stat-dot db-stat-dot--violet" aria-hidden="true" />
-                    SESSIONS
-                  </div>
-                  <div className="db-stat-card__value-row">
-                    <span className="db-stat-card__value">{sessionsCount}</span>
-                    <span className="db-stat-card__meta">in history</span>
-                  </div>
-                </div>
-                <div className="db-stat-card">
-                  <div className="db-stat-card__label">
-                    <span className="db-stat-dot db-stat-dot--amber" aria-hidden="true" />
-                    WEAK TOPIC
-                  </div>
-                  <div className="db-stat-card__value-row">
-                    <span className="db-stat-card__value db-stat-card__value--topic">{weakTopic || "—"}</span>
-                    {weakTopic && <span className="db-stat-card__delta">AI targeted</span>}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* ── Session Console — configure & launch ── */}
             <section className="db-setup-card">
               <div className="db-setup-card__header">
                 <div className="db-setup-card__text">
                   <h2 className="db-setup-card__title">Start a practice session</h2>
-                  <p className="db-setup-card__sub">Set your parameters — change them anytime.</p>
+                  <p className="db-setup-card__sub">Pick your role and focus — you can change anything, anytime.</p>
                 </div>
               </div>
 
@@ -826,26 +946,63 @@ export default function Dashboard() {
                     </span>
                   </div>
                   <p className="db-resume-banner__desc">
-                    You have an unfinished practice session saved in MongoDB. Resume your progress from Set{" "}
-                    {activeSession.activeSet} or start a fresh session.
+                    Pick up where you left off with the Resume Session button below — or discard this
+                    session and start fresh.
                   </p>
-                  <div className="db-resume-banner__actions">
-                    <button
-                      type="button"
-                      onClick={handleResumeSession}
-                      className="db-btn-primary db-btn-primary--sm"
+                  {isConfirmFresh ? (
+                    <div
+                      className="db-resume-banner__confirm"
+                      role="alertdialog"
+                      aria-label="Discard in-progress session"
                     >
-                      <Play size={15} /> Resume Session (Set {activeSession.activeSet})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleResetAndStartNew}
-                      className="db-btn-secondary db-btn-secondary--sm"
-                    >
-                      <RotateCcw size={14} />
-                      Start Fresh Session
-                    </button>
-                  </div>
+                      <div className="db-resume-banner__confirm-text">
+                        <span className="db-resume-banner__confirm-title">
+                          <AlertCircle size={14} className="db-resume-banner__confirm-icon" aria-hidden="true" />
+                          Discard this in-progress session?
+                        </span>
+                        <span className="db-resume-banner__confirm-desc">
+                          Your answers in Set {activeSession.activeSet} will be permanently lost. Your role and
+                          focus will unlock so you can start fresh.
+                        </span>
+                      </div>
+                      <div className="db-resume-banner__confirm-actions">
+                        <button
+                          type="button"
+                          onClick={handleCancelFresh}
+                          className="db-btn-secondary db-btn-secondary--sm"
+                          disabled={isResetting}
+                        >
+                          Keep session
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetAndStartNew}
+                          className="db-btn-danger db-btn-danger--sm"
+                          disabled={isResetting}
+                        >
+                          <RotateCcw size={14} />
+                          {isResetting ? "Discarding…" : "Yes, discard session"}
+                        </button>
+                      </div>
+                      {freshResetError && (
+                        <p className="db-form-error" role="alert">
+                          <AlertCircle size={15} />
+                          {freshResetError}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="db-resume-banner__actions">
+                      <button
+                        type="button"
+                        onClick={handleRequestFresh}
+                        className="db-btn-secondary db-btn-secondary--sm"
+                      >
+                        <RotateCcw size={14} />
+                        Start Fresh Session
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -854,7 +1011,7 @@ export default function Dashboard() {
                 {/* Target Role */}
                 <div className="db-field">
                   <label htmlFor="role-select" className="db-field__label">
-                    TARGET ROLE {isSessionActive && <span className="db-field__lock-hint">(Locked — Active Session)</span>}
+                    Target role {isSessionActive && <span className="db-field__lock-hint">(Locked — Active Session)</span>}
                   </label>
                   <div className="db-select-wrap">
                     <Briefcase size={17} className="db-select-wrap__icon db-select-wrap__icon--violet" />
@@ -882,7 +1039,7 @@ export default function Dashboard() {
                 {/* 3C Focus Area */}
                 <div className="db-field">
                   <label htmlFor="focus-select" className="db-field__label">
-                    3C FOCUS AREA {isSessionActive && <span className="db-field__lock-hint">(Locked)</span>}
+                    Focus area — what to sharpen {isSessionActive && <span className="db-field__lock-hint">(Locked)</span>}
                   </label>
                   <div className="db-select-wrap">
                     <Sparkles size={17} className="db-select-wrap__icon db-select-wrap__icon--violet" />
@@ -914,15 +1071,10 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* AI Insight */}
+              {/* AI Insight — recommendation only; the 3C detail now lives on My Progress */}
               {selectedFocus === "auto" && (
                 <div className="db-insight-card">
-                  <button
-                    type="button"
-                    className="db-insight-card__head"
-                    onClick={() => setShowAutoDetectInsight((prev) => !prev)}
-                    aria-expanded={showAutoDetectInsight}
-                  >
+                  <div className="db-insight-card__head db-insight-card__head--static">
                     <Sparkles size={16} className="db-insight-card__icon" />
                     <div className="db-insight-card__text">
                       <div className="db-insight-card__title">AI Auto-Detect</div>
@@ -934,70 +1086,14 @@ export default function Dashboard() {
                           : "Your baseline pre-test will generate an AI recommendation after completion."}
                       </div>
                     </div>
-                    <ChevronDown
-                      size={16}
-                      className={`db-insight-card__toggle ${showAutoDetectInsight ? "db-rotate-180" : ""}`}
-                    />
-                  </button>
-
-                  {showAutoDetectInsight && (
-                    <div className="db-insight-card__body">
-                      {hasCompletedDiagnostic ? (
-                        <>
-                          <p className="db-insight-card__body-text">
-                            Based on your baseline diagnostic results, your 3C scores are:
-                          </p>
-                          <div className="db-insight-3c">
-                            <div className="db-insight-3c-row">
-                              <MessageSquare size={14} className="db-insight-3c-icon db-insight-3c-icon--clarity" />
-                              <span>Clarity: <strong>{breakdown.clarity ?? "—"}/10</strong></span>
-                            </div>
-                            <div className="db-insight-3c-row">
-                              <Target size={14} className="db-insight-3c-icon db-insight-3c-icon--correctness" />
-                              <span>Correctness: <strong>{breakdown.correctness ?? "—"}/10</strong></span>
-                            </div>
-                            <div className="db-insight-3c-row">
-                              <PackageCheck size={14} className="db-insight-3c-icon db-insight-3c-icon--completeness" />
-                              <span>Completeness: <strong>{breakdown.completeness ?? "—"}/10</strong></span>
-                            </div>
-                            <div className="db-insight-3c-row">
-                              <BarChart2 size={14} className="db-insight-3c-icon db-insight-3c-icon--avg" />
-                              <span>
-                                3C Avg:{" "}
-                                <strong className="db-insight-highlight">
-                                  {breakdown.averageOutOf10
-                                    ? `${breakdown.averageOutOf10}/10 (${breakdown.averagePercentage}%)`
-                                    : "—"}
-                                </strong>
-                              </span>
-                            </div>
-                          </div>
-                          <p className="db-insight-card__body-text db-insight-card__body-text--verified">
-                            <Check size={13} className="db-insight-verify-icon" aria-hidden="true" />
-                            <span>
-                              <strong>Verification:</strong> Your lowest metric is{" "}
-                              <strong className="db-insight-strong">
-                                {breakdown.lowestMetric || diagnosticData?.postWeaknessTag || diagnosticData?.preWeaknessTag || "—"}
-                              </strong>{" "}
-                              — AI Auto-Detect has targeted this dimension for your next practice set.
-                            </span>
-                          </p>
-                        </>
-                      ) : (
-                        <p className="db-insight-card__body-text">
-                          Your initial baseline pre-test will analyze your speech clarity, technical accuracy, and
-                          answer completeness to generate an AI recommendation.
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
 
               {/* Options Row — Difficulty */}
               <div className="db-options-row">
                 <div className="db-difficulty-group">
-                  <div className="db-difficulty-group__label">DIFFICULTY</div>
+                  <div className="db-difficulty-group__label">Difficulty</div>
                   <div className="db-chip-row">
                     {difficultyChips.map((chip) => (
                       <button
@@ -1020,6 +1116,16 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* One glanceable growth cue — the single metric moment on the launch surface */}
+              {dataStatus === "ready" && growthDelta != null && (
+                <div className="db-growth-cue" role="status">
+                  <TrendingUp size={15} className="db-growth-cue__icon" aria-hidden="true" />
+                  <span>
+                    You're up <strong>{growthDelta >= 0 ? "+" : ""}{growthDelta}%</strong> from your pre-test — keep going.
+                  </span>
+                </div>
+              )}
+
               {/* CTA Row */}
               <div className="db-cta-row">
                 <span className="db-summary">
@@ -1037,7 +1143,7 @@ export default function Dashboard() {
                     ? "Loading…"
                     : hasCompletedDiagnostic
                       ? (activeSession?.hasActiveSession
-                          ? `Resume Set ${activeSession.activeSet} Practice`
+                          ? "Resume Session"
                           : "Start Practice Session")
                       : "Start Pre-Test"}
                 </button>
@@ -1053,23 +1159,6 @@ export default function Dashboard() {
               )}
             </section>
 
-            {/* ── Signal Deck — baseline diagnostic (real data only) ── */}
-            <div className="db-signal-deck">
-              {dataStatus === "ready" ? (
-                <BaselineCard
-                  baseline={baselineScore}
-                  mastery={masteryScore}
-                  growth={growthDelta}
-                  clarity={clarity}
-                  correctness={correctness}
-                  completeness={completeness}
-                  lowest={lowestMetric}
-                  onViewDetails={handleViewResults}
-                />
-              ) : (
-                <MetricsStates dataStatus={dataStatus} onRetry={retryLoad} />
-              )}
-            </div>
             </div>
           )}
         </div>
@@ -1081,6 +1170,27 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* ══ My Progress Panel ══ */}
+        <div role="tabpanel" id="tabpanel-my-progress" aria-labelledby="tab-my-progress" hidden={activeTab !== "My Progress"}>
+          {activeTab === "My Progress" && (
+            <ProgressPanel
+              dataStatus={dataStatus}
+              onRetry={retryLoad}
+              onViewReport={handleViewResults}
+              baseline={baselineScore}
+              mastery={masteryScore}
+              growth={growthDelta}
+              clarity={clarity}
+              correctness={correctness}
+              completeness={completeness}
+              average3C={avg3C}
+              lowestMetric={lowestMetric}
+              weakTopic={weakTopic}
+              sessionsCount={sessionsCount}
+            />
+          )}
+        </div>
+
       </main>{/* /db-content */}
 
       {/* ── Profile Settings Modal ── */}
@@ -1088,18 +1198,37 @@ export default function Dashboard() {
         <div
           className="db-modal-backdrop"
           onClick={handleCloseProfileModal}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Profile settings"
         >
           <div
             className="db-modal"
+            ref={profileModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="db-profile-modal-title"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.stopPropagation();
+                if (!isSavingProfile) handleCloseProfileModal();
+                return;
+              }
+              if (e.key !== "Tab") return;
+              const focusables = Array.from(
+                e.currentTarget.querySelectorAll(
+                  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                )
+              ).filter((el) => el.offsetParent !== null || el === document.activeElement);
+              if (focusables.length === 0) { e.preventDefault(); return; }
+              const first = focusables[0];
+              const last = focusables[focusables.length - 1];
+              if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+              else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }}
           >
             {/* Modal Header */}
             <div className="db-modal__header">
               <div className="db-modal__header-text">
-                <h2 className="db-modal__title">Profile Settings</h2>
+                <h2 id="db-profile-modal-title" className="db-modal__title">Profile Settings</h2>
                 <p className="db-modal__sub">Update your display name, role, and focus area.</p>
               </div>
               <button
@@ -1118,7 +1247,7 @@ export default function Dashboard() {
               {/* Display Name */}
               <div className="db-modal__field">
                 <label htmlFor="modal-display-name" className="db-modal__label">
-                  DISPLAY NAME
+                  Display name
                 </label>
                 <input
                   id="modal-display-name"
@@ -1139,7 +1268,7 @@ export default function Dashboard() {
               {/* Target Role */}
               <div className="db-modal__field">
                 <label htmlFor="modal-role" className="db-modal__label">
-                  TARGET ROLE
+                  Target role
                 </label>
                 <div className="db-select-wrap">
                   <Briefcase size={17} className="db-select-wrap__icon db-select-wrap__icon--violet" />
@@ -1163,7 +1292,7 @@ export default function Dashboard() {
               {/* Focus Area */}
               <div className="db-modal__field">
                 <label htmlFor="modal-focus" className="db-modal__label">
-                  3C FOCUS AREA
+                  Focus area
                 </label>
                 <div className="db-select-wrap">
                   <Sparkles size={17} className="db-select-wrap__icon db-select-wrap__icon--violet" />
@@ -1214,6 +1343,19 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* ── Pre-Flight Mission Calibration Modal ── */}
+      <AnimatePresence>
+        {isBriefingModalOpen && (
+          <SetBriefingOverlay
+            role={selectedRole}
+            focusArea={selectedFocus}
+            diagnosticData={diagnosticData}
+            onConfirm={handleConfirmLaunch}
+            onClose={handleCloseBriefing}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

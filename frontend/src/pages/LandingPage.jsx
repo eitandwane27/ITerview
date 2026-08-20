@@ -80,8 +80,8 @@ const HowItStep = ({ num, title, desc, icon, showConnector }) => (
 );
 
 const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => (
-  <div className={`lp-mobile-menu${open ? " lp-mobile-menu--open" : ""}`} role="dialog" aria-modal="true" aria-label="Navigation menu">
-    <nav className="lp-mobile-nav">
+  <div className={`lp-mobile-menu${open ? " lp-mobile-menu--open" : ""}`}>
+    <nav className="lp-mobile-nav" aria-label="Mobile navigation">
       <a href="#features" onClick={onClose} className="lp-mobile-nav-link">Features</a>
       <a href="#about" onClick={onClose} className="lp-mobile-nav-link">Objective</a>
       <a href="#how-it-works" onClick={onClose} className="lp-mobile-nav-link">How It Works</a>
@@ -178,6 +178,16 @@ const LandingPage = () => {
     targets.forEach((target) => obs.observe(target));
     return () => obs.disconnect();
   }, []);
+
+  /* Close the mobile menu on Escape (plain disclosure, keyboard affordance) */
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   const openLoginModal = () => {
     setAuthMode("login");

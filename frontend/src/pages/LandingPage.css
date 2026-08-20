@@ -24,7 +24,7 @@
   --lp-grey-2:    #6B7280;
   --lp-grey-3:    #3F3F46;
   --lp-text-dim:  #C0C0D0;
-  --lp-nav-h:     60px;
+  --lp-nav-h:     64px;
   --lp-radius-card: 12px;
   --lp-radius-pill: 9999px;
 
@@ -43,7 +43,9 @@ html { scroll-behavior: smooth; }
   background-color: var(--lp-bg);
   color: var(--lp-white);
   min-height: 100vh;
-  overflow-x: hidden;
+  /* clip (not hidden): prevents horizontal scroll without creating a scroll
+     container, which would silently break position: sticky on the nav pill */
+  overflow-x: clip;
 }
 
 /* ── Film grain - fixed decorative texture over the whole page ── */
@@ -74,38 +76,56 @@ html { scroll-behavior: smooth; }
 ═══════════════════════════════════════════ */
 
 /*
-  Nav design system (redesigned — calm, product-grade):
+  Nav design system — a full-width rail that is one with the hero at rest and
+  materializes as a glass bar only after the hero scrolls out of view:
   - Height: 64px (skill rule: max 80px)
-  - Backdrop: semi-transparent dark + blur, intensifies on scroll
+  - Rest: transparent, flush to the top — shares the hero canvas, no pill chrome.
+    The nav "appears" as the user scrolls; the JS navScrolled class fades in glass.
+  - Scrolled: translucent glass bar + hairline base + soft elevation, semi-opaque
+    so the page's live animations stay visible through it and the links stay legible.
   - Logo: 34px icon, 1.0625rem wordmark - no glow drop-shadow
-  - Links: 13px, muted → white on hover, active state via JS class
+  - Links: 13px, muted → white on hover, active state via JS class + cyan underline
   - Buttons: ghost w/ readable border, solid white signup CTA
-  - Hamburger: 18px bars, animates to X
-  - Mobile menu: deeper backdrop, cleaner spacing
+  - Hamburger: 44px touch target, bars animate to X
+  - Mobile menu: floating card beneath the rail (plain disclosure, Esc closes)
 */
 
-/* ── Scroll-aware nav root ── */
+/* ── Scroll-aware nav root — full-width rail, blended at rest, glass on scroll ── */
 .lp-nav {
   position: sticky;
   top: 0;
   z-index: 100;
-  animation: lp-nav-fade 0.5s ease 0.05s both;
-  background-color: rgba(9, 9, 11, 0.62);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  width: 100%;
+  height: 64px;
+  margin: 0;
+  background-color: transparent;
   border-bottom: 1px solid transparent;
-  background-clip: padding-box;
-  box-shadow: inset 0 -1px 0 0 rgba(255, 255, 255, 0.06);
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  animation: lp-nav-fade 0.5s ease 0.05s both;
+  transition:
+    background-color 0.34s ease,
+    border-bottom-color 0.34s ease,
+    box-shadow 0.34s ease,
+    backdrop-filter 0.34s ease;
 }
 
-/* Scrolled state: JS adds this class when hero scrolls out of view */
+/* Scrolled state: JS adds this class when the hero scrolls out of view — the rail
+   materializes as translucent glass: the background and hairline fade in so the
+   animations behind it remain visible while the nav stays legible. */
 .lp-nav--scrolled {
-  background-color: rgba(9, 9, 11, 0.9);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    inset 0 -1px 0 0 rgba(255, 255, 255, 0.09),
-    0 6px 24px -12px rgba(0, 0, 0, 0.5);
+  background-color: rgba(9, 9, 11, 0.72);
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: 0 12px 32px -22px rgba(0, 0, 0, 0.6);
+}
+
+/* Anchor targets clear the nav rail (height + breathing room) */
+.lp-hero,
+.lp-arena,
+.lp-eval-heading,
+.lp-bento,
+.lp-final-cta {
+  scroll-margin-top: 84px;
 }
 
 .lp-nav-inner {
@@ -183,7 +203,7 @@ html { scroll-behavior: smooth; }
   letter-spacing: 0.01em;
   text-decoration: none;
   padding: 0.375rem 0.75rem;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: color 0.18s ease, background-color 0.18s ease;
   white-space: nowrap;
 }
@@ -197,24 +217,8 @@ html { scroll-behavior: smooth; }
   color: var(--lp-white);
   background-color: rgba(255, 255, 255, 0.07);
 }
-/* Animated underline - sweeps in on hover, stays put for the active section */
-.lp-nav-link::after {
-  content: "";
-  position: absolute;
-  left: 0.75rem;
-  right: 0.75rem;
-  bottom: 0.2rem;
-  height: 2px;
-  border-radius: 1px;
-  background: linear-gradient(90deg, var(--lp-cyan), var(--lp-cyan-end));
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp-nav-link:hover::after,
-.lp-nav-link--active::after {
-  transform: scaleX(1);
-}
+/* Underline removed per request — active/hover states are signaled by the
+   soft background tint + full-white text instead of the sweeping cyan line. */
 
 /* ── Spacer ── */
 .lp-nav-spacer { flex: 1; }
@@ -285,21 +289,21 @@ html { scroll-behavior: smooth; }
 
 .lp-btn-full { width: 100%; }
 
-/* ── Hamburger ── */
+/* ── Hamburger (44px touch target) ── */
 .lp-hamburger {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   padding: 0.5rem;
   margin-left: auto;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   transition: border-color 0.2s, background 0.2s;
 }
 .lp-hamburger:hover {
@@ -317,32 +321,56 @@ html { scroll-behavior: smooth; }
   transform-origin: center;
 }
 
-.lp-ham-bar--top  { transform: translateY(6.5px) rotate(45deg); }
+.lp-ham-bar--top  { transform: translateY(5.5px) rotate(45deg); }
 .lp-ham-bar--mid  { opacity: 0; transform: scaleX(0); }
-.lp-ham-bar--bot  { transform: translateY(-6.5px) rotate(-45deg); }
+.lp-ham-bar--bot  { transform: translateY(-5.5px) rotate(-45deg); }
 
-/* ── Mobile dropdown menu ── */
+/* Keyboard focus — cyan ring across all nav controls (matches lp-section-cta) */
+.lp-logo:focus-visible,
+.lp-nav-link:focus-visible,
+.lp-btn-ghost:focus-visible,
+.lp-btn-solid:focus-visible,
+.lp-btn-cta:focus-visible,
+.lp-hamburger:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.7);
+  outline-offset: 3px;
+}
+
+/* ── Mobile dropdown menu — floating card beneath the pill. Materializes
+   (elevation + settle) rather than sliding; never rendered on desktop. ── */
 .lp-mobile-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   max-height: 0;
   overflow: hidden;
-  background: rgba(9, 9, 11, 0.96);
+  border-radius: 14px;
+  background: rgba(9, 9, 11, 0.94);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1), padding 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.24s ease,
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .lp-mobile-menu--open {
-  max-height: 340px;
+  max-height: 360px;
   padding: 0.5rem 0 1.25rem;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .lp-mobile-nav {
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 0 var(--lp-px);
+  padding: 0 clamp(1rem, 3vw, 1.75rem);
 }
 .lp-mobile-nav-link {
   color: rgba(156, 163, 175, 0.9);
@@ -365,13 +393,14 @@ html { scroll-behavior: smooth; }
   margin-top: 1.25rem;
 }
 
-/* ── Scroll progress hairline - scroll-driven CSS animation, no JS listeners ── */
+/* ── Scroll progress hairline - an instrument read along the pill's base ── */
 .lp-nav-progress {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 14px;
+  right: 14px;
   bottom: 0;
   height: 2px;
+  border-radius: 2px;
   z-index: 10;
   transform-origin: left center;
   background: linear-gradient(90deg, var(--lp-cyan) 0%, var(--lp-cyan-end) 100%);
@@ -412,6 +441,12 @@ html { scroll-behavior: smooth; }
   .lp-mobile-menu--open .lp-mobile-nav-link,
   .lp-mobile-menu--open .lp-mobile-nav-actions { animation: none !important; }
   .lp-nav-progress { display: none; }
+  /* Mobile menu appears instantly instead of materializing */
+  .lp-mobile-menu,
+  .lp-mobile-menu--open {
+    transition: max-height 0.01s linear, padding 0.01s linear;
+    transform: none;
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -789,6 +824,18 @@ html { scroll-behavior: smooth; }
   border: 1px solid rgba(34, 211, 238, 0.35);
   border-radius: 50%;
 }
+/* Radar/target inner ring — anchors the mark as a precise instrument */
+.lp-demo-mark-ring::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 50%;
+  height: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  border-radius: 50%;
+}
 .lp-demo-mark-dot {
   position: absolute;
   top: 50%;
@@ -798,6 +845,8 @@ html { scroll-behavior: smooth; }
   height: 8px;
   border-radius: 50%;
   background: #22D3EE;
+  animation: lp-live-pulse 2.4s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.25);
 }
 
 /* Title group */
@@ -921,21 +970,42 @@ html { scroll-behavior: smooth; }
   height: clamp(80px, 10vw, 104px);
   flex-shrink: 0;
 }
-.lp-demo-orb-ring {
+/* Outer proximity ring — the widest hairline of the instrument dial */
+.lp-demo-orb-halo {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 1px solid rgba(34, 211, 238, 0.18);
+  border: 1px solid rgba(34, 211, 238, 0.10);
+  box-shadow: inset 0 0 0 6px rgba(34, 211, 238, 0.025);
 }
+/* Mid dial ring — tight to the core, breathes at idle */
+.lp-demo-orb-ring {
+  position: absolute;
+  inset: 7%;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 211, 238, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.08);
+  animation: lp-ring-breathe 3.6s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+.lp-demo[data-status="speaking"] .lp-demo-orb-ring,
+.lp-demo[data-status="recording"] .lp-demo-orb-ring {
+  animation: none;
+}
+/* Core — cyan-lit aperture, studio neutral instead of violet */
 .lp-demo-orb {
   position: absolute;
-  top: 12%;
-  left: 12%;
-  width: 76%;
-  height: 76%;
+  top: 16%;
+  left: 16%;
+  width: 68%;
+  height: 68%;
   border-radius: 50%;
-  background: radial-gradient(ellipse 60% 60% at 40% 35%, #31306B 0%, #1A1940 55%, #0E0E26 100%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(ellipse 95% 95% at 50% 34%, rgba(34, 211, 238, 0.18), rgba(34, 211, 238, 0) 54%),
+    radial-gradient(ellipse 72% 72% at 44% 36%, #12333C 0%, #0A2027 58%, #050E13 100%);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.06);
   transition: box-shadow 0.4s ease;
 }
 /* Active state — quiet cyan ring instead of glow */
@@ -958,15 +1028,24 @@ html { scroll-behavior: smooth; }
   z-index: 2;
 }
 .lp-demo-wave-bar {
-  background: rgba(255, 255, 255, 0.28);
-  border-radius: 1px;
-  width: 2px;
+  background: rgba(103, 232, 249, 0.55);
+  border-radius: 2px;
+  width: 3px;
 }
-.lp-demo-wave-bar--1 { height: 7px; }
-.lp-demo-wave-bar--2 { height: 14px; }
-.lp-demo-wave-bar--3 { height: 20px; }
-.lp-demo-wave-bar--4 { height: 11px; }
-.lp-demo-wave-bar--5 { height: 16px; }
+.lp-demo-wave-bar--1 { height: 9px; }
+.lp-demo-wave-bar--2 { height: 16px; }
+.lp-demo-wave-bar--3 { height: 22px; }
+.lp-demo-wave-bar--4 { height: 12px; }
+.lp-demo-wave-bar--5 { height: 18px; }
+/* Idle — the aperture breathes: slow, gentle, alive */
+.lp-demo[data-status="idle"] .lp-demo-wave-bar {
+  animation: lp-orb-breathe 3.6s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+.lp-demo[data-status="idle"] .lp-demo-wave-bar--2 { animation-delay: 0.4s; }
+.lp-demo[data-status="idle"] .lp-demo-wave-bar--3 { animation-delay: 0.9s; }
+.lp-demo[data-status="idle"] .lp-demo-wave-bar--4 { animation-delay: 0.2s; }
+.lp-demo[data-status="idle"] .lp-demo-wave-bar--5 { animation-delay: 0.6s; }
 /* Animate only when active */
 .lp-demo[data-status="speaking"] .lp-demo-wave-bar,
 .lp-demo[data-status="recording"] .lp-demo-wave-bar {
@@ -984,6 +1063,16 @@ html { scroll-behavior: smooth; }
 @keyframes lp-wave-bounce {
   0%, 100% { transform: scaleY(0.55); opacity: 0.7; }
   50% { transform: scaleY(1); opacity: 1; }
+}
+/* Idle breathing — one slow inhale/exhale for the waveform */
+@keyframes lp-orb-breathe {
+  0%, 100% { transform: scaleY(0.72); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 0.95; }
+}
+/* Idle breathing for the dial ring — uniform scale keeps it a true circle */
+@keyframes lp-ring-breathe {
+  0%, 100% { transform: scale(0.97); opacity: 0.6; }
+  50% { transform: scale(1); opacity: 1; }
 }
 
 /* Status chip beneath avatar */
@@ -1381,6 +1470,9 @@ html { scroll-behavior: smooth; }
   .lp-demo-live-dot,
   .lp-demo-status-chip--active .lp-demo-status-dot,
   .lp-demo-transcribing-dot,
+  .lp-demo-mark-dot,
+  .lp-demo-orb-ring,
+  .lp-demo[data-status="idle"] .lp-demo-wave-bar,
   .lp-demo[data-status="speaking"] .lp-demo-wave-bar,
   .lp-demo[data-status="recording"] .lp-demo-wave-bar {
     animation: none;
@@ -2764,6 +2856,8 @@ html { scroll-behavior: smooth; }
   .lp-nav-links { display: flex; }
   .lp-nav-cta   { display: flex; }
   .lp-hamburger { display: none; }
+  /* The mobile menu disclosure only exists below desktop width */
+  .lp-mobile-menu { display: none; }
 
   .lp-demo-body {
     flex-direction: row;

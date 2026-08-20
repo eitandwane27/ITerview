@@ -277,6 +277,14 @@ function handleSet1Socket(ws, request) {
 
       // 3. Generate all 5 questions sequentially
       send({
+        type: "generation_progress",
+        stage: "evaluating_baseline",
+        message: "Evaluating baseline 3C scores & weakness profile...",
+        role: sessionRole,
+        weakness: sessionWeaknessTag,
+      });
+
+      send({
         type: "status",
         message: "Generating your personalized questions...",
       });
@@ -284,6 +292,16 @@ function handleSet1Socket(ws, request) {
       const genStart = Date.now();
       let q1SynthesisPromise = null;
       for (let i = 0; i < MAX_QUESTIONS; i++) {
+        send({
+          type: "generation_progress",
+          stage: "generating_questions",
+          current: i + 1,
+          total: MAX_QUESTIONS,
+          role: sessionRole,
+          weakness: sessionWeaknessTag,
+          message: `Synthesizing question ${i + 1} of ${MAX_QUESTIONS} (${sessionRole})...`,
+        });
+
         const qGenStart = Date.now();
         const q = await generateSet1Question(
           sessionWeaknessTag,
@@ -324,6 +342,12 @@ function handleSet1Socket(ws, request) {
       if (ws.readyState !== ws.OPEN) return;
       const q1TtsLatency = Date.now() - startupStart;
       metrics.ttsLatencies.push(q1TtsLatency);
+
+      send({
+        type: "generation_complete",
+        role: sessionRole,
+        weakness: sessionWeaknessTag,
+      });
 
       send({ type: "tts_audio", data: q1AudioBuffer.toString("base64") });
 
