@@ -78,9 +78,11 @@ function handleSet1Socket(ws, request) {
   }
 
   async function speak(text) {
+    if (ws.readyState !== ws.OPEN) return;
     try {
       const t0 = Date.now();
       const audioBuffer = await synthesizeSpeech(text, voiceModel);
+      if (ws.readyState !== ws.OPEN) return;
       const latency = Date.now() - t0;
       const base64Audio = audioBuffer.toString("base64");
       send({ type: "tts_audio", data: base64Audio });
@@ -88,6 +90,7 @@ function handleSet1Socket(ws, request) {
         `[TTS] 🔊 Sent audio in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`,
       );
     } catch (err) {
+      if (ws.readyState !== ws.OPEN) return;
       console.error("[WS] TTS error:", err.message);
       send({ type: "error", message: `TTS failed: ${err.message}` });
     }
@@ -111,9 +114,9 @@ function handleSet1Socket(ws, request) {
     fullTranscript = "";
     sttSession = createDeepgramLiveSession(
       (transcript, isFinal) => {
-        if (transcript) {
+        if (transcript || isFinal) {
           send({ type: "transcript", text: transcript, isFinal });
-          if (isFinal) {
+          if (isFinal && transcript) {
             fullTranscript = fullTranscript
               ? `${fullTranscript} ${transcript}`
               : transcript;
@@ -157,14 +160,101 @@ function handleSet1Socket(ws, request) {
         preTestBaseline = preTest.baseline_score_percentage;
       }
 
-      // Fetch role and difficulty from User
+      // Fetch role, difficulty, and focusArea from User
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        sessionDifficulty = user.difficulty || "easy";
+        const difficultyRank = { easy: 1, medium: 2, hard: 3 };
+        const userDiff = user.difficulty || "easy";
+        const userUnlocked = user.unlockedDifficulty || "easy";
+        sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
       }
 
-      // 2. Initialize Set1Session in DB (upsert)
+      // Check if a specific focusArea was selected on Dashboard or passed in query string
+      const requestedFocus = url.searchParams.get("focusArea") || (user && user.focusArea);
+      if (requestedFocus && requestedFocus !== "auto") {
+        const focusMap = {
+          clarity: "focus_clarity",
+          correctness: "focus_correctness",
+          completeness: "focus_completeness",
+          star: "focus_completeness",
+        };
+        if (focusMap[requestedFocus]) {
+          sessionWeaknessTag = focusMap[requestedFocus];
+        }
+      }
+
+      // Allow dev/testing URL override only in non-production environments
+      if (process.env.NODE_ENV !== "production") {
+        const requestedDifficulty = url.searchParams.get("difficulty");
+        if (requestedDifficulty && ["easy", "medium", "hard"].includes(requestedDifficulty.toLowerCase())) {
+          sessionDifficulty = requestedDifficulty.toLowerCase();
+        }
+      }
+
+      // Check if user requested a reset via URL
+      const isResetRequested = url.searchParams.get("reset") === "true";
+
+      // 2. Check if an in-progress session doc already exists in DB
+      const existingDoc = await Set1Session.findOne({ firebaseUid });
+      const isResuming =
+        !isResetRequested &&
+        existingDoc &&
+        !existingDoc.isCompleted;
+
+      if (isResuming) {
+        sessionDoc = existingDoc;
+        sessionDoc.sessionId = sessionId;
+        await sessionDoc.save();
+
+        if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
+          questions = existingDoc.questions;
+        } else {
+          questions = existingDoc.answers.map((a) => a.question);
+          while (questions.length < MAX_QUESTIONS) {
+            const q = await generateSet1Question(
+              sessionWeaknessTag,
+              sessionRole,
+              sessionDifficulty,
+              questions
+            );
+            questions.push(q);
+          }
+          sessionDoc.questions = questions;
+          await sessionDoc.save();
+        }
+
+        currentQuestionIndex = existingDoc.answers.length;
+
+        console.log(
+          `[DB] ⏯️ Resuming Set 1 session for user ${firebaseUid} at Question ${currentQuestionIndex + 1} (${currentQuestionIndex} previous answers saved)`
+        );
+
+        send({
+          type: "status",
+          message: `Resuming your Set 1 session at Question ${currentQuestionIndex + 1}...`,
+        });
+
+        currentQuestionText = questions[currentQuestionIndex];
+
+        send({
+          type: "question_text",
+          text: currentQuestionText,
+          index: currentQuestionIndex + 1,
+        });
+
+        const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
+        send({ type: "tts_audio", data: audioBuffer.toString("base64") });
+
+        send({
+          type: "status",
+          message: "Question ready. Click Unmute to answer.",
+        });
+
+        return;
+      }
+
+      // Initialize fresh Set1Session in DB if not resuming
       sessionDoc = await Set1Session.findOneAndUpdate(
         { firebaseUid },
         {
@@ -172,6 +262,7 @@ function handleSet1Socket(ws, request) {
           weakness_tag: sessionWeaknessTag,
           role: sessionRole,
           difficulty: sessionDifficulty,
+          questions: [],
           answers: [],
           avg_clarity: null,
           avg_correctness: null,
@@ -181,10 +272,18 @@ function handleSet1Socket(ws, request) {
           completedAt: null,
           createdAt: new Date(),
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       );
 
       // 3. Generate all 5 questions sequentially
+      send({
+        type: "generation_progress",
+        stage: "evaluating_baseline",
+        message: "Evaluating baseline 3C scores & weakness profile...",
+        role: sessionRole,
+        weakness: sessionWeaknessTag,
+      });
+
       send({
         type: "status",
         message: "Generating your personalized questions...",
@@ -193,6 +292,16 @@ function handleSet1Socket(ws, request) {
       const genStart = Date.now();
       let q1SynthesisPromise = null;
       for (let i = 0; i < MAX_QUESTIONS; i++) {
+        send({
+          type: "generation_progress",
+          stage: "generating_questions",
+          current: i + 1,
+          total: MAX_QUESTIONS,
+          role: sessionRole,
+          weakness: sessionWeaknessTag,
+          message: `Synthesizing question ${i + 1} of ${MAX_QUESTIONS} (${sessionRole})...`,
+        });
+
         const qGenStart = Date.now();
         const q = await generateSet1Question(
           sessionWeaknessTag,
@@ -215,6 +324,10 @@ function handleSet1Socket(ws, request) {
         console.log(`  Q${idx + 1}: "${q}"`);
       });
 
+      // Save generated questions array to DB for resumption persistence
+      sessionDoc.questions = questions;
+      await sessionDoc.save();
+
       currentQuestionText = questions[0];
 
       // 4. Send question text to frontend and speak it
@@ -226,8 +339,15 @@ function handleSet1Socket(ws, request) {
 
       // Wait for Q1 audio to finish synthesizing and speak it
       const q1AudioBuffer = await q1SynthesisPromise;
+      if (ws.readyState !== ws.OPEN) return;
       const q1TtsLatency = Date.now() - startupStart;
       metrics.ttsLatencies.push(q1TtsLatency);
+
+      send({
+        type: "generation_complete",
+        role: sessionRole,
+        weakness: sessionWeaknessTag,
+      });
 
       send({ type: "tts_audio", data: q1AudioBuffer.toString("base64") });
 
@@ -269,20 +389,22 @@ function handleSet1Socket(ws, request) {
               preGeneratedNextQuestionIndex = nextIndex;
               preGeneratedNextQuestionAudio = null;
 
-              synthesizeSpeech(questions[nextIndex], voiceModel)
-                .then((audioBuffer) => {
-                  if (preGeneratedNextQuestionIndex === nextIndex) {
-                    preGeneratedNextQuestionAudio = audioBuffer;
-                    console.log(`[TTS] ✅ Early background Q${nextIndex + 1} audio ready.`);
-                  }
-                })
-                .catch((err) => {
-                  if (preGeneratedNextQuestionIndex === nextIndex) {
-                    preGeneratedNextQuestionAudio = null;
-                    preGeneratedNextQuestionIndex = -1;
-                  }
-                  console.error(`[TTS] ❌ Early background TTS pre-generation failed:`, err.message);
-                });
+              if (ws.readyState === ws.OPEN) {
+                synthesizeSpeech(questions[nextIndex], voiceModel)
+                  .then((audioBuffer) => {
+                    if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
+                      preGeneratedNextQuestionAudio = audioBuffer;
+                      console.log(`[TTS] ✅ Early background Q${nextIndex + 1} audio ready.`);
+                    }
+                  })
+                  .catch((err) => {
+                    if (preGeneratedNextQuestionIndex === nextIndex) {
+                      preGeneratedNextQuestionAudio = null;
+                      preGeneratedNextQuestionIndex = -1;
+                    }
+                    console.error(`[TTS] ❌ Early background TTS pre-generation failed:`, err.message);
+                  });
+              }
             }
           }
         }
@@ -310,6 +432,7 @@ function handleSet1Socket(ws, request) {
           const evaluation = await evaluateSet1Answer(
             currentQuestionText,
             confirmedText,
+            sessionDifficulty,
           );
           const evalDuration = Date.now() - evalStart;
           metrics.evaluationLatencies.push(evalDuration);
@@ -330,8 +453,21 @@ function handleSet1Socket(ws, request) {
           await sessionDoc.save();
           console.timeEnd("[Perf] DB Record Save");
 
-          // 3. Send tip to frontend
-          send({ type: "coach_tip", tip: evaluation.tip });
+          if (ws.readyState !== ws.OPEN) {
+            console.log("[WS] Client disconnected during evaluation, skipping TTS and next question.");
+            return;
+          }
+
+          // 3. Send tip, 3C scores, interviewer reply and difficulty to frontend/client
+          send({
+            type: "coach_tip",
+            tip: evaluation.tip,
+            clarity_score: evaluation.clarity_score,
+            correctness_score: evaluation.correctness_score,
+            completeness_score: evaluation.completeness_score,
+            interviewer_reply: evaluation.interviewer_reply,
+            difficulty: sessionDifficulty,
+          });
 
           currentQuestionIndex++;
           const hasNext = currentQuestionIndex < MAX_QUESTIONS;
@@ -357,18 +493,22 @@ function handleSet1Socket(ws, request) {
               .map((s) => s.trim())
               .filter(Boolean);
 
-            const replyPromises = replySentences.map((sentence) =>
-              synthesizeSpeech(sentence, voiceModel)
+            const replyPromises = replySentences.map((sentence) => {
+              if (ws.readyState !== ws.OPEN) {
+                return Promise.resolve({ sentence, buffer: null });
+              }
+              return synthesizeSpeech(sentence, voiceModel)
                 .then((buffer) => ({ sentence, buffer }))
                 .catch((err) => {
                   console.error(`[TTS] Error synthesizing sentence "${sentence}":`, err.message);
                   return { sentence, buffer: null };
-                }),
-            );
+                });
+            });
 
             for (let i = 0; i < replyPromises.length; i++) {
+              if (ws.readyState !== ws.OPEN) break;
               const { sentence, buffer } = await replyPromises[i];
-              if (buffer) {
+              if (buffer && ws.readyState === ws.OPEN) {
                 send({ type: "tts_audio", data: buffer.toString("base64") });
                 console.log(`[TTS] 🔊 Sent concurrent sentence audio: "${sentence}"`);
               }
@@ -377,6 +517,8 @@ function handleSet1Socket(ws, request) {
             const replyTtsDuration = Date.now() - replyTtsStart;
             metrics.replyTtsLatencies.push(replyTtsDuration);
             console.timeEnd("[Perf] Reply TTS Synthesis");
+
+            if (ws.readyState !== ws.OPEN) return;
 
             // Send next question audio (cached or fallback)
             if (
@@ -392,6 +534,7 @@ function handleSet1Socket(ws, request) {
               preGeneratedNextQuestionAudio = null;
               preGeneratedNextQuestionIndex = -1;
             } else {
+              if (ws.readyState !== ws.OPEN) return;
               console.log(`[TTS] ⚠️ Next question audio not pre-cached. Synthesizing on-the-fly.`);
               console.time("[Perf] Next Question TTS Synthesis");
               const qTtsStart = Date.now();
@@ -399,6 +542,7 @@ function handleSet1Socket(ws, request) {
                 currentQuestionText,
                 voiceModel,
               );
+              if (ws.readyState !== ws.OPEN) return;
               const qTtsDuration = Date.now() - qTtsStart;
               metrics.ttsLatencies.push(qTtsDuration);
               console.timeEnd("[Perf] Next Question TTS Synthesis");
@@ -407,7 +551,7 @@ function handleSet1Socket(ws, request) {
 
             // Trigger background pre-generation of Q(N+1) audio early (safety net)
             const nextIndex = currentQuestionIndex + 1;
-            if (nextIndex < MAX_QUESTIONS) {
+            if (ws.readyState === ws.OPEN && nextIndex < MAX_QUESTIONS) {
               if (preGeneratedNextQuestionIndex !== nextIndex) {
                 console.log(`[TTS] 🚀 Triggering background next-question synthesis for Q${nextIndex + 1}...`);
                 preGeneratedNextQuestionIndex = nextIndex;
@@ -415,7 +559,7 @@ function handleSet1Socket(ws, request) {
 
                 synthesizeSpeech(questions[nextIndex], voiceModel)
                   .then((audioBuffer) => {
-                    if (preGeneratedNextQuestionIndex === nextIndex) {
+                    if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
                       preGeneratedNextQuestionAudio = audioBuffer;
                       console.log(`[TTS] ✅ Background Q${nextIndex + 1} audio ready.`);
                     }
@@ -443,6 +587,8 @@ function handleSet1Socket(ws, request) {
             await sessionDoc.save();
             console.timeEnd("[Perf] Finalise Session");
 
+            if (ws.readyState !== ws.OPEN) return;
+
             // Synthesize and speak the final reply sentence-by-sentence concurrently
             const finalSpeech = `${evaluation.interviewer_reply} That concludes our personalized questions for today. Great job!`;
             console.time("[Perf] Final TTS Synthesis");
@@ -452,18 +598,22 @@ function handleSet1Socket(ws, request) {
               .map((s) => s.trim())
               .filter(Boolean);
 
-            const finalPromises = finalSentences.map((sentence) =>
-              synthesizeSpeech(sentence, voiceModel)
+            const finalPromises = finalSentences.map((sentence) => {
+              if (ws.readyState !== ws.OPEN) {
+                return Promise.resolve({ sentence, buffer: null });
+              }
+              return synthesizeSpeech(sentence, voiceModel)
                 .then((buffer) => ({ sentence, buffer }))
                 .catch((err) => {
                   console.error(`[TTS] Error synthesizing sentence "${sentence}":`, err.message);
                   return { sentence, buffer: null };
-                }),
-            );
+                });
+            });
 
             for (let i = 0; i < finalPromises.length; i++) {
+              if (ws.readyState !== ws.OPEN) break;
               const { sentence, buffer } = await finalPromises[i];
-              if (buffer) {
+              if (buffer && ws.readyState === ws.OPEN) {
                 send({ type: "tts_audio", data: buffer.toString("base64") });
                 console.log(`[TTS] 🔊 Sent concurrent final sentence audio: "${sentence}"`);
               }

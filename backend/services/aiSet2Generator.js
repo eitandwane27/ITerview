@@ -19,7 +19,9 @@
 
 const { OpenAI } = require("openai");
 const { getRoleConfig } = require("../config/roleConfig");
+const { getEvaluatorRubric } = require("../config/evaluatorRubrics");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
+const { safeParseJSON } = require("../utils/jsonParser");
 const { EASY_AVOID_LIST: GLOBAL_EASY_AVOID_LIST, MEDIUM_AVOID_LIST, HARD_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
@@ -27,7 +29,7 @@ const deepseek = new OpenAI({
   baseURL: "https://api.deepseek.com",
 });
 
-const EVALUATOR_MODEL = "deepseek-chat";
+const EVALUATOR_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -277,7 +279,8 @@ OUTPUT RULE:
     model: EVALUATOR_MODEL,
     messages,
     temperature: 0.2,
-    max_tokens: isHard ? 260 : isMedium ? 220 : 120,
+    max_tokens: 2000,
+    thinking: { type: "disabled" },
   });
 
   if (!response.choices || response.choices.length === 0 || !response.choices[0]?.message?.content) {
@@ -375,9 +378,10 @@ const SET2_SCORING_RESPONSE_FORMAT = {
  *
  * @param {string} question   - The technical question that was asked
  * @param {string} transcript - The user's spoken answer
+ * @param {string} difficulty - Session difficulty level ("easy" | "medium" | "hard")
  * @returns {Promise<{ problem_solving_score, accuracy_score, depth_score, tip, interviewer_reply }>}
  */
-async function evaluateSet2Answer(question, transcript) {
+async function evaluateSet2Answer(question, transcript, difficulty = "easy") {
   if (!transcript || transcript.trim().length === 0) {
     return {
       problem_solving_score: 1,
@@ -388,26 +392,28 @@ async function evaluateSet2Answer(question, transcript) {
     };
   }
 
+  const difficultyRubric = getEvaluatorRubric(difficulty);
+  const systemPrompt = `${SET2_SCORING_SYSTEM_PROMPT}\n\n${difficultyRubric}`;
+
   const response = await deepseek.chat.completions.create({
     model: EVALUATOR_MODEL,
     messages: [
-      { role: "system", content: SET2_SCORING_SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       {
         role: "user",
         content: `Technical Interview Question: "${question}"\n\nStudent's Answer: "${transcript}"`,
       },
     ],
     temperature: 0.0,
-    max_tokens: 800,
+    max_tokens: 2000,
+    thinking: { type: "disabled" },
     response_format: { type: "json_object" },
   });
 
-  const raw = response.choices[0]?.message?.content?.trim() || "{}";
+  const raw = response.choices?.[0]?.message?.content || "";
+  const parsed = safeParseJSON(raw);
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
+  if (!parsed) {
     console.error("[aiSet2Generator] JSON parse error. Raw response:", raw);
     return {
       problem_solving_score: 5,

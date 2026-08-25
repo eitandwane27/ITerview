@@ -105,6 +105,7 @@ function handlePostTestSocket(ws, request) {
   let fullTranscript = "";
   let preGeneratedNextQuestionAudio = null;
   let preGeneratedNextQuestionIndex = -1;
+  let sessionDifficulty = "easy";
   const sessionScores = [];
   const evaluationPromises = [];
 
@@ -122,10 +123,12 @@ function handlePostTestSocket(ws, request) {
   }
 
   async function speakQuestion(text) {
+    if (ws.readyState !== ws.OPEN) return;
     try {
       send({ type: "status", message: "Generating question audio…" });
       const t0 = Date.now();
       const audioBuffer = await synthesizeSpeech(text, voiceModel);
+      if (ws.readyState !== ws.OPEN) return;
       const latency = Date.now() - t0;
       metrics.ttsLatencies.push(latency);
       const base64Audio = audioBuffer.toString("base64");
@@ -134,6 +137,7 @@ function handlePostTestSocket(ws, request) {
         `[TTS/Post] 🔊 Sent audio in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`
       );
     } catch (err) {
+      if (ws.readyState !== ws.OPEN) return;
       console.error("[WS/Post] TTS error:", err.message);
       send({ type: "error", message: `TTS failed: ${err.message}` });
     }
@@ -158,9 +162,9 @@ function handlePostTestSocket(ws, request) {
 
     sttSession = createDeepgramLiveSession(
       (transcript, isFinal) => {
-        if (transcript) {
+        if (transcript || isFinal) {
           send({ type: "transcript", text: transcript, isFinal });
-          if (isFinal) {
+          if (isFinal && transcript) {
             fullTranscript = fullTranscript
               ? `${fullTranscript} ${transcript}`
               : transcript;
@@ -191,23 +195,73 @@ function handlePostTestSocket(ws, request) {
   (async () => {
     send({ type: "status", message: "Graduation Challenge started. Preparing your first question…" });
 
-    // Initialize / reset post-test session document in MongoDB
+    const isResetRequested = url.searchParams.get("reset") === "true";
+
+    // Fetch user difficulty
     try {
-      await PostTestSession.findOneAndUpdate(
-        { firebaseUid },
-        {
-          sessionId,
-          answers: [],
-          final_weakness_tag: null,
-          final_score_percentage: null,
-          completedAt: null,
-          createdAt: new Date(),
-        },
-        { upsert: true, returnDocument: "after" }
-      );
-      console.log(`[DB/Post] ✅ Post-test session initialized: ${sessionId} for user: ${firebaseUid}`);
+      const user = await User.findOne({ firebaseUid });
+      if (user && user.difficulty) {
+        sessionDifficulty = user.difficulty;
+      }
     } catch (err) {
-      console.error(`[DB/Post] ❌ Failed to initialize session:`, err.message);
+      console.error("[WS/Post] Failed to fetch user difficulty:", err.message);
+    }
+
+    // Check for an active, incomplete post-test session
+    let activeSession = null;
+    try {
+      if (!isResetRequested) {
+        activeSession = await PostTestSession.findOne({ firebaseUid, completedAt: null });
+      }
+    } catch (err) {
+      console.error("[WS/Post] Failed to check for active post-test session:", err.message);
+    }
+
+    if (activeSession) {
+      console.log(`[WS/Post] 🔄 Active session found for user: ${firebaseUid}. Resuming session ID: ${activeSession.sessionId} as new session ID: ${sessionId}`);
+      try {
+        await PostTestSession.findOneAndUpdate(
+          { firebaseUid, completedAt: null },
+          { sessionId }
+        );
+
+        currentQuestionIndex = activeSession.answers ? activeSession.answers.length : 0;
+        if (activeSession.answers) {
+          activeSession.answers.forEach(ans => {
+            sessionScores.push({
+              questionIndex: ans.questionIndex,
+              clarity_score: ans.clarity_score,
+              correctness_score: ans.correctness_score,
+              completeness_score: ans.completeness_score,
+              primary_weakness: ans.primary_weakness,
+            });
+          });
+        }
+
+        console.log(`[WS/Post] Resumed post-test session at question index: ${currentQuestionIndex}`);
+        send({ type: "session_resumed", currentQuestionIndex });
+      } catch (err) {
+        console.error(`[DB/Post] ❌ Failed to update resumed post-test session document:`, err.message);
+      }
+    } else {
+      // Initialize / reset post-test session document in MongoDB
+      try {
+        await PostTestSession.findOneAndUpdate(
+          { firebaseUid },
+          {
+            sessionId,
+            answers: [],
+            final_weakness_tag: null,
+            final_score_percentage: null,
+            completedAt: null,
+            createdAt: new Date(),
+          },
+          { upsert: true, returnDocument: "after" }
+        );
+        console.log(`[DB/Post] ✅ Post-test session initialized: ${sessionId} for user: ${firebaseUid}`);
+      } catch (err) {
+        console.error(`[DB/Post] ❌ Failed to initialize session:`, err.message);
+      }
     }
 
     await speakQuestion(POST_TEST_QUESTIONS[currentQuestionIndex]);
@@ -278,7 +332,7 @@ function handlePostTestSocket(ws, request) {
           try {
             console.log(`[AI/Post] 🔄 Background 3C evaluation started for Q${questionNumber}...`);
             const tEval0 = Date.now();
-            const scores = await evaluate3CScores(answeredQuestion, confirmedText);
+            const scores = await evaluate3CScores(answeredQuestion, confirmedText, sessionDifficulty);
             const evalDuration = Date.now() - tEval0;
             metrics.evaluationLatencies.push(evalDuration);
 
@@ -316,13 +370,13 @@ function handlePostTestSocket(ws, request) {
 
         // Pre-generate next question TTS
         const nextIndex = currentQuestionIndex + 1;
-        if (nextIndex < POST_TEST_QUESTIONS.length) {
+        if (ws.readyState === ws.OPEN && nextIndex < POST_TEST_QUESTIONS.length) {
           if (preGeneratedNextQuestionIndex !== nextIndex) {
             preGeneratedNextQuestionIndex = nextIndex;
             preGeneratedNextQuestionAudio = null;
             synthesizeSpeech(POST_TEST_QUESTIONS[nextIndex], voiceModel)
               .then((buf) => {
-                if (preGeneratedNextQuestionIndex === nextIndex) {
+                if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
                   preGeneratedNextQuestionAudio = buf;
                   console.log(`[TTS/Post] ✅ Background Q${nextIndex + 1} audio ready.`);
                 }

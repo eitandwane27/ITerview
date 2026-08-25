@@ -30,6 +30,8 @@ const {
   getCompetencyTopic,
 } = require("../services/aiSet3Generator");
 const Set3Session = require("../models/Set3Session");
+const Set1Session = require("../models/Set1Session");
+const Set2Session = require("../models/Set2Session");
 const User = require("../models/User");
 
 const MAX_QUESTIONS = 5;
@@ -109,9 +111,9 @@ function handleSet3Socket(ws, request) {
     fullTranscript = "";
     sttSession = createDeepgramLiveSession(
       (transcript, isFinal) => {
-        if (transcript) {
+        if (transcript || isFinal) {
           send({ type: "transcript", text: transcript, isFinal });
-          if (isFinal) {
+          if (isFinal && transcript) {
             fullTranscript = fullTranscript
               ? `${fullTranscript} ${transcript}`
               : transcript;
@@ -147,6 +149,7 @@ function handleSet3Socket(ws, request) {
    * @returns {Promise<number>}  - Total wall-clock time in ms
    */
   async function speakSentencesConcurrently(text, label = "") {
+    if (ws.readyState !== ws.OPEN) return 0;
     const sentences = (text.match(/[^.!?]+[.!?]*/g) || [text])
       .map((s) => s.trim())
       .filter(Boolean);
@@ -154,19 +157,23 @@ function handleSet3Socket(ws, request) {
     const t0 = Date.now();
 
     // Launch all TTS requests in parallel
-    const promises = sentences.map((sentence) =>
-      synthesizeSpeech(sentence, voiceModel)
+    const promises = sentences.map((sentence) => {
+      if (ws.readyState !== ws.OPEN) {
+        return Promise.resolve({ sentence, buffer: null });
+      }
+      return synthesizeSpeech(sentence, voiceModel)
         .then((buffer) => ({ sentence, buffer }))
         .catch((err) => {
           console.error(`[TTS] ❌ Error on "${sentence.substring(0, 40)}…": ${err.message}`);
           return { sentence, buffer: null };
-        }),
-    );
+        });
+    });
 
     // Stream sequentially to the client as each resolves in order
     for (let i = 0; i < promises.length; i++) {
+      if (ws.readyState !== ws.OPEN) break;
       const { sentence, buffer } = await promises[i];
-      if (buffer) {
+      if (buffer && ws.readyState === ws.OPEN) {
         send({ type: "tts_audio", data: buffer.toString("base64") });
         if (label) {
           console.log(
@@ -194,16 +201,77 @@ function handleSet3Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        sessionDifficulty = "easy"; // Force to 'easy' to avoid confusion until medium/hard are implemented
+        const difficultyRank = { easy: 1, medium: 2, hard: 3 };
+        const userDiff = user.difficulty || "easy";
+        const userUnlocked = user.unlockedDifficulty || "easy";
+        sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
       }
 
-      // 2. Initialize Set3Session in DB (upsert — one doc per user)
+      // Check if user requested a reset via URL
+      const isResetRequested = url.searchParams.get("reset") === "true";
+
+      // 2. Check if an in-progress session doc already exists in DB
+      const existingDoc = await Set3Session.findOne({ firebaseUid });
+      const isResuming =
+        !isResetRequested &&
+        existingDoc &&
+        !existingDoc.isCompleted;
+
+      if (isResuming) {
+        sessionDoc = existingDoc;
+        sessionDoc.sessionId = sessionId;
+        await sessionDoc.save();
+
+        if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
+          questions = existingDoc.questions;
+        } else {
+          questions = existingDoc.answers.map((a) => a.question);
+          while (questions.length < MAX_QUESTIONS) {
+            const q = await generateSet3Question(questions, sessionDifficulty);
+            questions.push(q);
+          }
+          sessionDoc.questions = questions;
+          await sessionDoc.save();
+        }
+
+        currentQuestionIndex = existingDoc.answers.length;
+
+        console.log(
+          `[DB] ⏯️ Resuming Set 3 session for user ${firebaseUid} at Question ${currentQuestionIndex + 1} (${currentQuestionIndex} previous answers saved)`
+        );
+
+        send({
+          type: "status",
+          message: `Resuming behavioral session at Question ${currentQuestionIndex + 1}...`,
+        });
+
+        currentQuestionText = questions[currentQuestionIndex];
+
+        send({
+          type: "question_text",
+          text: currentQuestionText,
+          index: currentQuestionIndex + 1,
+        });
+
+        const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
+        send({ type: "tts_audio", data: audioBuffer.toString("base64") });
+
+        send({
+          type: "status",
+          message: "Question ready. Click Unmute to answer.",
+        });
+
+        return;
+      }
+
+      // Initialize fresh Set3Session in DB if not resuming
       sessionDoc = await Set3Session.findOneAndUpdate(
         { firebaseUid },
         {
           sessionId,
           role: sessionRole,
           difficulty: sessionDifficulty,
+          questions: [],
           answers: [],
           avg_situation: null,
           avg_action: null,
@@ -213,7 +281,7 @@ function handleSet3Socket(ws, request) {
           completedAt: null,
           createdAt: new Date(),
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       );
       console.log(
         `[DB] ✅ Set 3 session initialized: ${sessionId} for user: ${firebaseUid}`,
@@ -249,6 +317,10 @@ function handleSet3Socket(ws, request) {
         console.log(`  Q${idx + 1}: "${q}"`);
       });
 
+      // Save generated questions array to DB for resumption persistence
+      sessionDoc.questions = questions;
+      await sessionDoc.save();
+
       // 4. Set Q1 as current question and send text to frontend
       currentQuestionText = questions[0];
       currentCompetency = getCompetencyTopic(0);
@@ -262,6 +334,7 @@ function handleSet3Socket(ws, request) {
 
       // 5. Await Q1 TTS (was running concurrently with Q2-5 generation)
       const q1AudioBuffer = await q1SynthesisPromise;
+      if (ws.readyState !== ws.OPEN) return;
       const q1TtsLatency = Date.now() - startupStart;
       metrics.ttsLatencies.push(q1TtsLatency);
 
@@ -307,6 +380,7 @@ function handleSet3Socket(ws, request) {
         // Fire background synthesis of the next question (if not already cached)
         const nextIndex = currentQuestionIndex + 1;
         if (
+          ws.readyState === ws.OPEN &&
           nextIndex < MAX_QUESTIONS &&
           preGeneratedNextQuestionIndex !== nextIndex &&
           questions[nextIndex]
@@ -316,7 +390,7 @@ function handleSet3Socket(ws, request) {
 
           synthesizeSpeech(questions[nextIndex], voiceModel)
             .then((audioBuffer) => {
-              if (preGeneratedNextQuestionIndex === nextIndex) {
+              if (ws.readyState === ws.OPEN && preGeneratedNextQuestionIndex === nextIndex) {
                 preGeneratedNextQuestionAudio = audioBuffer;
                 console.log(
                   `[Cache] ✅ Pre-cached Q${nextIndex + 1} audio ready`,
@@ -366,6 +440,7 @@ function handleSet3Socket(ws, request) {
           const evaluation = await evaluateSet3Answer(
             currentQuestionText,
             confirmedText,
+            sessionDifficulty,
           );
           const evalDuration = Date.now() - evalStart;
           metrics.evaluationLatencies.push(evalDuration);
@@ -388,6 +463,11 @@ function handleSet3Socket(ws, request) {
           });
           await sessionDoc.save();
           console.timeEnd("[Perf] DB Record Save");
+
+          if (ws.readyState !== ws.OPEN) {
+            console.log("[WS] Client disconnected during evaluation, skipping TTS and next question.");
+            return;
+          }
 
           // 3. Send STAR scores + coaching tip to frontend
           send({
@@ -425,6 +505,8 @@ function handleSet3Socket(ws, request) {
             metrics.replyTtsLatencies.push(replyTtsDuration);
             console.timeEnd("[Perf] Reply TTS (Concurrent Sentences)");
 
+            if (ws.readyState !== ws.OPEN) return;
+
             // 6. Step 4: Play next-question audio — cache hit or on-the-fly fallback
             if (
               preGeneratedNextQuestionAudio &&
@@ -439,6 +521,7 @@ function handleSet3Socket(ws, request) {
               preGeneratedNextQuestionAudio = null;
               preGeneratedNextQuestionIndex = -1;
             } else {
+              if (ws.readyState !== ws.OPEN) return;
               console.log(`[TTS] ⚠️ Next question audio not pre-cached. Synthesizing on-the-fly.`);
               console.time("[Perf] Next Question TTS Synthesis");
               const qTtsStart = Date.now();
@@ -446,6 +529,7 @@ function handleSet3Socket(ws, request) {
                 currentQuestionText,
                 voiceModel,
               );
+              if (ws.readyState !== ws.OPEN) return;
               const qTtsDuration = Date.now() - qTtsStart;
               metrics.ttsLatencies.push(qTtsDuration);
               console.timeEnd("[Perf] Next Question TTS Synthesis");
@@ -468,6 +552,73 @@ function handleSet3Socket(ws, request) {
             console.log(
               `[Session] 🏁 Set 3 complete. Overall Score: ${sessionDoc.overall_score_percentage}% | Avg Situation: ${sessionDoc.avg_situation} | Avg Action: ${sessionDoc.avg_action} | Avg Result: ${sessionDoc.avg_result}`,
             );
+
+            // Record completed 3-set practice attempt to User rolling 20-session history
+            try {
+              const [set1Doc, set2Doc, userDoc] = await Promise.all([
+                Set1Session.findOne({ firebaseUid }),
+                Set2Session.findOne({ firebaseUid }),
+                User.findOne({ firebaseUid }),
+              ]);
+
+              if (userDoc) {
+                const set1Score = set1Doc && set1Doc.isCompleted && set1Doc.avg_clarity !== null
+                  ? parseFloat(((set1Doc.avg_clarity + set1Doc.avg_correctness + set1Doc.avg_completeness) / 3).toFixed(1))
+                  : null;
+                const set2Score = set2Doc && set2Doc.isCompleted && set2Doc.avg_problem_solving !== null
+                  ? parseFloat(((set2Doc.avg_problem_solving + set2Doc.avg_accuracy + set2Doc.avg_depth) / 3).toFixed(1))
+                  : null;
+                const set3Score = sessionDoc.avg_situation !== null
+                  ? parseFloat(((sessionDoc.avg_situation + sessionDoc.avg_action + sessionDoc.avg_result) / 3).toFixed(1))
+                  : null;
+
+                const completedScores = [set1Score, set2Score, set3Score].filter((s) => s !== null);
+                const avgScoreOutOf10 = completedScores.length > 0
+                  ? parseFloat((completedScores.reduce((a, b) => a + b, 0) / completedScores.length).toFixed(1))
+                  : (set3Score ?? 0);
+                const overallScorePercentage = parseFloat((avgScoreOutOf10 * 10).toFixed(1));
+
+                const existingHist = userDoc.practiceHistory || [];
+                const maxAttempt = existingHist.reduce((max, item) => {
+                  const num = typeof item.attemptNumber === "number" ? item.attemptNumber : 0;
+                  return Math.max(max, num);
+                }, 0);
+                const nextAttempt = maxAttempt > 0 ? maxAttempt + 1 : existingHist.length + 1;
+
+                const threeCBreakdown = set1Doc ? {
+                  clarity: set1Doc.avg_clarity,
+                  correctness: set1Doc.avg_correctness,
+                  completeness: set1Doc.avg_completeness,
+                  averageOutOf10: set1Doc.avg_clarity !== null ? parseFloat(((set1Doc.avg_clarity + set1Doc.avg_correctness + set1Doc.avg_completeness) / 3).toFixed(1)) : null,
+                } : null;
+
+                await User.findOneAndUpdate(
+                  { firebaseUid },
+                  {
+                    $push: {
+                      practiceHistory: {
+                        $each: [
+                          {
+                            attemptNumber: nextAttempt,
+                            completedAt: new Date(),
+                            role: sessionRole,
+                            difficulty: sessionDifficulty,
+                            focusArea: userDoc.focusArea || "auto",
+                            overallScorePercentage,
+                            threeCBreakdown,
+                            weaknessTag: sessionDoc.final_weakness_tag || "focus_completeness",
+                          },
+                        ],
+                        $slice: -20,
+                      },
+                    },
+                  }
+                );
+                console.log(`[DB] ⏱️ Appended practice history attempt #${nextAttempt} for user: ${firebaseUid}`);
+              }
+            } catch (errHist) {
+              console.error("[DB] Failed to record practice history:", errHist.message);
+            }
 
             // Step 6: Concurrent sentence TTS for final closing speech
             const finalSpeech = `${evaluation.interviewer_reply} That concludes our behavioral round. Excellent effort!`;

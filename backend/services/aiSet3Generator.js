@@ -24,7 +24,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { OpenAI } = require("openai");
+const { getEvaluatorRubric } = require("../config/evaluatorRubrics");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
+const { safeParseJSON } = require("../utils/jsonParser");
 const { BEHAVIORAL_AVOID_LIST: GLOBAL_BEHAVIORAL_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
@@ -32,7 +34,7 @@ const deepseek = new OpenAI({
   baseURL: "https://api.deepseek.com",
 });
 
-const EVALUATOR_MODEL = "deepseek-chat";
+const EVALUATOR_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BEHAVIORAL COMPETENCY PILLARS — 5 total, one per question slot.
@@ -112,9 +114,10 @@ const BEHAVIORAL_AVOID_LIST = `${GLOBAL_BEHAVIORAL_AVOID_LIST}\n\n${TTS_SAFETY}`
  */
 async function generateSet3Question(
   previousQuestions = [],
-  _difficulty = "easy",
+  difficulty = "easy",
 ) {
-  const difficulty = "easy"; // Force to easy to avoid confusion since other levels are not yet implemented
+  const isHard = difficulty === "hard";
+  const isMedium = difficulty === "medium";
 
   // ── Map the current question slot to a behavioral competency ──────────────
   const competencyIndex = Math.min(
@@ -191,7 +194,8 @@ OUTPUT RULE:
     model: EVALUATOR_MODEL,
     messages,
     temperature: 0.65,
-    max_tokens: 140,
+    max_tokens: 2000,
+    thinking: { type: "disabled" },
   });
 
   if (!response.choices || response.choices.length === 0 || !response.choices[0]?.message?.content) {
@@ -273,9 +277,10 @@ const SET3_SCORING_RESPONSE_FORMAT = {
  *
  * @param {string} question   - The behavioral question that was asked
  * @param {string} transcript - The user's spoken answer
+ * @param {string} difficulty - Session difficulty level ("easy" | "medium" | "hard")
  * @returns {Promise<{ situation_score, action_score, result_score, tip, interviewer_reply }>}
  */
-async function evaluateSet3Answer(question, transcript) {
+async function evaluateSet3Answer(question, transcript, difficulty = "easy") {
   if (!transcript || transcript.trim().length === 0) {
     return {
       situation_score: 1,
@@ -286,26 +291,28 @@ async function evaluateSet3Answer(question, transcript) {
     };
   }
 
+  const difficultyRubric = getEvaluatorRubric(difficulty);
+  const systemPrompt = `${SET3_SCORING_SYSTEM_PROMPT}\n\n${difficultyRubric}`;
+
   const response = await deepseek.chat.completions.create({
     model: EVALUATOR_MODEL,
     messages: [
-      { role: "system", content: SET3_SCORING_SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       {
         role: "user",
         content: `Behavioral Interview Question: "${question}"\n\nStudent's Answer: "${transcript}"`,
       },
     ],
     temperature: 0.0,
-    max_tokens: 220,
+    max_tokens: 2000,
+    thinking: { type: "disabled" },
     response_format: { type: "json_object" },
   });
 
-  const raw = response.choices?.[0]?.message?.content?.trim() || "{}";
+  const raw = response.choices?.[0]?.message?.content || "";
+  const parsed = safeParseJSON(raw);
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
+  if (!parsed) {
     console.error("[aiSet3Generator] JSON parse error. Raw response:", raw);
     return {
       situation_score: 5,

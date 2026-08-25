@@ -1,361 +1,907 @@
-/* ── AI Analysis Loading Screen — Soft Productivity SaaS ────────────────────── */
-/* Aesthetic: Soft Productivity — calm confidence, structured warmth.            */
-/* Design anchor: Lavender card-in-card + segmented lavender progress bar.       */
-/* Blueprint: Set2Interview.css token conventions + DESIGN.md system.            */
+/* ── AI Analysis Loader — Dark Studio Design System ───────────────────────── */
+/* Creative North Star: Live Interview Studio (Near-black, signal cyan, radar) */
+/* Blueprint: DESIGN.md tokens & Dark Studio guidelines                       */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+.aal-studio-container {
+  /* Design Tokens */
+  --aal-canvas: #09090b;
+  --aal-canvas-deep: #0c0b16;
+  --aal-surface: rgba(24, 24, 27, 0.9);
+  --aal-surface-inner: rgba(18, 18, 26, 0.7);
+  --aal-border: rgba(255, 255, 255, 0.08);
+  --aal-border-active: rgba(6, 182, 212, 0.35);
 
-/* ── Design tokens (scoped to container, mirrors DESIGN.md) ─────────────────── */
-.ai-analysis-container {
-  /* Primary accent — Soft Lavender */
-  --aal-primary:        #7C6FCD;
-  --aal-primary-light:  #EAE8F7;
-  --aal-primary-hover:  #6B5FBC;
-  --aal-primary-muted:  #B8B0E8;
-  --aal-primary-dim:    rgba(124, 111, 205, 0.12);
-  --aal-primary-border: rgba(124, 111, 205, 0.25);
+  /* Cyan Signal Palette */
+  --aal-cyan: #06b6d4;
+  --aal-cyan-bright: #22d3ee;
+  --aal-cyan-soft: #67e8f9;
+  --aal-cyan-dim: rgba(6, 182, 212, 0.12);
+  --aal-cyan-glow: rgba(6, 182, 212, 0.25);
 
-  /* Canvas & surfaces */
-  --aal-canvas:         #F4F4F6;
-  --aal-surface:        #FFFFFF;
-  --aal-surface-inner:  #F0EFF8;
-  --aal-border-card:    #EFEFEF;
-  --aal-border-soft:    #E8E8EE;
+  /* Supporting Accents */
+  --aal-purple: #8b5cf6;
+  --aal-purple-bright: #a78bfa;
+  --aal-purple-dim: rgba(139, 92, 246, 0.12);
+  --aal-green: #10b981;
+  --aal-green-bright: #34d399;
+  --aal-green-dim: rgba(16, 185, 129, 0.12);
+  --aal-amber: #fbbf24;
+  --aal-amber-dim: rgba(251, 191, 36, 0.12);
+  --aal-rose: #fca5a5;
 
-  /* Text */
-  --aal-ink:            #1A1A2E;
-  --aal-ink-secondary:  #6B6B80;
-  --aal-ink-muted:      #9B9BAD;
-  --aal-ink-on-primary: #FFFFFF;
+  /* Typography Colors */
+  --aal-ink: #ffffff;
+  --aal-ink-dim: #c0c0d0;
+  --aal-ink-secondary: #9ca3af;
+  --aal-ink-muted: #6b7280;
+  --aal-ink-cyan: #081318;
 
-  /* Status */
-  --aal-green:          #22C55E;
-  --aal-green-dim:      rgba(34, 197, 94, 0.12);
+  /* Elevation & Geometry */
+  --aal-radius-card: 16px;
+  --aal-radius-inner: 12px;
+  --aal-radius-pill: 9999px;
 
-  /* Elevation */
-  --aal-shadow-card:    0 2px 8px rgba(0, 0, 0, 0.06);
-  --card-radius:        16px;
-
-  /* Layout */
-  flex: 1;
+  /* Container Layout — fixed modal overlay (same recipe as .sb-overlay) */
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 2rem;
-  width: 100%;
-  background: var(--aal-canvas);
-  font-family: "Inter", system-ui, sans-serif;
-
-  /* Entrance: fade + subtle scale (0.96 → 1.0) per frontend.md loading rule */
-  animation: aal-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  padding: 1.5rem 1rem;
+  background: rgba(9, 9, 11, 0.84);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--aal-ink);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  /* Scroll-safe centering: vertical scroll when content exceeds the viewport
+     instead of clipping children (stages list / footer) top-and-bottom. */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-@keyframes aal-enter {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+/* ── Ambient Radial Glow & Blueprint Grid ─────────────────────────────────── */
+.aal-ambient-glow {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(
+    circle,
+    rgba(6, 182, 212, 0.1) 0%,
+    rgba(139, 92, 246, 0.04) 40%,
+    transparent 70%
+  );
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* ── Outer white card ──────────────────────────────────────────────────────── */
-/* Level: Card — white, floats on canvas with shadow + 1px border             */
-.ai-analysis-card {
+.aal-blueprint-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px
+    );
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Main Studio Card ─────────────────────────────────────────────────────── */
+.aal-studio-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 480px;
+  max-width: 580px;
+  max-height: calc(100dvh - 3rem);
+  margin: auto;
+  flex-shrink: 0;
   background: var(--aal-surface);
-  border: 1px solid var(--aal-border-card);
-  border-radius: var(--card-radius);
-  box-shadow: var(--aal-shadow-card);
-  overflow: hidden;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--aal-border);
+  border-radius: var(--aal-radius-card);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ── Header strip (sidebar-section-label style) ─────────────────────────── */
-.aal-header {
+/* ── Top Header Strip ─────────────────────────────────────────────────────── */
+.aal-top-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1.25rem;
-  border-bottom: 1px solid var(--aal-border-card);
-  background: var(--aal-surface);
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--aal-border);
+  background: rgba(18, 18, 22, 0.4);
 }
 
-/* 11px uppercase label — matches DESIGN.md sidebar-section-label */
-.aal-header-label {
+.aal-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aal-brand-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--aal-cyan-bright);
+}
+
+.aal-header-title {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: var(--aal-ink-secondary);
+  color: var(--aal-ink-dim);
 }
 
-/* AI Online badge — mirrors DESIGN.md badge-ai pattern (blue pill) */
-.aal-header-badge {
+.aal-header-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aal-role-chip {
+  padding: 3px 9px;
+  border-radius: var(--aal-radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: var(--aal-purple-dim);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: var(--aal-purple-bright);
+}
+
+.aal-focus-chip {
+  padding: 3px 9px;
+  border-radius: var(--aal-radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: var(--aal-cyan-dim);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: var(--aal-cyan-soft);
+}
+
+.aal-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  background: #DBEAFE;
-  color: #3B82F6;
+  padding: 3px 9px;
+  border-radius: var(--aal-radius-pill);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.2px;
-  line-height: 1;
-  margin-left: auto;
-  flex-shrink: 0;
+  letter-spacing: 0.3px;
+  background: var(--aal-cyan-dim);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: var(--aal-cyan-soft);
 }
 
-.aal-header-badge-dot {
-  width: 5px;
-  height: 5px;
+.aal-status-pill.warning {
+  background: var(--aal-amber-dim);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: var(--aal-amber);
+}
+
+.aal-pulse-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #3B82F6;
-  flex-shrink: 0;
-  animation: aal-pulse 2s ease-in-out infinite;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: aal-dot-pulse 1.8s ease-in-out infinite;
 }
 
-/* Primary lavender pulse dot — right edge of header */
-.aal-header-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--aal-primary);
-  flex-shrink: 0;
-  animation: aal-pulse 2s ease-in-out infinite;
+@keyframes aal-dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
 }
 
-@keyframes aal-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.4; transform: scale(0.85); }
-}
-
-/* ── Body — inner lavender card (card-in-card pattern) ──────────────────── */
-/* Level: Inner card — lavender tint, no shadow, nested inside outer white card */
-.aal-body {
-  padding: 1.25rem;
+/* ── AI Core Radar Section ────────────────────────────────────────────────── */
+.aal-core-section {
+  padding: 1.75rem 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
-
-  /* The inner card — lavender background, 12px radius (rounded.lg) */
-  background: var(--aal-surface-inner);
-  border-radius: 12px;
-  margin: 1.25rem;
+  text-align: center;
+  gap: 1.25rem;
 }
 
-/* ── Icon scan wrapper — lavender-tinted, matches primary accent ─────────── */
-.aal-icon-wrap {
+.aal-radar-disc {
   position: relative;
-  width: 68px;
-  height: 68px;
-  border-radius: 16px;
-  background: var(--aal-primary-dim);
-  border: 1px solid var(--aal-primary-border);
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: var(--aal-canvas-deep);
+  border: 1px solid var(--aal-border-active);
+  box-shadow: 0 0 24px var(--aal-cyan-dim), 0 0 0 1px rgba(6, 182, 212, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  flex-shrink: 0;
 }
 
-/* Scanline sweep — the memorable anchor, now in lavender */
-.aal-icon-wrap::after {
-  content: "";
+/* Concentric Radar Rings */
+.aal-radar-ring {
   position: absolute;
-  inset-inline: 0;
-  top: -100%;
-  height: 40%;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(124, 111, 205, 0.2) 50%,
-    transparent
+  border-radius: 50%;
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  pointer-events: none;
+}
+
+.aal-radar-ring.outer {
+  width: 62px;
+  height: 62px;
+}
+.aal-radar-ring.mid {
+  width: 44px;
+  height: 44px;
+}
+.aal-radar-ring.inner {
+  width: 26px;
+  height: 26px;
+}
+
+/* Rotating Radar Beam */
+.aal-radar-beam {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 280deg,
+    rgba(6, 182, 212, 0.45) 360deg
   );
-  animation: aal-scan 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: aal-radar-spin 2.8s linear infinite;
 }
 
-@keyframes aal-scan {
-  0%   { top: -40%; }
-  100% { top: 100%; }
+@keyframes aal-radar-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.aal-icon {
-  font-size: 1.875rem;
+/* Mini Waveform Equalizer in Center */
+.aal-mini-waveform {
   position: relative;
-  z-index: 1;
-  user-select: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
 }
 
-/* ── Title block ───────────────────────────────────────────────────────────── */
-.aal-title-block {
-  text-align: center;
+.aal-wave-bar {
+  width: 2.5px;
+  background: var(--aal-cyan-bright);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(34, 211, 238, 0.6);
+  animation: aal-wave-bounce 1.2s ease-in-out infinite alternate;
+}
+
+.aal-wave-bar.bar-1 {
+  height: 8px;
+  animation-delay: 0.1s;
+}
+.aal-wave-bar.bar-2 {
+  height: 14px;
+  animation-delay: 0.3s;
+}
+.aal-wave-bar.bar-3 {
+  height: 18px;
+  animation-delay: 0s;
+}
+.aal-wave-bar.bar-4 {
+  height: 12px;
+  animation-delay: 0.4s;
+}
+.aal-wave-bar.bar-5 {
+  height: 7px;
+  animation-delay: 0.2s;
+}
+
+@keyframes aal-wave-bounce {
+  0% {
+    transform: scaleY(0.4);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scaleY(1.1);
+    opacity: 1;
+  }
+}
+
+/* Heading & Subtitle */
+.aal-heading-block {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 
-/* card-title style: 18px/600, ink, -0.2px tracking */
-.aal-title {
-  font-size: 18px;
-  font-weight: 600;
+.aal-main-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
   color: var(--aal-ink);
-  letter-spacing: -0.2px;
-  line-height: 1.4;
-  margin: 0;
+  line-height: 1.35;
 }
 
-/* body-secondary: 13px/400, ink-secondary */
 .aal-subtitle {
-  font-size: 13px;
-  color: var(--aal-ink-secondary);
-  font-weight: 400;
-  line-height: 1.5;
   margin: 0;
+  font-size: 0.84rem;
+  color: var(--aal-ink-secondary);
+  line-height: 1.5;
+  max-width: 420px;
 }
 
-/* ── Segmented progress bar — lavender fill, pill radius ─────────────────── */
-/* Matches DESIGN.md progress-bar pattern: pill-shaped, primary fill color    */
-.aal-progress-track {
-  width: 100%;
+/* ── Segmented Progress Track ─────────────────────────────────────────────── */
+.aal-progress-wrapper {
+  padding: 0 1.5rem 1rem;
+}
+
+.aal-track-segments {
   display: flex;
-  gap: 4px;
+  gap: 5px;
+  width: 100%;
 }
 
-.aal-segment {
+.aal-track-segment {
   flex: 1;
   height: 4px;
-  border-radius: 9999px;  /* pill radius */
-  background: var(--aal-border-soft);
-  transition: background 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: var(--aal-radius-pill);
+  background: rgba(255, 255, 255, 0.08);
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   position: relative;
   overflow: hidden;
 }
 
-.aal-segment.active {
-  background: var(--aal-primary);
+.aal-track-segment.done {
+  background: var(--aal-cyan);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
 }
 
-/* Shimmer on active segment — lavender shimmer */
-.aal-segment.active::after {
+.aal-track-segment.active {
+  background: rgba(6, 182, 212, 0.4);
+}
+
+.aal-track-segment.active::after {
   content: "";
   position: absolute;
   inset-block: 0;
-  left: -60%;
-  width: 60%;
+  left: -100%;
+  width: 100%;
   background: linear-gradient(
-    to right,
+    90deg,
     transparent,
-    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.8),
     transparent
   );
-  animation: aal-shimmer 1.4s ease-in-out infinite;
+  animation: aal-segment-scan 1.4s ease-in-out infinite;
 }
 
-@keyframes aal-shimmer {
-  to { left: 120%; }
+@keyframes aal-segment-scan {
+  to {
+    left: 100%;
+  }
 }
 
-/* ── Checklist — sits inside the lavender inner card ────────────────────── */
-.aal-checklist {
+/* ── Close Button ────────────────────────────────────────────────────────── */
+.aal-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--aal-ink-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.aal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--aal-ink);
+}
+
+.aal-close-btn:focus-visible {
+  outline: 2px solid var(--aal-cyan);
+  outline-offset: 2px;
+}
+
+.aal-close-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── 3C Diagnostic Baseline Triad ─────────────────────────────────────────── */
+.aal-3c-triad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 1.25rem 1rem;
+}
+
+.aal-3c-card {
+  background: var(--aal-surface-inner);
+  border: 1px solid var(--aal-border);
+  border-radius: var(--aal-radius-inner);
+  padding: 0.65rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s ease;
+}
+
+.aal-3c-card--focus {
+  border-color: rgba(6, 182, 212, 0.35);
+  background: rgba(6, 182, 212, 0.04);
+}
+
+.aal-3c-card-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+}
+
+.aal-3c-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.aal-3c-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--aal-ink-muted);
+  flex: 1;
+}
+
+.aal-3c-focus-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--aal-cyan-soft);
+  background: var(--aal-cyan-dim);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  padding: 1px 5px;
+  border-radius: var(--aal-radius-pill);
+}
+
+.aal-3c-score {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--aal-ink);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.aal-3c-score-max {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--aal-ink-muted);
+  margin-left: 1px;
+}
+
+.aal-3c-track {
+  height: 3px;
+  border-radius: var(--aal-radius-pill);
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.aal-3c-fill {
+  height: 100%;
+  border-radius: var(--aal-radius-pill);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.aal-3c-fill--clarity {
+  background: var(--aal-cyan);
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.5);
+}
+
+.aal-3c-fill--correctness {
+  background: var(--aal-green);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.aal-3c-fill--completeness {
+  background: var(--aal-amber);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
+}
+
+/* ── Stage Checklist ──────────────────────────────────────────────────────── */
+.aal-stages-list {
   list-style: none;
   padding: 0;
-  margin: 0;
-  width: 100%;
+  margin: 0 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--aal-surface-inner);
+  border: 1px solid var(--aal-border);
+  border-radius: var(--aal-radius-inner);
+  padding: 0.625rem;
+}
+
+.aal-stage-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.aal-stage-row.is-done {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+.aal-stage-row.is-active {
+  background: rgba(6, 182, 212, 0.06);
+  border-color: rgba(6, 182, 212, 0.22);
+}
+
+.aal-stage-row.is-pending {
+  opacity: 0.55;
+}
+
+/* Stage Indicators */
+.aal-stage-indicator {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.aal-stage-row.is-done .aal-stage-indicator {
+  border-color: var(--aal-green);
+  background: var(--aal-green-dim);
+  color: var(--aal-green-bright);
+}
+
+.aal-check-icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 3;
+}
+
+.aal-stage-row.is-active .aal-stage-indicator {
+  border-color: var(--aal-cyan);
+  background: var(--aal-cyan-dim);
+}
+
+.aal-active-spark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--aal-cyan-bright);
+  box-shadow: 0 0 6px var(--aal-cyan-bright);
+  animation: aal-dot-pulse 1.2s infinite;
+}
+
+.aal-pending-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--aal-ink-muted);
+}
+
+/* Stage Info */
+.aal-stage-info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-/* body style: 14px/400, ink */
-.aal-check-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 8px;  /* rounded.md */
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--aal-ink-muted);
-  transition:
-    background 0.35s ease,
-    color 0.35s ease;
+.aal-stage-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--aal-ink);
+  line-height: 1.3;
 }
 
-/* Done state: white card surface — creates mini card-in-card echo */
-.aal-check-item.done {
+.aal-stage-row.is-active .aal-stage-title {
+  color: var(--aal-cyan-soft);
+}
+
+.aal-stage-row.is-pending .aal-stage-title {
   color: var(--aal-ink-secondary);
-  background: var(--aal-surface);
-  font-weight: 500;
 }
 
-/* ── Check icon — circular pill, green when done ─────────────────────────── */
-.aal-check-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1.5px solid var(--aal-border-soft);
+.aal-stage-detail {
+  font-size: 0.74rem;
+  color: var(--aal-ink-muted);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aal-stage-row.is-active .aal-stage-detail {
+  color: var(--aal-ink-secondary);
+}
+
+/* Stage Badges */
+.aal-done-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--aal-green-bright);
+  padding: 2px 7px;
+  border-radius: var(--aal-radius-pill);
+  background: var(--aal-green-dim);
+  flex-shrink: 0;
+}
+
+.aal-generating-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--aal-cyan-soft);
+  padding: 2px 7px;
+  border-radius: var(--aal-radius-pill);
+  background: var(--aal-cyan-dim);
+  animation: aal-dot-pulse 1.6s infinite;
+  flex-shrink: 0;
+}
+
+/* ── Timeout / Warning Banner ─────────────────────────────────────────────── */
+.aal-timeout-banner {
+  margin: 0 1.25rem 1.25rem;
+  padding: 1rem;
+  background: rgba(251, 191, 36, 0.06);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: var(--aal-radius-inner);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.aal-timeout-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.aal-timeout-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--aal-amber);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.aal-timeout-text {
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.aal-timeout-text strong {
+  display: block;
+  color: var(--aal-amber);
+  margin-bottom: 2px;
+}
+
+.aal-timeout-text p {
+  margin: 0;
+  color: var(--aal-ink-secondary);
+}
+
+.aal-timeout-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 0;
-  transition:
-    border-color 0.3s ease,
-    background 0.3s ease,
-    font-size 0.15s ease;
-  color: transparent;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
-.aal-check-item.done .aal-check-icon {
-  background: var(--aal-green-dim);
-  border-color: var(--aal-green);
-  color: var(--aal-green);
-  font-size: 0.6rem;
+.aal-btn-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: var(--aal-radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--aal-ink);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* Pending dot inside un-done icon */
-.aal-check-icon::before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--aal-primary-muted);
-  transition: opacity 0.2s;
+.aal-btn-retry:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.aal-check-item.done .aal-check-icon::before {
-  display: none;
+.aal-btn-proceed {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: var(--aal-radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--aal-cyan);
+  border: 1px solid transparent;
+  color: var(--aal-ink-cyan);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* ── Footer ────────────────────────────────────────────────────────────────── */
-.aal-footer {
-  padding: 0.8rem 1.25rem;
-  border-top: 1px solid var(--aal-border-card);
+.aal-btn-proceed:hover {
+  background: var(--aal-cyan-bright);
+}
+
+.aal-btn-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── Studio Footer Strip ──────────────────────────────────────────────────── */
+.aal-card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--aal-surface);
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--aal-border);
+  background: rgba(18, 18, 22, 0.4);
+  font-size: 11px;
 }
 
-/* sidebar-section-label style: 11px/700, ink-secondary, uppercase */
-.aal-footer-note {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
+.aal-engine-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   color: var(--aal-ink-muted);
-  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.2px;
 }
 
-/* Step counter in primary lavender — tabular nums for clean count */
-.aal-step-counter {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  color: var(--aal-primary);
+.aal-footer-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--aal-cyan-soft);
+}
+
+.aal-step-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-variant-numeric: tabular-nums;
+}
+
+.aal-elapsed-tag {
+  color: var(--aal-ink-muted);
+  font-weight: 500;
+}
+
+.aal-step-tag {
+  color: var(--aal-cyan-soft);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.aal-shortcut-hint {
+  color: var(--aal-ink-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  opacity: 0.7;
+  padding-left: 4px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ── Accessibility & Reduced Motion ───────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .aal-radar-beam,
+  .aal-wave-bar,
+  .aal-track-segment.active::after,
+  .aal-pulse-dot,
+  .aal-generating-badge {
+    animation: none !important;
+  }
+
+  .aal-studio-card {
+    transition: none !important;
+  }
+}
+
+/* ── Responsive Mobile Optimization ───────────────────────────────────────── */
+@media (max-width: 540px) {
+  .aal-studio-container {
+    padding: 1rem 0.75rem;
+  }
+
+  .aal-3c-triad {
+    gap: 6px;
+    margin: 0 0.85rem 0.85rem;
+  }
+
+  .aal-3c-score {
+    font-size: 0.95rem;
+  }
+
+  .aal-shortcut-hint {
+    display: none;
+  }
+
+  .aal-top-header,
+  .aal-card-footer {
+    padding: 0.75rem 1rem;
+  }
+
+  .aal-core-section {
+    padding: 1.25rem 1rem 1rem;
+  }
+
+  .aal-progress-wrapper {
+    padding: 0 1rem 0.75rem;
+  }
+
+  .aal-stages-list {
+    margin: 0 0.85rem 1rem;
+    padding: 0.5rem;
+  }
+
+  .aal-stage-row {
+    padding: 0.5rem;
+    gap: 0.65rem;
+  }
+
+  .aal-stage-detail {
+    display: none; /* Keep mobile height compact */
+  }
+
+  .aal-main-title {
+    font-size: 1.05rem;
+  }
 }

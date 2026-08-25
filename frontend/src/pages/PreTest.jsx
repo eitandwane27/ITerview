@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
+import { AnimatePresence } from "framer-motion";
 import AiAnalysisLoader from "../components/AiAnalysisLoader";
 import "./PreTest.css";
 
@@ -54,43 +55,66 @@ export default function PreTest() {
   const audioQueueRef = useRef([]); // pending audio items (base64 or stream objects)
   const isPlayingRef = useRef(false); // true while any audio clip is playing
   const currentAudioRef = useRef(null); // active playing HTML5 Audio element
+  const currentObjectUrlRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // ── Playback Functions ─────────────────────────────────────────────────────
 
   const playBase64 = useCallback((base64Data, onEnded, onError) => {
+    if (!isMountedRef.current) return;
     try {
       fetch(`data:audio/mpeg;base64,${base64Data}`)
         .then((r) => r.blob())
         .then((blob) => {
+          if (!isMountedRef.current) return;
+
+          if (currentObjectUrlRef.current) {
+            URL.revokeObjectURL(currentObjectUrlRef.current);
+            currentObjectUrlRef.current = null;
+          }
+
           const url = URL.createObjectURL(blob);
+          currentObjectUrlRef.current = url;
           const audio = new Audio(url);
           currentAudioRef.current = audio;
 
-          audio.onended = () => {
-            if (currentAudioRef.current === audio)
+          const cleanupThisAudio = () => {
+            if (currentAudioRef.current === audio) {
               currentAudioRef.current = null;
-            URL.revokeObjectURL(url);
-            onEnded();
+            }
+            if (currentObjectUrlRef.current === url) {
+              URL.revokeObjectURL(url);
+              currentObjectUrlRef.current = null;
+            }
+          };
+
+          audio.onended = () => {
+            cleanupThisAudio();
+            if (isMountedRef.current) onEnded();
           };
 
           audio.onerror = () => {
-            if (currentAudioRef.current === audio)
-              currentAudioRef.current = null;
-            URL.revokeObjectURL(url);
-            onError(new Error("Audio playback failed."));
+            cleanupThisAudio();
+            if (isMountedRef.current) onError(new Error("Audio playback failed."));
           };
 
           audio.play().catch((err) => {
-            if (currentAudioRef.current === audio)
-              currentAudioRef.current = null;
-            onError(err);
+            cleanupThisAudio();
+            if (isMountedRef.current) onError(err);
           });
         })
         .catch((err) => {
-          onError(err);
+          if (isMountedRef.current) onError(err);
         });
     } catch (err) {
-      onError(err);
+      if (isMountedRef.current) onError(err);
     }
   }, []);
 
@@ -153,6 +177,10 @@ export default function PreTest() {
       switch (msg.type) {
         case "status":
           setStatus(msg.message);
+          break;
+
+        case "session_resumed":
+          setCurrentQuestion(msg.currentQuestionIndex + 1);
           break;
 
         case "tts_audio":
@@ -222,6 +250,26 @@ export default function PreTest() {
   };
 
   const cleanupAudio = () => {
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+        currentAudioRef.current.src = "";
+      } catch (e) {}
+      currentAudioRef.current = null;
+    }
+
+    if (currentObjectUrlRef.current) {
+      try {
+        URL.revokeObjectURL(currentObjectUrlRef.current);
+      } catch (e) {}
+      currentObjectUrlRef.current = null;
+    }
+
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    setIsPlayingAudio(false);
+
     cancelAnimationFrame(animFrameRef.current);
     processorRef.current?.disconnect();
     processorRef.current = null;
@@ -318,7 +366,11 @@ export default function PreTest() {
     setStatus("Review your answer before confirming.");
 
     // Phase 2: let the user review the transcript
-    setConfirmedTranscript(finalTranscriptRef.current);
+    const combined = (
+      finalTranscriptRef.current +
+      (partialTranscript ? (finalTranscriptRef.current ? " " : "") + partialTranscript : "")
+    ).trim();
+    setConfirmedTranscript(combined);
     setAwaitingConfirmation(true);
   };
 
@@ -379,9 +431,19 @@ export default function PreTest() {
     startRecording();
   };
 
-  // ── Derived UI ────────────────────────────────────────────────────────────
+  // ── Derived UI ──────────────────────────────────────────────────────
   return (
     <div className="pt-root">
+      {/* AI Analysis Loader — overlaid as a true modal over the arena */}
+      <AnimatePresence>
+        {isAnalyzing && (
+          <AiAnalysisLoader
+            key="pre-analysis-loader"
+            onComplete={() => navigate('/interview?set=1', { state: { voice } })}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Top Bar */}
       <header className="pt-topbar">
         <div className="pt-topbar-brand">ITerview</div>
@@ -399,9 +461,6 @@ export default function PreTest() {
         ></div>
       </div>
 
-      {isAnalyzing ? (
-        <AiAnalysisLoader onComplete={() => navigate('/interview')} />
-      ) : (
       <main className="pt-main">
         {/* Left Column */}
         <div
@@ -607,7 +666,6 @@ export default function PreTest() {
           </div>
         </aside>
       </main>
-      )}
     </div>
   );
 }

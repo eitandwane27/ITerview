@@ -1,413 +1,926 @@
-/* src/components/SetBriefingOverlay.css */
-/* ─────────────────────────────────────────────────────────────────────────── */
-/* Set 1 Mission Briefing — Overlay variant                                    */
-/* Aesthetic: Soft Productivity SaaS — ITerview design system                  */
-/* Tone: calm confidence · lavender accent · card-in-card depth                */
-/* ─────────────────────────────────────────────────────────────────────────── */
+/* frontend/src/components/SetBriefingOverlay.css */
+/* ═══════════════════════════════════════════════════════════════
+   Set 1 Session Briefing — Spacious Studio Layout & Precision Hierarchy
+   ═══════════════════════════════════════════════════════════════ */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400..800&display=swap");
 
-/* ── Design tokens — mirrors DESIGN.md ───────────────────────────────────── */
-.briefing-overlay-wrapper {
-  /* Primary accent */
-  --bp-primary: #7c6fcd;
-  --bp-primary-light: #eae8f7;
-  --bp-primary-hover: #6b5fbc;
-  --bp-primary-muted: #b8b0e8;
+.sb-overlay {
+  /* Surfaces — deep obsidian studio canvas */
+  --sb-bg: #09090B;
+  --sb-card: rgba(18, 18, 23, 0.96);
+  --sb-card-solid: #16161C;
+  --sb-raised: #1F1F28;
+  --sb-inset: rgba(255, 255, 255, 0.035);
 
-  /* Surfaces */
-  --bp-canvas: #f4f4f6;
-  --bp-surface: #ffffff;
-  --bp-surface-inner: #f0eff8;
-  --bp-surface-input: #f7f7f9;
+  /* Hairlines & Borders */
+  --sb-hairline: rgba(255, 255, 255, 0.08);
+  --sb-hairline-strong: rgba(255, 255, 255, 0.16);
 
-  /* Text */
-  --bp-ink: #1a1a2e;
-  --bp-ink-secondary: #6b6b80;
-  --bp-ink-muted: #9b9bad;
-  --bp-ink-on-primary: #ffffff;
+  /* Themeable surfaces — swapped by the LIGHT COMPANION block below */
+  --sb-backdrop: rgba(9, 9, 11, 0.84);
+  --sb-card-tint: rgba(255, 255, 255, 0.025);
+  --sb-ghost-bg: rgba(255, 255, 255, 0.03);
+  --sb-ghost-bg-hover: rgba(255, 255, 255, 0.08);
+  --sb-ghost-border: rgba(255, 255, 255, 0.12);
+  --sb-ghost-border-hover: rgba(255, 255, 255, 0.2);
+  --sb-track: rgba(255, 255, 255, 0.06);
+  --sb-kbd-bg: rgba(255, 255, 255, 0.05);
+  --sb-morph-bg: rgba(18, 18, 23, 0.95);
+  --sb-morph-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --sb-grid-line: rgba(6, 182, 212, 0.035);
+  --sb-bloom: rgba(6, 182, 212, 0.18);
 
-  /* Borders */
-  --bp-border-soft: #e8e8ee;
-  --bp-border-card: #efefef;
+  /* Typography / Inks */
+  --sb-font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --sb-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sb-ink: #FFFFFF;
+  --sb-ink-dim: #E2E4EB;
+  --sb-ink-2: #9CA3AF;
+  --sb-ink-3: #6B7280;
+
+  /* Signal Cyan — the primary interactive moving accent */
+  --sb-cyan: #06B6D4;
+  --sb-cyan-bright: #67E8F9;
+  --sb-cyan-deep: #0E7490;
+  --sb-cyan-ink: #081318;
+  --sb-cyan-tint: rgba(6, 182, 212, 0.12);
+  --sb-cyan-bd: rgba(6, 182, 212, 0.32);
+
+  /* 3C Triad Accents */
+  --sb-sky: #5FB8FF;
+  --sb-sky-tint: rgba(95, 184, 255, 0.12);
+  --sb-sky-bd: rgba(95, 184, 255, 0.3);
+
+  --sb-mint: #4FD6A3;
+  --sb-mint-text: #8FE5BE;
+  --sb-mint-tint: rgba(79, 214, 163, 0.12);
+  --sb-mint-bd: rgba(79, 214, 163, 0.3);
+
+  --sb-lilac: #B28CFF;
+  --sb-lilac-text: #CBB0FF;
+  --sb-lilac-tint: rgba(178, 140, 255, 0.12);
+  --sb-lilac-bd: rgba(178, 140, 255, 0.3);
+
+  --sb-sun: #FFC94D;
+  --sb-sun-tint: rgba(255, 201, 77, 0.12);
+  --sb-sun-bd: rgba(255, 201, 77, 0.3);
+
+  --sb-rose: #FF7A8C;
+  --sb-rose-text: #FFA5B2;
+  --sb-rose-tint: rgba(255, 122, 140, 0.14);
+  --sb-rose-bd: rgba(255, 122, 140, 0.35);
 
   /* Shadows */
-  --bp-shadow-card: rgba(0, 0, 0, 0.06);
-
-  /* Radii */
-  --bp-radius-card: 16px;
-  --bp-radius-lg: 12px;
-  --bp-radius-pill: 9999px;
-
-  /* Font */
-  --bp-font: "Inter", system-ui, sans-serif;
+  --sb-shadow-modal: 0 32px 64px -16px rgba(0, 0, 0, 0.9),
+                     0 0 0 1px rgba(255, 255, 255, 0.08),
+                     inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --sb-shadow-btn: 0 8px 24px -4px rgba(6, 182, 212, 0.45);
 }
 
-/* ── Overlay scaffold ────────────────────────────────────────────────────── */
-.briefing-overlay-wrapper {
+/* ── Fullscreen Backdrop ─────────────────────────────────────────────────── */
+.sb-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 9999;
+  overflow-y: auto;
+  overflow-x: hidden;
 
-  /* Frosted pure white backdrop with high blur */
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  font-family: var(--sb-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 
-  font-family: var(--bp-font);
+  background: var(--sb-backdrop);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+
   display: flex;
-  align-items: center;
   justify-content: center;
-  padding: 2rem 1.25rem;
+  align-items: center;
+  padding: 1.5rem 1rem;
   box-sizing: border-box;
+  outline: none;
 }
 
-/* ── Outer card — white, lifts off the canvas ────────────────────────────── */
-.briefing-card {
+/* ── Modal Card Dialog ───────────────────────────────────────────────────── */
+.sb-modal {
   position: relative;
-  z-index: 1;
+  margin: auto; /* Natural vertical centering + graceful overflow scroll */
   width: 100%;
-  max-width: 520px;
-  background: var(--bp-surface);
-  border: 1px solid var(--bp-border-card);
-  border-radius: var(--bp-radius-card);
-  box-shadow:
-    0 2px 8px var(--bp-shadow-card),
-    0 0 0 1px rgba(255, 255, 255, 0.9) inset;
-  overflow: hidden;
+  max-width: 610px;
+  background: var(--sb-card);
+  border: 1px solid var(--sb-hairline);
+  border-radius: 20px;
+  box-shadow: var(--sb-shadow-modal);
   display: flex;
   flex-direction: column;
-  gap: 0;
+  padding: 2rem 2.25rem 1.85rem;
+  gap: 1.45rem;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-/* ── Icon-wrap row — light canvas tint header ────────────────────────────── */
-.briefing-icon-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--bp-border-card);
-  background: var(--bp-canvas);
-}
-
-/* Robot icon badge — lavender pill consistent with avatar-chip system */
-.briefing-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--bp-radius-pill);
-  background: var(--bp-primary-light);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.05rem;
-  flex-shrink: 0;
-  position: relative;
-}
-
-/* Pulsing outer ring for the AI Bot icon */
-.briefing-icon::after {
+/* Blueprint subtle grid + top radial bloom */
+.sb-modal::before {
   content: "";
   position: absolute;
-  inset: -2px;
-  border-radius: var(--bp-radius-pill);
-  border: 2px solid var(--bp-primary-muted);
-  opacity: 0;
-  animation: icon-pulse 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--sb-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--sb-grid-line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(85% 55% at 50% 0%, #000 0%, transparent 80%);
+  mask-image: radial-gradient(85% 55% at 50% 0%, #000 0%, transparent 80%);
+  z-index: 0;
 }
 
-@keyframes icon-pulse {
-  0% {
-    transform: scale(0.95);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1.3);
-    opacity: 0;
-  }
+.sb-modal-bloom {
+  position: absolute;
+  top: -90px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  height: 180px;
+  background: radial-gradient(ellipse at center, var(--sb-bloom), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
 }
 
-.briefing-icon-svg {
-  color: var(--bp-primary);
+.sb-header,
+.sb-breakdown-section,
+.sb-blueprint-strip,
+.sb-footer {
   position: relative;
-  z-index: 2;
+  z-index: 1;
 }
 
-/* Eyebrow — sidebar-section-label style: 11px / uppercase / tracked */
-.briefing-eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--bp-ink-secondary);
-}
-
-/* Blinking live dot */
-.briefing-eyebrow::after {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--bp-primary);
-  margin-left: 0.55rem;
-  vertical-align: middle;
-  animation: bp-blink 1.6s ease-in-out infinite;
-}
-
-@keyframes bp-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.2;
-  }
-}
-
-/* ── Inner lavender card — card-in-card signature ────────────────────────── */
-.briefing-body {
-  background: var(--bp-surface-inner); /* lavender inner card */
-  border-radius: var(--bp-radius-lg);
-  margin: 1rem;
-  padding: 1.5rem;
+/* ── 1. Header Section ───────────────────────────────────────────────────── */
+.sb-header {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 1.25rem;
 }
 
-/* ── Coach message (typewriter) ──────────────────────────────────────────── */
-.briefing-message {
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.65;
-  color: var(--bp-ink);
-  cursor: pointer;
-  user-select: none;
+.sb-header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-header-side {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.sb-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4.5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3.5px 9px;
+  border-radius: 9999px;
+  line-height: 1.2;
+}
+
+.sb-tag--cyan {
+  color: var(--sb-cyan-bright);
+  background: var(--sb-cyan-tint);
+  border: 1px solid var(--sb-cyan-bd);
+}
+
+.sb-tag--sun {
+  color: var(--sb-sun);
+  background: var(--sb-sun-tint);
+  border: 1px solid var(--sb-sun-bd);
+}
+
+.sb-tag-icon {
+  flex-shrink: 0;
+}
+
+.sb-title {
+  font-family: var(--sb-font-sans);
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--sb-ink);
   margin: 0;
-  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
-.briefing-message:hover {
-  color: var(--bp-ink);
-  opacity: 0.88;
+.sb-role-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 13px;
+  color: var(--sb-ink-2);
+  flex-wrap: wrap;
+  line-height: 1.4;
 }
 
-.briefing-message:focus-visible {
-  outline: 2px solid var(--bp-primary);
-  outline-offset: 4px;
-  border-radius: 4px;
+.sb-role-scope {
+  font-family: var(--sb-font-mono);
+  font-size: 11.5px;
+  color: var(--sb-ink-dim);
+  font-weight: 500;
 }
 
-/* Blinking cursor — lavender to match accent */
-.cursor-blink {
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  background: var(--bp-primary);
-  vertical-align: text-bottom;
-  margin-left: 2px;
-  border-radius: 1px;
-  animation: cursor-pulse 1s step-end infinite;
+.sb-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  border: 1px solid var(--sb-hairline);
+  background: var(--sb-ghost-bg);
+  color: var(--sb-ink-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  flex-shrink: 0;
+  margin-top: -2px;
 }
 
-@keyframes cursor-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+.sb-close-btn:hover {
+  background: var(--sb-ghost-bg-hover);
+  color: var(--sb-ink);
+  border-color: var(--sb-ghost-border-hover);
 }
 
-/* Loading shimmer — lavender-tinted */
-.briefing-message-loading {
+.sb-close-btn:focus-visible {
+  outline: 2px solid var(--sb-cyan);
+  outline-offset: 2px;
+}
+
+/* ── 2. 3C Diagnostic Baseline (Airy Triad Grid) ─────────────────────────── */
+.sb-breakdown-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sb-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.sb-section-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sb-section-icon {
+  color: var(--sb-cyan);
+}
+
+.sb-section-title {
+  font-family: var(--sb-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sb-ink-dim);
+}
+
+.sb-section-sub {
+  font-size: 11px;
+  color: var(--sb-ink-3);
+  font-weight: 600;
+}
+
+.sb-triad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.sb-triad-card {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  padding: 1rem 1.05rem;
+  background: var(--sb-card-tint);
+  border: 1px solid var(--sb-hairline);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.briefing-shimmer-line {
-  height: 1rem;
-  border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--bp-border-soft) 0%,
-    var(--bp-primary-light) 50%,
-    var(--bp-border-soft) 100%
-  );
-  background-size: 300% 100%;
-  animation: shimmer 1.8s ease-in-out infinite;
+.sb-triad-card--active {
+  border-color: rgba(255, 122, 140, 0.4);
+  background: rgba(255, 122, 140, 0.035);
+  box-shadow: 0 4px 20px -4px rgba(255, 122, 140, 0.15);
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
-  }
+.sb-triad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
 }
 
-/* ── Focus area chips ────────────────────────────────────────────────────── */
-/* chips-label: sidebar-section-label style */
-.briefing-chips-label {
-  font-size: 11px;
+.sb-triad-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-triad-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.sb-triad-dot--sky   { background: var(--sb-sky); }
+.sb-triad-dot--mint  { background: var(--sb-mint); }
+.sb-triad-dot--lilac { background: var(--sb-lilac); }
+
+.sb-triad-label {
+  font-size: 12.5px;
   font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--bp-ink-secondary);
-  margin-bottom: 5px;
+  color: var(--sb-ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.briefing-chips {
+.sb-mini-tag {
+  font-family: var(--sb-font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.sb-mini-tag--rose {
+  color: var(--sb-rose-text);
+  background: var(--sb-rose-tint);
+  border: 1px solid var(--sb-rose-bd);
+}
+
+.sb-triad-val-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 0.1rem;
 }
 
-/* Filter-chip-active style: lavender bg, primary text, primary-muted border */
-.briefing-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 5px 14px;
-  border-radius: var(--bp-radius-pill);
-  background: var(--bp-primary-light);
-  border: 1px solid var(--bp-primary-muted);
-  font-family: var(--bp-font);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--bp-primary);
-  letter-spacing: 0;
-  transition:
-    background 0.18s ease,
-    border-color 0.18s ease;
-}
-
-.briefing-chip:hover {
-  background: var(--bp-primary-muted);
-  border-color: var(--bp-primary);
-}
-
-.briefing-chip-icon {
-  font-size: 0.85rem;
+.sb-triad-val {
+  font-family: var(--sb-font-sans);
+  font-size: 21px;
+  font-weight: 800;
   line-height: 1;
+  color: var(--sb-ink);
+}
+
+.sb-triad-max {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--sb-ink-3);
+}
+
+.sb-mini-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--sb-track);
+  overflow: hidden;
+  margin-top: 0.15rem;
+}
+
+.sb-mini-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sb-mini-fill--sky   { background: var(--sb-sky); }
+.sb-mini-fill--mint  { background: var(--sb-mint); }
+.sb-mini-fill--lilac { background: var(--sb-lilac); }
+
+/* ── 3. Session Blueprint Strip (Integrated Features) ────────────────────── */
+.sb-blueprint-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.15rem;
+  border-radius: 12px;
+  background: var(--sb-card-tint);
+  border: 1px solid var(--sb-hairline);
+  gap: 0.75rem;
+}
+
+.sb-blueprint-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-blueprint-icon-halo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-/* Skeleton chips */
-.briefing-chip-skeleton {
-  width: 120px;
-  height: 30px;
-  border-radius: var(--bp-radius-pill);
-  background: linear-gradient(
-    90deg,
-    var(--bp-border-soft) 0%,
-    var(--bp-primary-light) 50%,
-    var(--bp-border-soft) 100%
-  );
-  background-size: 300% 100%;
-  animation: shimmer 1.8s ease-in-out infinite;
-  border: 1px solid var(--bp-border-soft);
+.sb-blueprint-icon-halo--cyan {
+  background: var(--sb-cyan-tint);
+  color: var(--sb-cyan-bright);
+  border: 1px solid var(--sb-cyan-bd);
 }
 
-/* ── Divider ─────────────────────────────────────────────────────────────── */
-.briefing-divider {
-  height: 1px;
-  background: var(--bp-border-soft);
-  border: none;
-  margin: 0;
+.sb-blueprint-icon-halo--lilac {
+  background: var(--sb-lilac-tint);
+  color: var(--sb-lilac-text);
+  border: 1px solid var(--sb-lilac-bd);
 }
 
-/* ── Sub-message ─────────────────────────────────────────────────────────── */
-.briefing-sub {
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.6;
-  color: var(--bp-ink-secondary);
-  margin: 0;
+.sb-blueprint-icon-halo--mint {
+  background: var(--sb-mint-tint);
+  color: var(--sb-mint-text);
+  border: 1px solid var(--sb-mint-bd);
 }
 
-/* ── CTA button — full-width lavender, no gradient, no shadow ────────────── */
-.briefing-cta {
+.sb-blueprint-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sb-blueprint-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sb-ink);
+  line-height: 1.3;
+}
+
+.sb-blueprint-desc {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--sb-ink-3);
+  line-height: 1.3;
+}
+
+.sb-blueprint-divider {
+  width: 1px;
+  height: 26px;
+  background: var(--sb-hairline);
+  flex-shrink: 0;
+}
+
+/* ── 4. Action Footer ────────────────────────────────────────────────────── */
+.sb-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.sb-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sb-btn-secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 14px 24px;
-  border-radius: var(--bp-radius-lg);
-  border: none;
-  cursor: pointer;
-  font-family: var(--bp-font);
+  height: 46px;
+  padding: 0 1.35rem;
+  border-radius: 9999px;
+  border: 1px solid var(--sb-ghost-border);
+  background: var(--sb-ghost-bg);
+  color: var(--sb-ink-2);
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0;
-  color: var(--bp-ink-on-primary);
-  background: rgba(124, 111, 205, 0.85); /* primary at 0.85 — per DESIGN.md */
-  transition:
-    background 0.2s ease,
-    transform 0.15s ease;
-  position: relative;
-  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  flex-shrink: 0;
 }
 
-/* Subtle shimmer sweep on hover */
-.briefing-cta::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 35%,
-    rgba(255, 255, 255, 0.12) 50%,
-    transparent 65%
-  );
-  transform: translateX(-100%);
-  transition: transform 0.45s ease;
+.sb-btn-secondary:hover {
+  background: var(--sb-ghost-bg-hover);
+  border-color: var(--sb-ghost-border-hover);
+  color: var(--sb-ink);
 }
 
-.briefing-cta:hover::after {
-  transform: translateX(100%);
+.sb-btn-secondary:active {
+  transform: scale(0.98);
 }
 
-.briefing-cta:hover {
-  background: var(--bp-primary-hover);
+.sb-btn-secondary:focus-visible {
+  outline: 2px solid var(--sb-cyan);
+  outline-offset: 2px;
 }
 
-.briefing-cta:active {
-  transform: scale(0.975);
+.sb-btn-primary {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  height: 46px;
+  padding: 0 1.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, var(--sb-cyan) 0%, var(--sb-cyan-bright) 100%);
+  color: var(--sb-cyan-ink);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.16s ease, filter 0.16s ease;
+  box-shadow: var(--sb-shadow-btn);
 }
 
-.briefing-cta-arrow {
-  font-size: 1rem;
-  transition: transform 0.2s ease;
+.sb-btn-primary:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
 }
 
-.briefing-cta:hover .briefing-cta-arrow {
+.sb-btn-primary:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.sb-btn-primary:focus-visible {
+  outline: 2px solid var(--sb-cyan-bright);
+  outline-offset: 2px;
+}
+
+.sb-btn-arrow {
+  transition: transform 0.16s ease;
+}
+
+.sb-btn-primary:hover .sb-btn-arrow {
   transform: translateX(3px);
 }
 
+.sb-shortcut-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 11.5px;
+  color: var(--sb-ink-3);
+  font-weight: 500;
+}
 
+.sb-shortcut-sep {
+  opacity: 0.4;
+}
 
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 480px) {
-  .briefing-overlay-wrapper {
-    padding: 1rem;
-    align-items: flex-start;
-    padding-top: 2rem;
-    overflow-y: auto;
+.sb-kbd {
+  display: inline-block;
+  padding: 1.5px 5.5px;
+  font-size: 10px;
+  font-family: var(--sb-font-mono);
+  font-weight: 600;
+  color: var(--sb-ink-2);
+  background: var(--sb-kbd-bg);
+  border: 1px solid var(--sb-hairline);
+  border-radius: 4px;
+}
+
+/* ── Pattern B: Morphing Loading / Telemetry State ───────────────────────── */
+.sb-modal-scanner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--sb-cyan-bright) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: sb-scanner-sweep 2s linear infinite;
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.4);
+}
+
+@keyframes sb-scanner-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.sb-tag--synthesis {
+  color: var(--sb-cyan-bright);
+  background: rgba(6, 182, 212, 0.16);
+  border: 1px solid rgba(103, 232, 249, 0.4);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.25);
+}
+
+.sb-spin-slow {
+  animation: sb-spin 4s linear infinite;
+}
+
+@keyframes sb-spin {
+  100% { transform: rotate(360deg); }
+}
+
+.sb-triad-card--calibrating {
+  border-color: rgba(6, 182, 212, 0.45) !important;
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.15);
+  animation: sb-card-breathe 2s ease-in-out infinite alternate;
+}
+
+@keyframes sb-card-breathe {
+  0% { background: rgba(6, 182, 212, 0.04); }
+  100% { background: rgba(6, 182, 212, 0.12); }
+}
+
+/* ── Morphing Button Progress Capsule ────────────────────────────────────── */
+.sb-morphing-btn {
+  flex: 1;
+  position: relative;
+  height: 46px;
+  border-radius: 9999px;
+  background: var(--sb-morph-bg);
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  box-shadow: var(--sb-morph-shadow);
+}
+
+.sb-morphing-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.3) 0%, rgba(103, 232, 249, 0.5) 100%);
+  border-right: 2px solid var(--sb-cyan-bright);
+  box-shadow: 2px 0 12px rgba(103, 232, 249, 0.6);
+  transition: width 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1;
+}
+
+.sb-morphing-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.25rem;
+  gap: 0.75rem;
+}
+
+.sb-morphing-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.sb-mini-pulse-ring {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sb-cyan-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  animation: sb-ring-pulse 1.6s ease-out infinite;
+}
+
+.sb-mini-pulse-core {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sb-cyan-bright);
+}
+
+@keyframes sb-ring-pulse {
+  0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(103, 232, 249, 0.6); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(103, 232, 249, 0); }
+  100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(103, 232, 249, 0); }
+}
+
+.sb-morphing-text {
+  font-family: var(--sb-font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sb-ink);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-morphing-pct {
+  font-family: var(--sb-font-mono);
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--sb-cyan-bright);
+  flex-shrink: 0;
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   LIGHT COMPANION — same studio DNA on a daylight canvas.
+   Mirrors Dashboard.css `.db-root[data-theme="light"]` values 1:1 so
+   the briefing overlay reads as the same product in either theme.
+   The overlay sets its own data-theme attribute (it also renders in a
+   standalone preview route with no themed ancestor).
+   ═════════════════════════════════════════════════════════════════ */
+.sb-overlay[data-theme="light"] {
+  --sb-bg: #F7F8FB;
+  --sb-card: rgba(255, 255, 255, 0.97);
+  --sb-card-solid: #FFFFFF;
+  --sb-raised: #FFFFFF;
+  --sb-inset: rgba(15, 16, 28, 0.045);
+
+  --sb-backdrop: rgba(247, 248, 251, 0.78);
+  --sb-card-tint: rgba(15, 16, 28, 0.03);
+  --sb-ghost-bg: rgba(15, 16, 28, 0.04);
+  --sb-ghost-bg-hover: rgba(15, 16, 28, 0.08);
+  --sb-ghost-border: rgba(15, 16, 28, 0.12);
+  --sb-ghost-border-hover: rgba(15, 16, 28, 0.22);
+  --sb-track: rgba(15, 16, 28, 0.08);
+  --sb-kbd-bg: rgba(15, 16, 28, 0.05);
+  --sb-morph-bg: #FFFFFF;
+  --sb-morph-shadow: 0 4px 20px rgba(19, 19, 32, 0.1), inset 0 1px 0 rgba(19, 19, 32, 0.04);
+
+  --sb-hairline: #E6E8EF;
+  --sb-hairline-strong: #D7DAE4;
+
+  --sb-ink: #131320;
+  --sb-ink-dim: #33364A;
+  --sb-ink-2: #555A6E;
+  --sb-ink-3: #6E7286;
+
+  /* Cyan retuned for light — "bright" becomes a deep AA accent (same recipe
+     as Dashboard), and ink-on-cyan flips to white for clean primary pills. */
+  --sb-cyan: #0E7490;
+  --sb-cyan-bright: #0C6C86;
+  --sb-cyan-deep: #0A5E75;
+  --sb-cyan-ink: #FFFFFF;
+  --sb-cyan-tint: rgba(14, 116, 144, 0.1);
+  --sb-cyan-bd: rgba(14, 116, 144, 0.32);
+
+  /* 3C Triad accents darkened for white surfaces */
+  --sb-sky: #2E7FC2;
+  --sb-sky-tint: rgba(46, 127, 194, 0.1);
+  --sb-sky-bd: rgba(46, 127, 194, 0.3);
+
+  --sb-mint: #0E8A5C;
+  --sb-mint-text: #0B7A50;
+  --sb-mint-tint: rgba(14, 138, 92, 0.1);
+  --sb-mint-bd: rgba(14, 138, 92, 0.32);
+
+  --sb-lilac: #7A51D1;
+  --sb-lilac-text: #6B43C4;
+  --sb-lilac-tint: rgba(122, 81, 209, 0.1);
+  --sb-lilac-bd: rgba(122, 81, 209, 0.32);
+
+  --sb-sun: #9A6500;
+  --sb-sun-tint: rgba(154, 101, 0, 0.1);
+  --sb-sun-bd: rgba(154, 101, 0, 0.3);
+
+  --sb-rose: #D4354B;
+  --sb-rose-text: #C22E43;
+  --sb-rose-tint: rgba(212, 53, 75, 0.1);
+  --sb-rose-bd: rgba(212, 53, 75, 0.32);
+
+  --sb-grid-line: rgba(14, 116, 144, 0.08);
+  --sb-bloom: rgba(14, 116, 144, 0.1);
+
+  --sb-shadow-modal: 0 32px 64px -16px rgba(19, 19, 32, 0.25),
+                     0 0 0 1px rgba(19, 19, 32, 0.06),
+                     inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --sb-shadow-btn: 0 8px 20px -12px rgba(12, 108, 134, 0.35);
+}
+
+/* Light-theme targeted overrides for rules whose dark values are glow/
+   state-specific rather than token-driven */
+.sb-overlay[data-theme="light"] .sb-tag--synthesis {
+  background: rgba(14, 116, 144, 0.12);
+  border-color: rgba(14, 116, 144, 0.4);
+  box-shadow: 0 0 12px rgba(14, 116, 144, 0.15);
+}
+
+.sb-overlay[data-theme="light"] .sb-triad-card--active {
+  border-color: rgba(212, 53, 75, 0.4);
+  background: rgba(212, 53, 75, 0.04);
+  box-shadow: 0 4px 20px -4px rgba(212, 53, 75, 0.12);
+}
+
+.sb-overlay[data-theme="light"] .sb-triad-card--calibrating {
+  border-color: rgba(14, 116, 144, 0.45) !important;
+  box-shadow: 0 0 16px rgba(14, 116, 144, 0.15);
+}
+
+.sb-overlay[data-theme="light"] .sb-modal-scanner {
+  box-shadow: 0 0 10px rgba(14, 116, 144, 0.5), 0 0 20px rgba(14, 116, 144, 0.2);
+}
+
+.sb-overlay[data-theme="light"] .sb-morphing-fill {
+  background: linear-gradient(90deg, rgba(14, 116, 144, 0.25) 0%, rgba(12, 108, 134, 0.45) 100%);
+  box-shadow: 2px 0 12px rgba(12, 108, 134, 0.35);
+}
+
+.sb-overlay[data-theme="light"] .sb-btn-primary {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Mobile Adaptations ──────────────────────────────────────────────────── */
+@media (max-width: 580px) {
+  .sb-overlay {
+    padding: 1rem 0.75rem;
   }
 
-  .briefing-body {
-    margin: 0.75rem;
-    padding: 1.25rem;
+  .sb-modal {
+    padding: 1.45rem 1.25rem 1.25rem;
+    gap: 1.15rem;
+    border-radius: 16px;
   }
 
-  .briefing-message {
-    font-size: 13px;
+  .sb-title {
+    font-size: 20px;
+  }
+
+  .sb-header {
+    gap: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .sb-header-side {
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+
+  .sb-role-strip {
+    font-size: 12px;
+  }
+
+  .sb-triad-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+  }
+
+  .sb-triad-card {
+    padding: 0.75rem 0.6rem;
+    gap: 0.35rem;
+    border-radius: 10px;
+  }
+
+  .sb-triad-label {
+    font-size: 11px;
+  }
+
+  .sb-mini-tag {
+    font-size: 8.5px;
+    padding: 1px 4px;
+  }
+
+  .sb-triad-val {
+    font-size: 17px;
+  }
+
+  .sb-triad-max {
+    font-size: 10px;
+  }
+
+  .sb-blueprint-strip {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+    padding: 0.75rem 0.9rem;
+  }
+
+  .sb-blueprint-divider {
+    display: none;
+  }
+
+  .sb-actions {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .sb-btn-secondary,
+  .sb-btn-primary {
+    width: 100%;
+    height: 44px;
   }
 }

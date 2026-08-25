@@ -26,12 +26,12 @@ function handleDevSttSocket(ws) {
   function openSttSession() {
     sttSession = createDeepgramLiveSession(
       // onTranscript
-      (transcript, isFinal, latencyMs) => {
+      (transcript, isFinal) => {
         if (transcript) {
-          send({ type: "transcript", text: transcript, isFinal, latencyMs });
+          send({ type: "transcript", text: transcript, isFinal });
         } else if (isFinal) {
           // Send empty final utterance markers
-          send({ type: "transcript", text: "", isFinal: true, latencyMs });
+          send({ type: "transcript", text: "", isFinal: true });
         }
       },
       // onError
@@ -39,6 +39,10 @@ function handleDevSttSocket(ws) {
         send({ type: "error", message: `STT error: ${err.message}` });
         sttSession = null;
         isRecording = false;
+      },
+      // onEvent (raw Deepgram payload)
+      (event) => {
+        send({ type: "flux_event", event });
       }
     );
     isRecording = true;

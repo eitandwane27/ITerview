@@ -21,6 +21,9 @@ dist-ssr
 .ai-skills/
 guide/
 scripts/
+.agents/
+DESIGN.md
+PRODUCT.md
 
 # Editor directories and files
 .vscode/*
@@ -32,3 +35,8 @@ scripts/
 *.njsproj
 *.sln
 *.sw?
+
+# Tool state
+.codex/
+.impeccable/
+skills-lock.json

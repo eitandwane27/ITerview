@@ -12,8 +12,9 @@ import MainSets from "./pages/MainSets";
 import Results from "./pages/Results";
 import AiAnalysisLoader from "./components/AiAnalysisLoader";
 import Set2TransitionOverlay from "./components/Set2TransitionOverlay";
-import SttTestBench from "./components/SttTestBench";
-import "./components/AiAnalysisLoader.css";
+import SetBriefingOverlay from "./components/SetBriefingOverlay";
+import FluxDebugger from "./components/FluxDebugger";
+import LandingPage from "./pages/LandingPage";
 import "./App.css";
 
 function App() {
@@ -21,7 +22,8 @@ function App() {
     <BrowserRouter>
       <div className="app-layout">
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/landing" replace />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
@@ -53,6 +55,30 @@ function App() {
           <Route path="/dev/interview" element={<MainSets />} />
           <Route path="/results" element={<Results />} />
 
+          {/* Dev only route to preview Set 1 Mission Calibration Modal */}
+          <Route 
+            path="/dev/briefing" 
+            element={
+              <div style={{ width: "100vw", height: "100vh", background: "#09090B", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <SetBriefingOverlay
+                  role="Frontend Developer"
+                  focusArea="clarity"
+                  diagnosticData={{
+                    preTestScore: 74,
+                    threeCBreakdown: {
+                      clarity: 6.5,
+                      correctness: 8.5,
+                      completeness: 7.2,
+                      lowestMetric: "clarity",
+                    },
+                  }}
+                  onConfirm={() => alert("Launching Practice Studio!")}
+                  onClose={() => alert("Closed briefing modal!")}
+                />
+              </div>
+            } 
+          />
+
           {/* Dev only route to preview Set 2 transition design */}
           <Route 
             path="/dev/set2-transition" 
@@ -64,7 +90,8 @@ function App() {
           />
 
           {/* Dev only — STT latency & accuracy testbench */}
-          <Route path="/dev/stt-test" element={<SttTestBench />} />
+          <Route path="/dev/stt-test" element={<FluxDebugger />} />
+          <Route path="/dev/flux" element={<FluxDebugger />} />
         </Routes>
       </div>
     </BrowserRouter>
