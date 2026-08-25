@@ -24,6 +24,8 @@ scripts/
 .agents/
 DESIGN.md
 PRODUCT.md
+!DESIGN.md
+!PRODUCT.md
 
 # Editor directories and files
 .vscode/*
