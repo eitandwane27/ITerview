@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import AuthModal from "../components/AuthModal";
 import TryItLiveDemo from "../components/TryItLiveDemo";
 import logoSrc from "../assets/logo.png";
@@ -6,7 +6,7 @@ import "./LandingPage.css";
 import { Sparkles, ShieldCheck, Layers, Check, Lock, Mic, AlignLeft, Gauge, Layers3, TrendingUp, Clock, Target, Code2, MessageSquare, ArrowRight } from "lucide-react";
 
 
-/* ─── Sub-components ─── */
+/* â”€â”€â”€ Sub-components â”€â”€â”€ */
 
 const MetricBar = ({ score, color, bar }) => {
   const pct = Math.round((score / 5) * 100);
@@ -41,21 +41,21 @@ const TierRow = ({ unlocked, name, status, color }) => (
   <div
     className="lp-tier-row"
     style={{
-      backgroundColor: unlocked ? `${color}12` : "#FFFFFF06",
-      border: `1px solid ${unlocked ? `${color}50` : "#FFFFFF15"}`,
+      backgroundColor: unlocked ? `${color}14` : "#F6F8FB",
+      border: `1px solid ${unlocked ? `${color}59` : "rgba(16, 19, 24, 0.10)"}`,
     }}
   >
       <div
         className="lp-tier-icon"
         style={{
-          background: unlocked ? `${color}1A` : "#FFFFFF10",
+          background: unlocked ? `${color}22` : "#EEF1F5",
         }}
       >
-      {unlocked ? <Check size={16} strokeWidth={1.8} color="#fff" /> : <Lock size={16} strokeWidth={1.8} color="#9CA3AF" />}
+      {unlocked ? <Check size={16} strokeWidth={1.8} color={color} /> : <Lock size={16} strokeWidth={1.8} color="#9AA1AD" />}
     </div>
     <div className="lp-tier-text">
-      <span className="lp-tier-name" style={{ color: unlocked ? "#fff" : "#6B6B80" }}>{name}</span>
-      <span className="lp-tier-status" style={{ color: unlocked ? color : "#6B7280" }}>{status}</span>
+      <span className="lp-tier-name" style={{ color: unlocked ? "#101318" : "#4B5563" }}>{name}</span>
+      <span className="lp-tier-status" style={{ color: unlocked ? color : "#9AA1AD" }}>{status}</span>
     </div>
     {!unlocked && <div className="lp-lock-badge"><span>Locked</span></div>}
   </div>
@@ -93,8 +93,8 @@ const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => (
   </div>
 );
 
-/* ─── Hero headline split-word reveal ─── */
-const HERO_WORDS = ["Practice", "IT", "interviews.", "Get", "scored", "objectively", "."];
+/* â”€â”€â”€ Hero headline split-word reveal â”€â”€â”€ */
+const HERO_WORDS = ["Practice", "IT", "interviews.", "Get", "scored", "objectively."];
 
 const HeroWord = ({ index, children, accent }) => (
   <span className="lp-hero-word-mask" style={{ "--i": index }}>
@@ -102,7 +102,7 @@ const HeroWord = ({ index, children, accent }) => (
   </span>
 );
 
-/* ─── Main Component ─── */
+/* â”€â”€â”€ Main Component â”€â”€â”€ */
 const LandingPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -203,7 +203,7 @@ const LandingPage = () => {
     <div className="lp-root">
       {/* Film grain overlay - fixed, pointer-events-none, subtle texture */}
       <div className="lp-grain" aria-hidden="true" />
-      {/* ── Navbar ── */}
+      {/* â”€â”€ Navbar â”€â”€ */}
       <header className={`lp-nav${navScrolled ? " lp-nav--scrolled" : ""}`} role="banner">
         <div className="lp-nav-inner">
           <a href="/" className="lp-logo" aria-label="ITerview home">
@@ -251,7 +251,7 @@ const LandingPage = () => {
         <div className="lp-nav-progress" aria-hidden="true" />
       </header>
 
-      {/* ── Hero Section ── */}
+      {/* â”€â”€ Hero Section â”€â”€ */}
       <section className="lp-hero" id="try-it-live" aria-label="Hero - Try It Live demo">
         {/* Sentinel for scroll-aware nav: becomes non-visible when scrolled past */}
         <div ref={heroSentinelRef} aria-hidden="true" style={{ position: "absolute", top: 0, height: "1px", width: "1px", pointerEvents: "none" }} />
@@ -269,8 +269,10 @@ const LandingPage = () => {
               <span className="lp-sr-only">Practice IT interviews. Get scored objectively.</span>
               <span className="lp-hero-headline-visual" aria-hidden="true">
                 {HERO_WORDS.map((word, i) => (
-                  <HeroWord key={word + i} index={i} accent={word === "objectively"}>
-                    {word === "objectively" || word === "." ? word : `${word}\u00A0`}
+                  <HeroWord key={word + i} index={i} accent={word.startsWith("objectively")}>
+                    {/* NBSP glues each word to its trailing space inside its own
+                        mask, so wraps happen between masks — never mid-pair */}
+                    {i < HERO_WORDS.length - 1 ? `${word}\u00A0` : word}
                   </HeroWord>
                 ))}
               </span>
@@ -292,7 +294,7 @@ const LandingPage = () => {
           <div className="lp-hero-right">
             {/* Soft breathing halo behind the demo */}
             <div className="lp-demo-halo" aria-hidden="true" />
-            {/* ── Try It Live Demo (interactive) ── */}
+            {/* â”€â”€ Try It Live Demo (interactive) â”€â”€ */}
             <TryItLiveDemo onOpenAuth={openRegisterModal} />
           </div>
         </div>
@@ -300,7 +302,7 @@ const LandingPage = () => {
 
       <div className="lp-divider lp-divider--cyan" aria-hidden="true" />
 
-      {/* ── 3C Framework (Arena) Section ── */}
+      {/* â”€â”€ 3C Framework (Arena) Section â”€â”€ */}
       <section className="lp-arena" id="features" aria-labelledby="arena-heading">
         <div className="lp-section-label lp-section-label--amber">
           <div className="lp-label-dot lp-label-dot--amber" aria-hidden="true" />
@@ -323,7 +325,7 @@ const LandingPage = () => {
               How organized and professional is your delivery? Do you use clear structure and proper IT terminology?
             </p>
             <div className="lp-card-spacer" />
-            <MetricBar score={4.2} color="#67E8F9" bar="linear-gradient(90deg, #06B6D4, #22D3EE)" />
+            <MetricBar score={4.2} color="#2B6EF2" bar="linear-gradient(90deg, #2B6EF2, #5B8DF5)" />
           </article>
 
           <article className="lp-card-3c lp-card-3c--correctness lp-reveal" aria-label="Correctness dimension">
@@ -337,7 +339,7 @@ const LandingPage = () => {
               Is your answer technically accurate? Does it reflect real-world IT practices?
             </p>
             <div className="lp-card-spacer" />
-            <MetricBar score={3.8} color="#6EE7B7" bar="linear-gradient(90deg, #10B981, #34D399)" />
+            <MetricBar score={3.8} color="#12A150" bar="linear-gradient(90deg, #12A150, #3FC97A)" />
           </article>
 
           <article className="lp-card-3c lp-card-3c--completeness lp-reveal" aria-label="Completeness dimension">
@@ -351,7 +353,7 @@ const LandingPage = () => {
               Did you fully address the question? Do you back your answer up with specific examples?
             </p>
             <div className="lp-card-spacer" />
-            <MetricBar score={3.5} color="#FDE68A" bar="linear-gradient(90deg, #FBBF24, #FACC15)" />
+            <MetricBar score={3.5} color="#B45309" bar="linear-gradient(90deg, #F5A524, #F8BE5C)" />
           </article>
         </div>
 
@@ -360,14 +362,14 @@ const LandingPage = () => {
             Sample scores shown to illustrate the rubric.
           </p>
           <a href="#try-it-live" className="lp-section-cta">
-            Hear how the AI scores your voice <span aria-hidden="true">→</span>
+            Hear how the AI scores your voice <span aria-hidden="true">â†’</span>
           </a>
         </div>
       </section>
 
       <div className="lp-divider lp-divider--purple" aria-hidden="true" />
 
-      {/* ── Objective Evaluation Heading ── */}
+      {/* â”€â”€ Objective Evaluation Heading â”€â”€ */}
       <section className="lp-eval-heading" id="about" aria-label="Objective evaluation">
         {/* Ambient background - blueprint grid + construction hairlines (decorative) */}
         <div className="lp-eval-bg" aria-hidden="true">
@@ -452,7 +454,7 @@ const LandingPage = () => {
           </div>
         </div>
 
-        {/* Evidence strip — divider-separated fact wall under the proof */}
+        {/* Evidence strip â€” divider-separated fact wall under the proof */}
         <ul className="lp-eval-facts lp-reveal" aria-label="Evaluation highlights">
           <li className="lp-eval-fact">
             <span className="lp-eval-fact-icon lp-eval-fact-icon--cyan"><Target size={18} strokeWidth={1.8} /></span>
@@ -480,10 +482,10 @@ const LandingPage = () => {
 
       <div className="lp-divider lp-divider--cyan" aria-hidden="true" />
 
-      {/* ── How It Works + Features Overview (Bento Grid) ── */}
+      {/* â”€â”€ How It Works + Features Overview (Bento Grid) â”€â”€ */}
       <section className="lp-bento" id="how-it-works" aria-labelledby="how-it-works-label">
 
-        {/* Section header — the process is the spine of the overview */}
+        {/* Section header â€” the process is the spine of the overview */}
         <div className="lp-bento-head">
           <div className="lp-section-label lp-section-label--cyan">
             <div className="lp-label-dot lp-label-dot--cyan" aria-hidden="true" />
@@ -497,7 +499,7 @@ const LandingPage = () => {
 
         <div className="lp-bento-grid">
 
-          {/* Card 1 — Process spine (Speak → Transcribe → Score) */}
+          {/* Card 1 â€” Process spine (Speak â†’ Transcribe â†’ Score) */}
           <article className="lp-bento-card lp-bento-card--spine">
             <div className="lp-card-head">
               <div className="lp-icon-tile lp-icon-tile--cyan">
@@ -512,7 +514,7 @@ const LandingPage = () => {
               <HowItStep num="3" title="Get scored" desc="Clarity, Correctness, and Completeness - on the transparent 1.0-5.0 scale." icon={<Gauge size={18} strokeWidth={1.8} />} showConnector={false} />
             </ol>
 
-            {/* Static transcript illustration — a voice-first moment the demo can't pause to show */}
+            {/* Static transcript illustration â€” a voice-first moment the demo can't pause to show */}
             <div className="lp-live-strip" aria-hidden="true">
               <div className="lp-live-strip-row">
                 <span className="lp-live-pill"><span className="lp-live-dot" />YOU</span>
@@ -532,12 +534,12 @@ const LandingPage = () => {
 
             <div className="lp-how-foot">
               <a href="#try-it-live" className="lp-section-cta">
-                Try the live demo <span aria-hidden="true">→</span>
+                Try the live demo <span aria-hidden="true">â†’</span>
               </a>
             </div>
           </article>
 
-          {/* Card 2 — Role Tracks */}
+          {/* Card 2 â€” Role Tracks */}
           <article className="lp-bento-card lp-bento-card--roles">
             <div className="lp-card-head">
               <div className="lp-icon-tile lp-icon-tile--purple">
@@ -546,9 +548,9 @@ const LandingPage = () => {
               <h3>IT Role Tracks</h3>
             </div>
             <div className="lp-role-list">
-              <RoleChip color="#8B5CF6" name="Frontend" desc="React, Vue, Angular, CSS" />
-              <RoleChip color="#8B5CF6" name="Backend" desc="Node.js, Python, Java, Go" />
-              <RoleChip color="#8B5CF6" name="DevOps" desc="CI/CD, Docker, Kubernetes, AWS" />
+              <RoleChip color="#2B6EF2" name="Frontend" desc="React, Vue, Angular, CSS" />
+              <RoleChip color="#2B6EF2" name="Backend" desc="Node.js, Python, Java, Go" />
+              <RoleChip color="#2B6EF2" name="DevOps" desc="CI/CD, Docker, Kubernetes, AWS" />
             </div>
             <div className="lp-coming-soon">
               <div className="lp-cs-dot" />
@@ -557,7 +559,7 @@ const LandingPage = () => {
             </div>
           </article>
 
-          {/* Card 3 — Mastery progression */}
+          {/* Card 3 â€” Mastery progression */}
           <article className="lp-bento-card lp-bento-card--mastery">
             <div className="lp-card-head">
               <div className="lp-icon-tile lp-icon-tile--green">
@@ -575,13 +577,13 @@ const LandingPage = () => {
             </div>
 
             <div className="lp-tier-list">
-              <TierRow unlocked color="#10B981" name="Easy" status="Unlocked - Start here" />
-              <TierRow unlocked={false} color="#6B7280" name="Medium" status="Requires a 75%+ average across a full mock interview" />
-              <TierRow unlocked={false} color="#6B7280" name="Hard" status="Requires a 75%+ average on Medium" />
+              <TierRow unlocked color="#12A150" name="Easy" status="Unlocked - Start here" />
+              <TierRow unlocked={false} color="#9AA1AD" name="Medium" status="Requires a 75%+ average across a full mock interview" />
+              <TierRow unlocked={false} color="#9AA1AD" name="Hard" status="Requires a 75%+ average on Medium" />
             </div>
           </article>
 
-          {/* Card 4 — One session, three rounds */}
+          {/* Card 4 â€” One session, three rounds */}
           <article className="lp-bento-card lp-bento-card--session">
             <div className="lp-card-head">
               <div className="lp-icon-tile lp-icon-tile--cyan">
@@ -621,7 +623,7 @@ const LandingPage = () => {
             </ol>
 
             <p className="lp-session-note">
-              <Check size={14} strokeWidth={1.8} color="#fff" />
+              <Check size={14} strokeWidth={1.8} color="#12A150" />
               <span>Instant feedback after every answer.</span>
             </p>
 
@@ -633,7 +635,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── Final CTA Section ── */}
+      {/* â”€â”€ Final CTA Section â”€â”€ */}
       <section className="lp-final-cta" aria-labelledby="cta-heading">
         {/* Single restrained brand-accent wash - mirrors the hero ambient, no purple */}
         <div className="lp-cta-glow-top" aria-hidden="true" />
@@ -648,12 +650,12 @@ const LandingPage = () => {
           Start practicing
         </button>
         <div className="lp-cta-trust">
-          <Check size={14} strokeWidth={2} color="#22D3EE" aria-hidden="true" />
+          <Check size={14} strokeWidth={2} color="#2B6EF2" aria-hidden="true" />
           <span>Free to start. No credit card required.</span>
         </div>
       </section>
 
-      {/* ── Footer ── */}
+      {/* â”€â”€ Footer â”€â”€ */}
       <footer className="lp-footer" role="contentinfo">
         <div className="lp-footer-divider" aria-hidden="true" />
         <div className="lp-footer-content">
@@ -683,7 +685,7 @@ const LandingPage = () => {
         </div>
       </footer>
 
-      {/* ── Auth Modal Overlay ── */}
+      {/* â”€â”€ Auth Modal Overlay â”€â”€ */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}

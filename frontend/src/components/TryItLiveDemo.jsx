@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { Mic, Square, Volume2, ChevronRight } from "lucide-react";
 
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -27,31 +28,7 @@ const PREMADE_QUESTIONS = [
   "Why did you decide to go into IT?",
 ];
 
-// ── Icons ────────────────────────────────────────────────────────────────────
-const StopIcon = ({ fill = "#FFFFFF" }) => (
-  <svg viewBox="0 0 14 14" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="2" y="2" width="10" height="10" rx="2" fill={fill} />
-  </svg>
-);
-
-const MicIcon = ({ size = 15, fill = "#081318" }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c0 3.03-2.76 5.25-5.91 5.25S6.09 14.03 6.09 11H4c0 3.59 2.9 6.5 6.5 6.5V20h3v-2.5C17.1 17.5 20 14.59 20 11h-2.09z" fill={fill} />
-  </svg>
-);
-
-const VolumeIcon = () => (
-  <svg viewBox="0 0 14 14" width="15" height="15" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M5.85156 1.76367q-0.16748 0.02734-0.30761 0.11279-0.08545 0.04102-0.27344 0.21875-0.18799 0.17432-0.91602 0.90235-1.08008 1.06299-1.12109 1.06982-0.04102 0.00684-0.85449 0.02051-0.66992 0-0.82373 0.01367-0.15381 0.01367-0.30762 0.09912-0.23926 0.11279-0.3999 0.30762-0.16064 0.19482-0.23243 0.44775-0.01367 0.08545-0.02734 0.3794l0 1.66455 0 1.66455q0.01367 0.29395 0.02734 0.3794 0.08545 0.30762 0.30762 0.52636 0.22559 0.21533 0.51953 0.31446 0.06836 0.01367 0.22217 0.02734l0.70068 0q0.82715 0.01367 0.86817 0.02051 0.04102 0.00684 1.09717 1.05957 1.05957 1.04932 1.12793 1.09033 0.22559 0.15381 0.48535 0.16748 0.25977 0.01367 0.50927-0.11279 0.11279-0.05469 0.2461-0.18116 0.1333-0.12646 0.18799-0.25292l0.02734-0.04102q0.04443-0.08545 0.05811-0.25293 0.01367-0.2085 0.02734-0.97754l0-7.07178q-0.01367-0.76904-0.02734-0.84082-0.08545-0.33496-0.35889-0.55029-0.27344-0.21875-0.6084-0.21875-0.11279 0-0.15381 0.01367z m5.27735 0.96729q-0.10938 0.02734-0.2085 0.11279-0.09912 0.08203-0.14014 0.16064-0.04101 0.0752-0.0581 0.17432-0.01367 0.0957-0.01367 0.16748 0.03076 0.19482 0.25293 0.43408 1.06299 1.14844 1.26123 2.67285 0.01367 0.19824 0.01367 0.54688 0 0.34863-0.01367 0.54687-0.19824 1.52441-1.26123 2.67286-0.16748 0.18115-0.21875 0.32129-0.04785 0.14014-0.01368 0.29394 0.0376 0.15381 0.15381 0.28027 0.11963 0.12647 0.31446 0.16407 0.19824 0.03418 0.35205-0.05127 0.11279-0.05469 0.34179-0.30078 0.23242-0.24609 0.42725-0.5127 0.81348-1.13135 1.02881-2.51562 0.21875-1.3877-0.21533-2.70362-0.19482-0.57422-0.45459-1.03564-0.25977-0.46484-0.63575-0.92627-0.32471-0.39307-0.49218-0.4751-0.08203-0.02734-0.22901-0.03418-0.14697-0.00684-0.1914 0.00684z m-5.30469 4.26904l0 3.83496-0.89551-0.89551q-0.89551-0.88184-0.96728-0.93652-0.2085-0.14014-0.43409-0.19824-0.08203-0.02734-0.21533-0.03418-0.1333-0.00684-0.73486-0.02051l-0.82715 0 0-3.5 0.82715 0q0.60156-0.01367 0.73486-0.02051 0.1333-0.00684 0.21533-0.03418 0.2666-0.07178 0.46143-0.21191 0.07178-0.05469 0.95361-0.93653l0.88184-0.88183q0 0 0 3.83496z m3.33252-2.31055q-0.16748 0.07178-0.28028 0.20508-0.11279 0.12988-0.12646 0.30078 0 0.12305 0.02734 0.21533 0.02734 0.09229 0.12647 0.2461 0.22559 0.33496 0.32129 0.61523 0.05811 0.19482 0.07861 0.33496 0.02051 0.14014 0.02051 0.39307 0 0.25293-0.02051 0.39307-0.02051 0.14014-0.07861 0.33496-0.0957 0.28027-0.32129 0.61523-0.11279 0.18115-0.14014 0.2666-0.05469 0.2666 0.09912 0.48535 0.15381 0.21533 0.40332 0.22901 0.25293 0.01367 0.42041-0.11279 0.11279-0.09912 0.29395-0.39307 0.18457-0.29395 0.28027-0.55713 0.30762-0.81348 0.21533-1.65088-0.08887-0.84082-0.57763-1.56885-0.19482-0.28027-0.3794-0.33837-0.08203-0.02734-0.19482-0.02735-0.11279 0-0.16748 0.01367z" fill="#FFFFFF" />
-  </svg>
-);
-
-const ChevronRightIcon = ({ size = 11, fill = "#9CA3AF" }) => (
-  <svg viewBox="0 0 12 12" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4.5 2.25 8.25 6 4.5 9.75" stroke={fill} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
+// ── Icons: lucide-react, stroke-driven, inherit currentColor so state colors just work ──
 // ── DemoScaleBar helper ──────────────────────────────────────────────────────
 const DemoScaleBar = ({ color, filled }) => (
   <div className="lp-demo-scale" aria-hidden="true">
@@ -490,7 +467,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
                 title="Switch question prompt"
                 aria-label="Switch question prompt"
               >
-                <ChevronRightIcon />
+                <ChevronRight size={13} strokeWidth={2.5} aria-hidden="true" />
                 <span>Next</span>
               </button>
             </div>
@@ -503,7 +480,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
               aria-label={isAudioPlaying || isAudioLoading ? "Stop AI audio" : "Hear the AI"}
               onClick={playQuestionAudio}
             >
-              <VolumeIcon />
+              <Volume2 size={16} strokeWidth={2} aria-hidden="true" />
               <span>{isAudioLoading ? "Loading..." : isAudioPlaying ? "Stop audio" : "Hear the AI"}</span>
             </button>
           </div>
@@ -534,7 +511,11 @@ export default function TryItLiveDemo({ onOpenAuth }) {
                 {micError}
               </p>
             ) : (
-              <p className="lp-demo-transcript-text" aria-live="polite" aria-atomic="true">
+              <p
+                className={`lp-demo-transcript-text${transcriptText ? "" : " lp-demo-transcript-text--empty"}`}
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 {transcriptText
                   ? `"${transcriptText}"`
                   : "Tap & speak into your mic to try real-time speech recognition and instant 3C evaluation."}
@@ -586,7 +567,9 @@ export default function TryItLiveDemo({ onOpenAuth }) {
               aria-label={isRecording ? "Stop speaking" : "Start speaking"}
               onClick={isRecording ? stopRecording : startRecording}
             >
-              {isRecording ? <StopIcon fill="#67E8F9" /> : <MicIcon size={15} fill="#081318" />}
+              {isRecording
+                ? <Square size={12} strokeWidth={0} fill="currentColor" aria-hidden="true" />
+                : <Mic size={16} strokeWidth={2} aria-hidden="true" />}
               <span>{isRecording ? `Stop · ${formatTimer(recordingTimer)}` : "Tap & speak"}</span>
             </button>
             <p className="lp-demo-controls-hint">
