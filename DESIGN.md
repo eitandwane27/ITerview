@@ -96,21 +96,27 @@ spacing:
 ## Component Laws
 
 ### Buttons
+
 Pills only. Primary = flat blue fill, white label, no border, no shadow; hover darkens one step, active presses down (`translateY(1px)` + darkest blue). Secondary = transparent with a 2px hairline border (the brilliant.org pattern); hover warms the border and tints the fill `blue-softer`. Quiet/tertiary = plain blue text on transparent.
 
 ### The Mic Button & Live States
+
 The mic is the product's heartbeat. Idle: white pill with 2px hairline border and ink glyph. Listening/recording: the border and glyph turn reserved blue, fill takes `blue-soft`, waveform bars render blue. Never red, never coral, never amber. The transcript's live dot and the "Transcribing" pill follow the same blue.
 
 ### Try-It-Live Demo Card
+
 The flagship artifact, re-dressed for daylight: white surface, 24px radius, 2px hairline border that turns solid `blue` while listening/recording. Inside: the AI orb (soft blue ring, breathing idle animation), question panel on `canvas-tint`, transcript box with hairline divider, and three 3C score chips laid out as a row on desktop (not stacked). Chips go `chip-neutral` → single blue accent when a score lands; success confirmation may use green. The 3-attempt cap before the auth modal is behavior, not style — keep it.
 
 ### The Logo Slot
+
 All logo/artwork placements are defined containers so AI-generated art can drop in later without layout shift or CSS surgery:
+
 - `.logo-slot--nav`: fixed 44×44 box, `rounded.sm`, centered content, neutral placeholder glyph.
 - `.logo-slot--hero`: up to 96×96 available; component owns its own box.
-Artwork swaps via one `<img>` inside the slot; the slot itself never changes size.
+  Artwork swaps via one `<img>` inside the slot; the slot itself never changes size.
 
 ### Chips & Badges
+
 Pill radius, soft-fill + strong-text pairs from the token set only (`blue/blue-soft`, `green/green-soft`, `neutral/canvas-tint`). No new color pairings at point of use.
 
 ## Do's and Don'ts
@@ -136,4 +142,3 @@ Pill radius, soft-fill + strong-text pairs from the token set only (`blue/blue-s
 - **Don't** ship a font stack referencing families that were never imported — import Manrope (400/500/700/800) once, globally, or don't name it.
 - **Don't** resize or restyle `.logo-slot` when artwork changes; the slot is contract-stable.
 - **Don't** ship a surface that needs a tutorial to parse; the practice room reads at a glance.
-
