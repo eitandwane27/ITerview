@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
+import { AnimatePresence } from "framer-motion";
 import AiAnalysisLoader from "../components/AiAnalysisLoader";
 import "./PreTest.css";
 
@@ -430,9 +431,19 @@ export default function PreTest() {
     startRecording();
   };
 
-  // ── Derived UI ────────────────────────────────────────────────────────────
+  // ── Derived UI ──────────────────────────────────────────────────────
   return (
     <div className="pt-root">
+      {/* AI Analysis Loader — overlaid as a true modal over the arena */}
+      <AnimatePresence>
+        {isAnalyzing && (
+          <AiAnalysisLoader
+            key="pre-analysis-loader"
+            onComplete={() => navigate('/interview?set=1', { state: { voice } })}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Top Bar */}
       <header className="pt-topbar">
         <div className="pt-topbar-brand">ITerview</div>
@@ -450,9 +461,6 @@ export default function PreTest() {
         ></div>
       </div>
 
-      {isAnalyzing ? (
-        <AiAnalysisLoader onComplete={() => navigate('/interview?set=1', { state: { voice } })} />
-      ) : (
       <main className="pt-main">
         {/* Left Column */}
         <div
@@ -658,7 +666,6 @@ export default function PreTest() {
           </div>
         </aside>
       </main>
-      )}
     </div>
   );
 }

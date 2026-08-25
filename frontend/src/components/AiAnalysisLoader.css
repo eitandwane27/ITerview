@@ -41,19 +41,23 @@
   --aal-radius-inner: 12px;
   --aal-radius-pill: 9999px;
 
-  /* Container Layout */
-  position: relative;
-  width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* Container Layout — fixed modal overlay (same recipe as .sb-overlay) */
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1.5rem;
-  background-color: var(--aal-canvas);
+  padding: 1.5rem 1rem;
+  background: rgba(9, 9, 11, 0.84);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   color: var(--aal-ink);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
-  overflow: hidden;
+  /* Scroll-safe centering: vertical scroll when content exceeds the viewport
+     instead of clipping children (stages list / footer) top-and-bottom. */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* ── Ambient Radial Glow & Blueprint Grid ─────────────────────────────────── */
@@ -98,7 +102,10 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 520px;
+  max-width: 580px;
+  max-height: calc(100dvh - 3rem);
+  margin: auto;
+  flex-shrink: 0;
   background: var(--aal-surface);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
@@ -106,7 +113,8 @@
   border-radius: var(--aal-radius-card);
   box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7),
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
@@ -156,6 +164,17 @@
   background: var(--aal-purple-dim);
   border: 1px solid rgba(139, 92, 246, 0.25);
   color: var(--aal-purple-bright);
+}
+
+.aal-focus-chip {
+  padding: 3px 9px;
+  border-radius: var(--aal-radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: var(--aal-cyan-dim);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: var(--aal-cyan-soft);
 }
 
 .aal-status-pill {
@@ -390,6 +409,139 @@
   to {
     left: 100%;
   }
+}
+
+/* ── Close Button ────────────────────────────────────────────────────────── */
+.aal-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--aal-ink-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.aal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--aal-ink);
+}
+
+.aal-close-btn:focus-visible {
+  outline: 2px solid var(--aal-cyan);
+  outline-offset: 2px;
+}
+
+.aal-close-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── 3C Diagnostic Baseline Triad ─────────────────────────────────────────── */
+.aal-3c-triad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 1.25rem 1rem;
+}
+
+.aal-3c-card {
+  background: var(--aal-surface-inner);
+  border: 1px solid var(--aal-border);
+  border-radius: var(--aal-radius-inner);
+  padding: 0.65rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s ease;
+}
+
+.aal-3c-card--focus {
+  border-color: rgba(6, 182, 212, 0.35);
+  background: rgba(6, 182, 212, 0.04);
+}
+
+.aal-3c-card-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+}
+
+.aal-3c-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.aal-3c-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--aal-ink-muted);
+  flex: 1;
+}
+
+.aal-3c-focus-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--aal-cyan-soft);
+  background: var(--aal-cyan-dim);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  padding: 1px 5px;
+  border-radius: var(--aal-radius-pill);
+}
+
+.aal-3c-score {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--aal-ink);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.aal-3c-score-max {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--aal-ink-muted);
+  margin-left: 1px;
+}
+
+.aal-3c-track {
+  height: 3px;
+  border-radius: var(--aal-radius-pill);
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.aal-3c-fill {
+  height: 100%;
+  border-radius: var(--aal-radius-pill);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.aal-3c-fill--clarity {
+  background: var(--aal-cyan);
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.5);
+}
+
+.aal-3c-fill--correctness {
+  background: var(--aal-green);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.aal-3c-fill--completeness {
+  background: var(--aal-amber);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
 }
 
 /* ── Stage Checklist ──────────────────────────────────────────────────────── */
@@ -678,6 +830,16 @@
   letter-spacing: 0.3px;
 }
 
+.aal-shortcut-hint {
+  color: var(--aal-ink-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  opacity: 0.7;
+  padding-left: 4px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* ── Accessibility & Reduced Motion ───────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .aal-radar-beam,
@@ -697,6 +859,19 @@
 @media (max-width: 540px) {
   .aal-studio-container {
     padding: 1rem 0.75rem;
+  }
+
+  .aal-3c-triad {
+    gap: 6px;
+    margin: 0 0.85rem 0.85rem;
+  }
+
+  .aal-3c-score {
+    font-size: 0.95rem;
+  }
+
+  .aal-shortcut-hint {
+    display: none;
   }
 
   .aal-top-header,

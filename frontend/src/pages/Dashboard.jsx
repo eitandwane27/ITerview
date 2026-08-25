@@ -694,27 +694,31 @@ export default function Dashboard() {
       return;
     }
 
-    // Check if there is an in-progress active session for Set 2 or Set 3
-    let targetSet = activeSession?.hasActiveSession ? activeSession.activeSet : 1;
+    // Check if there is an in-progress active session
+    let isResume = Boolean(activeSession?.hasActiveSession);
+    let targetSet = isResume ? activeSession.activeSet : 1;
     try {
       const activeCheckRes = await fetch(`/api/users/active-practice-session?uid=${user.uid}`);
       if (activeCheckRes.ok) {
         const activeCheckData = await activeCheckRes.json();
         if (activeCheckData.hasActiveSession && activeCheckData.activeSet) {
+          isResume = true;
           targetSet = activeCheckData.activeSet;
+        } else {
+          isResume = false;
         }
       }
     } catch (e) {
       console.error("Active session check fallback error:", e);
     }
 
-    if (targetSet > 1) {
-      // Resume directly into in-progress set 2 or 3
-      navigate(`/interview?set=${targetSet}&mode=practice&focusArea=${selectedFocus}`);
+    if (isResume) {
+      // Resume directly into in-progress set (Set 1, 2, or 3)
+      navigate(`/interview?set=${targetSet}&mode=practice&focusArea=${selectedFocus}&resume=true`);
       return;
     }
 
-    // For Set 1 practice kickoff, open the Pre-Flight Mission Calibration Modal
+    // For fresh Set 1 practice kickoff, open the Pre-Flight Mission Calibration Modal
     setIsBriefingModalOpen(true);
   }, [selectedRole, selectedDifficulty, selectedFocus, hasCompletedDiagnostic, activeSession, navigate]);
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Cpu,
@@ -8,6 +8,7 @@ import {
   RefreshCw,
   ArrowRight,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import "./AiAnalysisLoader.css";
 
@@ -48,21 +49,94 @@ const WEAKNESS_INFO = {
   },
 };
 
+const FOCUS_INFO = {
+  auto: "AI Auto-Detect",
+  clarity: "Clarity Focus",
+  correctness: "Correctness Focus",
+  completeness: "Completeness Focus",
+  star: "STAR Behavioral",
+};
+
+// ── 3C Metric display config ─────────────────────────────────────────────────
+const METRIC_CONFIG = {
+  clarity: { label: "Clarity", icon: "🎯", accentVar: "--aal-cyan", dimVar: "--aal-cyan-dim" },
+  correctness: { label: "Correctness", icon: "✅", accentVar: "--aal-green", dimVar: "--aal-green-dim" },
+  completeness: { label: "Completeness", icon: "📋", accentVar: "--aal-amber", dimVar: "--aal-amber-dim" },
+};
+
 export default function AiAnalysisLoader({
+  setNumber = 1,
   role = "frontend",
   weakness = "focus_completeness",
+  focusArea = "",
   statusMessage = "",
   isReady = false,
   error = null,
   onComplete,
   onRetry,
   onSkip,
+  onClose,
+  onConfirm,
+  diagnosticData = null,
   timeoutMs = 16000,
 }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [isTimedOut, setIsTimedOut] = useState(false);
   const isMountedRef = useRef(true);
+  const modalRef = useRef(null);
+  const closeButtonRef = useRef(null);
+
+  // Modal behavior: lock background scroll while the synthesis overlay is up
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
+  // Focus trap + keyboard shortcuts (Escape to close, Enter to proceed)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && onClose) {
+        onClose();
+        return;
+      }
+      if (e.key === "Enter" && currentStep >= steps.length && onConfirm) {
+        onConfirm();
+        return;
+      }
+
+      // Tab focus trap: keep focus within the modal
+      if (e.key === "Tab" && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!focusable.length) return;
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last?.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first?.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    // Auto-focus the close button or modal root when mounted
+    const focusTarget = closeButtonRef.current || modalRef.current;
+    focusTarget?.focus();
+    return () => document.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose, onConfirm, currentStep]);
 
   // Normalize role and weakness inputs
   const roleKey = (role || "frontend").toLowerCase().replace(/\s+/g, "");
@@ -79,9 +153,36 @@ export default function AiAnalysisLoader({
     : "focus_completeness";
   const activeWeakness = WEAKNESS_INFO[weaknessKey];
 
+  const focusKey = (focusArea || "").toLowerCase();
+  const focusLabel = FOCUS_INFO[focusKey] || null;
+  const focusSuffix =
+    focusLabel && focusKey !== "auto"
+      ? ` Session focus: ${focusLabel.replace(" Focus", "")}.`
+      : "";
+
   // Dynamic telemetry steps grounded in roleConfig.js
-  const steps = useMemo(
-    () => [
+  const steps = useMemo(() => {
+    if (setNumber === 2) {
+      return [
+        {
+          title: "Analyzing Technical Mastery Requirements",
+          detail: "Configuring algorithm, data flow, and architecture prompts",
+        },
+        {
+          title: `Targeting Core Technical Domains (${activeRole.label})`,
+          detail: `Focusing on: ${activeRole.scopeSnippet}`,
+        },
+        {
+          title: "Calibrating Difficulty & Rubric Thresholds",
+          detail: "Setting precision and depth scoring criteria",
+        },
+        {
+          title: "Synthesizing Set 2 Questions & Luna Voice Audio",
+          detail: "Compiling technical question audio buffer for instant start",
+        },
+      ];
+    }
+    return [
       {
         title: "Evaluating Baseline Audio & 3C Scores",
         detail: "Processing pre-test speech rhythm, syntax, and phrasing",
@@ -98,9 +199,8 @@ export default function AiAnalysisLoader({
         title: "Synthesizing Set 1 Questions & Luna Voice Audio",
         detail: "Compiling personalized question audio buffer for instant start",
       },
-    ],
-    [activeRole, activeWeakness]
-  );
+    ];
+  }, [setNumber, activeRole, activeWeakness]);
 
   // Step timing orchestration (for smooth progression or until isReady is true)
   useEffect(() => {
@@ -158,8 +258,32 @@ export default function AiAnalysisLoader({
     Math.round((currentStep / steps.length) * 100)
   );
 
+  // ── 3C Diagnostic Baseline helpers ──────────────────────────────────────────
+  const has3C =
+    diagnosticData?.threeCBreakdown &&
+    typeof diagnosticData.threeCBreakdown.clarity === "number";
+
+  const handleBackdropClick = (e) => {
+    // Only dismiss on direct backdrop click, not on card clicks bubbling up
+    if (e.target === e.currentTarget && onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="aal-studio-container" role="region" aria-label="AI Analysis Engine">
+    <motion.div
+      className="aal-studio-container"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="aal-modal-title"
+      ref={modalRef}
+      tabIndex={-1}
+      onClick={handleBackdropClick}
+      // Full-overlay fade so the dark studio never hard-cuts on session start/end.
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }}
+      exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
+    >
       {/* Ambient Blueprint & Radial Glow */}
       <div className="aal-ambient-glow" aria-hidden="true" />
       <div className="aal-blueprint-grid" aria-hidden="true" />
@@ -170,6 +294,7 @@ export default function AiAnalysisLoader({
         initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header Strip */}
         <header className="aal-top-header">
@@ -182,6 +307,11 @@ export default function AiAnalysisLoader({
             <span className="aal-role-chip" title="Target Role Track">
               {activeRole.label}
             </span>
+            {focusLabel && (
+              <span className="aal-focus-chip" title="Session Focus Target">
+                {focusLabel}
+              </span>
+            )}
             <span
               className={`aal-status-pill ${
                 error || isTimedOut ? "warning" : "active"
@@ -195,6 +325,20 @@ export default function AiAnalysisLoader({
                 ? "Awaiting Signal"
                 : "DeepSeek Active"}
             </span>
+
+            {/* Close button — only shown when a dismiss handler is provided */}
+            {onClose && (
+              <button
+                ref={closeButtonRef}
+                type="button"
+                className="aal-close-btn"
+                onClick={onClose}
+                aria-label="Dismiss"
+                title="Dismiss (Esc)"
+              >
+                <X className="aal-close-icon" aria-hidden="true" />
+              </button>
+            )}
           </div>
         </header>
 
@@ -217,17 +361,64 @@ export default function AiAnalysisLoader({
           </div>
 
           <div className="aal-heading-block">
-            <h2 className="aal-main-title">
+            <h2 className="aal-main-title" id="aal-modal-title">
               {currentStep >= steps.length
-                ? "Set 1 Ready for Interview"
+                ? setNumber === 2
+                  ? "Set 2 Ready for Technical Interview"
+                  : "Set 1 Ready for Interview"
+                : setNumber === 2
+                ? "Generating Set 2 Technical Questions"
                 : "Personalizing Set 1 Interview"}
             </h2>
             <p className="aal-subtitle">
               {statusMessage ||
-                `Calibrating questions for ${activeRole.label} targeting ${activeWeakness.label}.`}
+                (setNumber === 2
+                  ? `Calibrating technical mastery questions for ${activeRole.label}.${focusSuffix}`
+                  : `Calibrating questions for ${activeRole.label} targeting ${activeWeakness.label}.${focusSuffix}`)}
             </p>
           </div>
         </div>
+
+        {/* ── Optional 3C Diagnostic Baseline Triad ── */}
+        {has3C && (
+          <div className="aal-3c-triad" aria-label="3C Diagnostic Baseline">
+            {["clarity", "correctness", "completeness"].map((metric) => {
+              const cfg = METRIC_CONFIG[metric];
+              const score = diagnosticData.threeCBreakdown[metric];
+              const isLowest =
+                diagnosticData.threeCBreakdown.lowestMetric === metric;
+              const pct = Math.round((score / 10) * 100);
+              return (
+                <div
+                  key={metric}
+                  className={`aal-3c-card ${isLowest ? "aal-3c-card--focus" : ""}`}
+                >
+                  <div className="aal-3c-card-header">
+                    <span className="aal-3c-icon" aria-hidden="true">
+                      {cfg.icon}
+                    </span>
+                    <span className="aal-3c-label">{cfg.label}</span>
+                    {isLowest && (
+                      <span className="aal-3c-focus-tag" aria-label="Focus area">
+                        Focus
+                      </span>
+                    )}
+                  </div>
+                  <div className="aal-3c-score">
+                    {score.toFixed(1)}
+                    <span className="aal-3c-score-max">/10</span>
+                  </div>
+                  <div className="aal-3c-track" aria-hidden="true">
+                    <div
+                      className={`aal-3c-fill aal-3c-fill--${metric}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Segmented Progress Track */}
         <div
@@ -359,9 +550,14 @@ export default function AiAnalysisLoader({
               Stage {Math.min(currentStep, steps.length)} of {steps.length} (
               {progressPercent}%)
             </span>
+            {onClose && (
+              <span className="aal-shortcut-hint" aria-hidden="true">
+                Esc to dismiss
+              </span>
+            )}
           </div>
         </footer>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

@@ -8,7 +8,7 @@
 // - AI Coach Panel for 1-sentence tips
 // - Live Transcript Panel
 // - SetBriefingOverlay shown on mount
-// - Design: mirrors Dashboard.css (card-in-card, lavender inner card, tokens)
+// - Design: ITerview studio world (Session Ramp neutrals, cyan signal)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -17,16 +17,61 @@ import { auth } from "../firebase";
 import { AnimatePresence } from "framer-motion";
 import Set2TransitionOverlay from "../components/Set2TransitionOverlay";
 import Set3TransitionOverlay from "../components/Set3TransitionOverlay";
-import AiAnalysisLoader from "../components/AiAnalysisLoader";
-import OrganicSphereCanvas from "../prototypes/organic-sphere/OrganicSphereCanvas";
+import {
+  Mic,
+  Video,
+  MonitorUp,
+  MessageSquare,
+  Hand,
+  PhoneOff,
+  Timer,
+  Clock,
+  Check,
+  Lightbulb,
+  AlertTriangle,
+  CheckCircle2,
+  Flag,
+} from "lucide-react";
 import "./MainSets.css";
 
 // ── Set metadata ───────────────────────────────────────────────────────────
 const SET_META = {
-  1: { label: "Set 1: Personalized", emoji: "🤖", color: "accent" },
-  2: { label: "Set 2: Technical Mastery", emoji: "💻", color: "blue" },
-  3: { label: "Set 3: Behavioral STAR", emoji: "🎯", color: "green" },
+  1: { label: "Set 1: Personalized", difficulty: "easy", category: "Personalized" },
+  2: { label: "Set 2: Technical Mastery", difficulty: "hard", category: "Technical" },
+  3: { label: "Set 3: Behavioral STAR", difficulty: "medium", category: "Behavioral" },
 };
+
+// Sidebar previews for unasked questions in preview/dev mode (real sessions
+// only reveal a question once the server sends it).
+const PREVIEW_QUESTIONS = {
+  1: [
+    "Tell me about a challenging technical project you worked on and what your specific role was.",
+    "How did you handle testing in that project?",
+    "Describe how you collaborated with designers or product managers.",
+    "What was the hardest bug you hit and how did you debug it?",
+    "What would you improve if you revisited that project today?",
+  ],
+  2: [
+    "Explain the difference between SQL and NoSQL databases, and when you would choose one over the other.",
+    "Explain JavaScript closures and their use cases.",
+    "How would you optimize a React app for performance?",
+    "Explain the virtual DOM and how it differs from the real DOM.",
+    "How do you handle side effects and data fetching in modern React?",
+  ],
+  3: [
+    "Tell me about a time you worked on a group programming project and how your team divided the tasks.",
+    "Describe a time you disagreed with a teammate's coding style.",
+    "Tell me about a time you missed a deadline. What happened?",
+    "Describe a situation where you explained a technical concept to a non-technical stakeholder.",
+    "Tell me about a failure you owned and what you changed afterward.",
+  ],
+};
+
+// Elapsed-time formatting: stage clock (hh:mm:ss) and session chip (mm:ss)
+const pad2 = (n) => String(n).padStart(2, "0");
+const formatHMS = (t) =>
+  `${pad2(Math.floor(t / 3600))}:${pad2(Math.floor((t % 3600) / 60))}:${pad2(t % 60)}`;
+const formatMS = (t) => `${pad2(Math.floor(t / 60))}:${pad2(t % 60)}`;
 
 export default function MainSets() {
   const navigate = useNavigate();
@@ -36,13 +81,17 @@ export default function MainSets() {
   const setNumber = parseInt(query.get("set")) || 1;
   const mode = query.get("mode") || "diagnostic";
   const focusArea = query.get("focusArea") || "";
+  const isResume = query.get("resume") === "true";
+  const isAutostart = query.get("autostart") === "true";
   const preview =
     query.get("preview") === "true" || location.pathname.includes("/dev/");
 
   const meta = SET_META[setNumber] || SET_META[1];
 
   // ── UI State ───────────────────────────────────────────────────────────────
-  const [showBriefing, setShowBriefing] = useState(setNumber !== 1);
+  const [showBriefing, setShowBriefing] = useState(
+    setNumber !== 1 && !isResume && !isAutostart
+  );
   const [status, setStatus] = useState("Waiting to start...");
   const [error, setError] = useState("");
   const [isConnected, setIsConnected] = useState(false);
@@ -53,8 +102,8 @@ export default function MainSets() {
   const [showNextTransition, setShowNextTransition] = useState(false);
   const [userRole, setUserRole] = useState("Frontend");
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-  const [sessionWeakness, setSessionWeakness] = useState(focusArea || "focus_completeness");
   const [hasReceivedQ1Audio, setHasReceivedQ1Audio] = useState(false);
+  const [slowWait, setSlowWait] = useState(false);
 
   // Volume & Transcript state
   const [volume, setVolume] = useState(0);
@@ -67,40 +116,43 @@ export default function MainSets() {
   );
   const [scores, setScores] = useState(null);
 
-  // 3D AI avatar experience instance (driven via onExperienceReady, not re-renders)
-  const [experience, setExperience] = useState(null);
+  // ── Session HUD state (stage clock, sidebar question list, tabs, PIP) ─────
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [questionsAsked, setQuestionsAsked] = useState([]);
+  const [activeTab, setActiveTab] = useState("questions");
+  const [userInitials, setUserInitials] = useState("ME");
 
-  const handleExperienceReady = useCallback((expInstance) => {
-    setExperience(expInstance);
+  // Stage clock ticks only while a session is live.
+  useEffect(() => {
+    if (!isConnected || isSessionComplete) return undefined;
+    const id = setInterval(() => setElapsedSec((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [isConnected, isSessionComplete]);
+
+  // ── Sidebar question list helpers ──────────────────────────────────────────
+  const addQuestion = useCallback((index, text) => {
+    setQuestionsAsked((prev) =>
+      prev.some((q) => q.index === index)
+        ? prev
+        : [...prev, { index, text, answered: false, answer: "" }],
+    );
   }, []);
 
-  // ── Pause the 3D avatar when the tab is hidden or the orb is off-screen ──
-  const orbRef = useRef(null);
-
-  useEffect(() => {
-    if (!experience || !orbRef.current) return;
-    const exp = experience;
-    const el = orbRef.current;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        exp.setPaused?.(!entries[0].isIntersecting);
-      },
-      { threshold: 0 },
-    );
-    observer.observe(el);
-
-    const onVisibilityChange = () => {
-      exp.setPaused?.(document.hidden);
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
-    return () => {
-      observer.disconnect();
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      exp.setPaused?.(false);
-    };
-  }, [experience]);
+  // Flags the most recent unanswered question as answered. The finalized
+  // transcript is snapshotted by the caller (reading the ref inside this
+  // callback trips the react-hooks compiler immutability rule).
+  const markCurrentAnswered = useCallback((answerText) => {
+    setQuestionsAsked((prev) => {
+      const next = [...prev];
+      for (let i = next.length - 1; i >= 0; i -= 1) {
+        if (!next[i].answered) {
+          next[i] = { ...next[i], answered: true, answer: answerText || "" };
+          break;
+        }
+      }
+      return next;
+    });
+  }, []);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const wsRef = useRef(null);
@@ -118,6 +170,11 @@ export default function MainSets() {
   const isMountedRef = useRef(true);
   const isSessionCompleteRef = useRef(false);
 
+  // ── Orb placeholder ────────────────────────────────────────────────────────
+  // A pure-CSS stand-in driven purely by the stage's state class
+  // (.ix-stage.speaking/.listening/.complete). No WebGL, no audio graph —
+  // swap this block for an alternative orb component when one is chosen.
+
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -126,6 +183,7 @@ export default function MainSets() {
   }, []);
 
   // ── Playback Functions ─────────────────────────────────────────────────────
+
   const playBase64 = useCallback((base64Data, onEnded, onError) => {
     if (!isMountedRef.current) return;
     try {
@@ -220,6 +278,19 @@ export default function MainSets() {
             const r = data.user.role;
             setUserRole(r.charAt(0).toUpperCase() + r.slice(1));
           }
+          // Derive PIP self-view initials from whatever identity info we have
+          const u = auth.currentUser;
+          const rawName =
+            data.user?.name || u?.displayName || (u?.email ? u.email.split("@")[0] : "");
+          const parts = String(rawName).trim().split(/\s+/).filter(Boolean);
+          if (parts.length > 0) {
+            setUserInitials(
+              parts
+                .slice(0, 2)
+                .map((w) => w.charAt(0).toUpperCase())
+                .join("") || "ME",
+            );
+          }
         })
         .catch((err) => console.error("Error fetching user role:", err));
     }
@@ -232,24 +303,39 @@ export default function MainSets() {
     if (preview) {
       setIsConnected(true);
       setIsGeneratingQuestions(false);
-      setStatus("Question ready. Click Unmute to answer.");
-      setCurrentQuestion(1);
-      setCurrentQuestionText(
+      // Preview never receives tts_audio, so mark audio-ready to keep the
+      // mic CTA ungated in this mode.
+      setHasReceivedQ1Audio(true);
+      setStatus("Question ready. Click Answer to respond.");
+      const previewQ =
         setNumber === 1
           ? "Tell me about a challenging technical project you worked on and what your specific role was."
           : setNumber === 2
             ? "Explain the difference between SQL and NoSQL databases, and when you would choose one over the other."
-            : "Tell me about a time you worked on a group programming project and how your team divided the tasks.",
-      );
+            : "Tell me about a time you worked on a group programming project and how your team divided the tasks.";
+      setCurrentQuestion(1);
+      setCurrentQuestionText(previewQ);
+      addQuestion(1, previewQ);
       return;
     }
 
-    if (setNumber === 1 || setNumber === 2) {
+    if (!isResume && (setNumber === 1 || setNumber === 2)) {
       setIsGeneratingQuestions(true);
       setHasReceivedQ1Audio(false);
+      setSlowWait(false);
+    } else {
+      setIsGeneratingQuestions(false);
     }
 
     setStatus(`Connecting to Set ${setNumber} session...`);
+
+    // Retry safety: drop any previous socket first so retries can't leak
+    // connections or let the stale onclose clobber the fresh session state.
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
 
     const user = auth.currentUser;
     const uid = user ? user.uid : "anonymous_user";
@@ -276,12 +362,8 @@ export default function MainSets() {
 
       switch (msg.type) {
         case "generation_progress":
-          if (msg.weakness) setSessionWeakness(msg.weakness);
           if (msg.role) setUserRole(msg.role.charAt(0).toUpperCase() + msg.role.slice(1));
           if (msg.message) setStatus(msg.message);
-          break;
-        case "generation_complete":
-          if (msg.weakness) setSessionWeakness(msg.weakness);
           break;
         case "status":
           setStatus(msg.message);
@@ -291,6 +373,7 @@ export default function MainSets() {
           enqueueBase64Audio(msg.data);
           break;
         case "question_text":
+          addQuestion(msg.index, msg.text);
           setCurrentQuestionText(msg.text);
           setCurrentQuestion(msg.index);
           setFinalTranscript("");
@@ -300,6 +383,7 @@ export default function MainSets() {
           break;
         case "coach_tip":
           setCoachTip(msg.tip);
+          markCurrentAnswered(finalTranscriptRef.current);
           if (setNumber === 2) {
             setScores({
               problem_solving: msg.problem_solving_score,
@@ -356,14 +440,14 @@ export default function MainSets() {
     ws.onclose = () => {
       setIsConnected(false);
     };
-  }, [preview, setNumber, voice, focusArea, enqueueBase64Audio]);
+  }, [preview, setNumber, voice, focusArea, isResume, enqueueBase64Audio, addQuestion, markCurrentAnswered]);
 
   const goToNextSet = () => {
     setShowNextTransition(false);
     const nextSet = setNumber + 1;
     const modeParam = mode === "practice" ? "&mode=practice" : "";
     const focusParam = focusArea ? `&focusArea=${focusArea}` : "";
-    navigate(`/interview?set=${nextSet}${modeParam}${focusParam}`, { state: { voice } });
+    navigate(`/interview?set=${nextSet}${modeParam}${focusParam}&autostart=true`, { state: { voice } });
   };
 
   // ── Reset & Initialize on route change ────────────────────────────────────
@@ -380,6 +464,8 @@ export default function MainSets() {
     setVolume(0);
     setPartialTranscript("");
     setFinalTranscript("");
+    setElapsedSec(0);
+    setQuestionsAsked([]);
     setCurrentQuestion(0);
     setCurrentQuestionText("");
     setCoachTip(
@@ -391,7 +477,7 @@ export default function MainSets() {
     );
     setScores(null);
 
-    if (setNumber === 1) {
+    if (setNumber === 1 || isResume || isAutostart) {
       setShowBriefing(false);
       startSession();
     } else {
@@ -405,7 +491,23 @@ export default function MainSets() {
       }
       cleanupAudio();
     };
-  }, [location.search, location.pathname, setNumber, startSession]);
+  }, [location.search, location.pathname, setNumber, isResume, isAutostart, startSession]);
+
+  // ── Inline generation state (replaces the old full-screen loader) ─────────
+  // Generating ends only when Q1 is truly ready: text arrived AND audio in hand.
+  useEffect(() => {
+    if (isGeneratingQuestions && hasReceivedQ1Audio && currentQuestionText) {
+      setIsGeneratingQuestions(false);
+    }
+  }, [isGeneratingQuestions, hasReceivedQ1Audio, currentQuestionText]);
+
+  // Slow-generation guard: after ~15s without Q1 audio, surface one honest
+  // hint with a retry. Real elapsed time — no fabricated progress stages.
+  useEffect(() => {
+    if (!isGeneratingQuestions || !isConnected || error) return undefined;
+    const timer = setTimeout(() => setSlowWait(true), 15000);
+    return () => clearTimeout(timer);
+  }, [isGeneratingQuestions, isConnected, error]);
 
   // ── Volume meter ─────────────────────────────────────────────────────────
   const startVolumeMeter = (analyser) => {
@@ -483,23 +585,24 @@ export default function MainSets() {
             setScores({ situation: 8, action: 7, result: 9 });
           }
 
-          setCurrentQuestion((prev) => {
-            const nextQ = prev + 1;
-            if (nextQ > 5) {
-              setIsSessionComplete(true);
-              setStatus(`Set ${setNumber} Complete!`);
-              return 5;
-            }
-            setCurrentQuestionText(
+          markCurrentAnswered(finalTranscriptRef.current);
+
+          const nextQ = currentQuestion + 1;
+          if (nextQ > 5) {
+            setIsSessionComplete(true);
+            setStatus(`Set ${setNumber} Complete!`);
+          } else {
+            const mockText =
               setNumber === 1
                 ? `Mock Personalized Question ${nextQ}: How did you handle testing in that project?`
                 : setNumber === 2
                   ? `Mock Technical Question ${nextQ}: Explain JavaScript closures and their use cases.`
-                  : `Mock Behavioral Question ${nextQ}: Describe a time you disagreed with a teammate's coding style.`,
-            );
-            setStatus("Question ready. Click Unmute to answer.");
-            return nextQ;
-          });
+                  : `Mock Behavioral Question ${nextQ}: Describe a time you disagreed with a teammate's coding style.`;
+            setCurrentQuestion(nextQ);
+            setCurrentQuestionText(mockText);
+            addQuestion(nextQ, mockText);
+            setStatus("Question ready. Click Answer to respond.");
+          }
         }, 1500);
       } else {
         setIsRecording(true);
@@ -557,9 +660,6 @@ export default function MainSets() {
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
         analyserRef.current = analyser;
-        // Feed the SAME analyser into the 3D avatar so it reacts to the mic
-        // without opening a second getUserMedia stream / AudioContext.
-        experience?.setExternalAnalyser?.(analyser);
         const processor = audioCtx.createScriptProcessor(4096, 1, 1);
         processorRef.current = processor;
         source.connect(analyser);
@@ -594,15 +694,49 @@ export default function MainSets() {
       : isRecording
         ? "listening"
         : "";
-  const statusState = isPlayingAudio
-    ? "speaking"
-    : isRecording
-      ? "listening"
-      : "idle";
+
+  // ── Sidebar derivations ────────────────────────────────────────────────────
+  const answeredRows = questionsAsked.filter((q) => q.answered);
+  const activeIndex =
+    currentQuestion > 0 && currentQuestionText && !isSessionComplete ? currentQuestion : -1;
+  const upcomingRows = [1, 2, 3, 4, 5].filter(
+    (i) => !answeredRows.some((q) => q.index === i) && i !== activeIndex,
+  );
+
+  const titleFor = (i) => {
+    const asked = questionsAsked.find((q) => q.index === i);
+    if (asked) return asked.text;
+    const mocks = PREVIEW_QUESTIONS[setNumber];
+    if (preview && mocks && mocks[i - 1]) return mocks[i - 1];
+    return null;
+  };
+
+  const sentiment = (() => {
+    if (!scores) return { tone: "", label: "Awaiting first answer", pct: 0 };
+    const vals = Object.values(scores);
+    const avg = vals.reduce((sum, v) => sum + Number(v), 0) / vals.length;
+    const pct = Math.round(avg * 10);
+    const tone = avg >= 8 ? "good" : avg >= 6 ? "mid" : "low";
+    const label = avg >= 8 ? "Positive Sentiment" : avg >= 6 ? "Neutral Sentiment" : "Needs Focus";
+    return { tone, label, pct };
+  })();
+
+  const finishSession = () => {
+    if (mode === "practice" && setNumber === 3) {
+      navigate("/results?mode=practice");
+    } else if (setNumber === 3) {
+      navigate("/post-test", { state: { voice } });
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
+  const micDisabled =
+    !isConnected || isPlayingAudio || isEvaluating || isGeneratingQuestions || !hasReceivedQ1Audio;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="pt-root">
+    <div className="ix-root">
       {/* ── Overlay gates (Briefing / Transition) ── */}
       {/* AnimatePresence needs keyed motion components as DIRECT children —
           fragments break mount/unmount tracking, so exit animations don't run
@@ -625,271 +759,353 @@ export default function MainSets() {
         )}
       </AnimatePresence>
 
-      {/* ── Set 1 & Set 2 AI Question Synthesis Loader ── */}
-      {!showBriefing && isGeneratingQuestions && (
-        <AiAnalysisLoader
-          role={userRole}
-          weakness={sessionWeakness}
-          statusMessage={status}
-          isReady={hasReceivedQ1Audio && Boolean(currentQuestionText)}
-          error={error}
-          onComplete={() => setIsGeneratingQuestions(false)}
-          onRetry={startSession}
-          onSkip={() => setIsGeneratingQuestions(false)}
-        />
-      )}
-
-      {/* ── Main interview arena (shown after briefing and synthesis) ── */}
-      {!showBriefing && !isGeneratingQuestions && (
+      {/* ── Interview Session V2 — dark wireframe port ── */}
+      {!showBriefing && (
         <>
           {/* ── Top Bar ── */}
-          <header className="pt-topbar">
-            {/* Brand wordmark — mirrors db-topnav__wordmark */}
+          <header className="ix-topbar">
             <div
-              className="pt-topbar-brand"
+              className="ix-topbar-brand"
               onClick={() => navigate("/dashboard")}
-              style={{ cursor: "pointer" }}
               title="Return to Dashboard"
             >
               ITerview
             </div>
 
-            {/* Center meta cluster */}
-            <div className="pt-topbar-meta">
-              {/* Set phase badge — pill, purple tint */}
-              <span className="pt-phase-badge">{meta.label}</span>
+            <div className="ix-topbar-counter">
+              Question {currentQuestion > 0 ? currentQuestion : "—"} of 5
+            </div>
 
-              {/* Question counter — mirrors db-sessions-chip */}
-              <span className="pt-q-counter">
-                Question {currentQuestion > 0 ? currentQuestion : "—"} of 5
+            <div className="ix-topbar-badges">
+              <span className={`ix-pill-easy ${meta.difficulty}`}>
+                <span className="ix-pill-dot" />
+                {meta.difficulty.toUpperCase()}
               </span>
+              <span className="ix-pill-set">{meta.label}</span>
+            </div>
+          </header>
 
-              {/* AI Speaking indicator */}
-              {isPlayingAudio && (
-                <span className="pt-speaking-chip">
-                  <span className="pt-speaking-dot" />
-                  AI Speaking
-                </span>
+          <div className="ix-body">
+            <main className="ix-main">
+
+          {/* ── Video Stage ── */}
+          <section className={`ix-stage ${orbState}`} aria-label="AI interviewer stage">
+            <div className="ix-glow ix-glow-soft" />
+            <div className="ix-glow ix-glow-cyan" />
+            <div className="ix-ring ix-ring-outer" />
+            <div className="ix-ring ix-ring-inner" />
+
+            {/* Lightweight AI presence — pure-CSS instrument dial (same
+                language as the landing demo: halo ring, breathing ring, dark
+                cyan-lit core, 5-bar waveform). States come from the stage
+                class (.ix-stage.speaking/.listening/.complete) in MainSets.css.
+                Swap this block for an alternative orb component when chosen. */}
+            <div className="ix-orb-lite" aria-hidden="true">
+              <span className="ix-orb-halo" />
+              <span className="ix-orb-ring" />
+              <span className="ix-orb-core" />
+              <span className="ix-orb-wave">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <span key={i} className={`ix-orb-bar ix-orb-bar--${i}`} />
+                ))}
+              </span>
+            </div>
+
+            {/* Stage overlays */}
+            <div className="ix-ai-pill">
+              <span className="ix-ai-dot" />
+              <span>AI Interviewer · Mrs. Tania Shahira</span>
+            </div>
+
+            {/* PIP self-view card */}
+            <div className="ix-pip">
+              <div className="ix-pip-avatar">{userInitials}</div>
+              <div className="ix-pip-label">Me</div>
+              <div className={`ix-pip-wave${isPlayingAudio ? " ai" : ""}`} aria-hidden="true">
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    style={
+                      isRecording
+                        ? {
+                            transform: `scaleY(${Math.min(
+                              1,
+                              (4 + Math.round((volume / 100) * (5 + i * 2))) / 11,
+                            )})`,
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Centered LIVE + stage-clock cluster */}
+            <div className="ix-stage-meta">
+              <span className="ix-stage-live">
+                <span className="ix-dot-green" />
+                LIVE
+              </span>
+              <span className="ix-stage-timer">{formatHMS(elapsedSec)}</span>
+            </div>
+          </section>
+
+          {/* ── Lower Panel ── */}
+          <section className="ix-lower">
+            <div className="ix-session-row">
+              <span className="ix-live-pill">
+                <span className="ix-dot-green" />
+                LIVE
+              </span>
+              {error && <span className="ix-error-chip">{error}</span>}
+              <span className="ix-timer-box">
+                <Timer size={12} />
+                {formatMS(elapsedSec)}
+              </span>
+            </div>
+
+            {/* Question HUD */}
+            <div className="ix-hud">
+              <div className="ix-hud-accent" />
+              <div className="ix-hud-content">
+                <div className="ix-hud-head">
+                  <span className="ix-q-num">
+                    Q{currentQuestion > 0 ? currentQuestion : "—"}
+                  </span>
+                  <span className="ix-q-label">CURRENT QUESTION</span>
+                  <span className="ix-q-category">{focusArea || meta.category}</span>
+                </div>
+                {currentQuestionText ? (
+                  <div className="ix-q-text">{currentQuestionText}</div>
+                ) : (
+                  <div className="ix-q-skeleton" aria-hidden="true">
+                    <span />
+                    <span />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Transcript ticker — doubles as the session status line when idle */}
+            <div className={`ix-ticker${isRecording ? " recording" : ""}`}>
+              {isRecording ? (
+                <>
+                  <span className="ix-ticker-badge">
+                    <span className="ix-dot-live" />
+                    TRANSCRIBING
+                  </span>
+                  <span className="ix-ticker-text">
+                    "{partialTranscript || finalTranscript || "Listening…"}"
+                  </span>
+                </>
+              ) : (
+                <span className="ix-ticker-text">{status}</span>
               )}
             </div>
 
-            {/* Back to Dashboard button */}
-            <button
-              onClick={() => navigate("/dashboard")}
-              style={{
-                background: "var(--color-surface-card)",
-                border: "1px solid var(--color-border-soft)",
-                borderRadius: "var(--md-radius, 8px)",
-                padding: "6px 14px",
-                fontSize: "12px",
-                fontWeight: 600,
-                color: "var(--color-ink-secondary)",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-primary)";
-                e.currentTarget.style.color = "var(--color-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-border-soft)";
-                e.currentTarget.style.color = "var(--color-ink-secondary)";
-              }}
-            >
-              ← Dashboard
-            </button>
-          </header>
-
-          {/* ── Interview Arena ── */}
-          <main className="ms-main">
-            {/* ── Left Column ── */}
-            <div className="ms-left-column">
-              {/* AI Avatar + Question — white outer → lavender inner (card-in-card) */}
-              <div className="ms-card ms-avatar-card">
-                <div className="ms-avatar-card-header">
-                  <span className="ms-avatar-card-title">Live Session</span>
-                  {/* AI engine status badge — mirrors db-ai-status */}
-                  {isConnected && (
-                    <span
-                      className="pt-phase-badge"
-                      style={{
-                        background: "var(--color-badge-green-bg)",
-                        color: "var(--color-badge-green)",
-                      }}
-                    >
-                      AI Connected
-                    </span>
-                  )}
-                </div>
-
-                {/* Lavender inner card — db-inner-card equivalent */}
-                <div className="ms-inner-card">
-                  {/* Animated 3D AI spirit orb — organic-sphere prototype.
-                      The orb is the faceless face of the AI's text-to-speech
-                      voice; it never captures audio itself. MainSets feeds its
-                      shared session analyser in via setExternalAnalyser so the
-                      orb reacts without opening a second stream/AudioContext.
-                      High default quality; AdaptiveQuality backs off only if
-                      the frame budget can't be held. */}
-                  <div ref={orbRef} className={`ms-avatar-orb ${orbState}`}>
-                    <OrganicSphereCanvas
-                      subdivision={512}
-                      onExperienceReady={handleExperienceReady}
-                    />
-                    <span className="ms-avatar-orb-emoji">{meta.emoji}</span>
-                  </div>
-
-                  {/* Question text */}
-                  <h2 className="ms-question-text-display">
-                    {currentQuestionText || "Preparing your interview..."}
-                  </h2>
-
-                  {/* Status pill */}
-                  <div className={`pt-status-strip ${statusState}`}>
-                    <div className="pt-status-dot" />
-                    <span>{status}</span>
-                  </div>
-
-                  {/* Error pill */}
-                  {error && <div className="ms-error-text">{error}</div>}
-
-                  {/* Evaluating state — lavender tint strip */}
-                  {isEvaluating && (
-                    <div className="ms-evaluating-strip">
-                      <div className="ms-evaluating-dots">
-                        <span />
-                        <span />
-                        <span />
-                      </div>
-                      Evaluating your answer…
-                    </div>
-                  )}
-
-                  {/* Primary mic CTA — full-width, mirrors db-btn-primary */}
-                  {!isSessionComplete && (
-                    <button
-                      onClick={toggleMic}
-                      disabled={!isConnected || isPlayingAudio || isEvaluating}
-                      className={`ms-unmute-btn ${isRecording ? "recording" : ""}`}
-                      id="btn-toggle-mic"
-                    >
-                      {isRecording
-                        ? "⏹ Finish Answering"
-                        : isEvaluating
-                          ? "⏳ Evaluating…"
-                          : "🎙 Unmute to Answer"}
-                    </button>
-                  )}
-
-                  {/* Session complete CTA */}
-                  {isSessionComplete && (
-                    <button
-                      className="pt-btn pt-btn-primary"
-                      id="btn-session-complete"
-                      onClick={() => {
-                        if (mode === "practice" && setNumber === 3) {
-                          navigate("/results?mode=practice");
-                        } else if (setNumber === 3) {
-                          navigate("/post-test", { state: { voice } });
-                        } else {
-                          navigate("/dashboard");
-                        }
-                      }}
-                    >
-                      {setNumber === 3
-                        ? (mode === "practice" ? "📊 View Practice Summary" : "🎓 Start Graduation Challenge")
-                        : "Return to Dashboard"}
-                    </button>
-                  )}
-
-                  {/* Mic volume visualizer */}
-                  {isRecording && (
-                    <div className="ms-volume-visualizer-container">
-                      <div className="pt-progress-bar-track">
-                        <div
-                          className="pt-progress-bar-fill"
-                          style={{ width: `${volume}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+            {(slowWait || (error && isGeneratingQuestions)) && (
+              <div className="ix-slowwait">
+                <span>
+                  {error ? "Generation hit a snag." : "Still preparing — hang tight."}
+                </span>
+                <button type="button" onClick={startSession}>
+                  Retry
+                </button>
               </div>
+            )}
 
-              {/* Participant strip — bottom of left column */}
-              <div className="ms-participants-row">
-                {/* Candidate card */}
-                <div className="ms-card ms-participant-card">
-                  <div className="ms-participant-content">
-                    <div className="ms-participant-avatar" />
-                    <span className="ms-participant-name">You (Candidate)</span>
-                  </div>
-                </div>
-
-                {/* Empty seat */}
-                <div className="ms-card ms-participant-card ms-participant-empty">
-                  <div className="ms-participant-content">
-                    <span className="ms-participant-name">Empty Seat</span>
-                  </div>
-                </div>
+            {isEvaluating && (
+              <div className="ix-evaluating">
+                <span className="ix-evaluating-dots">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                Evaluating your answer…
               </div>
+            )}
+
+            {/* Control dock */}
+            <div className="ix-dock-wrap">
+              {isSessionComplete ? (
+                <button
+                  className="ix-end-btn"
+                  id="btn-session-complete"
+                  onClick={finishSession}
+                >
+                  <Flag size={16} />
+                  <span>
+                    {setNumber === 3
+                      ? mode === "practice"
+                        ? "View Practice Summary"
+                        : "Start Graduation Challenge"
+                      : "Return to Dashboard"}
+                  </span>
+                </button>
+              ) : (
+                <div className="ix-dock">
+                  <button
+                    id="btn-toggle-mic"
+                    className={`ix-dock-btn${isRecording ? " recording" : ""}`}
+                    onClick={toggleMic}
+                    disabled={micDisabled}
+                    title={isRecording ? "Finish answering" : "Unmute to answer"}
+                  >
+                    <Mic size={18} />
+                    <span>{isRecording ? "Stop" : "Answer"}</span>
+                  </button>
+                  <button
+                    className="ix-dock-btn"
+                    disabled
+                    title="Camera is not available in this build"
+                  >
+                    <Video size={18} />
+                    <span>Camera</span>
+                  </button>
+                  <button
+                    className="ix-dock-btn"
+                    disabled
+                    title="Screen share is not available in this build"
+                  >
+                    <MonitorUp size={18} />
+                    <span>Share</span>
+                  </button>
+                  <button
+                    className="ix-dock-btn"
+                    disabled
+                    title="Chat is not available in this build"
+                  >
+                    <MessageSquare size={18} />
+                    <span>Chat</span>
+                  </button>
+                  <div className="ix-dock-divider" />
+                  <button
+                    className="ix-dock-btn"
+                    disabled
+                    title="Raise hand is not available in this build"
+                  >
+                    <Hand size={18} />
+                    <span>Hand</span>
+                  </button>
+                  <button
+                    id="btn-session-end"
+                    className="ix-dock-btn ix-dock-end"
+                    onClick={() => navigate("/dashboard")}
+                    title="End session and return to Dashboard"
+                  >
+                    <PhoneOff size={18} />
+                    <span>End</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+          </main>
+
+          {/* ════ RIGHT SIDEBAR ════ */}
+          <aside className="ix-sidebar">
+            <div className="ix-tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "questions"}
+                className={`ix-tab${activeTab === "questions" ? " active" : ""}`}
+                onClick={() => setActiveTab("questions")}
+              >
+                Questions
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "notes"}
+                className={`ix-tab${activeTab === "notes" ? " active" : ""}`}
+                onClick={() => setActiveTab("notes")}
+              >
+                Notes
+              </button>
             </div>
 
-            {/* ── Right Column ── */}
-            <div className="ms-right-column">
-              {/* Live Transcript Panel */}
-              <div className="ms-card ms-transcript-card">
-                <div className="ms-card-header">
-                  <div className="pt-card-icon accent">💬</div>
-                  <span className="pt-card-title">Live Transcript</span>
-                </div>
-                <div className="ms-card-body ms-transcript-body">
-                  {!finalTranscript && !partialTranscript ? (
-                    <div className="pt-transcript-empty">
-                      Transcripts will appear here…
+            <div className="ix-side-body">
+              {activeTab === "notes" ? (
+                <p className="ix-notes-empty">
+                  Notes you capture during the session will be collected here.
+                </p>
+              ) : (
+                <>
+                  {answeredRows.map((q) => (
+                    <div key={q.index} className="ix-question-row">
+                      <span className="ix-row-badge">{String(q.index).padStart(2, "0")}</span>
+                      <div className="ix-row-body">
+                        <span className="ix-row-title">{q.text}</span>
+                        {q.answer && <span className="ix-row-snippet">"{q.answer}"</span>}
+                      </div>
+                      <Check size={16} className="ix-row-check" />
                     </div>
-                  ) : (
-                    <>
-                      <span className="pt-transcript-final">
-                        {finalTranscript}
+                  ))}
+
+                  {upcomingRows.length > 0 && answeredRows.length > 0 && (
+                    <div className="ix-section-label">UPCOMING QUESTIONS</div>
+                  )}
+
+                  {upcomingRows.map((i) => {
+                    const t = titleFor(i);
+                    return (
+                      <div key={i} className="ix-question-row">
+                        <span className="ix-row-badge pending">
+                          {String(i).padStart(2, "0")}
+                        </span>
+                        <span className="ix-row-title dim">
+                          {t || "Waiting for the interviewer…"}
+                        </span>
+                        <Clock size={16} className="ix-row-clock" />
+                      </div>
+                    );
+                  })}
+
+
+                  <div className="ix-section-label">AI FEEDBACK</div>
+                  <div className="ix-feedback-card">
+                    <div className="ix-feedback-head">
+                      <span className={`ix-sentiment ${sentiment.tone}`.trim()}>
+                        {sentiment.label}
                       </span>
-                      {partialTranscript && (
-                        <span className="pt-transcript-partial">
-                          {" "}
-                          {partialTranscript}
+                      {scores && (
+                        <span className={`ix-fscore ${sentiment.tone}`.trim()}>
+                          {sentiment.pct}%
                         </span>
                       )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* AI Coach Feedback Panel */}
-              <div className="ms-card ms-coach-card">
-                <div className="ms-card-header">
-                  <div className="ms-card-icon-coach">💡</div>
-                  <span className="ms-card-title-coach">AI Coach Feedback</span>
-                </div>
-                <div className="ms-card-body ms-coach-body">
-                  <p className="ms-coach-feedback-text">{coachTip}</p>
-
-                  {/* Score cards — inner-card pattern, one per dimension */}
-                  {scores && (
-                    <div className="ms-scores-container">
-                      {Object.entries(scores).map(([name, score]) => (
-                        <div key={name} className="ms-score-card">
-                          <div className="ms-score-label">
-                            {name.replace(/_/g, " ")}
-                          </div>
-                          <div className="ms-score-value">{score}/10</div>
-                        </div>
-                      ))}
                     </div>
-                  )}
-                </div>
-              </div>
+
+                    <div className="ix-insight">
+                      <Lightbulb size={14} className="amber" />
+                      <p>{coachTip}</p>
+                    </div>
+                    {scores && (
+                      <>
+                        <div className="ix-insight">
+                          <AlertTriangle size={14} className="amber" />
+                          <p>Push for concrete examples to lift your depth dimension.</p>
+                        </div>
+                        <div className="ix-insight">
+                          <CheckCircle2 size={14} className="green" />
+                          <p>{answeredRows.length} of 5 answers submitted this session.</p>
+                        </div>
+                        <div className="ix-stats">
+                          {Object.entries(scores).map(([name, val]) => (
+                            <div key={name} className="ix-stat">
+                              <div className="ix-stat-value">{val}/10</div>
+                              <div className="ix-stat-label">{name.replace(/_/g, " ")}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
-          </main>
+          </aside>
+          </div>
         </>
       )}
     </div>

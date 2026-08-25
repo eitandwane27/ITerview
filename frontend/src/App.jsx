@@ -15,8 +15,6 @@ import Set2TransitionOverlay from "./components/Set2TransitionOverlay";
 import SetBriefingOverlay from "./components/SetBriefingOverlay";
 import FluxDebugger from "./components/FluxDebugger";
 import LandingPage from "./pages/LandingPage";
-import { OrganicSpherePlayground } from "./prototypes/organic-sphere";
-import "./components/AiAnalysisLoader.css";
 import "./App.css";
 
 function App() {
@@ -94,10 +92,6 @@ function App() {
           {/* Dev only — STT latency & accuracy testbench */}
           <Route path="/dev/stt-test" element={<FluxDebugger />} />
           <Route path="/dev/flux" element={<FluxDebugger />} />
-
-          {/* Dev only — Bruno Simon Organic Sphere 3D Prototype */}
-          <Route path="/dev/organic-sphere" element={<OrganicSpherePlayground />} />
-          <Route path="/dev/orb" element={<OrganicSpherePlayground />} />
         </Routes>
       </div>
     </BrowserRouter>

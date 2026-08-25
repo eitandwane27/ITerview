@@ -1,7 +1,7 @@
 // frontend/src/components/SetBriefingOverlay.jsx
 // ─────────────────────────────────────────────────────────────────────────────
 // Set 1 Session Briefing — Technical Practice Studio (ITerview)
-// Studio DNA · Playful Palette · Dynamic AI Weakness Engine Calibration
+// Streamlined Studio Briefing · 3C Diagnostic Baseline · Practice Session
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -9,20 +9,17 @@ import { motion } from "framer-motion";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase";
 import {
+  Sparkles,
   Target,
-  Compass,
-  CheckCircle2,
   Mic,
   ArrowRight,
   X,
-  Layers,
-  Activity,
-  ShieldCheck,
-  Sparkles,
   Bot,
   TrendingUp,
-  Cpu,
   BarChart3,
+  Loader2,
+  CheckCircle2,
+  Cpu,
 } from "lucide-react";
 import "./SetBriefingOverlay.css";
 
@@ -55,97 +52,6 @@ function getRoleScopeSummary(role) {
   if (lower.includes("backend")) return "APIs · Node/Express · Databases · Architecture";
   if (lower.includes("fullstack")) return "Client-Server · Data Flow · APIs · Performance";
   return "Core Concepts · Architecture · Problem Solving";
-}
-
-// ─── Focus Area Themes & Rationale Config ────────────────────────────────────
-
-const FOCUS_CONFIGS = {
-  clarity: {
-    key: "clarity",
-    label: "Clarity & Structure",
-    theme: "sky", // #5FB8FF
-    accentColor: "#5FB8FF",
-    icon: Compass,
-    eyebrow: "AI WEAKNESS TARGET",
-    description:
-      "The Weakness Engine will prompt for step-by-step reasoning, concise summaries, and logical answer flow to sharpen your verbal delivery.",
-  },
-  correctness: {
-    key: "correctness",
-    label: "Technical Accuracy",
-    theme: "mint", // #4FD6A3
-    accentColor: "#4FD6A3",
-    icon: CheckCircle2,
-    eyebrow: "AI WEAKNESS TARGET",
-    description:
-      "The Weakness Engine will test core mechanics, precise technical terminology, and syntax accuracy across your role's domain.",
-  },
-  completeness: {
-    key: "completeness",
-    label: "Depth & Edge Cases",
-    theme: "lilac", // #B28CFF
-    accentColor: "#B28CFF",
-    icon: Layers,
-    eyebrow: "AI WEAKNESS TARGET",
-    description:
-      "The Weakness Engine will challenge you on architectural trade-offs, real-world constraints, and overlooked edge cases.",
-  },
-  communication: {
-    key: "communication",
-    label: "Delivery & Pacing",
-    theme: "sun", // #FFC94D
-    accentColor: "#FFC94D",
-    icon: Activity,
-    eyebrow: "COMMUNICATION TARGET",
-    description:
-      "The AI Coach monitors speech pacing, articulation, and filler words to ensure crisp, interview-ready presentation.",
-  },
-  star: {
-    key: "star",
-    label: "STAR Behavioral",
-    theme: "cyan", // #06B6D4
-    accentColor: "#06B6D4",
-    icon: Target,
-    eyebrow: "BEHAVIORAL TARGET",
-    description:
-      "Methodical behavioral response modeling: Situation, Task, Action, and Measurable Business Result.",
-  },
-  general: {
-    key: "general",
-    label: "3C Foundation",
-    theme: "cyan",
-    accentColor: "#06B6D4",
-    icon: ShieldCheck,
-    eyebrow: "CALIBRATION TARGET",
-    description:
-      "Balanced technical simulation testing clarity, accuracy, and completeness across your primary role scope.",
-  },
-};
-
-function resolveFocusConfig(focusArea, diagnosticData, fallbackTag) {
-  const breakdown = diagnosticData?.threeCBreakdown || {};
-  const lowestMetric =
-    breakdown.lowestMetric ||
-    diagnosticData?.postWeaknessTag ||
-    diagnosticData?.preWeaknessTag ||
-    fallbackTag ||
-    null;
-
-  const isAuto = !focusArea || focusArea === "auto";
-  const rawKey = (isAuto ? (lowestMetric || "general") : focusArea)
-    .toLowerCase()
-    .replace(/focus[_-]/g, "")
-    .replace(/_/g, "-");
-
-  let configKey = "general";
-  if (rawKey.includes("clarity")) configKey = "clarity";
-  else if (rawKey.includes("correctness")) configKey = "correctness";
-  else if (rawKey.includes("completeness")) configKey = "completeness";
-  else if (rawKey.includes("communication")) configKey = "communication";
-  else if (rawKey.includes("star") || rawKey.includes("behavioral")) configKey = "star";
-
-  const config = FOCUS_CONFIGS[configKey] || FOCUS_CONFIGS.general;
-  return { ...config, isAuto, effectiveKey: configKey };
 }
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
@@ -208,6 +114,17 @@ export default function SetBriefingOverlay({
   const modalCardRef = useRef(null);
   const launchBtnRef = useRef(null);
 
+  // Theme — mirrors Dashboard's localStorage-backed toggle ("iterview-theme").
+  // Read once at mount: the overlay is short-lived and always opened after the
+  // dashboard has rendered, so the stored preference is current.
+  const [theme] = useState(() => {
+    try {
+      return localStorage.getItem("iterview-theme") || "dark";
+    } catch {
+      return "dark";
+    }
+  });
+
   // Disable background body scroll while modal is open
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -229,7 +146,6 @@ export default function SetBriefingOverlay({
       if (!user) {
         setProfile({
           role: "Frontend",
-          weaknessTag: "focus_clarity",
           threeCBreakdown: {
             clarity: 6.5,
             correctness: 8.5,
@@ -273,56 +189,274 @@ export default function SetBriefingOverlay({
   const roleScope = getRoleScopeSummary(effectiveRole);
   const effectiveDiagnostic = diagnosticData || profile;
 
-  const focusConfig = useMemo(() => {
-    return resolveFocusConfig(
-      focusArea,
-      effectiveDiagnostic,
-      profile?.postWeaknessTag || profile?.preWeaknessTag || profile?.weaknessTag
-    );
-  }, [focusArea, effectiveDiagnostic, profile]);
-
   // Extract 3C Breakdown scores
   const threeC = effectiveDiagnostic?.threeCBreakdown || {};
   const clarityScore = typeof threeC.clarity === "number" ? threeC.clarity : null;
   const correctnessScore = typeof threeC.correctness === "number" ? threeC.correctness : null;
   const completenessScore = typeof threeC.completeness === "number" ? threeC.completeness : null;
 
-  const lowestMetricKey =
-    threeC.lowestMetric ||
-    (clarityScore != null && correctnessScore != null && completenessScore != null
-      ? (clarityScore <= correctnessScore && clarityScore <= completenessScore
-          ? "clarity"
-          : correctnessScore <= completenessScore
-          ? "correctness"
-          : "completeness")
-      : null);
+  const isAuto = !focusArea || focusArea === "auto";
 
-  const targetScore =
-    focusConfig.effectiveKey === "clarity"
-      ? clarityScore
-      : focusConfig.effectiveKey === "correctness"
-      ? correctnessScore
-      : focusConfig.effectiveKey === "completeness"
-      ? completenessScore
-      : null;
-
-  // Launch callback
-  const handleLaunch = useCallback(() => {
-    if (isTriggeredRef.current) return;
-    isTriggeredRef.current = true;
-    if (typeof onConfirm === "function") {
-      onConfirm();
-    } else if (typeof onReady === "function") {
-      onReady();
+  // Determine target metric (either custom focusArea or lowest metric from diagnostic)
+  const targetKey = useMemo(() => {
+    if (focusArea && focusArea !== "auto") {
+      const lower = focusArea.toLowerCase();
+      if (lower.includes("clarity")) return "clarity";
+      if (lower.includes("correctness") || lower.includes("accuracy")) return "correctness";
+      if (lower.includes("completeness") || lower.includes("depth")) return "completeness";
     }
-  }, [onConfirm, onReady]);
+    if (threeC.lowestMetric) return threeC.lowestMetric;
+    if (clarityScore != null && correctnessScore != null && completenessScore != null) {
+      if (clarityScore <= correctnessScore && clarityScore <= completenessScore) return "clarity";
+      if (correctnessScore <= completenessScore) return "correctness";
+      return "completeness";
+    }
+    const tag = effectiveDiagnostic?.postWeaknessTag || effectiveDiagnostic?.preWeaknessTag || effectiveDiagnostic?.weaknessTag || "";
+    if (tag.includes("clarity")) return "clarity";
+    if (tag.includes("correctness")) return "correctness";
+    if (tag.includes("completeness")) return "completeness";
+    return null;
+  }, [focusArea, threeC, clarityScore, correctnessScore, completenessScore, effectiveDiagnostic]);
+
+  // Pattern B: Morphing Loading / Preparation State
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [prepStage, setPrepStage] = useState(0);
+  const [prepProgress, setPrepProgress] = useState(0);
+  const [stageText, setStageText] = useState("");
+  const prepTimersRef = useRef([]);
+  const wsRef = useRef(null);
+
+  // Telemetry stages for Pattern B morphing preparation
+  const targetLabel = useMemo(() => {
+    if (targetKey === "clarity") return "Clarity & Delivery";
+    if (targetKey === "correctness") return "Technical Accuracy";
+    if (targetKey === "completeness") return "Depth & Completeness";
+    return "Technical Mastery";
+  }, [targetKey]);
+
+  const prepStages = useMemo(() => [
+    { label: `Analyzing diagnostic baseline for ${formattedRole}...`, pct: 20 },
+    { label: `Calibrating rubric targeting ${targetLabel}...`, pct: 48 },
+    { label: `Synthesizing 5 personalized questions (DeepSeek)...`, pct: 76 },
+    { label: `Compiling Aura-2 voice audio stream...`, pct: 94 },
+    { label: `Session ready! Launching Practice Arena...`, pct: 100 },
+  ], [formattedRole, targetLabel]);
+
+  // Clean up preparation timers and WebSocket on unmount
+  useEffect(() => {
+    return () => {
+      prepTimersRef.current.forEach(clearTimeout);
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, []);
 
   // Dismiss callback
   const handleDismiss = useCallback(() => {
+    if (isPreparing) {
+      prepTimersRef.current.forEach(clearTimeout);
+      prepTimersRef.current = [];
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      setIsPreparing(false);
+      isTriggeredRef.current = false;
+    }
     if (typeof onClose === "function") {
       onClose();
     }
-  }, [onClose]);
+  }, [isPreparing, onClose]);
+
+  // Cancel / Abort preparation if user cancels
+  const handleCancelPreparation = useCallback(() => {
+    if (isPreparing) {
+      prepTimersRef.current.forEach(clearTimeout);
+      prepTimersRef.current = [];
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      setIsPreparing(false);
+      setPrepStage(0);
+      setPrepProgress(0);
+      setStageText("");
+      isTriggeredRef.current = false;
+    } else {
+      handleDismiss();
+    }
+  }, [isPreparing, handleDismiss]);
+
+  // Launch callback with real backend WebSocket telemetry
+  const handleLaunch = useCallback(async () => {
+    if (isTriggeredRef.current || isPreparing) return;
+    setIsPreparing(true);
+    setPrepProgress(18);
+    setStageText(`Initializing session for ${formattedRole}...`);
+
+    // Clear any previous timers
+    prepTimersRef.current.forEach(clearTimeout);
+    prepTimersRef.current = [];
+
+    const user = auth.currentUser;
+    const uid = user ? user.uid : "anonymous_user";
+
+    // 1. Persist role and focus area to backend if authenticated
+    if (user) {
+      try {
+        await fetch("/api/users/role", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firebaseUid: user.uid,
+            role: effectiveRole,
+            focusArea: focusArea || "auto",
+          }),
+        });
+      } catch (err) {
+        console.warn("Could not save role before socket generation:", err);
+      }
+    }
+
+    // 2. Open live WebSocket connection to trigger & stream question generation
+    let isSocketHandled = false;
+
+    const runFallbackSimulation = () => {
+      if (isSocketHandled) return;
+      isSocketHandled = true;
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+
+      // Smooth fallback progression
+      const t1 = setTimeout(() => {
+        setPrepStage(1);
+        setPrepProgress(prepStages[1].pct);
+        setStageText(prepStages[1].label);
+      }, 700);
+
+      const t2 = setTimeout(() => {
+        setPrepStage(2);
+        setPrepProgress(prepStages[2].pct);
+        setStageText(prepStages[2].label);
+      }, 1600);
+
+      const t3 = setTimeout(() => {
+        setPrepStage(3);
+        setPrepProgress(prepStages[3].pct);
+        setStageText(prepStages[3].label);
+      }, 2500);
+
+      const t4 = setTimeout(() => {
+        setPrepStage(4);
+        setPrepProgress(prepStages[4].pct);
+        setStageText(prepStages[4].label);
+      }, 3300);
+
+      const tFinal = setTimeout(() => {
+        isTriggeredRef.current = true;
+        if (typeof onConfirm === "function") {
+          onConfirm();
+        } else if (typeof onReady === "function") {
+          onReady();
+        }
+      }, 3900);
+
+      prepTimersRef.current = [t1, t2, t3, t4, tFinal];
+    };
+
+    try {
+      const focusParam = focusArea ? `&focusArea=${encodeURIComponent(focusArea)}` : "";
+      const ws = new WebSocket(`ws://localhost:5000/ws/set1?voice=aura-2-luna-en&uid=${uid}${focusParam}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setPrepProgress(25);
+        setStageText(`Connected to DeepSeek AI Engine...`);
+      };
+
+      ws.onmessage = (event) => {
+        let msg;
+        try {
+          msg = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+
+        switch (msg.type) {
+          case "generation_progress":
+            if (msg.stage === "evaluating_baseline") {
+              setPrepProgress(28);
+              setStageText(msg.message || `Evaluating baseline 3C scores...`);
+            } else if (msg.stage === "generating_questions") {
+              const current = msg.current || 1;
+              const total = msg.total || 5;
+              const pct = 30 + Math.round((current / total) * 60);
+              setPrepProgress(pct);
+              setStageText(msg.message || `Synthesizing question ${current} of ${total} (${formattedRole})...`);
+            }
+            break;
+
+          case "question_text":
+            setPrepProgress(94);
+            setStageText(`Question ready · Compiling voice audio...`);
+            break;
+
+          case "generation_complete":
+          case "tts_audio":
+            isSocketHandled = true;
+            setPrepProgress(100);
+            setStageText(`Session ready! Launching Practice Arena...`);
+            setTimeout(() => {
+              if (wsRef.current) {
+                wsRef.current.onclose = null;
+                wsRef.current.close();
+                wsRef.current = null;
+              }
+              isTriggeredRef.current = true;
+              if (typeof onConfirm === "function") {
+                onConfirm();
+              } else if (typeof onReady === "function") {
+                onReady();
+              }
+            }, 450);
+            break;
+
+          case "error":
+            console.warn("[SetBriefingOverlay] WS error event:", msg.message);
+            runFallbackSimulation();
+            break;
+
+          default:
+            break;
+        }
+      };
+
+      ws.onerror = () => {
+        console.warn("[SetBriefingOverlay] WS connection failed, running fallback simulation.");
+        runFallbackSimulation();
+      };
+
+      // Guard timer: if real WS takes > 12s, complete safely
+      const guardTimer = setTimeout(() => {
+        if (!isTriggeredRef.current) {
+          runFallbackSimulation();
+        }
+      }, 12000);
+      prepTimersRef.current.push(guardTimer);
+
+    } catch (err) {
+      console.warn("[SetBriefingOverlay] WS exception:", err);
+      runFallbackSimulation();
+    }
+  }, [isPreparing, formattedRole, effectiveRole, focusArea, prepStages, onConfirm, onReady]);
 
   // Auto focus launch button
   useEffect(() => {
@@ -375,11 +509,10 @@ export default function SetBriefingOverlay({
     [handleDismiss, handleLaunch]
   );
 
-  const FocusIcon = focusConfig.icon;
-
   return (
     <motion.div
       className="sb-overlay"
+      data-theme={theme}
       variants={overlayVariants}
       initial="hidden"
       animate="visible"
@@ -401,104 +534,81 @@ export default function SetBriefingOverlay({
         aria-labelledby="sb-title"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Top Atmospheric Glow ── */}
+        {/* ── Top Atmospheric Glow & Active Scanner ── */}
         <div className="sb-modal-bloom" aria-hidden="true" />
+        {isPreparing && <div className="sb-modal-scanner" aria-hidden="true" />}
 
         {/* ── 1. Header Section ── */}
         <motion.div className="sb-header" variants={itemVariants}>
           <div className="sb-header-main">
-            <div className="sb-kicker-row">
-              <div className="sb-kicker-pill">
-                <span className="sb-pulse-dot" aria-hidden="true" />
-                <span className="sb-kicker-text">SET 01 · WEAKNESS ENGINE</span>
-              </div>
-
-              {focusConfig.isAuto ? (
-                <span className="sb-badge sb-badge--cyan">
-                  <Sparkles size={11} className="sb-badge-icon" />
-                  Auto-calibrated
-                </span>
-              ) : (
-                <span className="sb-badge sb-badge--sun">
-                  <Target size={11} className="sb-badge-icon" />
-                  Custom Focus
-                </span>
-              )}
-            </div>
-
             <h2 id="sb-title" className="sb-title">
-              Session Calibration
+              {isPreparing ? "Calibrating your session..." : `${formattedRole} · Set 01`}
             </h2>
 
             <div className="sb-role-strip">
-              <span className="sb-role-name">{formattedRole}</span>
-              <span className="sb-role-dot">·</span>
               <span className="sb-role-scope">{roleScope}</span>
             </div>
           </div>
 
-          {onClose && (
-            <button
-              type="button"
-              className="sb-close-btn"
-              onClick={handleDismiss}
-              aria-label="Close session calibration modal"
-              title="Close (Esc)"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </motion.div>
+          <div className="sb-header-side">
+            {isPreparing ? (
+              <span className="sb-tag sb-tag--synthesis">
+                <Cpu size={11} className="sb-tag-icon sb-spin-slow" />
+                Generating questions…
+              </span>
+            ) : isAuto ? (
+              <span className="sb-tag sb-tag--cyan">
+                <Sparkles size={11} className="sb-tag-icon" />
+                Auto-calibrated Focus
+              </span>
+            ) : (
+              <span className="sb-tag sb-tag--sun">
+                <Target size={11} className="sb-tag-icon" />
+                Custom Target
+              </span>
+            )}
 
-        {/* ── 2. Primary Focus Card (Hero Highlight) ── */}
-        <motion.div
-          className={`sb-focus-card sb-focus-card--${focusConfig.theme}`}
-          variants={itemVariants}
-        >
-          <div className="sb-focus-card-header">
-            <div className="sb-focus-icon-wrap">
-              <FocusIcon size={16} className="sb-focus-icon" />
-            </div>
-
-            <div className="sb-focus-meta">
-              <span className="sb-focus-eyebrow">{focusConfig.eyebrow}</span>
-              <h3 className="sb-focus-name">{focusConfig.label}</h3>
-            </div>
-
-            {targetScore != null && (
-              <div className="sb-score-chip sb-score-chip--target">
-                <span className="sb-score-chip-label">Diagnostic</span>
-                <span className="sb-score-chip-val">{targetScore} / 10</span>
-              </div>
+            {onClose && (
+              <button
+                type="button"
+                className="sb-close-btn"
+                onClick={handleDismiss}
+                aria-label="Close session calibration modal"
+                title="Close (Esc)"
+              >
+                <X size={16} />
+              </button>
             )}
           </div>
-
-          <p className="sb-focus-desc">{focusConfig.description}</p>
         </motion.div>
 
-        {/* ── 3. 3C Diagnostic Breakdown (Live Backend Data) ── */}
+        {/* ── 2. 3C Diagnostic Baseline (Airy Triad Grid) ── */}
         <motion.div className="sb-breakdown-section" variants={itemVariants}>
           <div className="sb-section-header">
-            <span className="sb-section-title">
+            <div className="sb-section-title-wrap">
               <BarChart3 size={13} className="sb-section-icon" />
-              3C Diagnostic Baseline
+              <span className="sb-section-title">
+                {isPreparing ? "Calibrating Metric Thresholds" : "Diagnostic Baseline"}
+              </span>
+            </div>
+            <span className="sb-section-sub">
+              {isPreparing ? `Targeting ${targetLabel}` : "Scored out of 10"}
             </span>
-            <span className="sb-section-sub">Scored out of 10</span>
           </div>
 
           <div className="sb-triad-grid">
             {/* Metric 1: Clarity (Sky) */}
             <div
               className={`sb-triad-card sb-triad-card--sky ${
-                lowestMetricKey === "clarity" || focusConfig.effectiveKey === "clarity"
-                  ? "sb-triad-card--active"
-                  : ""
-              }`}
+                targetKey === "clarity" ? "sb-triad-card--active" : ""
+              } ${isPreparing && targetKey === "clarity" ? "sb-triad-card--calibrating" : ""}`}
             >
               <div className="sb-triad-head">
-                <span className="sb-triad-dot sb-triad-dot--sky" />
-                <span className="sb-triad-label">Clarity</span>
-                {lowestMetricKey === "clarity" && (
+                <div className="sb-triad-indicator">
+                  <span className="sb-triad-dot sb-triad-dot--sky" />
+                  <span className="sb-triad-label">Clarity</span>
+                </div>
+                {targetKey === "clarity" && (
                   <span className="sb-mini-tag sb-mini-tag--rose">Focus</span>
                 )}
               </div>
@@ -512,7 +622,7 @@ export default function SetBriefingOverlay({
                 <div
                   className="sb-mini-fill sb-mini-fill--sky"
                   style={{
-                    width: `${Math.min(100, ((clarityScore || 7.0) / 10) * 100)}%`,
+                    width: `${Math.min(100, ((clarityScore != null ? clarityScore : 7.0) / 10) * 100)}%`,
                   }}
                 />
               </div>
@@ -521,15 +631,15 @@ export default function SetBriefingOverlay({
             {/* Metric 2: Accuracy / Correctness (Mint) */}
             <div
               className={`sb-triad-card sb-triad-card--mint ${
-                lowestMetricKey === "correctness" || focusConfig.effectiveKey === "correctness"
-                  ? "sb-triad-card--active"
-                  : ""
-              }`}
+                targetKey === "correctness" ? "sb-triad-card--active" : ""
+              } ${isPreparing && targetKey === "correctness" ? "sb-triad-card--calibrating" : ""}`}
             >
               <div className="sb-triad-head">
-                <span className="sb-triad-dot sb-triad-dot--mint" />
-                <span className="sb-triad-label">Accuracy</span>
-                {lowestMetricKey === "correctness" && (
+                <div className="sb-triad-indicator">
+                  <span className="sb-triad-dot sb-triad-dot--mint" />
+                  <span className="sb-triad-label">Accuracy</span>
+                </div>
+                {targetKey === "correctness" && (
                   <span className="sb-mini-tag sb-mini-tag--rose">Focus</span>
                 )}
               </div>
@@ -543,7 +653,7 @@ export default function SetBriefingOverlay({
                 <div
                   className="sb-mini-fill sb-mini-fill--mint"
                   style={{
-                    width: `${Math.min(100, ((correctnessScore || 7.0) / 10) * 100)}%`,
+                    width: `${Math.min(100, ((correctnessScore != null ? correctnessScore : 7.0) / 10) * 100)}%`,
                   }}
                 />
               </div>
@@ -552,15 +662,15 @@ export default function SetBriefingOverlay({
             {/* Metric 3: Depth / Completeness (Lilac) */}
             <div
               className={`sb-triad-card sb-triad-card--lilac ${
-                lowestMetricKey === "completeness" || focusConfig.effectiveKey === "completeness"
-                  ? "sb-triad-card--active"
-                  : ""
-              }`}
+                targetKey === "completeness" ? "sb-triad-card--active" : ""
+              } ${isPreparing && targetKey === "completeness" ? "sb-triad-card--calibrating" : ""}`}
             >
               <div className="sb-triad-head">
-                <span className="sb-triad-dot sb-triad-dot--lilac" />
-                <span className="sb-triad-label">Completeness</span>
-                {lowestMetricKey === "completeness" && (
+                <div className="sb-triad-indicator">
+                  <span className="sb-triad-dot sb-triad-dot--lilac" />
+                  <span className="sb-triad-label">Completeness</span>
+                </div>
+                {targetKey === "completeness" && (
                   <span className="sb-mini-tag sb-mini-tag--rose">Focus</span>
                 )}
               </div>
@@ -574,7 +684,7 @@ export default function SetBriefingOverlay({
                 <div
                   className="sb-mini-fill sb-mini-fill--lilac"
                   style={{
-                    width: `${Math.min(100, ((completenessScore || 7.0) / 10) * 100)}%`,
+                    width: `${Math.min(100, ((completenessScore != null ? completenessScore : 7.0) / 10) * 100)}%`,
                   }}
                 />
               </div>
@@ -582,60 +692,119 @@ export default function SetBriefingOverlay({
           </div>
         </motion.div>
 
-        {/* ── 4. Live Studio Features (What Backend Delivers) ── */}
-        <motion.div className="sb-features-strip" variants={itemVariants}>
-          <div className="sb-feature-pill">
-            <Mic size={13} className="sb-feature-icon sb-feature-icon--cyan" />
-            <span className="sb-feature-text">5 Voice Questions</span>
+        {/* ── 3. Session Blueprint Strip (Integrated Features) ── */}
+        <motion.div className="sb-blueprint-strip" variants={itemVariants}>
+          <div className="sb-blueprint-item">
+            <div className="sb-blueprint-icon-halo sb-blueprint-icon-halo--cyan">
+              <Mic size={13} />
+            </div>
+            <div className="sb-blueprint-text">
+              <span className="sb-blueprint-title">5 Voice Prompts</span>
+              <span className="sb-blueprint-desc">Targeted technical set</span>
+            </div>
           </div>
 
-          <div className="sb-feature-pill">
-            <Bot size={13} className="sb-feature-icon sb-feature-icon--lilac" />
-            <span className="sb-feature-text">Instant AI Coach Tip</span>
+          <div className="sb-blueprint-divider" aria-hidden="true" />
+
+          <div className="sb-blueprint-item">
+            <div className="sb-blueprint-icon-halo sb-blueprint-icon-halo--lilac">
+              <Bot size={13} />
+            </div>
+            <div className="sb-blueprint-text">
+              <span className="sb-blueprint-title">AI Coach Tips</span>
+              <span className="sb-blueprint-desc">Dynamic guidance</span>
+            </div>
           </div>
 
-          <div className="sb-feature-pill">
-            <TrendingUp size={13} className="sb-feature-icon sb-feature-icon--mint" />
-            <span className="sb-feature-text">Live 3C Evaluation</span>
+          <div className="sb-blueprint-divider" aria-hidden="true" />
+
+          <div className="sb-blueprint-item">
+            <div className="sb-blueprint-icon-halo sb-blueprint-icon-halo--mint">
+              <TrendingUp size={13} />
+            </div>
+            <div className="sb-blueprint-text">
+              <span className="sb-blueprint-title">Live 3C Scoring</span>
+              <span className="sb-blueprint-desc">Rubric updates</span>
+            </div>
           </div>
         </motion.div>
 
-        {/* ── 5. Action Footer ── */}
+        {/* ── 4. Action Footer — Pattern B Morphing Execution ── */}
         <motion.div className="sb-footer" variants={itemVariants}>
           <div className="sb-actions">
             {onClose && (
               <button
                 type="button"
                 className="sb-btn-secondary"
-                onClick={handleDismiss}
+                onClick={isPreparing ? handleCancelPreparation : handleDismiss}
               >
-                Cancel
+                {isPreparing ? "Cancel" : "Cancel"}
               </button>
             )}
 
-            <button
-              ref={launchBtnRef}
-              type="button"
-              className="sb-btn-primary"
-              onClick={handleLaunch}
-              id="btn-confirm-launch-practice"
-            >
-              <span>Start Set 1 Practice</span>
-              <ArrowRight size={15} className="sb-btn-arrow" aria-hidden="true" />
-            </button>
+            {isPreparing ? (
+              <div
+                className="sb-morphing-btn"
+                role="progressbar"
+                aria-valuenow={prepProgress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Session calibration progress: ${prepProgress}%`}
+              >
+                {/* Progress fill bar */}
+                <div
+                  className="sb-morphing-fill"
+                  style={{ width: `${prepProgress}%` }}
+                />
+
+                {/* Content row */}
+                <div className="sb-morphing-content">
+                  <div className="sb-morphing-left">
+                    <div className="sb-mini-pulse-ring" aria-hidden="true">
+                      <span className="sb-mini-pulse-core" />
+                    </div>
+                    <span className="sb-morphing-text">
+                      {stageText || prepStages[prepStage]?.label}
+                    </span>
+                  </div>
+                  <span className="sb-morphing-pct">{prepProgress}%</span>
+                </div>
+              </div>
+            ) : (
+              <button
+                ref={launchBtnRef}
+                type="button"
+                className="sb-btn-primary"
+                onClick={handleLaunch}
+                id="btn-confirm-launch-practice"
+              >
+                <span>Start Set 1 Practice</span>
+                <ArrowRight size={15} className="sb-btn-arrow" aria-hidden="true" />
+              </button>
+            )}
           </div>
 
           <div className="sb-shortcut-hint" aria-hidden="true">
-            <span>
-              Press <kbd className="sb-kbd">Enter ↵</kbd> to begin
-            </span>
-            <span className="sb-shortcut-sep">·</span>
-            <span>
-              <kbd className="sb-kbd">Esc</kbd> to dismiss
-            </span>
+            {isPreparing ? (
+              <span>
+                Synthesizing session parameters · Press <kbd className="sb-kbd">Esc</kbd> to abort
+              </span>
+            ) : (
+              <>
+                <span>
+                  Press <kbd className="sb-kbd">Enter ↵</kbd> to begin
+                </span>
+                <span className="sb-shortcut-sep">·</span>
+                <span>
+                  <kbd className="sb-kbd">Esc</kbd> to dismiss
+                </span>
+              </>
+            )}
           </div>
         </motion.div>
       </motion.div>
     </motion.div>
   );
 }
+
+

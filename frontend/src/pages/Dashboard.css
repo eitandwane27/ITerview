@@ -4,10 +4,12 @@
    hairline surfaces, one moving accent — the DESIGN.md "Live
    Interview Studio" DNA — recolored playfully: signal cyan carries the
    live signal, the 3C trio wears cheerful pastel crayons. Friendly,
-   rounded, beginner-first.
+   rounded, beginner-first. Type: Figtree everywhere (single-family
+   system — hierarchy via weight/size/tracking); pending migration:
+   Landing/Login/PreTest/Results/overlays still carry Geist or Inter.
    ═══════════════════════════════════════════════════════════════ */
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Nunito:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap");
 
 /* ── Design Tokens (studio DNA · playful palette) ─────────── */
 .db-root {
@@ -86,7 +88,7 @@
 
 /* ── Root shell ── */
 .db-root {
-  font-family: "Nunito", system-ui, sans-serif;
+  font-family: "Figtree", system-ui, sans-serif;
   background-color: var(--db-bg);
   color: var(--db-ink);
   min-height: 100vh;
@@ -125,7 +127,7 @@
 }
 .db-select:focus-visible { outline: none; }
 
-/* ── Heading type — Bricolage Grotesque for display ── */
+/* ── Heading type — Figtree display weights (single-family system) ── */
 .db-greeting,
 .db-setup-card__title,
 .db-baseline-card__title,
@@ -136,7 +138,7 @@
 .db-progression__mastery,
 .db-3c-cell__score,
 .db-modal__title {
-  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-family: "Figtree", system-ui, sans-serif;
   letter-spacing: -0.02em;
 }
 /* ═══════════════════════════════════════════════════════════
@@ -178,7 +180,7 @@
 }
 
 .db-topnav__wordmark {
-  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-family: "Figtree", system-ui, sans-serif;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -263,7 +265,7 @@
   justify-content: center;
   border: none;
   cursor: pointer;
-  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-family: "Figtree", system-ui, sans-serif;
   font-size: 15px;
   font-weight: 700;
   color: var(--db-cyan-ink);
@@ -829,7 +831,7 @@
   border-radius: var(--db-radius-pill);
   background: linear-gradient(135deg, var(--db-cyan), var(--db-cyan-bright));
   color: var(--db-cyan-ink);
-  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-family: "Figtree", system-ui, sans-serif;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -1242,7 +1244,7 @@
 .db-3c-mini strong { color: var(--db-ink); }
 
 .db-attempt-score {
-  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-family: "Figtree", system-ui, sans-serif;
   font-size: 22px;
   font-weight: 800;
   color: var(--db-ink);

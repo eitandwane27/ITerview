@@ -1,350 +1,134 @@
 /* =====================================================
-   MainSets.css — Soft Productivity SaaS (Interview Arena)
-   ITerview Design System (DESIGN.md)
-   Mirror pattern: Dashboard.css
+   MainSets.css — Interview Session V2 (dark wireframe port)
+   Source: guide/design-plan/mainset.html
+   Class namespace: ix-* (interview experience)
    ===================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
-
-/* ── Design Tokens (mirror Dashboard.css) ─────────── */
-/* Tokens are shared via :root — Dashboard.css already
-   defines them. We re-declare here so MainSets can
-   work standalone if needed and to be explicit. */
+/* ── Design tokens — "The Live Interview Studio" ──────
+   Session Ramp: opaque neutral ladder on the landing's
+   near-black cool canvas. Edges are drawn with light
+   (white-alpha hairlines), not pigment. Cyan is the one
+   light: structure at rest, live signal when voice moves. */
 :root {
-  --color-primary:        #7C6FCD;
-  --color-primary-light:  #EAE8F7;
-  --color-primary-hover:  #6B5FBC;
-  --color-primary-muted:  #B8B0E8;
+  --ix-bg:          #09090B;  /* canvas — landing's exact ground */
+  --ix-surface:     #0F0F13;  /* chrome                          */
+  --ix-card:        #16161B;  /* raised content                  */
+  --ix-border:      rgba(255, 255, 255, 0.07);  /* hairline edge */
+  --ix-border-strong: rgba(255, 255, 255, 0.12); /* edge on cards */
 
-  --color-canvas:         #F4F4F6;
-  --color-surface-card:   #FFFFFF;
-  --color-surface-inner:  #F0EFF8;
-  --color-surface-sidebar:#FFFFFF;
-  --color-surface-input:  #F7F7F9;
+  /* Cyan — the one light. Structure at rest (pills, badges,
+     HUD, tabs); bright variants reserved for live voice
+     states (mic, transcribing, orb ring). */
+  --ix-primary:     #06B6D4;
+  --ix-accent:      #22D3EE;
+  --ix-badge:       #06B6D4;
+  --ix-cyan-soft:   #67E8F9;
+  --ix-cyan:        #06B6D4;
+  --ix-cyan-bright: #22D3EE;
+  --ix-ink-on-cyan: #081318;
 
-  --color-ink:            #1A1A2E;
-  --color-ink-secondary:  #6B6B80;
-  --color-ink-muted:      #9B9BAD;
-  --color-ink-on-primary: #FFFFFF;
+  --ix-green:       #22C55E;
+  --ix-red:         #EF4444;
+  --ix-error:       #FCA5A5;
+  --ix-amber:       #FBBF24;
+  --ix-emerald:     #34D399;
 
-  --color-border-soft:    #E8E8EE;
-  --color-border-card:    #EFEFEF;
+  --ix-text:        #FFFFFF;
+  --ix-text-soft:   #C8C0D8;
+  --ix-text-mute:   #9CA3AF;
+  --ix-text-dim:    #828AA0;
 
-  --color-badge-green:    #22C55E;
-  --color-badge-green-bg: #DCFCE7;
-  --color-badge-orange:   #F97316;
-  --color-badge-orange-bg:#FFEDD5;
-  --color-badge-blue:     #3B82F6;
-  --color-badge-blue-bg:  #DBEAFE;
-  --color-badge-purple:   #7C6FCD;
-  --color-badge-purple-bg:#EAE8F7;
-  --color-badge-red:      #EF4444;
-  --color-badge-red-bg:   #FEE2E2;
-
-  --avatar-red:    #EF4444;
-  --avatar-purple: #8B5CF6;
-
-  --shadow-card:    0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-sidebar: -2px 0 8px rgba(0, 0, 0, 0.08);
-
-  --card-radius: 16px;
-  --lg-radius:   12px;
-  --md-radius:   8px;
-  --sm-radius:   6px;
-  --xs-radius:   4px;
-  --pill-radius: 9999px;
-
-  --topnav-height: 52px;
+  --ix-radius-lg:   12px;
+  --ix-radius-md:   10px;
+  --ix-radius-sm:   8px;
+  --ix-pill:        9999px;
 }
 
-/* ── Reset ─────────────────────────────────────────── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-/* ── Root Shell ────────────────────────────────────── */
-.pt-root {
-  font-family: "Inter", system-ui, sans-serif;
-  background: var(--color-canvas);
+/* ── Root shell ────────────────────────────────────── */
+.ix-root {
+  font-family: "Figtree", Inter, system-ui, sans-serif;
+  background: var(--ix-bg);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  color: var(--color-ink);
+  color: var(--ix-text);
+  overflow: hidden;
 }
 
 /* ════════════════════════════════════════════════════
-   TOP BAR  (mirrors db-topnav)
+   TOP BAR
    ════════════════════════════════════════════════════ */
-.pt-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  height: var(--topnav-height);
-  background: var(--color-surface-card);
-  border-bottom: 1px solid var(--color-border-card);
+.ix-topbar {
+  height: 52px;
+  flex-shrink: 0;
+  background: var(--ix-surface);
+  border-bottom: 1px solid var(--ix-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 24px;
   gap: 16px;
-  flex-shrink: 0;
 }
 
-/* "ITerview" brand / wordmark side */
-.pt-topbar-brand {
-  font-size: 15px;
+.ix-topbar-brand {
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: -0.3px;
-  color: var(--color-primary);
-  flex-shrink: 0;
-}
-
-/* Right meta cluster */
-.pt-topbar-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Set badge — pill-shaped, purple tint */
-.pt-phase-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--color-badge-purple-bg);
-  color: var(--color-badge-purple);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  padding: 3px 10px;
-  border-radius: var(--pill-radius);
-}
-
-/* Question counter chip — mirrors db-sessions-chip */
-.pt-q-counter {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--color-surface-input);
-  color: var(--color-ink);
-  font-size: 12px;
-  font-weight: 500;
-  padding: 5px 12px;
-  border-radius: var(--pill-radius);
-  border: 1px solid var(--color-border-soft);
+  color: var(--ix-text);
+  cursor: pointer;
   white-space: nowrap;
 }
 
-/* "AI Speaking" indicator */
-.pt-speaking-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--color-badge-green-bg);
-  color: var(--color-badge-green);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: var(--pill-radius);
-  animation: pt-pulse 2s ease-in-out infinite;
-}
-
-@keyframes pt-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.55; }
-}
-
-.pt-speaking-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--color-badge-green);
-}
-
-/* ════════════════════════════════════════════════════
-   MAIN LAYOUT  (canvas → two-column)
-   ════════════════════════════════════════════════════ */
-.ms-main {
-  flex: 1;
-  display: flex;
-  gap: 16px;
-  padding: 24px 20px;
-  overflow: hidden;
-  align-items: stretch;
-  min-height: 0;
-}
-
-/* Left column — AI avatar + controls */
-.ms-left-column {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  flex: 2;
-  min-width: 0;
-}
-
-/* Right column — Transcript + Coach */
-.ms-right-column {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  width: 340px;
-  flex-shrink: 0;
-}
-
-/* ════════════════════════════════════════════════════
-   BASE CARD  (mirrors db-main-card)
-   ════════════════════════════════════════════════════ */
-.ms-card {
-  background: var(--color-surface-card);
-  border: 1px solid var(--color-border-card);
-  border-radius: var(--card-radius);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-
-/* ════════════════════════════════════════════════════
-   AI AVATAR CARD  (main interview panel)
-   Lavender inner-card pattern: white outer → lavender inner
-   ════════════════════════════════════════════════════ */
-.ms-avatar-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-}
-
-/* Card header row inside the white card */
-.ms-avatar-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.ms-avatar-card-title {
-  font-size: 13px;
+.ix-topbar-counter {
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: var(--color-ink-secondary);
+  letter-spacing: 0.5px;
+  color: var(--ix-cyan-soft);
+  white-space: nowrap;
 }
 
-/* Inner lavender card — mirrors db-inner-card */
-.ms-inner-card {
-  background: var(--color-surface-inner);
-  border-radius: var(--lg-radius);
-  padding: 28px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  flex: 1;
-}
-
-/* 3D AI avatar orb — hosts the organic-sphere WebGL canvas */
-.ms-avatar-orb {
-  width: 240px;
-  height: 240px;
-  border-radius: 50%;
-  background: #010101;
-  border: 3px solid var(--color-primary-muted);
-  position: relative;
-  overflow: hidden;
-  transition: box-shadow 0.3s ease;
-  flex-shrink: 0;
-}
-
-/* Floating set-emoji badge — keeps brand identity above the 3D sphere */
-.ms-avatar-orb-emoji {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
+.ix-topbar-badges {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.15rem;
-  line-height: 1;
-  background: rgba(255, 255, 255, 0.88);
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  pointer-events: none;
-  user-select: none;
+  gap: 12px;
 }
 
-.ms-avatar-orb.speaking {
-  box-shadow: 0 0 0 8px rgba(124, 111, 205, 0.15),
-              0 0 0 16px rgba(124, 111, 205, 0.06);
-  animation: pt-orb-speak 1.4s ease-in-out infinite;
-}
-
-.ms-avatar-orb.listening {
-  box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.15),
-              0 0 0 16px rgba(34, 197, 94, 0.06);
-  border-color: var(--color-badge-green);
-}
-
-/* ── Session-complete success state — slow green pulse ── */
-.ms-avatar-orb.complete {
-  border-color: var(--color-badge-green);
-  box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.15),
-              0 0 0 18px rgba(34, 197, 94, 0.06);
-  animation: pt-orb-complete 2.4s ease-in-out infinite;
-}
-
-@keyframes pt-orb-complete {
-  0%, 100% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12), 0 0 0 14px rgba(34, 197, 94, 0.05); }
-  50%       { box-shadow: 0 0 0 14px rgba(34, 197, 94, 0.2),  0 0 0 26px rgba(34, 197, 94, 0.08); }
-}
-
-@keyframes pt-orb-speak {
-  0%, 100% { box-shadow: 0 0 0 6px rgba(124, 111, 205, 0.12), 0 0 0 14px rgba(124, 111, 205, 0.05); }
-  50%       { box-shadow: 0 0 0 12px rgba(124, 111, 205, 0.18), 0 0 0 22px rgba(124, 111, 205, 0.08); }
-}
-
-/* Question text */
-.ms-question-text-display {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  color: var(--color-ink);
-  line-height: 1.55;
-  text-align: center;
-  max-width: 640px;
-}
-
-/* Status strip — matches Dashboard idle/active visual language */
-.pt-status-strip {
+/* Difficulty pill — green default, tinted per difficulty */
+.ix-pill-easy {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 14px;
-  border-radius: var(--pill-radius);
-  font-size: 12px;
-  font-weight: 500;
-  background: var(--color-surface-input);
-  color: var(--color-ink-secondary);
-  border: 1px solid var(--color-border-soft);
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: var(--ix-pill);
+  border: 1px solid rgba(34, 197, 94, 0.19);
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--ix-green);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
 }
 
-.pt-status-strip.speaking {
-  background: var(--color-badge-green-bg);
-  color: var(--color-badge-green);
-  border-color: transparent;
+.ix-pill-easy.medium {
+  border-color: rgba(251, 191, 36, 0.25);
+  background: rgba(251, 191, 36, 0.08);
+  color: var(--ix-amber);
 }
 
-.pt-status-strip.listening {
-  background: var(--color-badge-purple-bg);
-  color: var(--color-badge-purple);
-  border-color: var(--color-primary-muted);
+.ix-pill-easy.hard {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--ix-red);
 }
 
-.pt-status-dot {
+.ix-pill-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -352,406 +136,1105 @@
   flex-shrink: 0;
 }
 
-.pt-status-strip.speaking .pt-status-dot {
-  animation: pt-pulse 1.4s ease-in-out infinite;
-}
-
-/* Error message */
-.ms-error-text {
+.ix-pill-set {
+  padding: 5px 14px;
+  border-radius: var(--ix-pill);
+  background: rgba(6, 182, 212, 0.09);
+  color: var(--ix-primary);
   font-size: 12px;
-  color: var(--color-badge-red);
-  background: var(--color-badge-red-bg);
-  padding: 6px 12px;
-  border-radius: var(--md-radius);
-  text-align: center;
-  width: 100%;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-/* ── Primary mic CTA — full-width inside inner card ─ */
-.ms-unmute-btn {
+/* ════════════════════════════════════════════════════
+   BODY LAYOUT — main area + right sidebar
+   ════════════════════════════════════════════════════ */
+.ix-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.ix-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+/* ════════════════════════════════════════════════════
+   VIDEO STAGE — glows, rings, CSS orb, overlay chips
+   ════════════════════════════════════════════════════ */
+.ix-stage {
+  position: relative;
   width: 100%;
-  max-width: 360px;
-  padding: 14px 24px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-ink-on-primary);
-  background: rgba(124, 111, 205, 0.88);
-  border: none;
-  border-radius: var(--lg-radius);
-  cursor: pointer;
+  flex: 1;
+  min-height: 320px;
+  background: var(--ix-bg);
+  border: 1px solid var(--ix-border);
+  border-radius: var(--ix-radius-lg);
+  overflow: hidden;
+}
+
+/* Blueprint grid — the landing's measuring language, radially masked */
+.ix-stage::before { /* impeccable-disable-line codex-grid-background: blueprint grid is DESIGN.md's sanctioned measuring language, radially masked */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 52px 52px;
+  -webkit-mask-image: radial-gradient(75% 75% at 50% 45%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(75% 75% at 50% 45%, #000 30%, transparent 100%);
+  pointer-events: none;
+}
+
+.ix-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ix-glow-soft {
+  width: 600px;
+  height: 600px;
+  left: 12%;
+  top: 50%;
+  transform: translateY(-45%);
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.04), transparent);
+}
+
+.ix-glow-cyan {
+  width: 280px;
+  height: 280px;
+  right: 18%;
+  bottom: 8%;
+  background: radial-gradient(closest-side, rgba(34, 211, 238, 0.07), transparent);
+}
+
+/* Concentric rings around the orb — the instrument dial. Quiet hairlines
+   at rest; they wake with the stage state (speaking/listening) via CSS. */
+.ix-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.6s ease;
+}
+
+.ix-ring-outer {
+  width: min(420px, 62vh);
+  aspect-ratio: 1;
+  border: 1px solid rgba(6, 182, 212, 0.19);
+  box-shadow: 0 0 0 22px rgba(6, 182, 212, 0.04);
+}
+
+.ix-stage.speaking .ix-ring-outer {
+  border-color: rgba(6, 182, 212, 0.38);
+  box-shadow: 0 0 0 22px rgba(6, 182, 212, 0.07);
+}
+
+.ix-stage.listening .ix-ring-outer {
+  border-color: rgba(6, 182, 212, 0.3);
+  animation: ix-dial-pulse 1.8s ease-in-out infinite;
+}
+
+.ix-ring-inner {
+  width: min(320px, 47vh);
+  aspect-ratio: 1;
+  border: 1px solid rgba(6, 182, 212, 0.13);
+  animation: ix-ring-breathe 3.6s ease-in-out infinite;
+}
+
+.ix-stage.speaking .ix-ring-inner {
+  animation: none;
+  border-color: rgba(6, 182, 212, 0.32);
+}
+
+/* ── Lightweight AI presence ────────────────────────────────────────────────
+   Pure-CSS instrument dial in the landing demo's language: halo ring,
+   breathing mid ring, dark cyan-lit aperture core, 5-bar waveform.
+   No JS, no WebGL — states come from the stage class:
+   idle → slow breathe · speaking → fast bounce + ring emphasis
+   listening → attentive rim pulse · complete → settles still.
+   Swap this block for an alternative orb component when chosen. */
+.ix-orb-lite {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(240px, 36vh);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Outer proximity halo */
+.ix-orb-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 211, 238, 0.1);
+  box-shadow: inset 0 0 0 10px rgba(34, 211, 238, 0.02);
+  transition: box-shadow 0.4s ease;
+}
+
+/* Mid dial ring — breathes at idle, holds steady when active */
+.ix-orb-ring {
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 211, 238, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.08);
+  animation: ix-lite-ring 3.6s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.ix-stage.speaking .ix-orb-ring,
+.ix-stage.listening .ix-orb-ring {
+  animation: none;
+}
+
+/* Core — dark cyan-lit aperture */
+.ix-orb-core {
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 95% 95% at 50% 32%, rgba(34, 211, 238, 0.16), rgba(34, 211, 238, 0) 55%),
+    radial-gradient(circle at 46% 36%, #12333c 0%, #0a2027 58%, #050e13 100%);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.06);
+  transition: box-shadow 0.4s ease;
+}
+
+/* Active states — quiet cyan ring emphasis, never a neon glow */
+.ix-stage.speaking .ix-orb-core {
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.22);
+}
+
+.ix-stage.listening .ix-orb-core {
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.14);
+  animation: ix-lite-listen 1.8s ease-in-out infinite;
+}
+
+.ix-stage.complete .ix-orb-core {
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+/* Waveform — centered in the core */
+.ix-orb-wave {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ix-orb-bar {
+  width: 4px;
+  border-radius: 2px;
+  background: rgba(103, 232, 249, 0.55);
+  transform-origin: center;
+}
+
+.ix-orb-bar--1 { height: 16px; }
+.ix-orb-bar--2 { height: 28px; }
+.ix-orb-bar--3 { height: 38px; }
+.ix-orb-bar--4 { height: 22px; }
+.ix-orb-bar--5 { height: 30px; }
+
+/* Idle — one slow inhale/exhale, staggered per bar */
+.ix-orb-bar {
+  animation: ix-lite-idle 3.6s ease-in-out infinite;
+}
+.ix-orb-bar--2 { animation-delay: 0.4s; }
+.ix-orb-bar--3 { animation-delay: 0.9s; }
+.ix-orb-bar--4 { animation-delay: 0.2s; }
+.ix-orb-bar--5 { animation-delay: 0.6s; }
+
+/* Speaking — bars ride the AI's cadence */
+.ix-stage.speaking .ix-orb-bar {
+  background: #67e8f9;
+  animation: ix-lite-speak 1.4s ease-in-out infinite;
+}
+.ix-stage.speaking .ix-orb-bar--2 { animation-delay: 0.12s; }
+.ix-stage.speaking .ix-orb-bar--3 { animation-delay: 0.26s; }
+.ix-stage.speaking .ix-orb-bar--4 { animation-delay: 0.38s; }
+.ix-stage.speaking .ix-orb-bar--5 { animation-delay: 0.52s; }
+
+/* Listening — calm attention pulse while the user answers */
+.ix-stage.listening .ix-orb-bar {
+  background: rgba(103, 232, 249, 0.75);
+  animation: ix-lite-idle 1.8s ease-in-out infinite;
+}
+
+/* Complete — settle to rest */
+.ix-stage.complete .ix-orb-bar {
+  animation: none;
+  opacity: 0.45;
+  transform: scaleY(0.72);
+}
+
+/* Keyframes */
+@keyframes ix-lite-ring {
+  0%, 100% { transform: scale(0.97); opacity: 0.6; }
+  50%      { transform: scale(1); opacity: 1; }
+}
+@keyframes ix-lite-idle {
+  0%, 100% { transform: scaleY(0.72); opacity: 0.5; }
+  50%      { transform: scaleY(1); opacity: 0.95; }
+}
+@keyframes ix-lite-speak {
+  0%, 100% { transform: scaleY(0.55); opacity: 0.7; }
+  50%      { transform: scaleY(1); opacity: 1; }
+}
+@keyframes ix-lite-listen {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.14); }
+  50%      { box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.24); }
+}
+@keyframes ix-dial-pulse {
+  0%, 100% { border-color: rgba(6, 182, 212, 0.22); }
+  50%      { border-color: rgba(6, 182, 212, 0.4); }
+}
+
+/* "AI Interviewer" pill — top-left */
+.ix-ai-pill {
+  position: absolute;
+  z-index: 7;
+  top: 20px;
+  left: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--ix-pill);
+  background: rgba(13, 13, 21, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(2px);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ix-text);
+  white-space: nowrap;
+}
+
+.ix-ai-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ix-primary);
+  flex-shrink: 0;
+}
+
+/* PIP self-view card — top-right */
+.ix-pip {
+  position: absolute;
+  z-index: 8;
+  top: 20px;
+  right: 24px;
+  width: 170px;
+  height: 115px;
+  background: var(--ix-card);
+  border: 1px solid var(--ix-border);
+  border-radius: var(--ix-radius-md);
+}
+
+.ix-pip-avatar {
+  position: absolute;
+  left: 50%;
+  top: 24px;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  border-radius: 30px;
+  background: #1C1C24;
+  border: 2px solid rgba(6, 182, 212, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--ix-cyan-soft);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ix-pip-label {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 26px;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ix-text);
+}
+
+/* Waveform badge — bars follow live mic volume, or dance while AI speaks */
+.ix-pip-wave {
+  position: absolute;
+  top: 8px;
+  right: 6px;
+  width: 32px;
+  height: 20px;
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-border);
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.ix-pip-wave span {
+  width: 2px;
+  height: 11px;
+  border-radius: 1px;
+  background: var(--ix-cyan-bright);
+  transform-origin: bottom;
+  transform: scaleY(0.36);
+  transition: transform 0.1s linear;
+}
+
+.ix-pip-wave.ai span { animation: ix-wave 1s ease-in-out infinite; }
+.ix-pip-wave.ai span:nth-child(2) { animation-delay: 0.15s; }
+.ix-pip-wave.ai span:nth-child(3) { animation-delay: 0.3s; }
+.ix-pip-wave.ai span:nth-child(4) { animation-delay: 0.45s; }
+
+@keyframes ix-wave {
+  0%, 100% { transform: scaleY(0.36); }
+  50%      { transform: scaleY(1); }
+}
+
+/* Centered LIVE + stage-clock cluster */
+.ix-stage-meta {
+  position: absolute;
+  z-index: 9;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
   gap: 8px;
-  transition: background 0.15s, transform 0.1s;
-  letter-spacing: 0;
 }
 
-.ms-unmute-btn:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+.ix-stage-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--ix-pill);
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.19);
+  color: var(--ix-green);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
 }
 
-.ms-unmute-btn:active:not(:disabled) {
-  transform: scale(0.99);
+.ix-stage-timer {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: var(--ix-pill);
+  background: rgba(13, 13, 21, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--ix-text-mute);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.ms-unmute-btn:disabled {
+/* ════════════════════════════════════════════════════
+   LOWER PANEL — session row, question HUD, ticker, dock
+   ════════════════════════════════════════════════════ */
+.ix-lower {
+  width: 100%;
+  flex-shrink: 0;
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-border);
+  border-radius: var(--ix-radius-lg);
+  padding: 14px 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ix-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ix-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--ix-pill);
+  background: rgba(34, 197, 94, 0.07);
+  color: var(--ix-green);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.ix-dot-green {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ix-green);
+  flex-shrink: 0;
+}
+
+.ix-error-chip {
+  font-size: 11px;
+  color: var(--ix-error);
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  padding: 3px 10px;
+  border-radius: var(--ix-pill);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ix-timer-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--ix-pill);
+  background: rgba(255, 255, 255, 0.024);
+  color: var(--ix-text-mute);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Question HUD — accent bar + current question */
+.ix-hud {
+  display: flex;
+  gap: 14px;
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(6, 182, 212, 0.08) 0%, rgba(6, 182, 212, 0) 52%),
+    rgba(255, 255, 255, 0.02);
+  border-radius: 0 var(--ix-radius-md) var(--ix-radius-md) 0;
+  padding: 12px 16px;
+  min-height: 68px;
+}
+
+.ix-hud-accent {
+  width: 3px;
+  flex-shrink: 0;
+  border-radius: var(--ix-pill);
+  background: linear-gradient(180deg, var(--ix-accent) 0%, rgba(34, 211, 238, 0.13) 100%);
+}
+
+.ix-hud-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ix-hud-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ix-q-num {
+  padding: 2px 8px;
+  border-radius: var(--ix-pill);
+  background: rgba(34, 211, 238, 0.125);
+  color: var(--ix-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.ix-q-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--ix-text-dim);
+}
+
+.ix-q-category {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--ix-pill);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ix-text-mute);
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ix-q-text {
+  color: var(--ix-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.ix-q-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.ix-q-skeleton span {
+  display: block;
+  height: 12px;
+  border-radius: var(--ix-pill);
+  background: linear-gradient(90deg, var(--ix-card) 25%, var(--ix-border-strong) 45%, var(--ix-card) 65%);
+  background-size: 200% 100%;
+  animation: ix-shimmer 1.6s ease-in-out infinite;
+}
+
+.ix-q-skeleton span:first-child { width: 70%; }
+.ix-q-skeleton span:last-child  { width: 45%; }
+
+@keyframes ix-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* Transcript ticker — doubles as the session status line when idle */
+.ix-ticker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.012);
+  border-radius: 0 var(--ix-radius-sm) var(--ix-radius-sm) 0;
+}
+
+.ix-ticker.recording { background: rgba(255, 255, 255, 0.03); }
+
+.ix-ticker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--ix-pill);
+  background: rgba(34, 211, 238, 0.08);
+  color: var(--ix-cyan-bright);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  flex-shrink: 0;
+}
+
+/* Live transcription dot — cyan: the voice signal */
+.ix-dot-live {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ix-cyan-bright);
+  animation: ix-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ix-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.ix-ticker-text {
+  flex: 1;
+  font-size: 11px;
+  color: var(--ix-text-mute);
+  line-height: 16px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Slow-generation hint */
+.ix-slowwait {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--ix-radius-sm);
+  background: rgba(251, 191, 36, 0.08);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ix-amber);
+}
+
+.ix-slowwait button {
+  margin-left: auto;
+  padding: 5px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--ix-primary);
+  color: var(--ix-ink-on-cyan);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ix-slowwait button:hover { background: #0891B2; }
+
+/* Evaluating state */
+.ix-evaluating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ix-cyan-soft);
+}
+
+.ix-evaluating-dots { display: flex; gap: 3px; }
+
+.ix-evaluating-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ix-primary);
+  animation: ix-dot-rise 1.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.ix-evaluating-dots span:nth-child(2) { animation-delay: 0.2s; }
+.ix-evaluating-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes ix-dot-rise {
+  0%, 80%, 100% { transform: scale(1); opacity: 0.6; }
+  40%           { transform: scale(1.4); opacity: 1; }
+}
+
+/* Control dock — floating pill of icon buttons */
+.ix-dock-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.ix-dock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 20px;
+  border-radius: var(--ix-pill);
+  background: rgba(13, 13, 21, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ix-dock-btn {
+  width: 52px;
+  height: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  border-radius: var(--ix-radius-sm);
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--ix-text-dim);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ix-dock-btn svg { color: var(--ix-text); }
+
+.ix-dock-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
+
+.ix-dock-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* Recording state — red variant */
-.ms-unmute-btn.recording {
-  background: var(--color-badge-red);
+/* Recording state on the mic button — cyan, matching the voice signal */
+.ix-dock-btn.recording {
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--ix-cyan-bright);
 }
 
-.ms-unmute-btn.recording:hover:not(:disabled) {
-  background: #dc2626;
+.ix-dock-btn.recording svg { color: var(--ix-cyan-bright); }
+
+.ix-dock-end:hover:not(:disabled) { background: rgba(239, 68, 68, 0.18); }
+
+.ix-dock-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.04);
+  margin: 0 4px;
 }
 
-/* Session complete CTA — mirrors db-btn-primary */
-.pt-btn.pt-btn-primary {
-  width: 100%;
-  max-width: 360px;
-  padding: 14px 24px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-ink-on-primary);
-  background: rgba(124, 111, 205, 0.88);
+/* Session-complete CTA — replaces the dock */
+.ix-end-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
   border: none;
-  border-radius: var(--lg-radius);
+  border-radius: var(--ix-pill);
+  background: var(--ix-primary);
+  color: var(--ix-ink-on-cyan);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  transition: background 0.15s;
+  /* The single sanctioned colored shadow — primary conversion only */
+  box-shadow: 0 8px 24px -12px rgba(6, 182, 212, 0.5);
 }
 
-.pt-btn.pt-btn-primary:hover {
-  background: var(--color-primary-hover);
-}
+.ix-end-btn:hover { background: #0891B2; }
 
-/* ── Volume visualizer ───────────────────────────── */
-.ms-volume-visualizer-container {
-  width: 100%;
-  max-width: 300px;
-}
-
-.pt-progress-bar-track {
-  width: 100%;
-  height: 6px;
-  background: var(--color-border-soft);
-  border-radius: var(--pill-radius);
-  overflow: hidden;
-}
-
-.pt-progress-bar-fill {
+/* ════════════════════════════════════════════════════
+   RIGHT SIDEBAR — tabs, question rows, AI feedback
+   ════════════════════════════════════════════════════ */
+.ix-sidebar {
+  width: 340px;
+  flex-shrink: 0;
   height: 100%;
-  background: var(--color-badge-green);
-  border-radius: var(--pill-radius);
-  transition: width 0.08s linear;
-}
-
-/* ════════════════════════════════════════════════════
-   PARTICIPANTS ROW  (bottom of left column)
-   ════════════════════════════════════════════════════ */
-.ms-participants-row {
-  display: flex;
-  gap: 12px;
-  height: 130px;
-  flex-shrink: 0;
-}
-
-.ms-participant-card {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.ms-participant-card.ms-participant-empty {
-  opacity: 0.45;
-}
-
-.ms-participant-content {
+  min-height: 0;
+  background: var(--ix-surface);
+  border-left: 1px solid var(--ix-border);
   display: flex;
   flex-direction: column;
+}
+
+.ix-tabs {
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
+  height: 52px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--ix-border);
 }
 
-/* Candidate avatar — mirrors db-avatar in purple */
-.ms-participant-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--pill-radius);
-  background: var(--avatar-purple);
-  position: relative;
-}
-
-/* Online dot */
-.ms-participant-avatar::after {
-  content: "";
-  position: absolute;
-  bottom: 1px;
-  right: 1px;
-  width: 8px;
-  height: 8px;
-  background: var(--color-badge-green);
-  border-radius: 50%;
-  border: 2px solid var(--color-surface-card);
-}
-
-.ms-participant-name {
+.ix-tab {
+  padding: 6px 14px;
+  border-radius: var(--ix-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ix-text-dim);
+  font-family: inherit;
   font-size: 12px;
-  font-weight: 500;
-  color: var(--color-ink-secondary);
-}
-
-/* ════════════════════════════════════════════════════
-   CARD HEADER  (shared by Transcript + Coach panels)
-   ════════════════════════════════════════════════════ */
-.ms-card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--color-border-card);
-  flex-shrink: 0;
-}
-
-.ms-card-body {
-  padding: 16px 18px;
-  flex: 1;
-  overflow-y: auto;
-}
-
-/* ── Shared icon badge style ─────────────────────── */
-.pt-card-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--sm-radius);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  background: var(--color-badge-blue-bg);
-  color: var(--color-badge-blue);
-  flex-shrink: 0;
-}
-
-.pt-card-icon.accent {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-}
-
-.pt-card-title {
-  font-size: 13px;
   font-weight: 600;
-  letter-spacing: -0.1px;
-  color: var(--color-ink);
+  cursor: pointer;
+  transition: color 0.15s;
 }
 
-/* ════════════════════════════════════════════════════
-   TRANSCRIPT CARD
-   ════════════════════════════════════════════════════ */
-.ms-transcript-card {
-  flex: 2;
+.ix-tab:hover:not(.active) { color: var(--ix-text-mute); }
+
+.ix-tab.active {
+  background: var(--ix-card);
+  border-color: var(--ix-primary);
+  color: var(--ix-text);
+}
+
+.ix-side-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-}
-
-.ms-transcript-body {
-  flex: 1;
-  overflow-y: auto;
+  gap: 10px;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border-soft) transparent;
-  line-height: 1.6;
+  scrollbar-color: var(--ix-border) transparent;
 }
 
-/* Empty state */
-.pt-transcript-empty {
+.ix-side-body::-webkit-scrollbar { width: 6px; }
+
+.ix-side-body::-webkit-scrollbar-thumb {
+  background: var(--ix-border);
+  border-radius: 3px;
+}
+
+.ix-notes-empty {
   font-size: 13px;
-  color: var(--color-ink-muted);
-  font-style: italic;
+  color: var(--ix-text-dim);
+  line-height: 1.6;
+  padding: 8px 4px;
 }
 
-/* Finalized transcript text */
-.pt-transcript-final {
-  font-size: 14px;
-  color: var(--color-ink);
-  font-weight: 400;
+.ix-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--ix-text-dim);
+  margin-top: 8px;
 }
 
-/* Partial/live transcript — muted lavender */
-.pt-transcript-partial {
-  font-size: 14px;
-  color: var(--color-primary-muted);
-  font-weight: 400;
-}
-
-/* ════════════════════════════════════════════════════
-   AI COACH CARD
-   ════════════════════════════════════════════════════ */
-.ms-coach-card {
-  flex: 1;
+/* Question rows */
+.ix-question-row {
   display: flex;
-  flex-direction: column;
-  min-height: 0;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: var(--ix-surface);
+  border-bottom: 1px solid var(--ix-border);
+  border-radius: var(--ix-radius-sm);
 }
 
-/* Coach card icon — green tint */
-.ms-card-icon-coach {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--sm-radius);
-  background: var(--color-badge-green-bg);
-  color: var(--color-badge-green);
+.ix-row-badge {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ix-pill);
+  background: var(--ix-badge);
+  color: var(--ix-ink-on-cyan);
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.ms-card-title-coach {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.1px;
-  color: var(--color-ink);
-}
+.ix-row-badge.pending { opacity: 0.55; }
 
-.ms-coach-body {
+.ix-row-body {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  overflow-y: auto;
-}
-
-.ms-coach-feedback-text {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--color-ink-secondary);
-  margin: 0;
-}
-
-/* ── Score cards (Set 2 / Set 3) ────────────────── */
-.ms-scores-container {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-
-/* Each score card — inner-card pattern */
-.ms-score-card {
-  flex: 1;
-  background: var(--color-surface-inner);
-  border-radius: var(--md-radius);
-  padding: 10px 8px;
-  text-align: center;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
-.ms-score-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
+.ix-row-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ix-text);
+  line-height: 1.35;
 }
 
-.ms-score-value {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
-  color: var(--color-primary);
-  line-height: 1;
+.ix-row-title.dim { color: var(--ix-text-mute); font-weight: 400; }
+
+.ix-row-snippet {
+  font-size: 11px;
+  color: var(--ix-text-mute);
+  line-height: 16px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* ════════════════════════════════════════════════════
-   EVALUATING LOADER STATE
-   ════════════════════════════════════════════════════ */
-.ms-evaluating-strip {
+.ix-row-check { flex-shrink: 0; color: var(--ix-emerald); }
+.ix-row-clock { flex-shrink: 0; color: var(--ix-text-dim); }
+
+/* AI feedback card */
+.ix-feedback-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background:
+    radial-gradient(130% 140% at 0% 100%, rgba(6, 182, 212, 0.07) 0%, rgba(6, 182, 212, 0) 55%),
+    var(--ix-card);
+  border: 1px solid rgba(6, 182, 212, 0.125);
+  border-radius: var(--ix-radius-md);
+}
+
+.ix-feedback-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--color-primary-light);
-  border-radius: var(--md-radius);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-primary);
+  gap: 10px;
 }
 
-.ms-evaluating-dots {
+.ix-sentiment {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ix-text-mute);
+}
+
+.ix-sentiment.good {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.19);
+  color: var(--ix-emerald);
+}
+
+.ix-sentiment.mid {
+  background: rgba(251, 191, 36, 0.08);
+  border-color: rgba(251, 191, 36, 0.25);
+  color: var(--ix-amber);
+}
+
+.ix-sentiment.low {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: var(--ix-red);
+}
+
+.ix-fscore {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ix-emerald);
+}
+
+.ix-fscore.mid { color: var(--ix-amber); }
+.ix-fscore.low { color: var(--ix-red); }
+
+.ix-insight {
   display: flex;
-  gap: 3px;
+  align-items: flex-start;
+  gap: 8px;
 }
 
-.ms-evaluating-dots span {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  animation: ms-dot-bounce 1.2s ease-in-out infinite;
+.ix-insight svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
-.ms-evaluating-dots span:nth-child(2) { animation-delay: 0.2s; }
-.ms-evaluating-dots span:nth-child(3) { animation-delay: 0.4s; }
+.ix-insight svg.amber { color: var(--ix-amber); }
+.ix-insight svg.green { color: var(--ix-emerald); }
 
-@keyframes ms-dot-bounce {
-  0%, 80%, 100% { transform: scale(1); opacity: 0.6; }
-  40%            { transform: scale(1.4); opacity: 1; }
+.ix-insight p {
+  flex: 1;
+  font-size: 12px;
+  color: var(--ix-text-soft);
+  line-height: 17px;
+}
+
+.ix-stats {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.ix-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ix-stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ix-text);
+  white-space: nowrap;
+}
+
+.ix-stat-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ix-text-dim);
+  text-transform: capitalize;
 }
 
 /* ════════════════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════════════════ */
-@media (max-width: 900px) {
-  .ms-main {
-    flex-direction: column;
-    overflow: visible;
-    padding: 16px 14px;
+@media (max-width: 1100px) {
+  .ix-root { overflow: auto; }
+
+  .ix-body { flex-direction: column; }
+
+  .ix-stage {
+    flex-shrink: 0;
+    min-height: 300px;
+    max-height: 420px;
   }
 
-  .ms-right-column {
+  .ix-sidebar {
     width: 100%;
-    flex-shrink: 1;
-  }
-
-  .ms-avatar-card {
-    min-height: 380px;
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--ix-border);
   }
 }
 
 @media (max-width: 600px) {
-  .pt-topbar {
-    padding: 0 14px;
-    gap: 10px;
+  .ix-topbar { padding: 0 14px; }
+  .ix-topbar-counter { display: none; }
+
+  .ix-main { padding: 12px 14px; }
+
+  .ix-lower { padding: 12px 14px; }
+
+  .ix-stage-meta { top: 12px; }
+
+  .ix-pip {
+    top: 12px;
+    right: 12px;
+    transform: scale(0.8);
+    transform-origin: top right;
   }
 
-  .pt-phase-badge {
-    display: none;
+  .ix-ai-pill {
+    top: 12px;
+    left: 12px;
+    max-width: 58%;
+    overflow: hidden;
   }
 
-  .ms-question-text-display {
-    font-size: 15px;
-  }
-
-  .ms-participants-row {
-    height: 100px;
-  }
-
-  .ms-participant-avatar {
-    width: 38px;
-    height: 38px;
-  }
+  .ix-dock { padding: 4px 8px; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .ix-orb-halo,
+  .ix-orb-ring,
+  .ix-orb-core,
+  .ix-orb-bar,
+  .ix-ring-outer,
+  .ix-ring-inner,
+  .ix-pip-wave.ai span,
+  .ix-dot-live,
+  .ix-q-skeleton span,
+  .ix-evaluating-dots span {
+    animation: none;
+  }
+
+  .ix-q-skeleton span { opacity: 0.7; }
+
+  .ix-pip-wave span,
+  .ix-dock-btn,
+  .ix-tab,
+  .ix-slowwait button,
+  .ix-end-btn {
+    transition: none;
+  }
+
+  .ix-pip-wave span { transform: scaleY(0.36); }
+}
+
+
+
+
+

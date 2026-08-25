@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { auth } from "../firebase";
 import AiAnalysisLoader from "../components/AiAnalysisLoader";
 import "./PreTest.css";
@@ -435,10 +436,17 @@ export default function PostTest() {
         />
       </div>
 
-      {isAnalyzing ? (
-        <AiAnalysisLoader onComplete={() => navigate("/likert-post", { state: { voice } })} />
-      ) : (
-        <main className="pt-main">
+      {isAnalyzing && (
+        <AnimatePresence>
+          <AiAnalysisLoader
+            key="post-analysis-loader"
+            onComplete={() =>
+              navigate("/likert-post", { state: { voice } })
+            }
+          />
+        </AnimatePresence>
+      )}
+      <main className="pt-main">
           {/* Left Column */}
           <div className="pt-content" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {error && (
@@ -612,7 +620,6 @@ export default function PostTest() {
             </div>
           </aside>
         </main>
-      )}
     </div>
   );
 }
