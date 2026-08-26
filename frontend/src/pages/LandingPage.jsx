@@ -1,131 +1,90 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+// frontend/src/pages/LandingPage.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// ITerview Landing Page — Cool Color Spectrum Design System
+// Royal Cobalt · Signal Sky Cyan · Deep Indigo · Cool Mint · Crisp White
+// Primitives inspired by: shadcn/ui · Rare UI · Beautiful UI
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useState, useEffect } from "react";
 import AuthModal from "../components/AuthModal";
 import TryItLiveDemo from "../components/TryItLiveDemo";
 import logoSrc from "../assets/logo.png";
 import "./LandingPage.css";
-import { Sparkles, ShieldCheck, Layers, Check, Lock, Mic, AlignLeft, Gauge, Layers3, TrendingUp, Clock, Target, Code2, MessageSquare, ArrowRight } from "lucide-react";
+import {
+  Sparkles,
+  ShieldCheck,
+  Layers,
+  Check,
+  Lock,
+  Mic,
+  AlignLeft,
+  Gauge,
+  Layers3,
+  TrendingUp,
+  Clock,
+  Target,
+  Code2,
+  MessageSquare,
+  ArrowRight,
+  CheckCircle2,
+  Zap,
+  Terminal,
+  Activity,
+} from "lucide-react";
 
-
-/* â”€â”€â”€ Sub-components â”€â”€â”€ */
-
-const MetricBar = ({ score, color, bar }) => {
+/* ── Metric Score Bar Helper ── */
+const MetricBar = ({ score, color }) => {
   const pct = Math.round((score / 5) * 100);
   return (
-    <div className="lp-metric">
-      <div className="lp-metric-head">
-        <span className="lp-metric-label">Sample score</span>
-        <span className="lp-metric-value" style={{ color }}>
-          {score}
-          <span className="lp-metric-max"> / 5</span>
+    <div className="lp-3c-metric-box">
+      <div className="lp-3c-metric-header">
+        <span className="lp-3c-metric-label">Benchmark Score</span>
+        <span className="lp-3c-metric-val" style={{ color }}>
+          {score} <small style={{ fontSize: "0.8125rem", color: "var(--ink-faint)" }}>/ 5.0</small>
         </span>
       </div>
-      <div className="lp-metric-track" aria-hidden="true">
-        <div className="lp-metric-fill" style={{ width: `${pct}%`, background: bar }} />
+      <div className="lp-3c-metric-bar" aria-hidden="true">
+        <div className="lp-3c-metric-fill" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
     </div>
   );
 };
 
-const RoleChip = ({ color, name, desc }) => (
-  <div className="lp-role-chip" style={{ backgroundColor: `${color}0C`, border: `1px solid ${color}40` }}>
-    <div className="lp-role-accent" style={{ background: color }} />
-    <div className="lp-role-dot" style={{ background: color }} />
-    <div className="lp-role-text">
-      <span className="lp-role-name">{name}</span>
-      <span className="lp-role-desc">{desc}</span>
-    </div>
-  </div>
-);
-
-const TierRow = ({ unlocked, name, status, color }) => (
-  <div
-    className="lp-tier-row"
-    style={{
-      backgroundColor: unlocked ? `${color}14` : "#F6F8FB",
-      border: `1px solid ${unlocked ? `${color}59` : "rgba(16, 19, 24, 0.10)"}`,
-    }}
-  >
-      <div
-        className="lp-tier-icon"
-        style={{
-          background: unlocked ? `${color}22` : "#EEF1F5",
-        }}
-      >
-      {unlocked ? <Check size={16} strokeWidth={1.8} color={color} /> : <Lock size={16} strokeWidth={1.8} color="#9AA1AD" />}
-    </div>
-    <div className="lp-tier-text">
-      <span className="lp-tier-name" style={{ color: unlocked ? "#101318" : "#4B5563" }}>{name}</span>
-      <span className="lp-tier-status" style={{ color: unlocked ? color : "#9AA1AD" }}>{status}</span>
-    </div>
-    {!unlocked && <div className="lp-lock-badge"><span>Locked</span></div>}
-  </div>
-);
-
-const HowItStep = ({ num, title, desc, icon, showConnector }) => (
-  <>
-    <li className="lp-step-row">
-      <div className="lp-step-num">{icon}</div>
-      <div className="lp-step-content">
-        <span className="lp-step-eyebrow">Step {num}</span>
-        <span className="lp-step-title">{title}</span>
-        <span className="lp-step-desc">{desc}</span>
-      </div>
-    </li>
-    {showConnector && (
-      <li aria-hidden="true" className="lp-step-connector">
-        <div className="lp-step-line" />
-      </li>
-    )}
-  </>
-);
-
+/* ── Mobile Menu Component ── */
 const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => (
   <div className={`lp-mobile-menu${open ? " lp-mobile-menu--open" : ""}`}>
     <nav className="lp-mobile-nav" aria-label="Mobile navigation">
-      <a href="#features" onClick={onClose} className="lp-mobile-nav-link">Features</a>
-      <a href="#about" onClick={onClose} className="lp-mobile-nav-link">Objective</a>
+      <a href="#rubric" onClick={onClose} className="lp-mobile-nav-link">The 3C Rubric</a>
+      <a href="#journey" onClick={onClose} className="lp-mobile-nav-link">Learning Pathway</a>
       <a href="#how-it-works" onClick={onClose} className="lp-mobile-nav-link">How It Works</a>
       <div className="lp-mobile-nav-actions">
         <button className="lp-btn-ghost lp-btn-full" onClick={() => { onClose(); onSignIn(); }}>Sign In</button>
-        <button className="lp-btn-solid lp-btn-full" onClick={() => { onClose(); onGetStarted(); }}>Start practicing</button>
+        <button className="lp-btn-solid lp-btn-full" onClick={() => { onClose(); onGetStarted(); }}>Start practicing free</button>
       </div>
     </nav>
   </div>
 );
 
-/* â”€â”€â”€ Hero headline split-word reveal â”€â”€â”€ */
-const HERO_WORDS = ["Practice", "IT", "interviews.", "Get", "scored", "objectively."];
-
-const HeroWord = ({ index, children, accent }) => (
-  <span className="lp-hero-word-mask" style={{ "--i": index }}>
-    <span className={`lp-hero-word${accent ? " lp-hero-accent" : ""}`}>{children}</span>
-  </span>
-);
-
-/* â”€â”€â”€ Main Component â”€â”€â”€ */
+/* ── Main Landing Page Component ── */
 const LandingPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [navScrolled, setNavScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("");
-  const heroSentinelRef = useRef(null);
 
-  /* Scroll-aware nav backdrop via IntersectionObserver on a sentinel div in the hero */
+  /* Nav scroll shadow */
   useEffect(() => {
-    const sentinel = heroSentinelRef.current;
-    if (!sentinel) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setNavScrolled(!entry.isIntersecting),
-      { threshold: 0 }
-    );
-    obs.observe(sentinel);
-    return () => obs.disconnect();
+    const handleScroll = () => {
+      setNavScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  /* Scroll-spy for active nav link via IntersectionObserver on sections */
+  /* Scroll spy */
   useEffect(() => {
-    const sectionIds = ["features", "how-it-works", "about"];
+    const sectionIds = ["rubric", "journey", "how-it-works"];
     const observers = [];
     const visible = new Set();
 
@@ -139,11 +98,10 @@ const LandingPage = () => {
           } else {
             visible.delete(id);
           }
-          // The first visible section in DOM order wins
           const first = sectionIds.find((s) => visible.has(s));
           setActiveSection(first || "");
         },
-        { threshold: 0.25 }
+        { threshold: 0.2 }
       );
       obs.observe(el);
       observers.push(obs);
@@ -151,43 +109,6 @@ const LandingPage = () => {
 
     return () => observers.forEach((o) => o.disconnect());
   }, []);
-
-  /* Reveal-on-scroll for bento cards + eval section (respects prefers-reduced-motion) */
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    document.querySelector(".lp-root")?.classList.add("lp-anim-ready");
-    const targets = [
-      ...Array.from(document.querySelectorAll(".lp-bento-card")),
-      ...Array.from(document.querySelectorAll(".lp-reveal")),
-    ];
-    if (!targets.length) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            if (entry.target.classList.contains("lp-bento-card")) {
-              entry.target.classList.add("lp-bento-card--revealed");
-            }
-            entry.target.classList.add("lp-reveal--shown");
-            obs.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
-    );
-    targets.forEach((target) => obs.observe(target));
-    return () => obs.disconnect();
-  }, []);
-
-  /* Close the mobile menu on Escape (plain disclosure, keyboard affordance) */
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [menuOpen]);
 
   const openLoginModal = () => {
     setAuthMode("login");
@@ -201,38 +122,47 @@ const LandingPage = () => {
 
   return (
     <div className="lp-root">
-      {/* Film grain overlay - fixed, pointer-events-none, subtle texture */}
-      <div className="lp-grain" aria-hidden="true" />
-      {/* â”€â”€ Navbar â”€â”€ */}
+      {/* ── Sticky Header (shadcn Style) ── */}
       <header className={`lp-nav${navScrolled ? " lp-nav--scrolled" : ""}`} role="banner">
         <div className="lp-nav-inner">
           <a href="/" className="lp-logo" aria-label="ITerview home">
             <div className="lp-logo-container">
-              <img
-                src={logoSrc}
-                alt="ITerview Logo"
-                className="lp-logo-img"
-              />
+              <img src={logoSrc} alt="ITerview Logo" className="lp-logo-img" />
             </div>
-            <span className="lp-logo-text">ITerview</span>
+            <span className="lp-logo-text">ITerview<span className="lp-logo-dot">.</span></span>
           </a>
 
           <nav className="lp-nav-links" aria-label="Main navigation">
-            <a href="#features" className={`lp-nav-link${activeSection === "features" ? " lp-nav-link--active" : ""}`} aria-current={activeSection === "features" ? "true" : undefined}>Features</a>
-            <a href="#about" className={`lp-nav-link${activeSection === "about" ? " lp-nav-link--active" : ""}`} aria-current={activeSection === "about" ? "true" : undefined}>Objective</a>
-            <a href="#how-it-works" className={`lp-nav-link${activeSection === "how-it-works" ? " lp-nav-link--active" : ""}`} aria-current={activeSection === "how-it-works" ? "true" : undefined}>How It Works</a>
+            <a
+              href="#rubric"
+              className={`lp-nav-link${activeSection === "rubric" ? " lp-nav-link--active" : ""}`}
+            >
+              The 3C Rubric
+            </a>
+            <a
+              href="#journey"
+              className={`lp-nav-link${activeSection === "journey" ? " lp-nav-link--active" : ""}`}
+            >
+              Learning Pathway
+            </a>
+            <a
+              href="#how-it-works"
+              className={`lp-nav-link${activeSection === "how-it-works" ? " lp-nav-link--active" : ""}`}
+            >
+              How It Works
+            </a>
           </nav>
 
           <div className="lp-nav-spacer" />
 
           <div className="lp-nav-cta">
-            <button className="lp-btn-ghost" aria-label="Sign in" onClick={openLoginModal}>Sign In</button>
-            <button className="lp-btn-solid" aria-label="Start practicing" onClick={openRegisterModal}>Start practicing</button>
+            <button className="lp-btn-ghost" onClick={openLoginModal}>Sign In</button>
+            <button className="lp-btn-solid" onClick={openRegisterModal}>Start practicing</button>
           </div>
 
           <button
             className="lp-hamburger"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
           >
@@ -241,451 +171,488 @@ const LandingPage = () => {
             <span className={`lp-ham-bar${menuOpen ? " lp-ham-bar--bot" : ""}`} />
           </button>
         </div>
+
         <MobileMenu
           open={menuOpen}
           onClose={() => setMenuOpen(false)}
           onSignIn={openLoginModal}
           onGetStarted={openRegisterModal}
         />
-        {/* Scroll progress hairline - scroll-driven CSS, no JS listeners */}
-        <div className="lp-nav-progress" aria-hidden="true" />
       </header>
 
-      {/* â”€â”€ Hero Section â”€â”€ */}
-      <section className="lp-hero" id="try-it-live" aria-label="Hero - Try It Live demo">
-        {/* Sentinel for scroll-aware nav: becomes non-visible when scrolled past */}
-        <div ref={heroSentinelRef} aria-hidden="true" style={{ position: "absolute", top: 0, height: "1px", width: "1px", pointerEvents: "none" }} />
-        {/* Ambient depth - even chromatic bloom + blueprint grid (no cut-off orbs) */}
-        <div className="lp-hero-ambient" aria-hidden="true" />
-        <div className="lp-hero-grid" aria-hidden="true" />
-
+      {/* ── Hero Section (Horizon Gradient + Rare UI & Beautiful UI Sandboxes) ── */}
+      <section className="lp-hero" aria-label="Hero section">
         <div className="lp-hero-inner">
           <div className="lp-hero-left">
             <div className="lp-hero-badge">
-              <Mic size={14} strokeWidth={2} />
-              <span>Voice-first mock interviews</span>
+              <Sparkles size={15} strokeWidth={2.5} />
+              <span>Voice-First AI Interview Simulator</span>
             </div>
+
             <h1 className="lp-hero-headline">
-              <span className="lp-sr-only">Practice IT interviews. Get scored objectively.</span>
-              <span className="lp-hero-headline-visual" aria-hidden="true">
-                {HERO_WORDS.map((word, i) => (
-                  <HeroWord key={word + i} index={i} accent={word.startsWith("objectively")}>
-                    {/* NBSP glues each word to its trailing space inside its own
-                        mask, so wraps happen between masks — never mid-pair */}
-                    {i < HERO_WORDS.length - 1 ? `${word}\u00A0` : word}
-                  </HeroWord>
-                ))}
-              </span>
+              Master tech interviews out loud.{" "}
+              <span className="lp-hero-accent">Get scored objectively.</span>
             </h1>
+
             <p className="lp-hero-sub">
-              Speak your answer. The AI listens, transcribes, and scores you on the 3C rubric: Clarity, Correctness, Completeness.
+              Speak your answers naturally. Our AI engine transcribes in real time and grades you on the transparent 3C Rubric: <strong>Clarity</strong>, <strong>Correctness</strong>, and <strong>Completeness</strong>.
             </p>
+
             <div className="lp-hero-ctas">
-              <button className="lp-btn-hero-primary" aria-label="Start practicing" onClick={openRegisterModal}>
-                <span>Start practicing</span>
-                <ArrowRight size={16} strokeWidth={2.5} className="lp-btn-hero-arrow" />
+              <button className="lp-btn-hero-primary" onClick={openRegisterModal}>
+                <span>Start practicing free</span>
+                <ArrowRight size={18} strokeWidth={2.5} />
               </button>
-              <a className="lp-btn-hero-ghost" href="#how-it-works">
-                See how it works
+              <a href="#how-it-works" className="lp-btn-hero-ghost">
+                Explore role tracks
               </a>
+            </div>
+
+            <div className="lp-hero-trust">
+              <div className="lp-hero-trust-item">
+                <CheckCircle2 size={16} className="lp-hero-trust-check" />
+                <span>Zero typing required</span>
+              </div>
+              <div className="lp-hero-trust-item">
+                <CheckCircle2 size={16} className="lp-hero-trust-check" />
+                <span>Instant 3C feedback</span>
+              </div>
+              <div className="lp-hero-trust-item">
+                <CheckCircle2 size={16} className="lp-hero-trust-check" />
+                <span>Frontend, Backend & DevOps</span>
+              </div>
             </div>
           </div>
 
           <div className="lp-hero-right">
-            {/* Soft breathing halo behind the demo */}
-            <div className="lp-demo-halo" aria-hidden="true" />
-            {/* â”€â”€ Try It Live Demo (interactive) â”€â”€ */}
             <TryItLiveDemo onOpenAuth={openRegisterModal} />
           </div>
         </div>
       </section>
 
-      <div className="lp-divider lp-divider--cyan" aria-hidden="true" />
-
-      {/* â”€â”€ 3C Framework (Arena) Section â”€â”€ */}
-      <section className="lp-arena" id="features" aria-labelledby="arena-heading">
-        <div className="lp-section-label lp-section-label--amber">
-          <div className="lp-label-dot lp-label-dot--amber" aria-hidden="true" />
-          <h2 id="arena-heading">THE 3C RUBRIC</h2>
-        </div>
-
-        <p className="lp-section-subtitle">
-          Every answer is graded on three dimensions - here's what the AI listens for.
-        </p>
-
-        <div className="lp-cards-3c">
-          <article className="lp-card-3c lp-card-3c--clarity lp-reveal" aria-label="Clarity dimension">
-            <div className="lp-card-head">
-              <div className="lp-icon-tile lp-icon-tile--cyan">
-                <Sparkles size={18} strokeWidth={1.8} />
-              </div>
-              <h3 className="lp-card-title">Clarity</h3>
+      {/* ── Section 1: The 3C Rubric (Insight Cards) ── */}
+      <section className="lp-section-wrap lp-section-wrap--alt" id="rubric" aria-labelledby="rubric-title">
+        <div className="lp-section-inner">
+          <div className="lp-section-head">
+            <div className="lp-section-badge lp-section-badge--cyan">
+              <Activity size={13} />
+              <span>Objective Evaluation</span>
             </div>
-            <p className="lp-card-desc">
-              How organized and professional is your delivery? Do you use clear structure and proper IT terminology?
-            </p>
-            <div className="lp-card-spacer" />
-            <MetricBar score={4.2} color="#2B6EF2" bar="linear-gradient(90deg, #2B6EF2, #5B8DF5)" />
-          </article>
-
-          <article className="lp-card-3c lp-card-3c--correctness lp-reveal" aria-label="Correctness dimension">
-            <div className="lp-card-head">
-              <div className="lp-icon-tile lp-icon-tile--green">
-                <ShieldCheck size={18} strokeWidth={1.8} />
-              </div>
-              <h3 className="lp-card-title">Correctness</h3>
-            </div>
-            <p className="lp-card-desc">
-              Is your answer technically accurate? Does it reflect real-world IT practices?
-            </p>
-            <div className="lp-card-spacer" />
-            <MetricBar score={3.8} color="#12A150" bar="linear-gradient(90deg, #12A150, #3FC97A)" />
-          </article>
-
-          <article className="lp-card-3c lp-card-3c--completeness lp-reveal" aria-label="Completeness dimension">
-            <div className="lp-card-head">
-              <div className="lp-icon-tile lp-icon-tile--amber">
-                <Layers size={18} strokeWidth={1.8} />
-              </div>
-              <h3 className="lp-card-title">Completeness</h3>
-            </div>
-            <p className="lp-card-desc">
-              Did you fully address the question? Do you back your answer up with specific examples?
-            </p>
-            <div className="lp-card-spacer" />
-            <MetricBar score={3.5} color="#B45309" bar="linear-gradient(90deg, #F5A524, #F8BE5C)" />
-          </article>
-        </div>
-
-        <div className="lp-arena-foot">
-          <p className="lp-score-note">
-            Sample scores shown to illustrate the rubric.
-          </p>
-          <a href="#try-it-live" className="lp-section-cta">
-            Hear how the AI scores your voice <span aria-hidden="true">â†’</span>
-          </a>
-        </div>
-      </section>
-
-      <div className="lp-divider lp-divider--purple" aria-hidden="true" />
-
-      {/* â”€â”€ Objective Evaluation Heading â”€â”€ */}
-      <section className="lp-eval-heading" id="about" aria-label="Objective evaluation">
-        {/* Ambient background - blueprint grid + construction hairlines (decorative) */}
-        <div className="lp-eval-bg" aria-hidden="true">
-          <div className="lp-eval-line lp-eval-line--tr" />
-          <div className="lp-eval-line lp-eval-line--bl" />
-          <div className="lp-eval-grid" />
-        </div>
-
-        <div className="lp-eval-inner">
-          <div className="lp-eval-left">
-            <div className="lp-section-label lp-section-label--cyan">
-              <div className="lp-label-dot lp-label-dot--cyan" aria-hidden="true" />
-              <span>Objective evaluation</span>
-            </div>
-            <h2 className="lp-eval-headline lp-reveal">
-              Who said tech interview prep has to be{" "}
-              <span className="lp-eval-accent">subjective</span>?
-            </h2>
-            <p className="lp-eval-body lp-reveal">
-              No more guessing what an interviewer wants to hear. A silent pre-test sets
-              your baseline, and a scored post-test shows how far you've come.
+            <h2 className="lp-section-title" id="rubric-title">The 3C Rubric: How Every Answer Is Scored</h2>
+            <p className="lp-section-subtitle">
+              No more guessing what an interviewer wants. Every answer is evaluated across three core dimensions designed around real engineering hiring standards.
             </p>
           </div>
-          <div className="lp-eval-right">
-            <div className="lp-eval-proof lp-reveal" aria-label="Sample evaluation journey">
-              <div className="lp-live-header">
-                <div className="lp-live-title-group">
-                  <div className="lp-glow-dot lp-glow-dot--neutral" aria-hidden="true" />
-                  <h3>One journey, measured at every step.</h3>
-                </div>
-                <div className="lp-live-badge" aria-label="Static illustration">
-                  <div className="lp-live-dot" aria-hidden="true" />
-                  <span>SAMPLE</span>
-                </div>
+
+          <div className="lp-3c-grid">
+            {/* Clarity */}
+            <article className="lp-3c-card lp-3c-card--clarity">
+              <div className="lp-3c-icon-badge lp-3c-icon-badge--blue">
+                <AlignLeft size={24} strokeWidth={2.2} />
               </div>
-
-              <ol className="lp-eval-journey">
-                <li className="lp-eval-journey-step">
-                  <div className="lp-icon-tile lp-icon-tile--cyan">
-                    <Gauge size={20} strokeWidth={1.8} />
-                  </div>
-                  <div className="lp-eval-journey-text">
-                    <span className="lp-eval-journey-name">Silent pre-test</span>
-                    <span className="lp-eval-journey-desc">
-                      Five fixed questions that set your starting line. They never lock or unlock anything.
-                    </span>
-                  </div>
-                </li>
-                <li className="lp-eval-journey-step">
-                  <div className="lp-icon-tile lp-icon-tile--purple">
-                    <Mic size={20} strokeWidth={1.8} />
-                  </div>
-                  <div className="lp-eval-journey-text">
-                    <span className="lp-eval-journey-name">Scored mock interview</span>
-                    <span className="lp-eval-journey-desc">
-                      Three rounds, fifteen answers, each scored on the 3C rubric as you go.
-                    </span>
-                  </div>
-                </li>
-                <li className="lp-eval-journey-step">
-                  <div className="lp-icon-tile lp-icon-tile--green">
-                    <TrendingUp size={20} strokeWidth={1.8} />
-                  </div>
-                  <div className="lp-eval-journey-text">
-                    <span className="lp-eval-journey-name">Graduation post-test</span>
-                    <span className="lp-eval-journey-desc">
-                      The same five questions again. The gap between the two is your improvement.
-                    </span>
-                  </div>
-                </li>
-              </ol>
-
-              <div className="lp-eval-delta">
-                <span className="lp-eval-delta-baseline">Baseline 55%</span>
-                <span className="lp-eval-delta-line" aria-hidden="true" />
-                <span className="lp-eval-delta-growth">Graduation 80%</span>
-                <span className="lp-eval-delta-chip">+25%</span>
-              </div>
-
-              <p className="lp-eval-proof-note">Sample figures from one practice journey.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Evidence strip â€” divider-separated fact wall under the proof */}
-        <ul className="lp-eval-facts lp-reveal" aria-label="Evaluation highlights">
-          <li className="lp-eval-fact">
-            <span className="lp-eval-fact-icon lp-eval-fact-icon--cyan"><Target size={18} strokeWidth={1.8} /></span>
-            <div className="lp-eval-fact-text">
-              <strong>Silent baseline</strong>
-              <span>The pre-test draws your starting line. It never gates difficulty.</span>
-            </div>
-          </li>
-          <li className="lp-eval-fact">
-            <span className="lp-eval-fact-icon lp-eval-fact-icon--green"><TrendingUp size={18} strokeWidth={1.8} /></span>
-            <div className="lp-eval-fact-text">
-              <strong>Deterministic unlock</strong>
-              <span>Averaging 75%+ across the full mock interview opens the next tier.</span>
-            </div>
-          </li>
-          <li className="lp-eval-fact">
-            <span className="lp-eval-fact-icon lp-eval-fact-icon--purple"><Gauge size={18} strokeWidth={1.8} /></span>
-            <div className="lp-eval-fact-text">
-              <strong>Measured growth</strong>
-              <span>The post-test replays your first five questions so the improvement shows.</span>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <div className="lp-divider lp-divider--cyan" aria-hidden="true" />
-
-      {/* â”€â”€ How It Works + Features Overview (Bento Grid) â”€â”€ */}
-      <section className="lp-bento" id="how-it-works" aria-labelledby="how-it-works-label">
-
-        {/* Section header â€” the process is the spine of the overview */}
-        <div className="lp-bento-head">
-          <div className="lp-section-label lp-section-label--cyan">
-            <div className="lp-label-dot lp-label-dot--cyan" aria-hidden="true" />
-            <span id="how-it-works-label">How it works</span>
-          </div>
-          <h2 className="lp-bento-headline">From your first word to your 3C score.</h2>
-          <p className="lp-bento-sub">
-            Three steps between you and objective feedback - built on IT-specific role tracks, mastery tiers, and a three-round mock interview.
-          </p>
-        </div>
-
-        <div className="lp-bento-grid">
-
-          {/* Card 1 â€” Process spine (Speak â†’ Transcribe â†’ Score) */}
-          <article className="lp-bento-card lp-bento-card--spine">
-            <div className="lp-card-head">
-              <div className="lp-icon-tile lp-icon-tile--cyan">
-                <Mic size={20} strokeWidth={1.8} />
-              </div>
-              <h3>Speak, transcribe, get scored. No typing.</h3>
-            </div>
-
-            <ol className="lp-steps lp-steps--spine">
-              <HowItStep num="1" title="Speak" desc="Answer interview questions naturally via voice - no typing required." icon={<Mic size={18} strokeWidth={1.8} />} showConnector />
-              <HowItStep num="2" title="Transcribe" desc="Your answer is transcribed in real time, then checked against the 3C rubric." icon={<AlignLeft size={18} strokeWidth={1.8} />} showConnector />
-              <HowItStep num="3" title="Get scored" desc="Clarity, Correctness, and Completeness - on the transparent 1.0-5.0 scale." icon={<Gauge size={18} strokeWidth={1.8} />} showConnector={false} />
-            </ol>
-
-            {/* Static transcript illustration â€” a voice-first moment the demo can't pause to show */}
-            <div className="lp-live-strip" aria-hidden="true">
-              <div className="lp-live-strip-row">
-                <span className="lp-live-pill"><span className="lp-live-dot" />YOU</span>
-                <p className="lp-live-quote">
-                  &ldquo;I&apos;d use a cleanup function to clear the interval when the component unmounts.&rdquo;
+              <div className="lp-3c-info">
+                <h3 className="lp-3c-name">1. Clarity</h3>
+                <p className="lp-3c-desc">
+                  How structured, professional, and articulate is your verbal delivery?
                 </p>
               </div>
-              <div className="lp-live-strip-meta">
-                <div className="lp-wave">
-                  {Array.from({ length: 14 }).map((_, i) => (
-                    <span key={i} className="lp-wave-bar" style={{ animationDelay: (i * 0.08) + "s" }} />
-                  ))}
-                </div>
-                <span className="lp-live-status">Transcribing<span className="lp-caret" /></span>
+
+              <ul className="lp-3c-checklist">
+                <li className="lp-3c-check-item">
+                  <Check size={15} color="var(--blue)" strokeWidth={2.5} />
+                  <span>Logical structure & top-down framing</span>
+                </li>
+                <li className="lp-3c-check-item">
+                  <Check size={15} color="var(--blue)" strokeWidth={2.5} />
+                  <span>Accurate use of standard IT terminology</span>
+                </li>
+                <li className="lp-3c-check-item">
+                  <Check size={15} color="var(--blue)" strokeWidth={2.5} />
+                  <span>Elimination of filler words & tangents</span>
+                </li>
+              </ul>
+
+              <MetricBar score={4.5} color="var(--blue)" />
+            </article>
+
+            {/* Correctness */}
+            <article className="lp-3c-card lp-3c-card--correctness">
+              <div className="lp-3c-icon-badge lp-3c-icon-badge--mint">
+                <ShieldCheck size={24} strokeWidth={2.2} />
               </div>
-            </div>
-
-            <div className="lp-how-foot">
-              <a href="#try-it-live" className="lp-section-cta">
-                Try the live demo <span aria-hidden="true">â†’</span>
-              </a>
-            </div>
-          </article>
-
-          {/* Card 2 â€” Role Tracks */}
-          <article className="lp-bento-card lp-bento-card--roles">
-            <div className="lp-card-head">
-              <div className="lp-icon-tile lp-icon-tile--purple">
-                <Layers3 size={20} strokeWidth={1.8} />
+              <div className="lp-3c-info">
+                <h3 className="lp-3c-name">2. Correctness</h3>
+                <p className="lp-3c-desc">
+                  Is your technical reasoning sound and aligned with modern industry practices?
+                </p>
               </div>
-              <h3>IT Role Tracks</h3>
-            </div>
-            <div className="lp-role-list">
-              <RoleChip color="#2B6EF2" name="Frontend" desc="React, Vue, Angular, CSS" />
-              <RoleChip color="#2B6EF2" name="Backend" desc="Node.js, Python, Java, Go" />
-              <RoleChip color="#2B6EF2" name="DevOps" desc="CI/CD, Docker, Kubernetes, AWS" />
-            </div>
-            <div className="lp-coming-soon">
-              <div className="lp-cs-dot" />
-              <span className="lp-cs-label">+ More Roles</span>
-              <div className="lp-cs-badge">Coming Soon</div>
-            </div>
-          </article>
 
-          {/* Card 3 â€” Mastery progression */}
-          <article className="lp-bento-card lp-bento-card--mastery">
-            <div className="lp-card-head">
-              <div className="lp-icon-tile lp-icon-tile--green">
-                <TrendingUp size={20} strokeWidth={1.8} />
+              <ul className="lp-3c-checklist">
+                <li className="lp-3c-check-item">
+                  <Check size={15} color="var(--mint)" strokeWidth={2.5} />
+                  <span>Technical accuracy of code & architecture</span>
+                </li>
+                <li className="lp-3c-check-item">
+                  <Check size={15} color="var(--mint)" strokeWidth={2.5} />
+                  <span>Understanding of trade-offs & edge cases</span>
+                </li>
+                <li className="lp-3c-check-item">
+                  <Check size={15} color="var(--mint)" strokeWidth={2.5} />
+                  <span>Practical alignment with production realities</span>
+                </li>
+              </ul>
+
+              <MetricBar score={4.2} color="var(--mint)" />
+            </article>
+
+            {/* Completeness */}
+            <article className="lp-3c-card lp-3c-card--completeness">
+              <div className="lp-3c-icon-badge lp-3c-icon-badge--amber">
+                <Layers size={24} strokeWidth={2.2} />
               </div>
-              <h3>Mastery-Based Difficulty Progression</h3>
-            </div>
-
-            <div className="lp-tier-ladder" aria-hidden="true">
-              <div className="lp-tier-ladder-step lp-tier-ladder-step--done"><span>E</span><em>Easy</em></div>
-              <div className="lp-tier-ladder-line" />
-              <div className="lp-tier-ladder-step"><span>M</span><em>Medium</em></div>
-              <div className="lp-tier-ladder-line" />
-              <div className="lp-tier-ladder-step"><span>H</span><em>Hard</em></div>
-            </div>
-
-            <div className="lp-tier-list">
-              <TierRow unlocked color="#12A150" name="Easy" status="Unlocked - Start here" />
-              <TierRow unlocked={false} color="#9AA1AD" name="Medium" status="Requires a 75%+ average across a full mock interview" />
-              <TierRow unlocked={false} color="#9AA1AD" name="Hard" status="Requires a 75%+ average on Medium" />
-            </div>
-          </article>
-
-          {/* Card 4 â€” One session, three rounds */}
-          <article className="lp-bento-card lp-bento-card--session">
-            <div className="lp-card-head">
-              <div className="lp-icon-tile lp-icon-tile--cyan">
-                <Clock size={20} strokeWidth={1.8} />
+              <div className="lp-3c-info">
+                <h3 className="lp-3c-name">3. Completeness</h3>
+                <p className="lp-3c-desc">
+                  Did you address the full prompt and substantiate your points with concrete examples?
+                </p>
               </div>
-              <h3>One session, three rounds</h3>
-            </div>
 
-            <ol className="lp-sets-list">
-              <li className="lp-set-row">
-                <div className="lp-set-icon"><Target size={16} strokeWidth={1.8} /></div>
-                <div className="lp-set-text">
-                  <span className="lp-set-name">Personalized</span>
-                  <span className="lp-set-desc">
-                    Five questions aimed at the weak spots your pre-test diagnostic found.
-                  </span>
-                </div>
-              </li>
-              <li className="lp-set-row">
-                <div className="lp-set-icon"><Code2 size={16} strokeWidth={1.8} /></div>
-                <div className="lp-set-text">
-                  <span className="lp-set-name">Technical</span>
-                  <span className="lp-set-desc">
-                    Role-based questions for Frontend, Backend, or DevOps - HTML/CSS/React for a frontend role.
-                  </span>
-                </div>
-              </li>
-              <li className="lp-set-row">
-                <div className="lp-set-icon"><MessageSquare size={16} strokeWidth={1.8} /></div>
-                <div className="lp-set-text">
-                  <span className="lp-set-name">Behavioral</span>
-                  <span className="lp-set-desc">
-                    STAR-method questions about real conflicts, deadlines, and project risk.
-                  </span>
-                </div>
-              </li>
-            </ol>
+              <ul className="lp-3c-checklist">
+                <li className="lp-3c-check-item">
+                  <Check size={15} color="var(--amber)" strokeWidth={2.5} />
+                  <span>Comprehensive answers to multi-part prompts</span>
+                </li>
+                <li className="lp-3c-check-item">
+                  <Check size={15} color="var(--amber)" strokeWidth={2.5} />
+                  <span>Concrete STAR-method project examples</span>
+                </li>
+                <li className="lp-3c-check-item">
+                  <Check size={15} color="var(--amber)" strokeWidth={2.5} />
+                  <span>Explicit solutions for scale, error, & testing</span>
+                </li>
+              </ul>
 
-            <p className="lp-session-note">
-              <Check size={14} strokeWidth={1.8} color="#12A150" />
-              <span>Instant feedback after every answer.</span>
-            </p>
-
-            <div className="lp-unlock-line">
-              Averaging <strong>75%+</strong> across all three rounds unlocks the next difficulty.
-            </div>
-          </article>
-
+              <MetricBar score={4.0} color="var(--amber)" />
+            </article>
+          </div>
         </div>
       </section>
 
-      {/* â”€â”€ Final CTA Section â”€â”€ */}
-      <section className="lp-final-cta" aria-labelledby="cta-heading">
-        {/* Single restrained brand-accent wash - mirrors the hero ambient, no purple */}
-        <div className="lp-cta-glow-top" aria-hidden="true" />
-        <h2 className="lp-cta-headline" id="cta-heading">
-          Stop freezing in interviews. Start practicing with a{" "}
-          <span className="lp-cta-accent">score</span>.
-        </h2>
-        <p className="lp-cta-sub">
-          Answer real IT questions out loud and get instant 3C feedback after every answer.
-        </p>
-        <button className="lp-btn-cta-final" aria-label="Start practicing" onClick={openRegisterModal}>
-          Start practicing
-        </button>
-        <div className="lp-cta-trust">
-          <Check size={14} strokeWidth={2} color="#2B6EF2" aria-hidden="true" />
-          <span>Free to start. No credit card required.</span>
-        </div>
-      </section>
-
-      {/* â”€â”€ Footer â”€â”€ */}
-      <footer className="lp-footer" role="contentinfo">
-        <div className="lp-footer-divider" aria-hidden="true" />
-        <div className="lp-footer-content">
-          <div className="lp-footer-brand-block">
-            <a href="/" className="lp-logo" aria-label="ITerview home">
-              <div className="lp-logo-container">
-                <img src={logoSrc} alt="ITerview Logo" className="lp-logo-img" />
-              </div>
-              <span className="lp-logo-text">ITerview</span>
-            </a>
-            <p className="lp-footer-tagline">
-              Practice IT interviews out loud. Get scored on the 3C rubric.
+      {/* ── Section 2: Learning Pathway & Growth Measurement ── */}
+      <section className="lp-section-wrap" id="journey" aria-labelledby="journey-title">
+        <div className="lp-section-inner">
+          <div className="lp-section-head">
+            <div className="lp-section-badge lp-section-badge--indigo">
+              <TrendingUp size={13} />
+              <span>Measurable Improvement</span>
+            </div>
+            <h2 className="lp-section-title" id="journey-title">A Structured Pathway From Baseline to Mastery</h2>
+            <p className="lp-section-subtitle">
+              Practice is only useful when you can prove you got better. Our diagnostic workflow measures your growth between your first attempt and your graduation test.
             </p>
           </div>
-          <nav className="lp-footer-links" aria-label="Footer navigation">
-            <a href="#features" className="lp-footer-link">3C Rubric Guide</a>
-            {/* FAQ / Privacy / Terms have no dedicated routes yet - keep placeholders until they ship */}
-            <a href="#" className="lp-footer-link">FAQ</a>
-            <a href="#" className="lp-footer-link">Privacy Policy</a>
-            <a href="#" className="lp-footer-link">Terms</a>
-          </nav>
+
+          <div className="lp-pathway-layout">
+            {/* Left — 3 Pathway Steps */}
+            <div className="lp-pathway-steps">
+              <div className="lp-path-step">
+                <div className="lp-path-step-num">1</div>
+                <div className="lp-path-step-content">
+                  <h3 className="lp-path-step-title">Silent Baseline Pre-Test</h3>
+                  <p className="lp-path-step-desc">
+                    5 initial diagnostic questions establish your starting level without locking any interview tracks.
+                  </p>
+                </div>
+              </div>
+
+              <div className="lp-path-step">
+                <div className="lp-path-step-num">2</div>
+                <div className="lp-path-step-content">
+                  <h3 className="lp-path-step-title">3-Round Scored Mock Interview</h3>
+                  <p className="lp-path-step-desc">
+                    15 voice questions across Diagnostic, Role-Technical, and STAR Behavioral categories with real-time feedback.
+                  </p>
+                </div>
+              </div>
+
+              <div className="lp-path-step">
+                <div className="lp-path-step-num">3</div>
+                <div className="lp-path-step-content">
+                  <h3 className="lp-path-step-title">Graduation Benchmark Post-Test</h3>
+                  <p className="lp-path-step-desc">
+                    Re-test against identical benchmark questions to clearly verify and celebrate your score growth.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right — Visual Growth Proof Card (Beautiful UI Insight Card) */}
+            <div className="lp-growth-card">
+              <div className="lp-growth-header">
+                <div>
+                  <h3 style={{ fontSize: "1.125rem", fontWeight: 800 }}>Sample Practice Journey</h3>
+                  <p style={{ fontSize: "0.8125rem", color: "var(--ink-faint)" }}>Frontend Engineer Track</p>
+                </div>
+                <span className="lp-growth-badge">PROVEN DELTA</span>
+              </div>
+
+              <div className="lp-growth-delta-row">
+                <div className="lp-growth-stat">
+                  <span className="lp-growth-stat-label">Baseline Score</span>
+                  <span className="lp-growth-stat-val">55%</span>
+                </div>
+                <div className="lp-growth-arrow">→</div>
+                <div className="lp-growth-stat">
+                  <span className="lp-growth-stat-label">Graduation Score</span>
+                  <span className="lp-growth-stat-val">82%</span>
+                </div>
+                <div className="lp-growth-jump">
+                  <span>+27%</span>
+                </div>
+              </div>
+
+              <div className="lp-growth-facts">
+                <div className="lp-growth-fact-item">
+                  <Target size={18} color="var(--blue)" style={{ margin: "0 auto" }} />
+                  <span className="lp-growth-fact-strong">Targeted Prep</span>
+                  <span className="lp-growth-fact-sub">Focus on weak spots</span>
+                </div>
+                <div className="lp-growth-fact-item">
+                  <TrendingUp size={18} color="var(--mint)" style={{ margin: "0 auto" }} />
+                  <span className="lp-growth-fact-strong">75%+ Unlock</span>
+                  <span className="lp-growth-fact-sub">Unlocks harder tiers</span>
+                </div>
+                <div className="lp-growth-fact-item">
+                  <Gauge size={18} color="var(--amber)" style={{ margin: "0 auto" }} />
+                  <span className="lp-growth-fact-strong">Zero Guesswork</span>
+                  <span className="lp-growth-fact-sub">Objective rubric</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="lp-footer-bottom">
-          <p className="lp-footer-copy">
-            &copy; 2026 ITerview. All rights reserved.
+      </section>
+
+      {/* ── Section 3: Bento Grid / How It Works (shadcn Badge System) ── */}
+      <section className="lp-section-wrap lp-section-wrap--alt" id="how-it-works" aria-labelledby="how-it-works-title">
+        <div className="lp-section-inner">
+          <div className="lp-section-head">
+            <div className="lp-section-badge lp-section-badge--mint">
+              <Zap size={13} />
+              <span>Features & Tracks</span>
+            </div>
+            <h2 className="lp-section-title" id="how-it-works-title">Engineered for Technical Career Success</h2>
+            <p className="lp-section-subtitle">
+              From foundational software concepts to advanced system trade-offs, practice the exact questions top tech employers ask.
+            </p>
+          </div>
+
+          <div className="lp-bento-grid">
+            {/* Card 1: Voice Engine */}
+            <article className="lp-bento-card">
+              <div className="lp-bento-card-head">
+                <div className="lp-3c-icon-badge lp-3c-icon-badge--blue">
+                  <Mic size={22} strokeWidth={2.2} />
+                </div>
+                <h3 className="lp-bento-title">Voice-First Practice Engine</h3>
+              </div>
+              <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
+                Interviews are spoken, not typed. Our engine transcribes your spoken answers live and provides sentence-by-sentence rubric scoring.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "auto" }}>
+                <div className="lp-role-item">
+                  <span className="lp-role-item-name">1. Speak naturally</span>
+                  <span className="lp-role-item-tags">No typing required</span>
+                </div>
+                <div className="lp-role-item">
+                  <span className="lp-role-item-name">2. Real-time STT</span>
+                  <span className="lp-role-item-tags">Instant transcription</span>
+                </div>
+                <div className="lp-role-item">
+                  <span className="lp-role-item-name">3. Rubric Breakdown</span>
+                  <span className="lp-role-item-tags">Clarity, Correctness, Completeness</span>
+                </div>
+              </div>
+            </article>
+
+            {/* Card 2: Role Tracks */}
+            <article className="lp-bento-card">
+              <div className="lp-bento-card-head">
+                <div className="lp-3c-icon-badge lp-3c-icon-badge--blue">
+                  <Layers3 size={22} strokeWidth={2.2} />
+                </div>
+                <h3 className="lp-bento-title">Dedicated IT Role Tracks</h3>
+              </div>
+              <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
+                Curated question banks designed around real job requirements and technical frameworks.
+              </p>
+              <div className="lp-role-list" style={{ marginTop: "auto" }}>
+                <div className="lp-role-item">
+                  <span className="lp-role-item-name">Frontend Engineer</span>
+                  <span className="lp-role-item-tags">React, Next.js, TypeScript, CSS</span>
+                </div>
+                <div className="lp-role-item">
+                  <span className="lp-role-item-name">Backend Engineer</span>
+                  <span className="lp-role-item-tags">Node.js, Python, PostgreSQL, REST/gRPC</span>
+                </div>
+                <div className="lp-role-item">
+                  <span className="lp-role-item-name">DevOps & Cloud</span>
+                  <span className="lp-role-item-tags">Docker, Kubernetes, AWS, CI/CD</span>
+                </div>
+              </div>
+            </article>
+
+            {/* Card 3: Mastery Progression */}
+            <article className="lp-bento-card">
+              <div className="lp-bento-card-head">
+                <div className="lp-3c-icon-badge lp-3c-icon-badge--mint">
+                  <TrendingUp size={22} strokeWidth={2.2} />
+                </div>
+                <h3 className="lp-bento-title">Mastery-Based Difficulty</h3>
+              </div>
+              <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
+                Earn your way forward. Advance through difficulty tiers by proving your competency with an average score of 75%+.
+              </p>
+              <div className="lp-tier-list" style={{ marginTop: "auto" }}>
+                <div className="lp-tier-item lp-tier-item--unlocked">
+                  <div className="lp-tier-name-group">
+                    <Check size={16} color="var(--mint)" />
+                    <span>Easy Tier (Fundamentals)</span>
+                  </div>
+                  <span className="lp-tier-badge lp-tier-badge--unlocked">Unlocked</span>
+                </div>
+                <div className="lp-tier-item">
+                  <div className="lp-tier-name-group">
+                    <Lock size={16} color="var(--ink-faint)" />
+                    <span>Medium Tier (Architecture)</span>
+                  </div>
+                  <span className="lp-tier-badge lp-tier-badge--locked">Requires 75%</span>
+                </div>
+                <div className="lp-tier-item">
+                  <div className="lp-tier-name-group">
+                    <Lock size={16} color="var(--ink-faint)" />
+                    <span>Hard Tier (Distributed Systems)</span>
+                  </div>
+                  <span className="lp-tier-badge lp-tier-badge--locked">Requires 75%+ on Med</span>
+                </div>
+              </div>
+            </article>
+
+            {/* Card 4: 3-Round Mock Session */}
+            <article className="lp-bento-card">
+              <div className="lp-bento-card-head">
+                <div className="lp-3c-icon-badge lp-3c-icon-badge--amber">
+                  <Clock size={22} strokeWidth={2.2} />
+                </div>
+                <h3 className="lp-bento-title">Comprehensive 3-Round Format</h3>
+              </div>
+              <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
+                Simulate a complete 360-degree interview experience that prepares you for both technical deep-dives and behavioral rounds.
+              </p>
+              <div className="lp-role-list" style={{ marginTop: "auto" }}>
+                <div className="lp-role-item">
+                  <span className="lp-role-item-name">Round 1: Diagnostic Weak Spots</span>
+                  <span className="lp-role-item-tags">Targeted practice</span>
+                </div>
+                <div className="lp-role-item">
+                  <span className="lp-role-item-name">Round 2: Technical Deep-Dive</span>
+                  <span className="lp-role-item-tags">Code & system design</span>
+                </div>
+                <div className="lp-role-item">
+                  <span className="lp-role-item-name">Round 3: STAR Behavioral</span>
+                  <span className="lp-role-item-tags">Leadership & conflict</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Final CTA Section ── */}
+      <section className="lp-cta-section" aria-label="Final Call to Action">
+        <div className="lp-cta-card">
+          <div className="lp-section-badge lp-section-badge--cyan">
+            <Sparkles size={14} />
+            <span>Start Today Free</span>
+          </div>
+
+          <h2 className="lp-cta-headline">
+            Stop freezing in interviews. Start practicing with real scores.
+          </h2>
+
+          <p className="lp-cta-sub">
+            Join candidates preparing for technical interviews across top engineering and IT roles.
           </p>
+
+          <button className="lp-btn-hero-primary" onClick={openRegisterModal}>
+            <span>Start practicing free</span>
+            <ArrowRight size={18} strokeWidth={2.5} />
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.875rem", color: "var(--ink-muted)" }}>
+            <CheckCircle2 size={15} color="var(--cyan)" />
+            <span>Free to start · No credit card required</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer className="lp-footer" role="contentinfo">
+        <div className="lp-footer-inner">
+          <div className="lp-footer-top">
+            <div className="lp-footer-brand">
+              <a href="/" className="lp-logo" aria-label="ITerview home">
+                <div className="lp-logo-container">
+                  <img src={logoSrc} alt="ITerview Logo" className="lp-logo-img" />
+                </div>
+                <span className="lp-logo-text">ITerview<span className="lp-logo-dot">.</span></span>
+              </a>
+              <p className="lp-footer-tagline">
+                Practice IT technical interviews out loud. Get scored on the objective 3C rubric.
+              </p>
+            </div>
+
+            <div className="lp-footer-links">
+              <div className="lp-footer-link-group">
+                <span className="lp-footer-link-title">Product</span>
+                <a href="#rubric" className="lp-footer-link">The 3C Rubric</a>
+                <a href="#journey" className="lp-footer-link">Learning Pathway</a>
+                <a href="#how-it-works" className="lp-footer-link">How It Works</a>
+              </div>
+              <div className="lp-footer-link-group">
+                <span className="lp-footer-link-title">Tracks</span>
+                <a href="#how-it-works" className="lp-footer-link">Frontend Engineering</a>
+                <a href="#how-it-works" className="lp-footer-link">Backend Engineering</a>
+                <a href="#how-it-works" className="lp-footer-link">DevOps & Cloud</a>
+              </div>
+              <div className="lp-footer-link-group">
+                <span className="lp-footer-link-title">Account</span>
+                <button
+                  style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}
+                  className="lp-footer-link"
+                  onClick={openLoginModal}
+                >
+                  Sign In
+                </button>
+                <button
+                  style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}
+                  className="lp-footer-link"
+                  onClick={openRegisterModal}
+                >
+                  Start practicing
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="lp-footer-bottom">
+            <span>&copy; {new Date().getFullYear()} ITerview. All rights reserved.</span>
+            <span>Objective voice-first interview preparation.</span>
+          </div>
         </div>
       </footer>
 
-      {/* â”€â”€ Auth Modal Overlay â”€â”€ */}
+      {/* ── Auth Modal ── */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
