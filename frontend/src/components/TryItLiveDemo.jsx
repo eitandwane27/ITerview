@@ -1,12 +1,25 @@
 // frontend/src/components/TryItLiveDemo.jsx
 // ─────────────────────────────────────────────────────────────────────────────
-// Anonymous Interactive "Try It Live" Demo Component
-// Cool Color Spectrum: Royal Cobalt · Sky Cyan · Cool Mint
-// Primitives inspired by: shadcn/ui · Rare UI · Beautiful UI
+// Exact AI Studio Audio Console Layout
+// Track Switcher: Frontend · Backend · System Design
+// Two-Panel Layout: Verbal Transcript & Instant 3C Feedback
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Mic, Square, Volume2, ChevronRight, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  Mic,
+  Square,
+  Volume2,
+  ChevronRight,
+  ShieldCheck,
+  Zap,
+  MessageSquare,
+  Code2,
+  Layers,
+  Terminal,
+  Cpu,
+  AlertCircle,
+} from "lucide-react";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const WS_URL = "ws://localhost:5000/ws/demo";
@@ -15,28 +28,101 @@ const BUFFER_SIZE = 2048;
 const MAX_RECORDING_SECONDS = 30;
 const MAX_ATTEMPTS = 3;
 
-const PREMADE_QUESTIONS = [
+// ── Track & Question Database ────────────────────────────────────────────────
+const TRACK_DATA = [
   {
-    category: "System Architecture",
-    text: "What is a technical project you recently worked on?",
+    id: "frontend",
+    label: "Frontend",
+    icon: Code2,
+    color: "var(--blue)",
+    lightColor: "var(--blue-light)",
+    borderColor: "var(--blue-border)",
+    questions: [
+      {
+        id: "fe-1",
+        tags: ["Project Experience", "Overview"],
+        question: "What is a technical project you recently worked on?",
+        hint: "Briefly describe what you built, what tools you used, and what you learned.",
+      },
+      {
+        id: "fe-2",
+        tags: ["Problem Solving", "Debugging"],
+        question: "How do you usually approach troubleshooting a difficult technical bug?",
+        hint: "Walk through how you identify the problem, test fixes, and verify it works.",
+      },
+      {
+        id: "fe-3",
+        tags: ["Career & Motivation", "Intro"],
+        question: "Why did you decide to go into IT and software development?",
+        hint: "Share what got you interested in technology and what you enjoy about building things.",
+      },
+    ],
   },
   {
-    category: "Troubleshooting",
-    text: "How do you usually approach troubleshooting a difficult technical bug?",
+    id: "backend",
+    label: "Backend",
+    icon: Terminal,
+    color: "var(--mint)",
+    lightColor: "var(--mint-light)",
+    borderColor: "var(--mint-border)",
+    questions: [
+      {
+        id: "be-1",
+        tags: ["APIs & Web", "Fundamentals"],
+        question: "How would you explain what an API is in simple terms?",
+        hint: "Explain how applications share data, like a waiter delivering an order to a kitchen.",
+      },
+      {
+        id: "be-2",
+        tags: ["Core Concepts", "Overview"],
+        question: "What is the difference between frontend and backend development?",
+        hint: "Describe what users see on screen versus what runs behind the scenes on a server.",
+      },
+      {
+        id: "be-3",
+        tags: ["Learning", "Growth"],
+        question: "Tell me about a time you had to learn a new programming concept or tool.",
+        hint: "Describe your learning process, resources you found helpful, and how you practiced.",
+      },
+    ],
   },
   {
-    category: "Career & Motivation",
-    text: "Why did you decide to go into IT?",
+    id: "system-design",
+    label: "System Design",
+    icon: Layers,
+    color: "var(--indigo)",
+    lightColor: "var(--indigo-light)",
+    borderColor: "var(--indigo-border)",
+    questions: [
+      {
+        id: "sd-1",
+        tags: ["Debugging", "Mindset"],
+        question: "What steps do you take when your code doesn't work as expected?",
+        hint: "Explain how you read error messages, check console logs, or ask for help.",
+      },
+      {
+        id: "sd-2",
+        tags: ["User Experience", "Basics"],
+        question: "What are some simple ways to make a website or application easier for users?",
+        hint: "Mention clear layouts, fast loading times, accessible colors, or mobile responsiveness.",
+      },
+      {
+        id: "sd-3",
+        tags: ["Collaboration", "Teamwork"],
+        question: "Why is communication important when working on a technical project?",
+        hint: "Discuss asking clarifying questions, sharing progress, and working well with others.",
+      },
+    ],
   },
 ];
 
-// ── Segmented Scale Bar Helper ───────────────────────────────────────────────
-const DemoScaleBar = ({ color, filled }) => (
-  <div className="lp-demo-scale" aria-hidden="true">
-    {Array.from({ length: 10 }).map((_, i) => (
-      <div
+// ── Segmented Scale Dashes Helper ───────────────────────────────────────────
+const SegmentedScale = ({ color, filled }) => (
+  <div className="lp-exact-scale" aria-hidden="true">
+    {Array.from({ length: 8 }).map((_, i) => (
+      <span
         key={i}
-        className="lp-demo-scale-seg"
+        className={`lp-exact-scale-dash${i < filled ? " lp-exact-scale-dash--filled" : ""}`}
         style={i < filled ? { backgroundColor: color } : undefined}
       />
     ))}
@@ -45,7 +131,8 @@ const DemoScaleBar = ({ color, filled }) => (
 
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function TryItLiveDemo({ onOpenAuth }) {
-  const [selectedQuestion, setSelectedQuestion] = useState(0);
+  const [selectedTrackIndex, setSelectedTrackIndex] = useState(0);
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -67,7 +154,10 @@ export default function TryItLiveDemo({ onOpenAuth }) {
   const recordingStartRef = useRef(null);
   const finalTranscriptRef = useRef("");
 
-  // ── TTS: "Hear the AI" ─────────────────────────────────────────────────────
+  const currentTrack = TRACK_DATA[selectedTrackIndex];
+  const currentQuestion = currentTrack.questions[selectedQuestionIndex];
+
+  // ── TTS: "Hear AI Voice" ───────────────────────────────────────────────────
   const stopAudio = useCallback(() => {
     isTTSActiveRef.current = false;
     if (fetchAbortControllerRef.current) {
@@ -85,7 +175,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     setIsAudioLoading(false);
   }, []);
 
-  // ── STT: Mic Stream & Audio Context Cleanup ────────────────────────────────
+  // ── STT: Mic Stream Cleanup ────────────────────────────────────────────────
   const cleanupAudio = useCallback(() => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
@@ -180,10 +270,10 @@ export default function TryItLiveDemo({ onOpenAuth }) {
       console.error("[TryItLive] Mic error:", err.message);
       const userFacing =
         err?.name === "NotAllowedError"
-          ? "Microphone access is blocked. Please enable microphone permission in your browser."
+          ? "Microphone access is blocked. Please allow microphone permission in your browser."
           : err?.name === "NotFoundError"
             ? "No microphone found. Please connect a microphone and try again."
-            : "Could not initialize microphone. Please check your browser audio settings.";
+            : "Could not initialize microphone. Please check your audio settings.";
       setMicError(userFacing);
       setIsRecording(false);
     }
@@ -259,20 +349,31 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     }
   }, [attemptCount, onOpenAuth, cleanupAudio, beginMicCapture, stopAudio]);
 
-  // ── Question switcher & Play Audio ─────────────────────────────────────────
-  const handleSelectQuestion = useCallback((index) => {
+  // ── Track & Question Switchers ─────────────────────────────────────────────
+  const handleSelectTrack = (idx) => {
     stopRecording();
     stopAudio();
-    setSelectedQuestion(index);
+    setSelectedTrackIndex(idx);
+    setSelectedQuestionIndex(0);
     setTranscriptText("");
     finalTranscriptRef.current = "";
     setScores(null);
     setMicError("");
-  }, [stopRecording, stopAudio]);
+  };
 
-  const handleNextQuestion = useCallback(() => {
-    handleSelectQuestion((selectedQuestion + 1) % PREMADE_QUESTIONS.length);
-  }, [selectedQuestion, handleSelectQuestion]);
+  const handleSelectQuestion = (idx) => {
+    stopRecording();
+    stopAudio();
+    setSelectedQuestionIndex(idx);
+    setTranscriptText("");
+    finalTranscriptRef.current = "";
+    setScores(null);
+    setMicError("");
+  };
+
+  const handleNextQuestion = () => {
+    handleSelectQuestion((selectedQuestionIndex + 1) % currentTrack.questions.length);
+  };
 
   const playQuestionAudio = useCallback(async () => {
     if (isTTSActiveRef.current || isAudioPlaying || isAudioLoading || audioRef.current || fetchAbortControllerRef.current) {
@@ -290,12 +391,12 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     setIsAudioLoading(true);
 
     try {
-      const currentQ = PREMADE_QUESTIONS[selectedQuestion].text;
+      const qText = currentQuestion.question;
 
       const res = await fetch("/api/tts/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: currentQ }),
+        body: JSON.stringify({ text: qText }),
         signal: abortController.signal,
       });
 
@@ -339,7 +440,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
       audioRef.current = null;
       fetchAbortControllerRef.current = null;
     }
-  }, [selectedQuestion, isAudioPlaying, isAudioLoading, isRecording, stopAudio, stopRecording]);
+  }, [currentQuestion, isAudioPlaying, isAudioLoading, isRecording, stopAudio, stopRecording]);
 
   useEffect(() => {
     return () => {
@@ -359,165 +460,311 @@ export default function TryItLiveDemo({ onOpenAuth }) {
   };
 
   const toRubricScore = (score100) => (score100 / 20).toFixed(1);
-  const rubricFill = (score100) => Math.max(0, Math.round(score100 / 10));
-
-  const demoStatus = isRecording ? "recording" : (isAudioPlaying || isAudioLoading) ? "speaking" : "idle";
+  const rubricFill = (score100) => Math.max(0, Math.round((score100 / 100) * 8));
 
   return (
-    <div
-      className="lp-demo"
-      role="group"
-      aria-label="Live interactive AI interview demo"
-      data-status={demoStatus}
-    >
-      {/* Top Header Bar */}
-      <div className="lp-demo-header">
-        <div className="lp-demo-header-left">
-          <div className="lp-demo-mark" aria-hidden="true">
-            <Sparkles size={16} strokeWidth={2.5} />
+    <div className="lp-exact-card" role="region" aria-label="Interactive AI Voice Interview Simulator">
+      {/* ── 1. Minimal Header ── */}
+      <div className="lp-exact-header">
+        {/* Left: Mascot Avatar & Brand */}
+        <div className="lp-exact-brand">
+          <div className="lp-exact-avatar-box">
+            <svg
+              className="lp-exact-avatar-svg"
+              viewBox="0 0 100 100"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <circle cx="50" cy="50" r="46" fill="url(#exact-avatar-glow)" opacity="0.3" />
+              <rect x="24" y="28" width="52" height="46" rx="23" fill="url(#exact-avatar-head)" stroke="#3B82F6" strokeWidth="2" />
+              <path d="M 18 44 C 18 20, 82 20, 82 44" stroke="#60A5FA" strokeWidth="4.5" strokeLinecap="round" fill="none" />
+              <rect x="14" y="38" width="10" height="20" rx="5" fill="#1D4ED8" stroke="#93C5FD" strokeWidth="1.5" />
+              <rect x="76" y="38" width="10" height="20" rx="5" fill="#1D4ED8" stroke="#93C5FD" strokeWidth="1.5" />
+              <rect x="32" y="38" width="36" height="22" rx="11" fill="#0B132B" stroke="#38BDF8" strokeWidth="1.5" />
+              <rect x="41" y="45" width="2.5" height="7" rx="1" fill="#38BDF8" />
+              <rect x="46" y="42" width="2.5" height="13" rx="1" fill="#38BDF8" />
+              <rect x="51" y="41" width="2.5" height="15" rx="1" fill="#60A5FA" />
+              <rect x="56" y="42" width="2.5" height="13" rx="1" fill="#38BDF8" />
+              <rect x="61" y="45" width="2.5" height="7" rx="1" fill="#38BDF8" />
+              <path d="M 22 54 Q 32 70, 46 68" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" fill="none" />
+              <circle cx="48" cy="68" r="3.5" fill="#38BDF8" />
+              <defs>
+                <radialGradient id="exact-avatar-glow" cx="0.5" cy="0.5" r="0.5">
+                  <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+                </radialGradient>
+                <linearGradient id="exact-avatar-head" x1="24" y1="28" x2="76" y2="74" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#1E3A8A" />
+                  <stop offset="100%" stopColor="#0F172A" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
-          <div className="lp-demo-title-group">
-            <span className="lp-demo-title">Voice AI Sandbox</span>
-            <span className="lp-demo-subtitle">Zero setup · 3 free live attempts</span>
+          <div className="lp-exact-brand-text">
+            <span className="lp-exact-brand-name">iTerview</span>
+            <span className="lp-exact-brand-sub">AI Interview Coach</span>
           </div>
         </div>
 
-        <div className="lp-demo-header-right">
-          <div className="lp-demo-attempt-pill">
-            <span>{attemptCount}/{MAX_ATTEMPTS} attempts</span>
+        {/* Right: Zero Login Pill, Q Switcher, Attempt Counter */}
+        <div className="lp-exact-header-right">
+          <div className="lp-exact-pill-tag">
+            <ShieldCheck size={14} className="lp-exact-tag-icon" />
+            <span>Zero login required</span>
           </div>
-          <div className="lp-demo-live-badge">
-            <div className="lp-demo-live-dot" aria-hidden="true" />
-            <span>INTERACTIVE</span>
+
+          <div className="lp-exact-q-switcher" role="tablist" aria-label="Question switcher">
+            {currentTrack.questions.map((_, idx) => (
+              <button
+                key={idx}
+                role="tab"
+                aria-selected={selectedQuestionIndex === idx}
+                className={`lp-exact-q-btn${selectedQuestionIndex === idx ? " lp-exact-q-btn--active" : ""}`}
+                onClick={() => handleSelectQuestion(idx)}
+              >
+                Q{idx + 1}
+              </button>
+            ))}
+            <button
+              className="lp-exact-q-next"
+              onClick={handleNextQuestion}
+              aria-label="Next question prompt"
+            >
+              <span>Next</span>
+              <ChevronRight size={13} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          <div className="lp-exact-attempt-pill">
+            <span>{attemptCount}/{MAX_ATTEMPTS} used</span>
           </div>
         </div>
       </div>
 
-      {/* Demo Body */}
-      <div className="lp-demo-body">
-        {/* Question Selector Card (Beautiful UI / shadcn style) */}
-        <div className="lp-demo-question-card">
-          <div className="lp-demo-question-tabs">
-            <div className="lp-demo-question-pills">
-              {PREMADE_QUESTIONS.map((q, idx) => (
-                <button
-                  key={idx}
-                  className={`lp-demo-q-pill${selectedQuestion === idx ? " lp-demo-q-pill--active" : ""}`}
-                  onClick={() => handleSelectQuestion(idx)}
-                >
-                  Q{idx + 1}
-                </button>
-              ))}
-            </div>
-            <button
-              className="lp-demo-question-next"
-              onClick={handleNextQuestion}
-              aria-label="Switch to next question prompt"
-            >
-              <span>Next</span>
-              <ChevronRight size={14} strokeWidth={2.5} />
-            </button>
-          </div>
-
-          <p className="lp-demo-question-text">
-            &ldquo;{PREMADE_QUESTIONS[selectedQuestion].text}&rdquo;
-          </p>
-
-          <div className="lp-demo-question-actions">
-            <button
-              className={`lp-demo-tts-btn${isAudioPlaying || isAudioLoading ? " lp-demo-tts-btn--active" : ""}`}
-              onClick={playQuestionAudio}
-              aria-label={isAudioPlaying ? "Stop voice audio" : "Hear AI voice prompt"}
-            >
-              <Volume2 size={15} strokeWidth={2} />
-              <span>{isAudioLoading ? "Loading voice..." : isAudioPlaying ? "Stop AI Voice" : "Hear AI Prompt"}</span>
-            </button>
-          </div>
+      {/* ── 2. Dev Track Switcher & Hear AI Voice Bar ── */}
+      <div className="lp-exact-track-bar">
+        <div className="lp-exact-track-tabs" role="tablist" aria-label="Developer discipline tracks">
+          {TRACK_DATA.map((track, idx) => {
+            const Icon = track.icon;
+            const isActive = selectedTrackIndex === idx;
+            return (
+              <button
+                key={track.id}
+                role="tab"
+                aria-selected={isActive}
+                className={`lp-exact-track-tab lp-exact-track-tab--${track.id}${isActive ? " lp-exact-track-tab--active" : ""}`}
+                onClick={() => handleSelectTrack(idx)}
+              >
+                <Icon size={15} strokeWidth={2.2} className="lp-exact-track-icon" />
+                <span>{track.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Live Speech Recognition Box (Beautiful UI Thinking / Stream style) */}
-        <div className={`lp-demo-transcript-card${micError ? " lp-demo-transcript-card--error" : ""}`}>
-          <div className="lp-demo-transcript-header">
-            <div className="lp-demo-transcribing-status">
-              {isRecording && <div className="lp-demo-transcribing-dot" aria-hidden="true" />}
-              <span>{isRecording ? "LISTENING TO VOICE..." : "YOUR SPOKEN TRANSCRIPT"}</span>
+        <button
+          className={`lp-exact-hear-btn${isAudioPlaying || isAudioLoading ? " lp-exact-hear-btn--active" : ""}`}
+          onClick={playQuestionAudio}
+          aria-label={isAudioPlaying ? "Stop voice audio" : "Hear AI voice prompt"}
+        >
+          <Volume2 size={16} strokeWidth={2.2} />
+          <span>{isAudioLoading ? "Loading audio..." : isAudioPlaying ? "Stop Voice" : "Hear AI Voice"}</span>
+        </button>
+      </div>
+
+      {/* ── 3. Context First (Tags, Question, Hint) ── */}
+      <div className="lp-exact-context">
+        <div className="lp-exact-tags">
+          {currentQuestion.tags.map((tag, i) => (
+            <span key={i} className="lp-exact-tag">
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        <h3 className="lp-exact-question">
+          {currentQuestion.question}
+        </h3>
+
+        <p className="lp-exact-hint">
+          {currentQuestion.hint}
+        </p>
+      </div>
+
+      {/* ── 4. Two Panel Layout (Verbal Transcript & Instant 3C Feedback) ── */}
+      <div className="lp-exact-two-panel">
+        {/* Left Panel: Verbal Transcript */}
+        <div className={`lp-exact-panel lp-exact-panel--transcript${micError ? " lp-exact-panel--error" : ""}`}>
+          <div className="lp-exact-panel-header">
+            <div className="lp-exact-panel-title">
+              <span className="lp-exact-wave-icon" aria-hidden="true">
+                <span /><span /><span />
+              </span>
+              <span>VERBAL TRANSCRIPT</span>
             </div>
-            <span className="lp-demo-timer-badge">
-              {isRecording ? formatTimer(recordingTimer) : "30s MAX"}
+            <span className="lp-exact-timer">
+              {isRecording ? formatTimer(recordingTimer) : "00:30 MAX"}
             </span>
           </div>
 
-          {micError ? (
-            <div className="lp-demo-transcript-error">
-              <AlertCircle size={14} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
-              {micError}
-            </div>
-          ) : (
-            <p className={`lp-demo-transcript-content${!transcriptText ? " lp-demo-transcript-empty" : ""}`}>
-              {transcriptText || "Tap the button below and speak your answer out loud into your microphone..."}
-            </p>
-          )}
-        </div>
-
-        {/* 3C Rubric Dimension Chips */}
-        <div className="lp-demo-rubric-grid">
-          <div className="lp-demo-score-card lp-demo-score-card--clarity">
-            <div className="lp-demo-score-head">
-              <span className="lp-demo-score-label">CLARITY</span>
-              <span className="lp-demo-score-val" style={{ color: "var(--blue)" }}>
-                {scores ? `${toRubricScore(scores.clarity)}/5` : "—"}
-              </span>
-            </div>
-            <DemoScaleBar color="var(--blue)" filled={scores ? rubricFill(scores.clarity) : 0} />
-          </div>
-
-          <div className="lp-demo-score-card lp-demo-score-card--correctness">
-            <div className="lp-demo-score-head">
-              <span className="lp-demo-score-label">CORRECTNESS</span>
-              <span className="lp-demo-score-val" style={{ color: "var(--mint)" }}>
-                {scores ? `${toRubricScore(scores.correctness)}/5` : "—"}
-              </span>
-            </div>
-            <DemoScaleBar color="var(--mint)" filled={scores ? rubricFill(scores.correctness) : 0} />
-          </div>
-
-          <div className="lp-demo-score-card lp-demo-score-card--completeness">
-            <div className="lp-demo-score-head">
-              <span className="lp-demo-score-label">COMPLETENESS</span>
-              <span className="lp-demo-score-val" style={{ color: "var(--amber)" }}>
-                {scores ? `${toRubricScore(scores.completeness)}/5` : "—"}
-              </span>
-            </div>
-            <DemoScaleBar color="var(--amber)" filled={scores ? rubricFill(scores.completeness) : 0} />
-          </div>
-        </div>
-
-        {/* Action Controls (Rare UI Tactile System) */}
-        <div className="lp-demo-actions">
-          <button
-            className={`lp-demo-mic-main${isRecording ? " lp-demo-mic-main--active" : ""}`}
-            onClick={isRecording ? stopRecording : startRecording}
-            aria-label={isRecording ? "Stop recording answer" : "Start speaking"}
-          >
-            {isRecording ? (
-              <>
-                <Square size={14} fill="currentColor" />
-                <span>Stop Answer ({formatTimer(recordingTimer)})</span>
-              </>
+          <div className="lp-exact-transcript-body">
+            {micError ? (
+              <div className="lp-exact-error-msg" role="alert">
+                <AlertCircle size={16} />
+                <span>{micError}</span>
+              </div>
+            ) : transcriptText ? (
+              <div className="lp-exact-streaming-text">
+                <p>{transcriptText}</p>
+                {isRecording && <span className="lp-exact-caret" aria-hidden="true" />}
+              </div>
             ) : (
-              <>
-                <Mic size={18} strokeWidth={2.5} />
-                <span>Tap & Speak Your Answer</span>
-              </>
-            )}
-          </button>
+              <div className="lp-exact-empty-stage">
+                <div className="lp-exact-soundwave-graphic" aria-hidden="true">
+                  {/* Left soundwave bars */}
+                  <div className="lp-exact-wave-cluster">
+                    <span style={{ height: 12 }} />
+                    <span style={{ height: 20 }} />
+                    <span style={{ height: 14 }} />
+                    <span style={{ height: 26 }} />
+                    <span style={{ height: 18 }} />
+                  </div>
 
-          <span className="lp-demo-action-hint">
-            {attemptCount >= MAX_ATTEMPTS
-              ? "Free attempt limit reached. Create a free account for unlimited practice!"
-              : `${MAX_ATTEMPTS - attemptCount} free live demo attempt${MAX_ATTEMPTS - attemptCount !== 1 ? "s" : ""} remaining`}
-          </span>
+                  {/* Center Mic Circle */}
+                  <div className="lp-exact-mic-circle">
+                    <Mic size={20} className="lp-exact-mic-icon-blue" />
+                  </div>
+
+                  {/* Right soundwave bars */}
+                  <div className="lp-exact-wave-cluster">
+                    <span style={{ height: 18 }} />
+                    <span style={{ height: 26 }} />
+                    <span style={{ height: 14 }} />
+                    <span style={{ height: 20 }} />
+                    <span style={{ height: 12 }} />
+                  </div>
+                </div>
+
+                <p className="lp-exact-empty-note">
+                  Tap the button and answer<br />
+                  out loud into your microphone.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Right Panel: Instant 3C Feedback */}
+        <div className="lp-exact-panel lp-exact-panel--feedback">
+          <div className="lp-exact-panel-header">
+            <div className="lp-exact-panel-title">
+              <Zap size={14} className="lp-exact-zap-icon" />
+              <span>INSTANT 3C FEEDBACK</span>
+            </div>
+            <span className="lp-exact-feedback-status">
+              {scores ? "Live Evaluated" : "Awaiting your answer"}
+            </span>
+          </div>
+
+          <div className="lp-exact-rubric-list">
+            {/* 1. Clarity */}
+            <div className="lp-exact-rubric-row lp-exact-rubric-row--clarity">
+              <div className="lp-exact-row-top">
+                <div className="lp-exact-row-left">
+                  <div className="lp-exact-row-icon lp-exact-row-icon--blue">
+                    <MessageSquare size={14} strokeWidth={2.2} />
+                  </div>
+                  <div className="lp-exact-row-labels">
+                    <span className="lp-exact-row-title">1. Clarity</span>
+                    <span className="lp-exact-row-desc">Structure & articulation</span>
+                  </div>
+                </div>
+                <div className="lp-exact-row-score" style={{ color: "var(--blue)" }}>
+                  {scores ? `${toRubricScore(scores.clarity)}` : "—"}
+                  <span className="lp-exact-score-denom"> / 5.0</span>
+                </div>
+              </div>
+              <SegmentedScale color="var(--blue)" filled={scores ? rubricFill(scores.clarity) : 0} />
+            </div>
+
+            {/* 2. Correctness */}
+            <div className="lp-exact-rubric-row lp-exact-rubric-row--correctness">
+              <div className="lp-exact-row-top">
+                <div className="lp-exact-row-left">
+                  <div className="lp-exact-row-icon lp-exact-row-icon--mint">
+                    <Code2 size={14} strokeWidth={2.2} />
+                  </div>
+                  <div className="lp-exact-row-labels">
+                    <span className="lp-exact-row-title">2. Correctness</span>
+                    <span className="lp-exact-row-desc">Technical reasoning</span>
+                  </div>
+                </div>
+                <div className="lp-exact-row-score" style={{ color: "var(--mint)" }}>
+                  {scores ? `${toRubricScore(scores.correctness)}` : "—"}
+                  <span className="lp-exact-score-denom"> / 5.0</span>
+                </div>
+              </div>
+              <SegmentedScale color="var(--mint)" filled={scores ? rubricFill(scores.correctness) : 0} />
+            </div>
+
+            {/* 3. Completeness */}
+            <div className="lp-exact-rubric-row lp-exact-rubric-row--completeness">
+              <div className="lp-exact-row-top">
+                <div className="lp-exact-row-left">
+                  <div className="lp-exact-row-icon lp-exact-row-icon--amber">
+                    <Layers size={14} strokeWidth={2.2} />
+                  </div>
+                  <div className="lp-exact-row-labels">
+                    <span className="lp-exact-row-title">3. Completeness</span>
+                    <span className="lp-exact-row-desc">Depth & edge cases</span>
+                  </div>
+                </div>
+                <div className="lp-exact-row-score" style={{ color: "var(--amber)" }}>
+                  {scores ? `${toRubricScore(scores.completeness)}` : "—"}
+                  <span className="lp-exact-score-denom"> / 5.0</span>
+                </div>
+              </div>
+              <SegmentedScale color="var(--amber)" filled={scores ? rubricFill(scores.completeness) : 0} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 5. Strong CTA Zone ── */}
+      <div className="lp-exact-cta-zone">
+        <button
+          className={`lp-exact-main-mic-btn${isRecording ? " lp-exact-main-mic-btn--recording" : ""}`}
+          onClick={isRecording ? stopRecording : startRecording}
+          aria-label={isRecording ? "Stop recording answer" : "Start speaking answer out loud"}
+        >
+          {isRecording ? (
+            <>
+              <Square size={16} fill="currentColor" />
+              <span>Stop Recording & Evaluate ({formatTimer(recordingTimer)})</span>
+            </>
+          ) : (
+            <>
+              <Mic size={18} strokeWidth={2.4} />
+              <span>Tap to Speak Your Answer Out Loud</span>
+            </>
+          )}
+        </button>
+
+        <p className="lp-exact-cta-sub">
+          {attemptCount >= MAX_ATTEMPTS ? (
+            <span className="lp-exact-limit-reach">
+              Free attempt limit reached.{" "}
+              <button type="button" onClick={onOpenAuth} className="lp-exact-register-link">
+                Sign up free for unlimited practice
+              </button>
+            </span>
+          ) : (
+            <span>
+              {MAX_ATTEMPTS - attemptCount} free attempt{MAX_ATTEMPTS - attemptCount !== 1 ? "s" : ""} remaining · Real-time feedback · No credit card required
+            </span>
+          )}
+        </p>
       </div>
     </div>
   );

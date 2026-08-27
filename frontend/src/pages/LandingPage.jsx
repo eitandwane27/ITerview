@@ -30,6 +30,13 @@ import {
   Zap,
   Terminal,
   Activity,
+  CreditCard,
+  Volume2,
+  Star,
+  Cloud,
+  Compass,
+  HeartHandshake,
+  Trash2,
 } from "lucide-react";
 
 /* ── Metric Score Bar Helper ── */
@@ -50,13 +57,109 @@ const MetricBar = ({ score, color }) => {
   );
 };
 
+
+/* ── Standalone Atmospheric Light Sweep Component (Independent Geometry & Height) ── */
+const HeroAtmosphere = () => (
+  <div className="lp-hero-atmosphere" aria-hidden="true">
+    {/* Base Crisp Canvas Layer */}
+    <div className="lp-atmo-base" />
+
+    {/* Blue Radial Illuminations from Lower-Left, Lower-Right, and Bottom Center */}
+    <div className="lp-atmo-glow-left" />
+    <div className="lp-atmo-glow-right" />
+    <div className="lp-atmo-glow-bottom" />
+
+    {/* Luminous Curved Light Sweep / Crescent Horizon */}
+    <svg
+      className="lp-atmo-svg-sweep"
+      viewBox="0 0 1440 820"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <radialGradient id="atmo-blue-left" cx="0%" cy="100%" r="75%">
+          <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.4" />
+          <stop offset="35%" stopColor="#60A5FA" stopOpacity="0.2" />
+          <stop offset="70%" stopColor="#93C5FD" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+        </radialGradient>
+
+        <radialGradient id="atmo-blue-right" cx="100%" cy="100%" r="75%">
+          <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.4" />
+          <stop offset="35%" stopColor="#60A5FA" stopOpacity="0.2" />
+          <stop offset="70%" stopColor="#93C5FD" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+        </radialGradient>
+
+        <linearGradient id="atmo-sweep-grad-primary" x1="0%" y1="30%" x2="100%" y2="30%">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
+          <stop offset="25%" stopColor="#FFFFFF" stopOpacity="0.95" />
+          <stop offset="50%" stopColor="#FFFFFF" stopOpacity="1" />
+          <stop offset="75%" stopColor="#FFFFFF" stopOpacity="0.95" />
+          <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.85" />
+        </linearGradient>
+
+        <linearGradient id="atmo-sweep-grad-secondary" x1="15%" y1="50%" x2="100%" y2="50%">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="30%" stopColor="#FFFFFF" stopOpacity="0.7" />
+          <stop offset="70%" stopColor="#FFFFFF" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.8" />
+        </linearGradient>
+
+        <filter id="atmo-glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <filter id="atmo-wide-blur" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="22" />
+        </filter>
+      </defs>
+
+      {/* Atmospheric Mist Underneath Arc */}
+      <rect x="0" y="0" width="1440" height="820" fill="url(#atmo-blue-left)" />
+      <rect x="0" y="0" width="1440" height="820" fill="url(#atmo-blue-right)" />
+
+      {/* Primary Luminous Light Arc / Horizon Line */}
+      <path
+        d="M -40 330 Q 720 620 1480 340"
+        stroke="url(#atmo-sweep-grad-primary)"
+        strokeWidth="28"
+        strokeLinecap="round"
+        filter="url(#atmo-wide-blur)"
+        opacity="0.9"
+      />
+      <path
+        d="M -40 330 Q 720 620 1480 340"
+        stroke="url(#atmo-sweep-grad-primary)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        filter="url(#atmo-glow-filter)"
+        opacity="0.95"
+      />
+
+      {/* Secondary Light Sweep Streak */}
+      <path
+        d="M 140 420 Q 760 655 1480 410"
+        stroke="url(#atmo-sweep-grad-secondary)"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        opacity="0.65"
+      />
+    </svg>
+
+    {/* Soft subtle breathing atmospheric shimmer */}
+    <div className="lp-atmo-sweep-blur" />
+  </div>
+);
+
 /* ── Mobile Menu Component ── */
 const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => (
   <div className={`lp-mobile-menu${open ? " lp-mobile-menu--open" : ""}`}>
     <nav className="lp-mobile-nav" aria-label="Mobile navigation">
-      <a href="#rubric" onClick={onClose} className="lp-mobile-nav-link">The 3C Rubric</a>
-      <a href="#journey" onClick={onClose} className="lp-mobile-nav-link">Learning Pathway</a>
-      <a href="#how-it-works" onClick={onClose} className="lp-mobile-nav-link">How It Works</a>
+      <a href="#rubric" onClick={onClose} className="lp-mobile-nav-link">The 3C rubric</a>
+      <a href="#journey" onClick={onClose} className="lp-mobile-nav-link">Learning pathway</a>
+      <a href="#how-it-works" onClick={onClose} className="lp-mobile-nav-link">How it works</a>
       <div className="lp-mobile-nav-actions">
         <button className="lp-btn-ghost lp-btn-full" onClick={() => { onClose(); onSignIn(); }}>Sign In</button>
         <button className="lp-btn-solid lp-btn-full" onClick={() => { onClose(); onGetStarted(); }}>Start practicing free</button>
@@ -122,7 +225,7 @@ const LandingPage = () => {
 
   return (
     <div className="lp-root">
-      {/* ── Sticky Header (shadcn Style) ── */}
+      {/* ── Sticky Header ── */}
       <header className={`lp-nav${navScrolled ? " lp-nav--scrolled" : ""}`} role="banner">
         <div className="lp-nav-inner">
           <a href="/" className="lp-logo" aria-label="ITerview home">
@@ -137,19 +240,19 @@ const LandingPage = () => {
               href="#rubric"
               className={`lp-nav-link${activeSection === "rubric" ? " lp-nav-link--active" : ""}`}
             >
-              The 3C Rubric
+              The 3C rubric
             </a>
             <a
               href="#journey"
               className={`lp-nav-link${activeSection === "journey" ? " lp-nav-link--active" : ""}`}
             >
-              Learning Pathway
+              Learning pathway
             </a>
             <a
               href="#how-it-works"
               className={`lp-nav-link${activeSection === "how-it-works" ? " lp-nav-link--active" : ""}`}
             >
-              How It Works
+              How it works
             </a>
           </nav>
 
@@ -180,51 +283,66 @@ const LandingPage = () => {
         />
       </header>
 
-      {/* ── Hero Section (Horizon Gradient + Rare UI & Beautiful UI Sandboxes) ── */}
+      {/* ── Hero Section (Ambient Light Sweep Atmosphere + Live Product Stage) ── */}
       <section className="lp-hero" aria-label="Hero section">
-        <div className="lp-hero-inner">
-          <div className="lp-hero-left">
-            <div className="lp-hero-badge">
-              <Sparkles size={15} strokeWidth={2.5} />
-              <span>Voice-First AI Interview Simulator</span>
+        {/* Dedicated Standalone Atmospheric Lighting Layer (Fixed Geometry, Independent of Demo Height) */}
+        <HeroAtmosphere />
+
+        <div className="lp-hero-container">
+          <div className="lp-hero-intro">
+            <div className="lp-hero-pill-badge">
+              <span className="lp-hero-pill-dot" aria-hidden="true" />
+              <span>iTerview · AI Interview Simulator</span>
             </div>
 
             <h1 className="lp-hero-headline">
-              Master tech interviews out loud.{" "}
-              <span className="lp-hero-accent">Get scored objectively.</span>
+              Master technical interviews <br className="hidden sm:inline" />
+              <span className="lp-hero-accent">in one calm place.</span>
             </h1>
 
-            <p className="lp-hero-sub">
-              Speak your answers naturally. Our AI engine transcribes in real time and grades you on the transparent 3C Rubric: <strong>Clarity</strong>, <strong>Correctness</strong>, and <strong>Completeness</strong>.
+            <p className="lp-hero-subhead">
+              Practice out loud, get scored honestly on every answer, and walk into the real room feeling ready.
             </p>
 
-            <div className="lp-hero-ctas">
+            <div className="lp-hero-actions">
               <button className="lp-btn-hero-primary" onClick={openRegisterModal}>
-                <span>Start practicing free</span>
-                <ArrowRight size={18} strokeWidth={2.5} />
+                <span>Start free</span>
+                <ArrowRight size={17} strokeWidth={2.5} />
               </button>
-              <a href="#how-it-works" className="lp-btn-hero-ghost">
-                Explore role tracks
-              </a>
             </div>
 
-            <div className="lp-hero-trust">
-              <div className="lp-hero-trust-item">
-                <CheckCircle2 size={16} className="lp-hero-trust-check" />
+            {/* ── Social Proof Strip ── */}
+            <div className="lp-hero-proof">
+              <div className="lp-hero-stars" aria-label="Rating: 4.8 out of 5 stars">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={15} className="lp-hero-star" fill="currentColor" />
+                ))}
+              </div>
+              <span className="lp-hero-proof-text">
+                <strong>4.8</strong> average rating · <strong>2,000+</strong> practice sessions tracked
+              </span>
+              <span className="lp-hero-template-tag">TEMPLATE</span>
+            </div>
+
+            {/* ── Three Benefit Pills (IMAGE 2) ── */}
+            <div className="lp-hero-benefits-row">
+              <div className="lp-hero-benefit-pill">
+                <CreditCard size={15} className="lp-hero-benefit-icon" />
+                <span>No credit card</span>
+              </div>
+              <div className="lp-hero-benefit-pill">
+                <Zap size={15} className="lp-hero-benefit-icon" />
                 <span>Zero typing required</span>
               </div>
-              <div className="lp-hero-trust-item">
-                <CheckCircle2 size={16} className="lp-hero-trust-check" />
+              <div className="lp-hero-benefit-pill">
+                <Target size={15} className="lp-hero-benefit-icon" />
                 <span>Instant 3C feedback</span>
-              </div>
-              <div className="lp-hero-trust-item">
-                <CheckCircle2 size={16} className="lp-hero-trust-check" />
-                <span>Frontend, Backend & DevOps</span>
               </div>
             </div>
           </div>
 
-          <div className="lp-hero-right">
+          {/* Live Studio Showcase Stage */}
+          <div className="lp-hero-stage">
             <TryItLiveDemo onOpenAuth={openRegisterModal} />
           </div>
         </div>
@@ -236,9 +354,9 @@ const LandingPage = () => {
           <div className="lp-section-head">
             <div className="lp-section-badge lp-section-badge--cyan">
               <Activity size={13} />
-              <span>Objective Evaluation</span>
+              <span>The 3C rubric</span>
             </div>
-            <h2 className="lp-section-title" id="rubric-title">The 3C Rubric: How Every Answer Is Scored</h2>
+            <h2 className="lp-section-title" id="rubric-title">Know exactly how every answer is scored</h2>
             <p className="lp-section-subtitle">
               No more guessing what an interviewer wants. Every answer is evaluated across three core dimensions designed around real engineering hiring standards.
             </p>
@@ -344,9 +462,9 @@ const LandingPage = () => {
           <div className="lp-section-head">
             <div className="lp-section-badge lp-section-badge--indigo">
               <TrendingUp size={13} />
-              <span>Measurable Improvement</span>
+              <span>Measurable improvement</span>
             </div>
-            <h2 className="lp-section-title" id="journey-title">A Structured Pathway From Baseline to Mastery</h2>
+            <h2 className="lp-section-title" id="journey-title">From your first try to interview-ready</h2>
             <p className="lp-section-subtitle">
               Practice is only useful when you can prove you got better. Our diagnostic workflow measures your growth between your first attempt and your graduation test.
             </p>
@@ -439,9 +557,9 @@ const LandingPage = () => {
           <div className="lp-section-head">
             <div className="lp-section-badge lp-section-badge--mint">
               <Zap size={13} />
-              <span>Features & Tracks</span>
+              <span>How ITerview works</span>
             </div>
-            <h2 className="lp-section-title" id="how-it-works-title">Engineered for Technical Career Success</h2>
+            <h2 className="lp-section-title" id="how-it-works-title">Practice the questions real teams ask</h2>
             <p className="lp-section-subtitle">
               From foundational software concepts to advanced system trade-offs, practice the exact questions top tech employers ask.
             </p>
@@ -454,7 +572,7 @@ const LandingPage = () => {
                 <div className="lp-3c-icon-badge lp-3c-icon-badge--blue">
                   <Mic size={22} strokeWidth={2.2} />
                 </div>
-                <h3 className="lp-bento-title">Voice-First Practice Engine</h3>
+                <h3 className="lp-bento-title">Speak your answers like it&rsquo;s the real thing</h3>
               </div>
               <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
                 Interviews are spoken, not typed. Our engine transcribes your spoken answers live and provides sentence-by-sentence rubric scoring.
@@ -481,7 +599,7 @@ const LandingPage = () => {
                 <div className="lp-3c-icon-badge lp-3c-icon-badge--blue">
                   <Layers3 size={22} strokeWidth={2.2} />
                 </div>
-                <h3 className="lp-bento-title">Dedicated IT Role Tracks</h3>
+                <h3 className="lp-bento-title">Practice for the exact role you want</h3>
               </div>
               <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
                 Curated question banks designed around real job requirements and technical frameworks.
@@ -508,7 +626,7 @@ const LandingPage = () => {
                 <div className="lp-3c-icon-badge lp-3c-icon-badge--mint">
                   <TrendingUp size={22} strokeWidth={2.2} />
                 </div>
-                <h3 className="lp-bento-title">Mastery-Based Difficulty</h3>
+                <h3 className="lp-bento-title">Move up only when you&rsquo;re ready</h3>
               </div>
               <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
                 Earn your way forward. Advance through difficulty tiers by proving your competency with an average score of 75%+.
@@ -544,7 +662,7 @@ const LandingPage = () => {
                 <div className="lp-3c-icon-badge lp-3c-icon-badge--amber">
                   <Clock size={22} strokeWidth={2.2} />
                 </div>
-                <h3 className="lp-bento-title">Comprehensive 3-Round Format</h3>
+                <h3 className="lp-bento-title">Train for the whole interview, not one round</h3>
               </div>
               <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
                 Simulate a complete 360-degree interview experience that prepares you for both technical deep-dives and behavioral rounds.
@@ -565,6 +683,143 @@ const LandingPage = () => {
               </div>
             </article>
           </div>
+        </div>
+      </section>
+{/* ── Wall of Love: Community Proof Template (ClassDojo §5) ── */}
+      {/* ⚠️ TEMPLATE: Replace sample quotes/avatars with real user posts before launch */}
+      <section className="lp-section-wrap" id="wall-of-love" aria-label="Community proof">
+        <div className="lp-section-inner">
+          <div className="lp-section-head">
+            <div className="lp-section-badge lp-section-badge--cyan">
+              <HeartHandshake size={13} />
+              <span>Community proof</span>
+            </div>
+            <h2 className="lp-section-title">Real people, real progress</h2>
+            <p className="lp-section-subtitle">
+              Just like you, real candidates walked in nervous and left with the confidence they needed.
+            </p>
+          </div>
+
+          <div className="lp-wall-grid">
+            <article className="lp-wall-card">
+              <p className="lp-wall-quote">The voice scoring was the single thing that made me realize I kept saying &ldquo;um&rdquo; too much. I fixed it before my real interview and got the offer.</p>
+              <div className="lp-wall-person">
+                <div className="lp-wall-avatar lp-wall-avatar--blue">JM</div>
+                <div className="lp-wall-info">
+                  <span className="lp-wall-name">Jordan M.</span>
+                  <span className="lp-wall-handle">Frontend Engineer Track</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="lp-wall-card">
+              <p className="lp-wall-quote">I practiced five mocks before my Google interview. The 3C rubric showed me exactly where I was losing points &mdash; I wish I had found this earlier.</p>
+              <div className="lp-wall-person">
+                <div className="lp-wall-avatar lp-wall-avatar--cyan">AP</div>
+                <div className="lp-wall-info">
+                  <span className="lp-wall-name">Alex P.</span>
+                  <span className="lp-wall-handle">Backend Engineer Track</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="lp-wall-card">
+              <p className="lp-wall-quote">As a career switcher, I had zero interview experience. This basically held my hand through the first few rounds and gave me honest feedback.</p>
+              <div className="lp-wall-person">
+                <div className="lp-wall-avatar lp-wall-avatar--mint">SK</div>
+                <div className="lp-wall-info">
+                  <span className="lp-wall-name">Sam K.</span>
+                  <span className="lp-wall-handle">DevOps &amp; Cloud Track</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="lp-wall-card">
+              <p className="lp-wall-quote">The STAR method round was brutal but exactly what I needed. My final mock scored 78% &mdash; up from 54% when I started.</p>
+              <div className="lp-wall-person">
+                <div className="lp-wall-avatar lp-wall-avatar--indigo">TR</div>
+                <div className="lp-wall-info">
+                  <span className="lp-wall-name">Taylor R.</span>
+                  <span className="lp-wall-handle">Full Stack Track</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="lp-wall-card">
+              <p className="lp-wall-quote">What makes this different is you actually speak your answers out loud. That alone changed how I prepare. Recording myself was uncomfortable at first, now it&rsquo;s a habit.</p>
+              <div className="lp-wall-person">
+                <div className="lp-wall-avatar lp-wall-avatar--amber">CN</div>
+                <div className="lp-wall-info">
+                  <span className="lp-wall-name">Casey N.</span>
+                  <span className="lp-wall-handle">Software Engineering Track</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="lp-wall-card">
+              <p className="lp-wall-quote">The difficulty ladder keeps you honest. You cannot move to architecture questions until you prove you understand the fundamentals. That clarity builds real confidence.</p>
+              <div className="lp-wall-person">
+                <div className="lp-wall-avatar lp-wall-avatar--coral">ML</div>
+                <div className="lp-wall-info">
+                  <span className="lp-wall-name">Morgan L.</span>
+                  <span className="lp-wall-handle">Systems &amp; Infrastructure Track</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Your Voice, Your Data: Trust Section — Right Before Final CTA (ClassDojo §1 §9) ── */}
+      {/* ⚠️ TEMPLATE: Verify privacy claims match actual backend behavior before launch */}
+      <section className="lp-trustvoice-section" aria-label="Your voice, your data">
+        <div className="lp-trustvoice-inner">
+          <div className="lp-trustvoice-head">
+            <div className="lp-section-badge lp-section-badge--mint">
+              <ShieldCheck size={13} />
+              <span>Privacy first &mdash; always</span>
+            </div>
+            <h2 className="lp-trustvoice-title">Your voice, your data</h2>
+            <p className="lp-trustvoice-sub">
+              Because ITerview records your answers through the microphone, we want you to know exactly what happens with your data &mdash; before you press record.
+            </p>
+          </div>
+
+          <div className="lp-trustvoice-grid">
+            <article className="lp-trustvoice-card">
+              <div className="lp-trustvoice-icon">
+                <Mic size={22} strokeWidth={2} />
+              </div>
+              <h3 className="lp-trustvoice-card-title">Recorded only when you choose to</h3>
+              <p className="lp-trustvoice-card-desc">
+                The mic is never active unless you start a practice session. No background listening, no always-on monitoring.
+              </p>
+            </article>
+
+            <article className="lp-trustvoice-card">
+              <div className="lp-trustvoice-icon">
+                <ShieldCheck size={22} strokeWidth={2} />
+              </div>
+              <h3 className="lp-trustvoice-card-title">Scored, never sold</h3>
+              <p className="lp-trustvoice-card-desc">
+                Your transcriptions are used solely to run the 3C rubric evaluation and provide your session feedback. We never share audio data with third parties.
+              </p>
+            </article>
+
+            <article className="lp-trustvoice-card">
+              <div className="lp-trustvoice-icon">
+                <Trash2 size={22} strokeWidth={2} />
+              </div>
+              <h3 className="lp-trustvoice-card-title">You control what stays</h3>
+              <p className="lp-trustvoice-card-desc">
+                Delete any recording, transcript, or entire session from your history at any time. Your practice history is yours to keep or remove.
+              </p>
+            </article>
+          </div>
+
+          <p className="lp-trustvoice-note">
+            TEMPLATE &mdash; Verify these claims match your actual backend privacy workflow before launch.
+          </p>
         </div>
       </section>
 
@@ -615,9 +870,9 @@ const LandingPage = () => {
             <div className="lp-footer-links">
               <div className="lp-footer-link-group">
                 <span className="lp-footer-link-title">Product</span>
-                <a href="#rubric" className="lp-footer-link">The 3C Rubric</a>
-                <a href="#journey" className="lp-footer-link">Learning Pathway</a>
-                <a href="#how-it-works" className="lp-footer-link">How It Works</a>
+                <a href="#rubric" className="lp-footer-link">The 3C rubric</a>
+                <a href="#journey" className="lp-footer-link">Learning pathway</a>
+                <a href="#how-it-works" className="lp-footer-link">How it works</a>
               </div>
               <div className="lp-footer-link-group">
                 <span className="lp-footer-link-title">Tracks</span>
