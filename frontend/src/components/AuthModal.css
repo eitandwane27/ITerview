@@ -1,37 +1,66 @@
-/* --- AuthModal Styles --------------------------------------------------- */
-/* Namespace: am- (AuthModal)                                               */
+/* ══════════════════════════════════════════════════════════════════════════════
+   AuthModal — Cool Color Spectrum Design System
+   Light glass surface · Royal Cobalt · Signal Sky Cyan · Ice Canvas
+   Mirrors LandingPage.css tokens (self-contained: /login renders outside .lp-root)
+   Namespace: am- (AuthModal)
+   ══════════════════════════════════════════════════════════════════════════════ */
 
-@import url("https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap");
-
-/* -- Design Tokens -- */
+/* -- Design Tokens (mirrors the .lp-root palette from LandingPage.css) -- */
 :root {
-  --am-bg-page:      #09090b;
-  --am-bg-card:      #111116;
-  --am-bg-input:     #0d0d13;
-  --am-border:       rgba(255, 255, 255, 0.08);
-  --am-border-md:    rgba(255, 255, 255, 0.12);
-  --am-accent:       #06b6d4;
-  --am-accent-hover: #22d3ee;
-  --am-accent-ring:  rgba(6, 182, 212, 0.25);
-  --am-text-1:       #f4f4f5;
-  --am-text-2:       #d1d5db;
-  --am-text-3:       #8E8EA0; /* Meets WCAG AA (>= 4.8:1) across dark surfaces */
-  --am-font:         "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --am-font-display: "Figtree", system-ui, sans-serif;
-  --am-radius-card:  16px;
-  --am-radius-btn:   9999px;
-  --am-radius-sso:   10px;
-  --am-radius-input: 10px;
+  /* Canvas & surfaces */
+  --am-bg-page: #f8fafc;
+  --am-bg-card: #ffffff;
+  --am-bg-input: #ffffff;
+  --am-bg-ice: #f0f7ff;
+
+  /* Borders (hairline slate) */
+  --am-border: #e2e8f0;
+  --am-border-md: #cbd5e1;
+
+  /* Primary brand: Royal Cobalt Blue */
+  --am-accent: #2563eb;
+  --am-accent-hover: #1d4ed8;
+  --am-accent-active: #1e40af;
+  --am-accent-ring: rgba(37, 99, 235, 0.14);
+
+  /* Inks (Midnight Slate) */
+  --am-text-1: #0f172a;
+  --am-text-2: #334155;
+  --am-text-3: #64748b;
+  --am-text-faint: #94a3b8;
+
+  /* Errors: Coral Rose */
+  --am-coral: #ef4444;
+  --am-coral-light: #fef2f2;
+  --am-coral-border: #fecaca;
+
+  /* Verification: Cool Mint */
+  --am-mint: #10b981;
+  --am-mint-light: #ecfdf5;
+  --am-mint-border: #a7f3d0;
+
+  /* Typography (loaded globally via index.html) */
+  --am-font:
+    'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+  --am-font-display: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --am-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Radii (Rare UI squircle scale) */
+  --am-radius-card: 24px;
+  --am-radius-btn: 9999px;
+  --am-radius-sso: 12px;
+  --am-radius-input: 12px;
 }
 
-/* -- Modal Backdrop -- */
+/* -- Modal Backdrop (cobalt-tinted frost, connects to Hero atmosphere) -- */
 .am-backdrop {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background-color: rgba(9, 9, 11, 0.82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background-color: rgba(37, 99, 235, 0.06);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -41,11 +70,15 @@
 }
 
 @keyframes amBackdropFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-/* -- Standalone Page Shell -- */
+/* -- Standalone Page Shell (ice canvas + cobalt atmosphere) -- */
 .am-page-root {
   position: relative;
   display: flex;
@@ -53,6 +86,7 @@
   min-height: 100vh;
   background-color: var(--am-bg-page);
   font-family: var(--am-font);
+  color: var(--am-text-1);
   overflow: hidden;
 }
 
@@ -64,20 +98,52 @@
 }
 
 .am-bg-glow--top {
-  width: 640px;
-  height: 320px;
-  top: -100px;
+  width: 720px;
+  height: 360px;
+  top: -140px;
   left: 50%;
   transform: translateX(-50%);
-  background: radial-gradient(ellipse at 50% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 70%);
-  filter: blur(20px);
+  background: radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
+  filter: blur(24px);
+}
+
+/* Lower-left cobalt illumination (reference image) */
+.am-bg-glow--bl {
+  width: 900px;
+  height: 640px;
+  bottom: -260px;
+  left: -280px;
+  background: radial-gradient(
+    circle at 30% 70%,
+    rgba(37, 99, 235, 0.2) 0%,
+    rgba(147, 197, 253, 0.1) 40%,
+    transparent 70%
+  );
+  filter: blur(30px);
+}
+
+/* Lower-right sky-cyan illumination (reference image) */
+.am-bg-glow--br {
+  width: 900px;
+  height: 640px;
+  bottom: -240px;
+  right: -280px;
+  background: radial-gradient(
+    circle at 70% 70%,
+    rgba(14, 165, 233, 0.2) 0%,
+    rgba(186, 230, 253, 0.1) 40%,
+    transparent 70%
+  );
+  filter: blur(30px);
 }
 
 /* -- Top-bar (Page Mode) -- */
 .am-topbar {
   position: relative;
   z-index: 4;
-  background-color: rgba(9, 9, 11, 0.90);
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--am-border);
   height: 56px;
   display: flex;
@@ -110,23 +176,24 @@
 }
 
 .am-logo-text {
-  font-family: var(--am-font);
+  font-family: var(--am-font-display);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.3px;
   color: var(--am-text-1);
 }
 
 .am-back-link {
+  font-family: var(--am-font);
   font-size: 14px;
-  font-weight: 500;
-  color: var(--am-text-2);
+  font-weight: 600;
+  color: var(--am-text-3);
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color 0.15s var(--am-ease);
 }
 
 .am-back-link:hover {
-  color: var(--am-text-1);
+  color: var(--am-accent);
 }
 
 .am-back-link:focus-visible {
@@ -145,23 +212,24 @@
   padding: 40px 16px;
 }
 
-/* -- Auth Card -- */
+/* -- Auth Card (crisp white squircle with soft cobalt elevation) -- */
 .am-card {
   position: relative;
   width: 100%;
-  max-width: 450px;
+  max-width: 460px;
   background-color: var(--am-bg-card);
-  border: 1px solid var(--am-border-md);
+  border: 1px solid var(--am-border);
   border-radius: var(--am-radius-card);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 24px 64px rgba(0, 0, 0, 0.65);
-  padding: 38px 40px;
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 12px -2px rgba(15, 23, 42, 0.05),
+    0 24px 64px -12px rgba(37, 99, 235, 0.18);
+  padding: 40px 42px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   font-family: var(--am-font);
-  animation: amModalScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: amModalScaleUp 0.22s var(--am-ease) forwards;
 }
 
 @keyframes amModalScaleUp {
@@ -177,32 +245,41 @@
 
 @media (max-width: 520px) {
   .am-card {
-    padding: 28px 22px;
+    padding: 30px 22px;
+    border-radius: 20px;
   }
 }
 
-/* -- Close Button -- */
+/* -- Close Button (light ghost circle) -- */
 .am-close-btn {
   position: absolute;
   top: 18px;
   right: 18px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--am-bg-ice);
   border: 1px solid var(--am-border);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--am-text-2);
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.18s, color 0.18s, border-color 0.18s;
+  transition:
+    background 0.15s var(--am-ease),
+    color 0.15s var(--am-ease),
+    border-color 0.15s var(--am-ease),
+    transform 0.15s var(--am-ease);
 }
 
 .am-close-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--am-text-1);
-  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--am-accent);
+  border-color: var(--am-border-md);
+  transform: translateY(-1px);
+}
+
+.am-close-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .am-close-btn:focus-visible {
@@ -215,14 +292,34 @@
   cursor: not-allowed;
 }
 
-/* -- Centered Brand Hero -- */
+/* -- Brand Hero (centered logo mark, title, subheading) -- */
 .am-brand-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   width: 100%;
-  margin-bottom: 24px;
+  margin-bottom: 26px;
+}
+
+/* Centered logo tile (ice-blue rounded rectangle with logo image inside) */
+.am-logo-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #dbeafe 0%, #f0f7ff 100%);
+  border: 1px solid var(--am-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.1);
+}
+
+.am-logo-mark-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 .am-forgot-nav {
@@ -242,14 +339,14 @@
   padding: 2px 4px;
   font-family: var(--am-font);
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--am-text-3);
   cursor: pointer;
-  transition: color 0.18s;
+  transition: color 0.15s var(--am-ease);
 }
 
 .am-back-btn:hover:not(:disabled) {
-  color: var(--am-text-1);
+  color: var(--am-accent);
 }
 
 .am-back-btn:focus-visible {
@@ -265,27 +362,27 @@
   color: var(--am-text-1);
   letter-spacing: -0.025em;
   line-height: 1.25;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
 }
 
 .am-subheading {
   font-family: var(--am-font);
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--am-text-3);
   line-height: 1.5;
   margin: 0;
-  max-width: 330px;
+  max-width: 340px;
   letter-spacing: -0.01em;
 }
 
-/* -- SSO Buttons -- */
+/* -- SSO Buttons (white ghost pills with tactile shadow) -- */
 .am-sso-row {
   display: flex;
   flex-direction: row;
   gap: 10px;
   width: 100%;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .am-sso-btn {
@@ -294,22 +391,33 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  padding: 10.5px 0;
-  background-color: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--am-border-md);
+  padding: 11px 0;
+  background-color: var(--am-bg-card);
+  border: 1.5px solid var(--am-border-md);
   border-radius: var(--am-radius-sso);
   cursor: pointer;
-  transition: background 0.18s, border-color 0.18s, transform 0.14s;
+  color: var(--am-text-1);
+  font-family: var(--am-font);
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 2px 0 var(--am-border-md);
+  transition:
+    background 0.15s var(--am-ease),
+    border-color 0.15s var(--am-ease),
+    transform 0.12s var(--am-ease),
+    box-shadow 0.12s var(--am-ease);
 }
 
 .am-sso-btn:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.22);
-  transform: translateY(-1px);
+  background-color: var(--am-bg-ice);
+  border-color: var(--am-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 3px 0 var(--am-accent-active);
 }
 
 .am-sso-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(1px);
+  box-shadow: 0 0px 0 var(--am-accent-active);
 }
 
 .am-sso-btn:focus-visible {
@@ -321,6 +429,7 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+  box-shadow: 0 2px 0 var(--am-border-md);
 }
 
 .am-google-mark {
@@ -336,7 +445,7 @@
   color: var(--am-text-1);
 }
 
-/* -- Divider -- */
+/* -- Divider ("or continue with email") -- */
 .am-divider {
   display: flex;
   align-items: center;
@@ -355,39 +464,45 @@
   font-family: var(--am-font);
   font-size: 11px;
   font-weight: 600;
-  color: var(--am-text-3);
+  color: var(--am-text-faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
-/* -- Error Banner -- */
+/* -- Error Banner (coral alert) -- */
 .am-error {
   width: 100%;
-  padding: 10px 14px;
-  background-color: rgba(239, 68, 68, 0.10);
-  border: 1px solid rgba(239, 68, 68, 0.32);
-  border-radius: 8px;
+  padding: 11px 14px;
+  background-color: var(--am-coral-light);
+  border: 1px solid var(--am-coral-border);
+  border-radius: 10px;
   display: flex;
   align-items: flex-start;
   gap: 9px;
   font-family: var(--am-font);
   font-size: 13px;
   line-height: 1.45;
-  color: #fca5a5;
+  color: var(--am-coral);
   margin-bottom: 14px;
-  animation: amErrorFadeIn 0.16s ease-out forwards;
+  animation: amErrorFadeIn 0.16s var(--am-ease) forwards;
 }
 
 @keyframes amErrorFadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .am-error-icon {
   flex-shrink: 0;
   margin-top: 1px;
-  color: #f87171;
+  color: var(--am-coral);
 }
 
 .am-error-msg {
@@ -410,12 +525,18 @@
 }
 
 .am-field-fade-in {
-  animation: amFieldFadeIn 0.2s ease-out forwards;
+  animation: amFieldFadeIn 0.2s var(--am-ease) forwards;
 }
 
 @keyframes amFieldFadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .am-label {
@@ -438,8 +559,8 @@
   position: absolute;
   left: 14px;
   pointer-events: none;
-  color: var(--am-text-3);
-  transition: color 0.18s;
+  color: var(--am-text-faint);
+  transition: color 0.15s var(--am-ease);
 }
 
 .am-input-wrap:focus-within .am-input-icon {
@@ -448,26 +569,29 @@
 
 .am-input {
   width: 100%;
-  padding: 11.5px 40px 11.5px 42px;
+  padding: 12px 40px 12px 42px;
   background-color: var(--am-bg-input);
-  border: 1px solid var(--am-border-md);
+  border: 1.5px solid var(--am-border);
   border-radius: var(--am-radius-input);
   font-family: var(--am-font);
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--am-text-1);
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.18s, box-shadow 0.18s;
+  transition:
+    border-color 0.15s var(--am-ease),
+    box-shadow 0.15s var(--am-ease);
   letter-spacing: 0;
 }
 
 .am-input::placeholder {
-  color: #6b7280;
+  color: var(--am-text-faint);
+  font-weight: 400;
 }
 
 .am-input:focus {
-  border-color: rgba(6, 182, 212, 0.6);
+  border-color: var(--am-accent);
   box-shadow: 0 0 0 3px var(--am-accent-ring);
 }
 
@@ -485,9 +609,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--am-text-3);
+  color: var(--am-text-faint);
   cursor: pointer;
-  transition: color 0.18s;
+  transition: color 0.15s var(--am-ease);
   border-radius: 4px;
 }
 
@@ -513,15 +637,17 @@
   padding: 2px 0;
   font-family: var(--am-font);
   font-size: 12.5px;
-  font-weight: 500;
-  color: var(--am-text-3);
+  font-weight: 600;
+  color: var(--am-accent);
   cursor: pointer;
-  transition: color 0.18s;
+  transition: color 0.15s var(--am-ease);
   letter-spacing: -0.01em;
 }
 
 .am-forgot-link:hover:not(:disabled) {
-  color: var(--am-accent);
+  color: var(--am-accent-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .am-forgot-link:focus-visible {
@@ -530,21 +656,29 @@
   border-radius: 2px;
 }
 
-/* -- Submit Button (Cyan Pill CTA matching Studio Language) -- */
+.am-forgot-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* -- Submit Button (Royal Cobalt pill with full-width) -- */
 .am-submit-btn {
   width: 100%;
   padding: 13px 0;
   border: none;
   border-radius: var(--am-radius-btn);
-  background: linear-gradient(135deg, #06b6d4 0%, #00d4c8 100%);
+  background-color: var(--am-accent);
   font-family: var(--am-font-display);
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 700;
-  color: #081318;
+  color: #ffffff;
   cursor: pointer;
   letter-spacing: 0.01em;
-  transition: opacity 0.18s, transform 0.14s, box-shadow 0.18s;
-  box-shadow: 0 2px 14px rgba(6, 182, 212, 0.22);
+  transition:
+    background-color 0.15s var(--am-ease),
+    transform 0.12s var(--am-ease),
+    box-shadow 0.15s var(--am-ease);
+  box-shadow: 0 3px 0 var(--am-accent-active);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -552,18 +686,18 @@
 }
 
 .am-submit-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(6, 182, 212, 0.35);
+  background-color: var(--am-accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 var(--am-accent-active);
 }
 
 .am-submit-btn:active:not(:disabled) {
-  transform: scale(0.985);
-  box-shadow: 0 2px 10px rgba(6, 182, 212, 0.2);
+  transform: translateY(1px);
+  box-shadow: 0 0px 0 var(--am-accent-active);
 }
 
 .am-submit-btn:focus-visible {
-  outline: 2px solid #22d3ee;
+  outline: 2px solid var(--am-accent);
   outline-offset: 3px;
 }
 
@@ -571,13 +705,30 @@
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
+  box-shadow: 0 2px 0 var(--am-accent-active);
 }
 
 .am-btn-loading-content {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* -- Spinner Animation -- */
+.am-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: amSpin 0.65s linear infinite;
+}
+
+@keyframes amSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* -- Reset Password Success Screen -- */
@@ -587,20 +738,26 @@
   align-items: center;
   text-align: center;
   width: 100%;
-  animation: amSuccessFadeIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: amSuccessFadeIn 0.24s var(--am-ease) forwards;
 }
 
 @keyframes amSuccessFadeIn {
-  from { opacity: 0; transform: scale(0.96) translateY(6px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .am-success-icon-wrap {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: rgba(6, 182, 212, 0.12);
-  border: 1px solid rgba(6, 182, 212, 0.3);
+  background: var(--am-mint-light);
+  border: 1px solid var(--am-mint-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -608,33 +765,13 @@
 }
 
 .am-success-icon {
-  color: var(--am-accent);
+  color: var(--am-mint);
 }
 
 .am-highlight-email {
   color: var(--am-text-1);
   font-weight: 600;
   word-break: break-all;
-}
-
-/* -- Spinner Animation -- */
-.am-spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: amSpin 0.65s linear infinite;
-}
-
-.am-spinner--dark {
-  border-color: rgba(8, 19, 24, 0.25);
-  border-top-color: #081318;
-}
-
-@keyframes amSpin {
-  to { transform: rotate(360deg); }
 }
 
 /* -- Spacers -- */
@@ -668,7 +805,7 @@
 .am-footer-text {
   font-family: var(--am-font);
   font-size: 13.5px;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--am-text-3);
   letter-spacing: -0.01em;
 }
@@ -679,10 +816,10 @@
   padding: 0;
   font-family: var(--am-font);
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--am-accent);
   cursor: pointer;
-  transition: color 0.18s;
+  transition: color 0.15s var(--am-ease);
   letter-spacing: -0.01em;
 }
 
@@ -718,5 +855,6 @@
   .am-submit-btn {
     transition: none;
     transform: none;
+    box-shadow: none;
   }
 }

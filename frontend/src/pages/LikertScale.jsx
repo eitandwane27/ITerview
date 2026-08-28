@@ -3,10 +3,10 @@
 // Collects scores 1–5 per question → stores in React state → submits to backend (MongoDB)
 // On completion → navigates to /mic-test (Pre-Test) or /results (Post-Test)
 
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
-import "./LikertScale.css";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
+import './LikertScale.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QUESTION BANK
@@ -15,24 +15,24 @@ import "./LikertScale.css";
 // ─────────────────────────────────────────────────────────────────────────────
 const QUESTIONS = [
   {
-    id: "q1",
-    text: "How confident do you feel about answering interview questions in English?",
+    id: 'q1',
+    text: 'How confident do you feel about answering interview questions in English?',
   },
   {
-    id: "q2",
-    text: "How comfortable are you explaining your technical projects to a stranger?",
+    id: 'q2',
+    text: 'How comfortable are you explaining your technical projects to a stranger?',
   },
   {
-    id: "q3",
-    text: "How well do you think you can handle unexpected or follow-up questions?",
+    id: 'q3',
+    text: 'How well do you think you can handle unexpected or follow-up questions?',
   },
   {
-    id: "q4",
-    text: "How prepared do you feel for a real IT job interview right now?",
+    id: 'q4',
+    text: 'How prepared do you feel for a real IT job interview right now?',
   },
   {
-    id: "q5",
-    text: "How confident are you that your answers clearly show your technical skills?",
+    id: 'q5',
+    text: 'How confident are you that your answers clearly show your technical skills?',
   },
 ];
 
@@ -41,15 +41,15 @@ const QUESTIONS = [
 // MongoDB document field: confidenceScore = sum of all 5 values (max: 25)
 // ─────────────────────────────────────────────────────────────────────────────
 const OPTIONS = [
-  { value: 1, emoji: "😰", title: "Not at all", sub: "I feel very uncertain" },
-  { value: 2, emoji: "😐", title: "Slightly", sub: "I have some doubts" },
-  { value: 3, emoji: "🙂", title: "Moderately", sub: "I'm somewhat confident" },
-  { value: 4, emoji: "😊", title: "Confident", sub: "I feel fairly ready" },
+  { value: 1, emoji: '😰', title: 'Not at all', sub: 'I feel very uncertain' },
+  { value: 2, emoji: '😐', title: 'Slightly', sub: 'I have some doubts' },
+  { value: 3, emoji: '🙂', title: 'Moderately', sub: "I'm somewhat confident" },
+  { value: 4, emoji: '😊', title: 'Confident', sub: 'I feel fairly ready' },
   {
     value: 5,
-    emoji: "🔥",
-    title: "Very Confident",
-    sub: "I feel completely ready",
+    emoji: '🔥',
+    title: 'Very Confident',
+    sub: 'I feel completely ready',
   },
 ];
 
@@ -71,16 +71,14 @@ const OPTIONS = [
 // }
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function LikertScale({ phase = "pre" }) {
+export default function LikertScale({ phase = 'pre' }) {
   const navigate = useNavigate();
 
   // current question index (0–4)
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // answers: { q1: 3, q2: null, ... }
-  const [answers, setAnswers] = useState(
-    Object.fromEntries(QUESTIONS.map((q) => [q.id, null])),
-  );
+  const [answers, setAnswers] = useState(Object.fromEntries(QUESTIONS.map((q) => [q.id, null])));
 
   // true once all 5 answers are submitted and we show the completion card
   const [isDone, setIsDone] = useState(false);
@@ -115,12 +113,12 @@ export default function LikertScale({ phase = "pre" }) {
       // POST to the correct endpoint depending on phase
       // pre  → /api/users/pretest
       // post → /api/users/posttest
-      const endpoint = phase === "post" ? "/api/users/posttest" : "/api/users/pretest";
+      const endpoint = phase === 'post' ? '/api/users/posttest' : '/api/users/pretest';
       try {
         const user = auth.currentUser;
         await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             firebaseUid: user.uid,
             email: user.email,
@@ -141,10 +139,10 @@ export default function LikertScale({ phase = "pre" }) {
   const handleContinue = () => {
     // After pre-test Likert → go to Pre-Test Interview Voice Screen
     // After post-test Likert → go to Results Page
-    if (phase === "pre") {
-      navigate("/mic-test");
+    if (phase === 'pre') {
+      navigate('/mic-test');
     } else {
-      navigate("/results");
+      navigate('/results');
     }
   };
 
@@ -153,10 +151,10 @@ export default function LikertScale({ phase = "pre" }) {
     // Confidence tier label for post-test score chip
     const tier =
       doneScore >= 20
-        ? "Strong Confidence"
+        ? 'Strong Confidence'
         : doneScore >= 13
-          ? "Moderate Confidence"
-          : "Building Confidence";
+          ? 'Moderate Confidence'
+          : 'Building Confidence';
 
     return (
       <div className="likert-container">
@@ -164,30 +162,25 @@ export default function LikertScale({ phase = "pre" }) {
         <main className="likert-main">
           <div className="likert-done-card">
             <div className="likert-done-inner">
-
               {/* Animated SVG checkmark with pulse ring */}
               <div className="likert-done-icon-wrap" aria-hidden="true">
                 <div className="likert-done-pulse" />
                 <div className="likert-done-circle">
                   <svg className="likert-done-check" viewBox="0 0 52 52">
-                    <path
-                      className="likert-done-check-path"
-                      fill="none"
-                      d="M14 27l8 8 16-16"
-                    />
+                    <path className="likert-done-check-path" fill="none" d="M14 27l8 8 16-16" />
                   </svg>
                 </div>
               </div>
 
               <h2>Assessment Complete!</h2>
               <p>
-                {phase === "pre"
+                {phase === 'pre'
                   ? "Your confidence baseline has been recorded. Time to show what you've got."
-                  : "Great work. Your post-test confidence has been captured."}
+                  : 'Great work. Your post-test confidence has been captured.'}
               </p>
 
               {/* Score chip — post-test only */}
-              {phase === "post" && doneScore !== null && (
+              {phase === 'post' && doneScore !== null && (
                 <div className="likert-score-chip">
                   <div className="likert-score-main">
                     <span className="likert-score-number">{doneScore}</span>
@@ -197,12 +190,8 @@ export default function LikertScale({ phase = "pre" }) {
                 </div>
               )}
 
-              <button
-                id="likert-continue-btn"
-                className="likert-btn-next"
-                onClick={handleContinue}
-              >
-                {phase === "pre" ? "Start Pre-Test →" : "View Results →"}
+              <button id="likert-continue-btn" className="likert-btn-next" onClick={handleContinue}>
+                {phase === 'pre' ? 'Start Pre-Test →' : 'View Results →'}
               </button>
             </div>
           </div>
@@ -231,10 +220,7 @@ export default function LikertScale({ phase = "pre" }) {
           aria-valuemin={1}
           aria-valuemax={totalQuestions}
         >
-          <div
-            className="likert-progress-fill"
-            style={{ width: `${progressPercent}%` }}
-          />
+          <div className="likert-progress-fill" style={{ width: `${progressPercent}%` }} />
         </div>
       </div>
 
@@ -255,7 +241,7 @@ export default function LikertScale({ phase = "pre" }) {
                 <button
                   key={opt.value}
                   id={`likert-option-${opt.value}`}
-                  className={`likert-option${currentAnswer === opt.value ? " selected" : ""}`}
+                  className={`likert-option${currentAnswer === opt.value ? ' selected' : ''}`}
                   onClick={() => handleSelect(opt.value)}
                   role="radio"
                   aria-checked={currentAnswer === opt.value}
@@ -281,7 +267,7 @@ export default function LikertScale({ phase = "pre" }) {
             onClick={handleNext}
             disabled={currentAnswer === null}
           >
-            {currentIndex < totalQuestions - 1 ? "Next →" : "Submit"}
+            {currentIndex < totalQuestions - 1 ? 'Next →' : 'Submit'}
           </button>
         </div>
       </main>
@@ -298,9 +284,7 @@ function TopBar({ phase }) {
     <header className="likert-topbar">
       <div className="likert-topbar-content">
         <h1>ITerview</h1>
-        <span>
-          {phase === "pre" ? "Pre-Test" : "Post-Test"} · Confidence Check
-        </span>
+        <span>{phase === 'pre' ? 'Pre-Test' : 'Post-Test'} · Confidence Check</span>
       </div>
     </header>
   );

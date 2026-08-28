@@ -10,35 +10,35 @@
 // No TTS, no AI, no question flow — just raw STT output.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import "./SttTestBench.css";
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import './SttTestBench.css';
 
 // Uses the dedicated dev socket route to avoid MongoDB writes and burning TTS API balance
-const WS_URL = "ws://localhost:5000/ws/dev-stt-test";
+const WS_URL = 'ws://localhost:5000/ws/dev-stt-test';
 const SAMPLE_RATE = 16000;
 const BUFFER_SIZE = 2048; // smaller = lower latency (was 4096 in PreTest)
 
 export default function SttTestBench() {
   // ── State ──────────────────────────────────────────────────────────────────
-  const [wsStatus, setWsStatus]           = useState("disconnected"); // disconnected | connecting | connected | error
-  const [isRecording, setIsRecording]     = useState(false);
-  const [partial, setPartial]             = useState("");
-  const [finals, setFinals]               = useState([]);   // array of { text, ts }
-  const [volume, setVolume]               = useState(0);
-  const [latencies, setLatencies]         = useState([]);   // ms from word-start to final
-  const [wordCount, setWordCount]         = useState(0);
-  const [sessionLog, setSessionLog]       = useState([]);   // raw log lines
+  const [wsStatus, setWsStatus] = useState('disconnected'); // disconnected | connecting | connected | error
+  const [isRecording, setIsRecording] = useState(false);
+  const [partial, setPartial] = useState('');
+  const [finals, setFinals] = useState([]); // array of { text, ts }
+  const [volume, setVolume] = useState(0);
+  const [latencies, setLatencies] = useState([]); // ms from word-start to final
+  const [wordCount, setWordCount] = useState(0);
+  const [sessionLog, setSessionLog] = useState([]); // raw log lines
 
   // ── Refs ───────────────────────────────────────────────────────────────────
-  const wsRef          = useRef(null);
-  const streamRef      = useRef(null);
-  const audioCtxRef    = useRef(null);
-  const processorRef   = useRef(null);
-  const sourceRef      = useRef(null);
-  const analyserRef    = useRef(null);
-  const animFrameRef   = useRef(null);
-  const firstWordTsRef = useRef(null);  // timestamp of first interim char in current utterance
-  const logRef         = useRef([]);
+  const wsRef = useRef(null);
+  const streamRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const processorRef = useRef(null);
+  const sourceRef = useRef(null);
+  const analyserRef = useRef(null);
+  const animFrameRef = useRef(null);
+  const firstWordTsRef = useRef(null); // timestamp of first interim char in current utterance
+  const logRef = useRef([]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const addLog = useCallback((msg) => {
@@ -50,41 +50,45 @@ export default function SttTestBench() {
   // ── WebSocket ──────────────────────────────────────────────────────────────
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
-    setWsStatus("connecting");
-    addLog("WS → connecting…");
+    setWsStatus('connecting');
+    addLog('WS → connecting…');
 
     const ws = new WebSocket(WS_URL);
-    ws.binaryType = "arraybuffer";
+    ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
 
     ws.onopen = () => {
-      setWsStatus("connected");
-      addLog("WS ✅ connected");
+      setWsStatus('connected');
+      addLog('WS ✅ connected');
     };
 
     ws.onmessage = (event) => {
       let msg;
-      try { msg = JSON.parse(event.data); } catch { return; }
+      try {
+        msg = JSON.parse(event.data);
+      } catch {
+        return;
+      }
 
-      if (msg.type === "transcript") {
+      if (msg.type === 'transcript') {
         if (msg.isFinal) {
           if (msg.text) {
             const latency = msg.latencyMs !== undefined ? msg.latencyMs : null;
             firstWordTsRef.current = null;
 
-            setFinals(prev => [
+            setFinals((prev) => [
               { text: msg.text, ts: Date.now(), latency },
-              ...prev.slice(0, 19),          // keep last 20 finals
+              ...prev.slice(0, 19), // keep last 20 finals
             ]);
-            setWordCount(prev => prev + msg.text.split(/\s+/).filter(Boolean).length);
+            setWordCount((prev) => prev + msg.text.split(/\s+/).filter(Boolean).length);
             if (latency !== null) {
-              setLatencies(prev => [...prev.slice(-29), latency]);
+              setLatencies((prev) => [...prev.slice(-29), latency]);
             }
-            setPartial("");
-            addLog(`FINAL (${latency != null ? latency + "ms" : "?"}): "${msg.text}"`);
+            setPartial('');
+            addLog(`FINAL (${latency != null ? latency + 'ms' : '?'}): "${msg.text}"`);
           } else {
             // UtteranceEnd empty final
-            setPartial("");
+            setPartial('');
             firstWordTsRef.current = null;
           }
         } else {
@@ -92,21 +96,21 @@ export default function SttTestBench() {
           if (!firstWordTsRef.current && msg.text) {
             firstWordTsRef.current = Date.now();
           }
-          setPartial(msg.text || "");
+          setPartial(msg.text || '');
         }
-      } else if (msg.type === "error") {
+      } else if (msg.type === 'error') {
         addLog(`ERR: ${msg.message}`);
       }
       // Ignore tts_audio, status, etc.
     };
 
     ws.onerror = () => {
-      setWsStatus("error");
-      addLog("WS ❌ error");
+      setWsStatus('error');
+      addLog('WS ❌ error');
     };
 
     ws.onclose = (e) => {
-      setWsStatus("disconnected");
+      setWsStatus('disconnected');
       addLog(`WS closed (${e.code})`);
     };
   }, [addLog]);
@@ -136,9 +140,9 @@ export default function SttTestBench() {
     sourceRef.current = null;
     analyserRef.current?.disconnect();
     analyserRef.current = null;
-    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    if (audioCtxRef.current?.state !== "closed") {
+    if (audioCtxRef.current?.state !== 'closed') {
       audioCtxRef.current?.close();
     }
     audioCtxRef.current = null;
@@ -150,18 +154,25 @@ export default function SttTestBench() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, sampleRate: SAMPLE_RATE, echoCancellation: true, noiseSuppression: true },
+        audio: {
+          channelCount: 1,
+          sampleRate: SAMPLE_RATE,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
       });
       streamRef.current = stream;
 
       // Reset transcript state
-      setPartial("");
+      setPartial('');
       firstWordTsRef.current = null;
 
-      wsRef.current.send(JSON.stringify({ type: "start_recording" }));
-      addLog("MIC ▶ start_recording sent");
+      wsRef.current.send(JSON.stringify({ type: 'start_recording' }));
+      addLog('MIC ▶ start_recording sent');
 
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: SAMPLE_RATE,
+      });
       audioCtxRef.current = audioCtx;
 
       const source = audioCtx.createMediaStreamSource(stream);
@@ -199,8 +210,8 @@ export default function SttTestBench() {
   const stopRecording = useCallback(() => {
     if (!isRecording) return;
     cleanupAudio();
-    wsRef.current?.send(JSON.stringify({ type: "stop_recording" }));
-    addLog("MIC ⏹ stop_recording sent");
+    wsRef.current?.send(JSON.stringify({ type: 'stop_recording' }));
+    addLog('MIC ⏹ stop_recording sent');
     setIsRecording(false);
   }, [isRecording, cleanupAudio, addLog]);
 
@@ -222,7 +233,7 @@ export default function SttTestBench() {
     setFinals([]);
     setLatencies([]);
     setWordCount(0);
-    setPartial("");
+    setPartial('');
     logRef.current = [];
     setSessionLog([]);
     firstWordTsRef.current = null;
@@ -240,25 +251,31 @@ export default function SttTestBench() {
         <div className="stb-header-right">
           <span className={`stb-ws-dot stb-ws-${wsStatus}`} />
           <span className="stb-ws-label">{wsStatus}</span>
-          {wsStatus === "disconnected" || wsStatus === "error"
-            ? <button className="stb-btn stb-btn-sm" onClick={connect}>Reconnect</button>
-            : <button className="stb-btn stb-btn-sm stb-btn-ghost" onClick={disconnect}>Disconnect</button>
-          }
+          {wsStatus === 'disconnected' || wsStatus === 'error' ? (
+            <button className="stb-btn stb-btn-sm" onClick={connect}>
+              Reconnect
+            </button>
+          ) : (
+            <button className="stb-btn stb-btn-sm stb-btn-ghost" onClick={disconnect}>
+              Disconnect
+            </button>
+          )}
         </div>
       </header>
 
       <div className="stb-body">
         {/* ── Left column ── */}
         <div className="stb-left">
-
           {/* Stats row */}
           <div className="stb-stats-row">
             <div className="stb-stat">
-              <span className="stb-stat-val">{avgLatency != null ? `${avgLatency}ms` : "—"}</span>
+              <span className="stb-stat-val">{avgLatency != null ? `${avgLatency}ms` : '—'}</span>
               <span className="stb-stat-label">Avg final latency</span>
             </div>
             <div className="stb-stat">
-              <span className="stb-stat-val">{latencies.length > 0 ? `${Math.min(...latencies)}ms` : "—"}</span>
+              <span className="stb-stat-val">
+                {latencies.length > 0 ? `${Math.min(...latencies)}ms` : '—'}
+              </span>
               <span className="stb-stat-label">Best latency</span>
             </div>
             <div className="stb-stat">
@@ -276,13 +293,17 @@ export default function SttTestBench() {
             <div className="stb-transcript-label">Live Transcript</div>
             <div className="stb-transcript-box" aria-live="polite">
               {finals.length === 0 && !partial ? (
-                <span className="stb-placeholder">Start recording to see transcription appear here…</span>
+                <span className="stb-placeholder">
+                  Start recording to see transcription appear here…
+                </span>
               ) : (
                 <>
                   {/* Finals — rendered oldest→newest so they accumulate naturally */}
                   <span className="stb-finals">
                     {[...finals].reverse().map((f, i) => (
-                      <span key={i} className="stb-final-segment">{f.text} </span>
+                      <span key={i} className="stb-final-segment">
+                        {f.text}{' '}
+                      </span>
                     ))}
                   </span>
                   {/* Partial — visually distinct, updates in real-time */}
@@ -300,7 +321,7 @@ export default function SttTestBench() {
                     className="stb-vol-fill"
                     style={{
                       width: `${volume}%`,
-                      background: volume > 70 ? "#ef4444" : volume > 20 ? "#22c55e" : "#6366f1",
+                      background: volume > 70 ? '#ef4444' : volume > 20 ? '#22c55e' : '#6366f1',
                     }}
                   />
                 </div>
@@ -315,7 +336,7 @@ export default function SttTestBench() {
               <button
                 className="stb-btn stb-btn-record"
                 onClick={startRecording}
-                disabled={wsStatus !== "connected"}
+                disabled={wsStatus !== 'connected'}
               >
                 🎙 Start Recording
               </button>
@@ -337,7 +358,9 @@ export default function SttTestBench() {
                 <div key={i} className="stb-history-item">
                   <span className="stb-history-text">{f.text}</span>
                   {f.latency != null && (
-                    <span className={`stb-history-lat ${f.latency < 400 ? "fast" : f.latency < 800 ? "ok" : "slow"}`}>
+                    <span
+                      className={`stb-history-lat ${f.latency < 400 ? 'fast' : f.latency < 800 ? 'ok' : 'slow'}`}
+                    >
                       {f.latency}ms
                     </span>
                   )}
@@ -351,10 +374,15 @@ export default function SttTestBench() {
         <div className="stb-right">
           <div className="stb-log-label">Raw Event Log</div>
           <div className="stb-log">
-            {sessionLog.length === 0
-              ? <span className="stb-placeholder">Events will appear here…</span>
-              : sessionLog.map((line, i) => <div key={i} className="stb-log-line">{line}</div>)
-            }
+            {sessionLog.length === 0 ? (
+              <span className="stb-placeholder">Events will appear here…</span>
+            ) : (
+              sessionLog.map((line, i) => (
+                <div key={i} className="stb-log-line">
+                  {line}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

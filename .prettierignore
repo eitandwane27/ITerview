@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-ssr
+build
+.impeccable
+.agents
+.codex
+.ai-skills
+*.log
+package-lock.json

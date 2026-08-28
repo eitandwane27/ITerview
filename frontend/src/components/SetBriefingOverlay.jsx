@@ -4,10 +4,10 @@
 // Streamlined Studio Briefing · 3C Diagnostic Baseline · Practice Session
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { motion } from "framer-motion";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../firebase";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase';
 import {
   Sparkles,
   Target,
@@ -20,38 +20,41 @@ import {
   Loader2,
   CheckCircle2,
   Cpu,
-} from "lucide-react";
-import "./SetBriefingOverlay.css";
+} from 'lucide-react';
+import './SetBriefingOverlay.css';
 
 // ─── Format & Role Helpers ───────────────────────────────────────────────────
 
 function formatRole(role) {
-  if (!role || typeof role !== "string") return "Frontend Engineer";
+  if (!role || typeof role !== 'string') return 'Frontend Engineer';
   const trimmed = role.trim();
-  if (!trimmed) return "Frontend Engineer";
+  if (!trimmed) return 'Frontend Engineer';
   const lower = trimmed.toLowerCase();
-  if (lower === "frontend") return "Frontend Engineer";
-  if (lower === "backend") return "Backend Engineer";
-  if (lower === "fullstack") return "Fullstack Engineer";
+  if (lower === 'frontend') return 'Frontend Engineer';
+  if (lower === 'backend') return 'Backend Engineer';
+  if (lower === 'fullstack') return 'Fullstack Engineer';
   if (/developer/i.test(trimmed)) {
     return trimmed
-      .replace(/developer/i, "Engineer")
+      .replace(/developer/i, 'Engineer')
       .split(/\s+/)
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(" ");
+      .join(' ');
   }
   if (!/engineer/i.test(trimmed)) {
     return `${trimmed.charAt(0).toUpperCase() + trimmed.slice(1)} Engineer`;
   }
-  return trimmed.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+  return trimmed
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
 }
 
 function getRoleScopeSummary(role) {
-  const lower = (role || "").toLowerCase();
-  if (lower.includes("frontend")) return "HTML/CSS · JavaScript · DOM · Web APIs";
-  if (lower.includes("backend")) return "APIs · Node/Express · Databases · Architecture";
-  if (lower.includes("fullstack")) return "Client-Server · Data Flow · APIs · Performance";
-  return "Core Concepts · Architecture · Problem Solving";
+  const lower = (role || '').toLowerCase();
+  if (lower.includes('frontend')) return 'HTML/CSS · JavaScript · DOM · Web APIs';
+  if (lower.includes('backend')) return 'APIs · Node/Express · Databases · Architecture';
+  if (lower.includes('fullstack')) return 'Client-Server · Data Flow · APIs · Performance';
+  return 'Core Concepts · Architecture · Problem Solving';
 }
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
@@ -60,11 +63,11 @@ const overlayVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { duration: 0.2, ease: "easeOut" },
+    transition: { duration: 0.2, ease: 'easeOut' },
   },
   exit: {
     opacity: 0,
-    transition: { duration: 0.15, ease: "easeIn" },
+    transition: { duration: 0.15, ease: 'easeIn' },
   },
 };
 
@@ -85,7 +88,7 @@ const modalVariants = {
     opacity: 0,
     scale: 0.97,
     y: -8,
-    transition: { duration: 0.16, ease: "easeInOut" },
+    transition: { duration: 0.16, ease: 'easeInOut' },
   },
 };
 
@@ -101,8 +104,8 @@ const itemVariants = {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function SetBriefingOverlay({
-  role = "",
-  focusArea = "auto",
+  role = '',
+  focusArea = 'auto',
   diagnosticData = null,
   onConfirm,
   onClose,
@@ -119,16 +122,16 @@ export default function SetBriefingOverlay({
   // dashboard has rendered, so the stored preference is current.
   const [theme] = useState(() => {
     try {
-      return localStorage.getItem("iterview-theme") || "dark";
+      return localStorage.getItem('iterview-theme') || 'dark';
     } catch {
-      return "dark";
+      return 'dark';
     }
   });
 
   // Disable background body scroll while modal is open
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = prevOverflow;
     };
@@ -145,22 +148,21 @@ export default function SetBriefingOverlay({
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setProfile({
-          role: "Frontend",
+          role: 'Frontend',
           threeCBreakdown: {
             clarity: 6.5,
             correctness: 8.5,
             completeness: 7.2,
-            lowestMetric: "clarity",
+            lowestMetric: 'clarity',
           },
         });
         setLoading(false);
         return;
       }
       try {
-        const res = await fetch(
-          `/api/users/results-summary?uid=${encodeURIComponent(user.uid)}`,
-          { signal: controller.signal }
-        );
+        const res = await fetch(`/api/users/results-summary?uid=${encodeURIComponent(user.uid)}`, {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
           setProfile(data);
@@ -168,8 +170,8 @@ export default function SetBriefingOverlay({
           setProfile(null);
         }
       } catch (err) {
-        if (err.name !== "AbortError") {
-          console.warn("SetBriefingOverlay fallback fetch error:", err.message);
+        if (err.name !== 'AbortError') {
+          console.warn('SetBriefingOverlay fallback fetch error:', err.message);
           setProfile(null);
         }
       } finally {
@@ -184,37 +186,41 @@ export default function SetBriefingOverlay({
   }, [role, diagnosticData]);
 
   // Derived effective values
-  const effectiveRole = role || profile?.role || profile?.user?.role || "Frontend";
+  const effectiveRole = role || profile?.role || profile?.user?.role || 'Frontend';
   const formattedRole = formatRole(effectiveRole);
   const roleScope = getRoleScopeSummary(effectiveRole);
   const effectiveDiagnostic = diagnosticData || profile;
 
   // Extract 3C Breakdown scores
   const threeC = effectiveDiagnostic?.threeCBreakdown || {};
-  const clarityScore = typeof threeC.clarity === "number" ? threeC.clarity : null;
-  const correctnessScore = typeof threeC.correctness === "number" ? threeC.correctness : null;
-  const completenessScore = typeof threeC.completeness === "number" ? threeC.completeness : null;
+  const clarityScore = typeof threeC.clarity === 'number' ? threeC.clarity : null;
+  const correctnessScore = typeof threeC.correctness === 'number' ? threeC.correctness : null;
+  const completenessScore = typeof threeC.completeness === 'number' ? threeC.completeness : null;
 
-  const isAuto = !focusArea || focusArea === "auto";
+  const isAuto = !focusArea || focusArea === 'auto';
 
   // Determine target metric (either custom focusArea or lowest metric from diagnostic)
   const targetKey = useMemo(() => {
-    if (focusArea && focusArea !== "auto") {
+    if (focusArea && focusArea !== 'auto') {
       const lower = focusArea.toLowerCase();
-      if (lower.includes("clarity")) return "clarity";
-      if (lower.includes("correctness") || lower.includes("accuracy")) return "correctness";
-      if (lower.includes("completeness") || lower.includes("depth")) return "completeness";
+      if (lower.includes('clarity')) return 'clarity';
+      if (lower.includes('correctness') || lower.includes('accuracy')) return 'correctness';
+      if (lower.includes('completeness') || lower.includes('depth')) return 'completeness';
     }
     if (threeC.lowestMetric) return threeC.lowestMetric;
     if (clarityScore != null && correctnessScore != null && completenessScore != null) {
-      if (clarityScore <= correctnessScore && clarityScore <= completenessScore) return "clarity";
-      if (correctnessScore <= completenessScore) return "correctness";
-      return "completeness";
+      if (clarityScore <= correctnessScore && clarityScore <= completenessScore) return 'clarity';
+      if (correctnessScore <= completenessScore) return 'correctness';
+      return 'completeness';
     }
-    const tag = effectiveDiagnostic?.postWeaknessTag || effectiveDiagnostic?.preWeaknessTag || effectiveDiagnostic?.weaknessTag || "";
-    if (tag.includes("clarity")) return "clarity";
-    if (tag.includes("correctness")) return "correctness";
-    if (tag.includes("completeness")) return "completeness";
+    const tag =
+      effectiveDiagnostic?.postWeaknessTag ||
+      effectiveDiagnostic?.preWeaknessTag ||
+      effectiveDiagnostic?.weaknessTag ||
+      '';
+    if (tag.includes('clarity')) return 'clarity';
+    if (tag.includes('correctness')) return 'correctness';
+    if (tag.includes('completeness')) return 'completeness';
     return null;
   }, [focusArea, threeC, clarityScore, correctnessScore, completenessScore, effectiveDiagnostic]);
 
@@ -222,25 +228,28 @@ export default function SetBriefingOverlay({
   const [isPreparing, setIsPreparing] = useState(false);
   const [prepStage, setPrepStage] = useState(0);
   const [prepProgress, setPrepProgress] = useState(0);
-  const [stageText, setStageText] = useState("");
+  const [stageText, setStageText] = useState('');
   const prepTimersRef = useRef([]);
   const wsRef = useRef(null);
 
   // Telemetry stages for Pattern B morphing preparation
   const targetLabel = useMemo(() => {
-    if (targetKey === "clarity") return "Clarity & Delivery";
-    if (targetKey === "correctness") return "Technical Accuracy";
-    if (targetKey === "completeness") return "Depth & Completeness";
-    return "Technical Mastery";
+    if (targetKey === 'clarity') return 'Clarity & Delivery';
+    if (targetKey === 'correctness') return 'Technical Accuracy';
+    if (targetKey === 'completeness') return 'Depth & Completeness';
+    return 'Technical Mastery';
   }, [targetKey]);
 
-  const prepStages = useMemo(() => [
-    { label: `Analyzing diagnostic baseline for ${formattedRole}...`, pct: 20 },
-    { label: `Calibrating rubric targeting ${targetLabel}...`, pct: 48 },
-    { label: `Synthesizing 5 personalized questions (DeepSeek)...`, pct: 76 },
-    { label: `Compiling Aura-2 voice audio stream...`, pct: 94 },
-    { label: `Session ready! Launching Practice Arena...`, pct: 100 },
-  ], [formattedRole, targetLabel]);
+  const prepStages = useMemo(
+    () => [
+      { label: `Analyzing diagnostic baseline for ${formattedRole}...`, pct: 20 },
+      { label: `Calibrating rubric targeting ${targetLabel}...`, pct: 48 },
+      { label: `Synthesizing 5 personalized questions (DeepSeek)...`, pct: 76 },
+      { label: `Compiling Aura-2 voice audio stream...`, pct: 94 },
+      { label: `Session ready! Launching Practice Arena...`, pct: 100 },
+    ],
+    [formattedRole, targetLabel]
+  );
 
   // Clean up preparation timers and WebSocket on unmount
   useEffect(() => {
@@ -267,7 +276,7 @@ export default function SetBriefingOverlay({
       setIsPreparing(false);
       isTriggeredRef.current = false;
     }
-    if (typeof onClose === "function") {
+    if (typeof onClose === 'function') {
       onClose();
     }
   }, [isPreparing, onClose]);
@@ -285,7 +294,7 @@ export default function SetBriefingOverlay({
       setIsPreparing(false);
       setPrepStage(0);
       setPrepProgress(0);
-      setStageText("");
+      setStageText('');
       isTriggeredRef.current = false;
     } else {
       handleDismiss();
@@ -304,22 +313,22 @@ export default function SetBriefingOverlay({
     prepTimersRef.current = [];
 
     const user = auth.currentUser;
-    const uid = user ? user.uid : "anonymous_user";
+    const uid = user ? user.uid : 'anonymous_user';
 
     // 1. Persist role and focus area to backend if authenticated
     if (user) {
       try {
-        await fetch("/api/users/role", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
+        await fetch('/api/users/role', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             firebaseUid: user.uid,
             role: effectiveRole,
-            focusArea: focusArea || "auto",
+            focusArea: focusArea || 'auto',
           }),
         });
       } catch (err) {
-        console.warn("Could not save role before socket generation:", err);
+        console.warn('Could not save role before socket generation:', err);
       }
     }
 
@@ -362,9 +371,9 @@ export default function SetBriefingOverlay({
 
       const tFinal = setTimeout(() => {
         isTriggeredRef.current = true;
-        if (typeof onConfirm === "function") {
+        if (typeof onConfirm === 'function') {
           onConfirm();
-        } else if (typeof onReady === "function") {
+        } else if (typeof onReady === 'function') {
           onReady();
         }
       }, 3900);
@@ -373,8 +382,10 @@ export default function SetBriefingOverlay({
     };
 
     try {
-      const focusParam = focusArea ? `&focusArea=${encodeURIComponent(focusArea)}` : "";
-      const ws = new WebSocket(`ws://localhost:5000/ws/set1?voice=aura-2-luna-en&uid=${uid}${focusParam}`);
+      const focusParam = focusArea ? `&focusArea=${encodeURIComponent(focusArea)}` : '';
+      const ws = new WebSocket(
+        `ws://localhost:5000/ws/set1?voice=aura-2-luna-en&uid=${uid}${focusParam}`
+      );
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -391,26 +402,28 @@ export default function SetBriefingOverlay({
         }
 
         switch (msg.type) {
-          case "generation_progress":
-            if (msg.stage === "evaluating_baseline") {
+          case 'generation_progress':
+            if (msg.stage === 'evaluating_baseline') {
               setPrepProgress(28);
               setStageText(msg.message || `Evaluating baseline 3C scores...`);
-            } else if (msg.stage === "generating_questions") {
+            } else if (msg.stage === 'generating_questions') {
               const current = msg.current || 1;
               const total = msg.total || 5;
               const pct = 30 + Math.round((current / total) * 60);
               setPrepProgress(pct);
-              setStageText(msg.message || `Synthesizing question ${current} of ${total} (${formattedRole})...`);
+              setStageText(
+                msg.message || `Synthesizing question ${current} of ${total} (${formattedRole})...`
+              );
             }
             break;
 
-          case "question_text":
+          case 'question_text':
             setPrepProgress(94);
             setStageText(`Question ready · Compiling voice audio...`);
             break;
 
-          case "generation_complete":
-          case "tts_audio":
+          case 'generation_complete':
+          case 'tts_audio':
             isSocketHandled = true;
             setPrepProgress(100);
             setStageText(`Session ready! Launching Practice Arena...`);
@@ -421,16 +434,16 @@ export default function SetBriefingOverlay({
                 wsRef.current = null;
               }
               isTriggeredRef.current = true;
-              if (typeof onConfirm === "function") {
+              if (typeof onConfirm === 'function') {
                 onConfirm();
-              } else if (typeof onReady === "function") {
+              } else if (typeof onReady === 'function') {
                 onReady();
               }
             }, 450);
             break;
 
-          case "error":
-            console.warn("[SetBriefingOverlay] WS error event:", msg.message);
+          case 'error':
+            console.warn('[SetBriefingOverlay] WS error event:', msg.message);
             runFallbackSimulation();
             break;
 
@@ -440,7 +453,7 @@ export default function SetBriefingOverlay({
       };
 
       ws.onerror = () => {
-        console.warn("[SetBriefingOverlay] WS connection failed, running fallback simulation.");
+        console.warn('[SetBriefingOverlay] WS connection failed, running fallback simulation.');
         runFallbackSimulation();
       };
 
@@ -451,9 +464,8 @@ export default function SetBriefingOverlay({
         }
       }, 12000);
       prepTimersRef.current.push(guardTimer);
-
     } catch (err) {
-      console.warn("[SetBriefingOverlay] WS exception:", err);
+      console.warn('[SetBriefingOverlay] WS exception:', err);
       runFallbackSimulation();
     }
   }, [isPreparing, formattedRole, effectiveRole, focusArea, prepStages, onConfirm, onReady]);
@@ -468,19 +480,19 @@ export default function SetBriefingOverlay({
   // Keyboard accessibility
   const handleKeyDown = useCallback(
     (e) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
         handleDismiss();
         return;
       }
-      if (e.key === "Enter" && !e.shiftKey) {
-        if (document.activeElement?.tagName === "BUTTON") return;
+      if (e.key === 'Enter' && !e.shiftKey) {
+        if (document.activeElement?.tagName === 'BUTTON') return;
         e.preventDefault();
         handleLaunch();
         return;
       }
-      if (e.key === "Tab") {
+      if (e.key === 'Tab') {
         const modal = modalCardRef.current;
         if (!modal) return;
         const focusables = Array.from(
@@ -542,7 +554,7 @@ export default function SetBriefingOverlay({
         <motion.div className="sb-header" variants={itemVariants}>
           <div className="sb-header-main">
             <h2 id="sb-title" className="sb-title">
-              {isPreparing ? "Calibrating your session..." : `${formattedRole} · Set 01`}
+              {isPreparing ? 'Calibrating your session...' : `${formattedRole} · Set 01`}
             </h2>
 
             <div className="sb-role-strip">
@@ -588,11 +600,11 @@ export default function SetBriefingOverlay({
             <div className="sb-section-title-wrap">
               <BarChart3 size={13} className="sb-section-icon" />
               <span className="sb-section-title">
-                {isPreparing ? "Calibrating Metric Thresholds" : "Diagnostic Baseline"}
+                {isPreparing ? 'Calibrating Metric Thresholds' : 'Diagnostic Baseline'}
               </span>
             </div>
             <span className="sb-section-sub">
-              {isPreparing ? `Targeting ${targetLabel}` : "Scored out of 10"}
+              {isPreparing ? `Targeting ${targetLabel}` : 'Scored out of 10'}
             </span>
           </div>
 
@@ -600,22 +612,20 @@ export default function SetBriefingOverlay({
             {/* Metric 1: Clarity (Sky) */}
             <div
               className={`sb-triad-card sb-triad-card--sky ${
-                targetKey === "clarity" ? "sb-triad-card--active" : ""
-              } ${isPreparing && targetKey === "clarity" ? "sb-triad-card--calibrating" : ""}`}
+                targetKey === 'clarity' ? 'sb-triad-card--active' : ''
+              } ${isPreparing && targetKey === 'clarity' ? 'sb-triad-card--calibrating' : ''}`}
             >
               <div className="sb-triad-head">
                 <div className="sb-triad-indicator">
                   <span className="sb-triad-dot sb-triad-dot--sky" />
                   <span className="sb-triad-label">Clarity</span>
                 </div>
-                {targetKey === "clarity" && (
+                {targetKey === 'clarity' && (
                   <span className="sb-mini-tag sb-mini-tag--rose">Focus</span>
                 )}
               </div>
               <div className="sb-triad-val-row">
-                <span className="sb-triad-val">
-                  {clarityScore != null ? clarityScore : "7.0"}
-                </span>
+                <span className="sb-triad-val">{clarityScore != null ? clarityScore : '7.0'}</span>
                 <span className="sb-triad-max">/ 10</span>
               </div>
               <div className="sb-mini-track">
@@ -631,21 +641,21 @@ export default function SetBriefingOverlay({
             {/* Metric 2: Accuracy / Correctness (Mint) */}
             <div
               className={`sb-triad-card sb-triad-card--mint ${
-                targetKey === "correctness" ? "sb-triad-card--active" : ""
-              } ${isPreparing && targetKey === "correctness" ? "sb-triad-card--calibrating" : ""}`}
+                targetKey === 'correctness' ? 'sb-triad-card--active' : ''
+              } ${isPreparing && targetKey === 'correctness' ? 'sb-triad-card--calibrating' : ''}`}
             >
               <div className="sb-triad-head">
                 <div className="sb-triad-indicator">
                   <span className="sb-triad-dot sb-triad-dot--mint" />
                   <span className="sb-triad-label">Accuracy</span>
                 </div>
-                {targetKey === "correctness" && (
+                {targetKey === 'correctness' && (
                   <span className="sb-mini-tag sb-mini-tag--rose">Focus</span>
                 )}
               </div>
               <div className="sb-triad-val-row">
                 <span className="sb-triad-val">
-                  {correctnessScore != null ? correctnessScore : "7.0"}
+                  {correctnessScore != null ? correctnessScore : '7.0'}
                 </span>
                 <span className="sb-triad-max">/ 10</span>
               </div>
@@ -662,21 +672,21 @@ export default function SetBriefingOverlay({
             {/* Metric 3: Depth / Completeness (Lilac) */}
             <div
               className={`sb-triad-card sb-triad-card--lilac ${
-                targetKey === "completeness" ? "sb-triad-card--active" : ""
-              } ${isPreparing && targetKey === "completeness" ? "sb-triad-card--calibrating" : ""}`}
+                targetKey === 'completeness' ? 'sb-triad-card--active' : ''
+              } ${isPreparing && targetKey === 'completeness' ? 'sb-triad-card--calibrating' : ''}`}
             >
               <div className="sb-triad-head">
                 <div className="sb-triad-indicator">
                   <span className="sb-triad-dot sb-triad-dot--lilac" />
                   <span className="sb-triad-label">Completeness</span>
                 </div>
-                {targetKey === "completeness" && (
+                {targetKey === 'completeness' && (
                   <span className="sb-mini-tag sb-mini-tag--rose">Focus</span>
                 )}
               </div>
               <div className="sb-triad-val-row">
                 <span className="sb-triad-val">
-                  {completenessScore != null ? completenessScore : "7.0"}
+                  {completenessScore != null ? completenessScore : '7.0'}
                 </span>
                 <span className="sb-triad-max">/ 10</span>
               </div>
@@ -738,7 +748,7 @@ export default function SetBriefingOverlay({
                 className="sb-btn-secondary"
                 onClick={isPreparing ? handleCancelPreparation : handleDismiss}
               >
-                {isPreparing ? "Cancel" : "Cancel"}
+                {isPreparing ? 'Cancel' : 'Cancel'}
               </button>
             )}
 
@@ -752,10 +762,7 @@ export default function SetBriefingOverlay({
                 aria-label={`Session calibration progress: ${prepProgress}%`}
               >
                 {/* Progress fill bar */}
-                <div
-                  className="sb-morphing-fill"
-                  style={{ width: `${prepProgress}%` }}
-                />
+                <div className="sb-morphing-fill" style={{ width: `${prepProgress}%` }} />
 
                 {/* Content row */}
                 <div className="sb-morphing-content">
@@ -806,5 +813,3 @@ export default function SetBriefingOverlay({
     </motion.div>
   );
 }
-
-

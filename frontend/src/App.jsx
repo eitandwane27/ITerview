@@ -1,21 +1,21 @@
-import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import LikertScale from "./pages/LikertScale";
-import MicTest from "./components/MicTest";
-import PreTest from "./pages/PreTest";
-import PostTest from "./pages/PostTest";
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import LikertScale from './pages/LikertScale';
+import MicTest from './components/MicTest';
+import PreTest from './pages/PreTest';
+import PostTest from './pages/PostTest';
 
-import MainSets from "./pages/MainSets";
-import Results from "./pages/Results";
-import AiAnalysisLoader from "./components/AiAnalysisLoader";
-import Set2TransitionOverlay from "./components/Set2TransitionOverlay";
-import SetBriefingOverlay from "./components/SetBriefingOverlay";
-import FluxDebugger from "./components/FluxDebugger";
-import LandingPage from "./pages/LandingPage";
-import "./App.css";
+import MainSets from './pages/MainSets';
+import Results from './pages/Results';
+import AiAnalysisLoader from './components/AiAnalysisLoader';
+import Set2TransitionOverlay from './components/Set2TransitionOverlay';
+import SetBriefingOverlay from './components/SetBriefingOverlay';
+import FluxDebugger from './components/FluxDebugger';
+import LandingPage from './pages/LandingPage';
+import './App.css';
 
 function App() {
   return (
@@ -45,21 +45,26 @@ function App() {
 
           <Route
             path="/test-loader"
-            element={
-              <AiAnalysisLoader
-                onComplete={() => console.log("Loader complete!")}
-              />
-            }
+            element={<AiAnalysisLoader onComplete={() => console.log('Loader complete!')} />}
           />
           <Route path="/interview" element={<MainSets />} />
           <Route path="/dev/interview" element={<MainSets />} />
           <Route path="/results" element={<Results />} />
 
           {/* Dev only route to preview Set 1 Mission Calibration Modal */}
-          <Route 
-            path="/dev/briefing" 
+          <Route
+            path="/dev/briefing"
             element={
-              <div style={{ width: "100vw", height: "100vh", background: "#09090B", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div
+                style={{
+                  width: '100vw',
+                  height: '100vh',
+                  background: '#09090B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 <SetBriefingOverlay
                   role="Frontend Developer"
                   focusArea="clarity"
@@ -69,24 +74,24 @@ function App() {
                       clarity: 6.5,
                       correctness: 8.5,
                       completeness: 7.2,
-                      lowestMetric: "clarity",
+                      lowestMetric: 'clarity',
                     },
                   }}
-                  onConfirm={() => alert("Launching Practice Studio!")}
-                  onClose={() => alert("Closed briefing modal!")}
+                  onConfirm={() => alert('Launching Practice Studio!')}
+                  onClose={() => alert('Closed briefing modal!')}
                 />
               </div>
-            } 
+            }
           />
 
           {/* Dev only route to preview Set 2 transition design */}
-          <Route 
-            path="/dev/set2-transition" 
+          <Route
+            path="/dev/set2-transition"
             element={
-              <div style={{ width: "100vw", height: "100vh", background: "#f8f9fa" }}>
-                <Set2TransitionOverlay onReady={() => console.log("Start Set 2!")} />
+              <div style={{ width: '100vw', height: '100vh', background: '#f8f9fa' }}>
+                <Set2TransitionOverlay onReady={() => console.log('Start Set 2!')} />
               </div>
-            } 
+            }
           />
 
           {/* Dev only — STT latency & accuracy testbench */}

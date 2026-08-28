@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Cpu,
   Sparkles,
@@ -9,67 +9,77 @@ import {
   ArrowRight,
   ShieldCheck,
   X,
-} from "lucide-react";
-import "./AiAnalysisLoader.css";
+} from 'lucide-react';
+import './AiAnalysisLoader.css';
 
 // ── Role & Weakness Registry (Mirrors backend/config/roleConfig.js) ─────────
 const ROLE_CONFIG_INFO = {
   frontend: {
-    label: "Frontend Developer",
-    scopeSnippet: "DOM Manipulation, CSS Cascade & State",
-    accent: "cyan",
+    label: 'Frontend Developer',
+    scopeSnippet: 'DOM Manipulation, CSS Cascade & State',
+    accent: 'cyan',
   },
   backend: {
-    label: "Backend Developer",
-    scopeSnippet: "REST APIs, Express Middleware & DB Queries",
-    accent: "purple",
+    label: 'Backend Developer',
+    scopeSnippet: 'REST APIs, Express Middleware & DB Queries',
+    accent: 'purple',
   },
   fullstack: {
-    label: "Fullstack Developer",
-    scopeSnippet: "Client-Server Flow, Auth & API Architecture",
-    accent: "cyan",
+    label: 'Fullstack Developer',
+    scopeSnippet: 'Client-Server Flow, Auth & API Architecture',
+    accent: 'cyan',
   },
 };
 
 const WEAKNESS_INFO = {
   focus_clarity: {
-    label: "Clarity & Structured Explanations",
-    tag: "Clarity Target",
-    accent: "cyan",
+    label: 'Clarity & Structured Explanations',
+    tag: 'Clarity Target',
+    accent: 'cyan',
   },
   focus_correctness: {
-    label: "Technical Precision & Accuracy",
-    tag: "Correctness Target",
-    accent: "green",
+    label: 'Technical Precision & Accuracy',
+    tag: 'Correctness Target',
+    accent: 'green',
   },
   focus_completeness: {
-    label: "Comprehensive Multi-Part Depth",
-    tag: "Completeness Target",
-    accent: "amber",
+    label: 'Comprehensive Multi-Part Depth',
+    tag: 'Completeness Target',
+    accent: 'amber',
   },
 };
 
 const FOCUS_INFO = {
-  auto: "AI Auto-Detect",
-  clarity: "Clarity Focus",
-  correctness: "Correctness Focus",
-  completeness: "Completeness Focus",
-  star: "STAR Behavioral",
+  auto: 'AI Auto-Detect',
+  clarity: 'Clarity Focus',
+  correctness: 'Correctness Focus',
+  completeness: 'Completeness Focus',
+  star: 'STAR Behavioral',
 };
 
 // ── 3C Metric display config ─────────────────────────────────────────────────
 const METRIC_CONFIG = {
-  clarity: { label: "Clarity", icon: "🎯", accentVar: "--aal-cyan", dimVar: "--aal-cyan-dim" },
-  correctness: { label: "Correctness", icon: "✅", accentVar: "--aal-green", dimVar: "--aal-green-dim" },
-  completeness: { label: "Completeness", icon: "📋", accentVar: "--aal-amber", dimVar: "--aal-amber-dim" },
+  clarity: { label: 'Clarity', icon: '🎯', accentVar: '--aal-cyan', dimVar: '--aal-cyan-dim' },
+  correctness: {
+    label: 'Correctness',
+    icon: '✅',
+    accentVar: '--aal-green',
+    dimVar: '--aal-green-dim',
+  },
+  completeness: {
+    label: 'Completeness',
+    icon: '📋',
+    accentVar: '--aal-amber',
+    dimVar: '--aal-amber-dim',
+  },
 };
 
 export default function AiAnalysisLoader({
   setNumber = 1,
-  role = "frontend",
-  weakness = "focus_completeness",
-  focusArea = "",
-  statusMessage = "",
+  role = 'frontend',
+  weakness = 'focus_completeness',
+  focusArea = '',
+  statusMessage = '',
   isReady = false,
   error = null,
   onComplete,
@@ -90,7 +100,7 @@ export default function AiAnalysisLoader({
   // Modal behavior: lock background scroll while the synthesis overlay is up
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = prevOverflow;
     };
@@ -99,17 +109,17 @@ export default function AiAnalysisLoader({
   // Focus trap + keyboard shortcuts (Escape to close, Enter to proceed)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && onClose) {
+      if (e.key === 'Escape' && onClose) {
         onClose();
         return;
       }
-      if (e.key === "Enter" && currentStep >= steps.length && onConfirm) {
+      if (e.key === 'Enter' && currentStep >= steps.length && onConfirm) {
         onConfirm();
         return;
       }
 
       // Tab focus trap: keep focus within the modal
-      if (e.key === "Tab" && modalRef.current) {
+      if (e.key === 'Tab' && modalRef.current) {
         const focusable = modalRef.current.querySelectorAll(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
@@ -130,62 +140,56 @@ export default function AiAnalysisLoader({
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     // Auto-focus the close button or modal root when mounted
     const focusTarget = closeButtonRef.current || modalRef.current;
     focusTarget?.focus();
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose, onConfirm, currentStep]);
 
   // Normalize role and weakness inputs
-  const roleKey = (role || "frontend").toLowerCase().replace(/\s+/g, "");
-  const activeRole =
-    ROLE_CONFIG_INFO[roleKey] ||
-    ROLE_CONFIG_INFO.frontend;
+  const roleKey = (role || 'frontend').toLowerCase().replace(/\s+/g, '');
+  const activeRole = ROLE_CONFIG_INFO[roleKey] || ROLE_CONFIG_INFO.frontend;
 
-  const weaknessKey = (weakness || "focus_completeness")
-    .toLowerCase()
-    .includes("clarity")
-    ? "focus_clarity"
-    : (weakness || "").toLowerCase().includes("correct")
-    ? "focus_correctness"
-    : "focus_completeness";
+  const weaknessKey = (weakness || 'focus_completeness').toLowerCase().includes('clarity')
+    ? 'focus_clarity'
+    : (weakness || '').toLowerCase().includes('correct')
+      ? 'focus_correctness'
+      : 'focus_completeness';
   const activeWeakness = WEAKNESS_INFO[weaknessKey];
 
-  const focusKey = (focusArea || "").toLowerCase();
+  const focusKey = (focusArea || '').toLowerCase();
   const focusLabel = FOCUS_INFO[focusKey] || null;
   const focusSuffix =
-    focusLabel && focusKey !== "auto"
-      ? ` Session focus: ${focusLabel.replace(" Focus", "")}.`
-      : "";
+    focusLabel && focusKey !== 'auto' ? ` Session focus: ${focusLabel.replace(' Focus', '')}.` : '';
 
   // Dynamic telemetry steps grounded in roleConfig.js
   const steps = useMemo(() => {
     if (setNumber === 2) {
       return [
         {
-          title: "Analyzing Technical Mastery Requirements",
-          detail: "Configuring algorithm, data flow, and architecture prompts",
+          title: 'Analyzing Technical Mastery Requirements',
+          detail: 'Configuring algorithm, data flow, and architecture prompts',
         },
         {
           title: `Targeting Core Technical Domains (${activeRole.label})`,
           detail: `Focusing on: ${activeRole.scopeSnippet}`,
         },
         {
-          title: "Calibrating Difficulty & Rubric Thresholds",
-          detail: "Setting precision and depth scoring criteria",
+          title: 'Calibrating Difficulty & Rubric Thresholds',
+          detail: 'Setting precision and depth scoring criteria',
         },
         {
-          title: "Synthesizing Set 2 Questions & Luna Voice Audio",
-          detail: "Compiling technical question audio buffer for instant start",
+          title: 'Synthesizing Set 2 Questions & Luna Voice Audio',
+          detail: 'Compiling technical question audio buffer for instant start',
         },
       ];
     }
     return [
       {
-        title: "Evaluating Baseline Audio & 3C Scores",
-        detail: "Processing pre-test speech rhythm, syntax, and phrasing",
+        title: 'Evaluating Baseline Audio & 3C Scores',
+        detail: 'Processing pre-test speech rhythm, syntax, and phrasing',
       },
       {
         title: `Calibrating Weakness Engine (${activeWeakness.tag})`,
@@ -196,8 +200,8 @@ export default function AiAnalysisLoader({
         detail: `Filtering: ${activeRole.scopeSnippet}`,
       },
       {
-        title: "Synthesizing Set 1 Questions & Luna Voice Audio",
-        detail: "Compiling personalized question audio buffer for instant start",
+        title: 'Synthesizing Set 1 Questions & Luna Voice Audio',
+        detail: 'Compiling personalized question audio buffer for instant start',
       },
     ];
   }, [setNumber, activeRole, activeWeakness]);
@@ -253,15 +257,11 @@ export default function AiAnalysisLoader({
     return () => timers.forEach(clearTimeout);
   }, [isReady, steps.length, onComplete, isTimedOut, error]);
 
-  const progressPercent = Math.min(
-    100,
-    Math.round((currentStep / steps.length) * 100)
-  );
+  const progressPercent = Math.min(100, Math.round((currentStep / steps.length) * 100));
 
   // ── 3C Diagnostic Baseline helpers ──────────────────────────────────────────
   const has3C =
-    diagnosticData?.threeCBreakdown &&
-    typeof diagnosticData.threeCBreakdown.clarity === "number";
+    diagnosticData?.threeCBreakdown && typeof diagnosticData.threeCBreakdown.clarity === 'number';
 
   const handleBackdropClick = (e) => {
     // Only dismiss on direct backdrop click, not on card clicks bubbling up
@@ -281,8 +281,8 @@ export default function AiAnalysisLoader({
       onClick={handleBackdropClick}
       // Full-overlay fade so the dark studio never hard-cuts on session start/end.
       initial={{ opacity: 0 }}
-      animate={{ opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }}
-      exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
+      animate={{ opacity: 1, transition: { duration: 0.4, ease: 'easeOut' } }}
+      exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeIn' } }}
     >
       {/* Ambient Blueprint & Radial Glow */}
       <div className="aal-ambient-glow" aria-hidden="true" />
@@ -313,17 +313,11 @@ export default function AiAnalysisLoader({
               </span>
             )}
             <span
-              className={`aal-status-pill ${
-                error || isTimedOut ? "warning" : "active"
-              }`}
+              className={`aal-status-pill ${error || isTimedOut ? 'warning' : 'active'}`}
               aria-live="polite"
             >
               <span className="aal-pulse-dot" aria-hidden="true" />
-              {error
-                ? "Generation Paused"
-                : isTimedOut
-                ? "Awaiting Signal"
-                : "DeepSeek Active"}
+              {error ? 'Generation Paused' : isTimedOut ? 'Awaiting Signal' : 'DeepSeek Active'}
             </span>
 
             {/* Close button — only shown when a dismiss handler is provided */}
@@ -364,11 +358,11 @@ export default function AiAnalysisLoader({
             <h2 className="aal-main-title" id="aal-modal-title">
               {currentStep >= steps.length
                 ? setNumber === 2
-                  ? "Set 2 Ready for Technical Interview"
-                  : "Set 1 Ready for Interview"
+                  ? 'Set 2 Ready for Technical Interview'
+                  : 'Set 1 Ready for Interview'
                 : setNumber === 2
-                ? "Generating Set 2 Technical Questions"
-                : "Personalizing Set 1 Interview"}
+                  ? 'Generating Set 2 Technical Questions'
+                  : 'Personalizing Set 1 Interview'}
             </h2>
             <p className="aal-subtitle">
               {statusMessage ||
@@ -382,17 +376,13 @@ export default function AiAnalysisLoader({
         {/* ── Optional 3C Diagnostic Baseline Triad ── */}
         {has3C && (
           <div className="aal-3c-triad" aria-label="3C Diagnostic Baseline">
-            {["clarity", "correctness", "completeness"].map((metric) => {
+            {['clarity', 'correctness', 'completeness'].map((metric) => {
               const cfg = METRIC_CONFIG[metric];
               const score = diagnosticData.threeCBreakdown[metric];
-              const isLowest =
-                diagnosticData.threeCBreakdown.lowestMetric === metric;
+              const isLowest = diagnosticData.threeCBreakdown.lowestMetric === metric;
               const pct = Math.round((score / 10) * 100);
               return (
-                <div
-                  key={metric}
-                  className={`aal-3c-card ${isLowest ? "aal-3c-card--focus" : ""}`}
-                >
+                <div key={metric} className={`aal-3c-card ${isLowest ? 'aal-3c-card--focus' : ''}`}>
                   <div className="aal-3c-card-header">
                     <span className="aal-3c-icon" aria-hidden="true">
                       {cfg.icon}
@@ -436,9 +426,7 @@ export default function AiAnalysisLoader({
               return (
                 <div
                   key={i}
-                  className={`aal-track-segment ${
-                    isDone ? "done" : isCurrent ? "active" : ""
-                  }`}
+                  className={`aal-track-segment ${isDone ? 'done' : isCurrent ? 'active' : ''}`}
                 />
               );
             })}
@@ -454,7 +442,7 @@ export default function AiAnalysisLoader({
               <li
                 key={i}
                 className={`aal-stage-row ${
-                  isDone ? "is-done" : isCurrent ? "is-active" : "is-pending"
+                  isDone ? 'is-done' : isCurrent ? 'is-active' : 'is-pending'
                 }`}
               >
                 <div className="aal-stage-indicator" aria-hidden="true">
@@ -493,16 +481,14 @@ export default function AiAnalysisLoader({
             <motion.div
               className="aal-timeout-banner"
               initial={{ opacity: 0, height: 0, y: 10 }}
-              animate={{ opacity: 1, height: "auto", y: 0 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
             >
               <div className="aal-timeout-content">
                 <AlertCircle className="aal-timeout-icon" aria-hidden="true" />
                 <div className="aal-timeout-text">
-                  <strong>
-                    {error ? "Synthesis Error" : "Backend Generation in Progress"}
-                  </strong>
+                  <strong>{error ? 'Synthesis Error' : 'Backend Generation in Progress'}</strong>
                   <p>
                     {error ||
                       `AI question generation is taking longer than usual (~${elapsedSec}s elapsed). You can wait for the socket stream or proceed directly.`}
@@ -512,11 +498,7 @@ export default function AiAnalysisLoader({
 
               <div className="aal-timeout-actions">
                 {onRetry && (
-                  <button
-                    type="button"
-                    onClick={onRetry}
-                    className="aal-btn-retry"
-                  >
+                  <button type="button" onClick={onRetry} className="aal-btn-retry">
                     <RefreshCw className="aal-btn-icon" />
                     Retry Generation
                   </button>
@@ -547,8 +529,7 @@ export default function AiAnalysisLoader({
           <div className="aal-step-meta" aria-live="polite">
             <span className="aal-elapsed-tag">~{elapsedSec}s</span>
             <span className="aal-step-tag">
-              Stage {Math.min(currentStep, steps.length)} of {steps.length} (
-              {progressPercent}%)
+              Stage {Math.min(currentStep, steps.length)} of {steps.length} ({progressPercent}%)
             </span>
             {onClose && (
               <span className="aal-shortcut-hint" aria-hidden="true">

@@ -11,38 +11,39 @@
 // 5. Turn History & Analytics (Turn count, confidence scores, duration)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import "./FluxDebugger.css";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import './FluxDebugger.css';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-const WS_BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000")
-  .replace(/^http/, "ws") + "/ws/dev-stt-test";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const WS_BACKEND_URL =
+  (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000').replace(/^http/, 'ws') +
+  '/ws/dev-stt-test';
 const SAMPLE_RATE = 16000;
 const BUFFER_SIZE = 2048;
 
 export default function FluxDebugger() {
   // ── Mode & Settings State ──────────────────────────────────────────────────
-  const [mode, setMode] = useState("direct"); // "direct" | "backend"
+  const [mode, setMode] = useState('direct'); // "direct" | "backend"
   const [eotThreshold, setEotThreshold] = useState(0.7);
   const [eotTimeoutMs, setEotTimeoutMs] = useState(5000);
 
   // ── Connection & Audio State ───────────────────────────────────────────────
-  const [status, setStatus] = useState("disconnected"); // disconnected | connecting | connected | error
+  const [status, setStatus] = useState('disconnected'); // disconnected | connecting | connected | error
   const [isRecording, setIsRecording] = useState(false);
   const [volume, setVolume] = useState(0);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState('');
 
   // ── Live Turn State ────────────────────────────────────────────────────────
-  const [turnState, setTurnState] = useState("IDLE"); // IDLE | SPEAKING | END_OF_TURN
+  const [turnState, setTurnState] = useState('IDLE'); // IDLE | SPEAKING | END_OF_TURN
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
   const [lastTurnConfidence, setLastTurnConfidence] = useState(null);
-  const [partialTranscript, setPartialTranscript] = useState("");
-  const [liveTurnText, setLiveTurnText] = useState("");
+  const [partialTranscript, setPartialTranscript] = useState('');
+  const [liveTurnText, setLiveTurnText] = useState('');
 
   // ── Event Log State ────────────────────────────────────────────────────────
   const [events, setEvents] = useState([]);
-  const [filterType, setFilterType] = useState("ALL"); // ALL | StartOfTurn | EndOfTurn | Interim | Final | Error
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState('ALL'); // ALL | StartOfTurn | EndOfTurn | Interim | Final | Error
+  const [searchQuery, setSearchQuery] = useState('');
   const [expandedEventIds, setExpandedEventIds] = useState(new Set());
 
   // ── History & Metrics State ────────────────────────────────────────────────
@@ -57,7 +58,7 @@ export default function FluxDebugger() {
   const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
   const turnStartTimeRef = useRef(null);
-  const currentInterimRef = useRef("");
+  const currentInterimRef = useRef('');
   const eventIdCounterRef = useRef(1);
 
   // ── Add Event Helper ───────────────────────────────────────────────────────
@@ -65,7 +66,13 @@ export default function FluxDebugger() {
     const id = eventIdCounterRef.current++;
     const newEntry = {
       id,
-      timestamp: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit", fractionalSecondDigits: 3 }),
+      timestamp: new Date().toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3,
+      }),
       type: eventType,
       label,
       payload,
@@ -87,7 +94,7 @@ export default function FluxDebugger() {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
       audioCtxRef.current.close();
       audioCtxRef.current = null;
     }
@@ -100,9 +107,9 @@ export default function FluxDebugger() {
       wsRef.current.close();
       wsRef.current = null;
     }
-    setStatus("disconnected");
+    setStatus('disconnected');
     setIsRecording(false);
-    setTurnState("IDLE");
+    setTurnState('IDLE');
   }, []);
 
   // ── Start Audio Pipeline ───────────────────────────────────────────────────
@@ -158,130 +165,141 @@ export default function FluxDebugger() {
   }, []);
 
   // ── Handle Incoming Raw Deepgram or Backend Payload ─────────────────────────
-  const handleFluxMessage = useCallback((msg) => {
-    // 1. Backend wrapped flux_event
-    if (msg.type === "flux_event" && msg.event) {
-      msg = msg.event;
-    }
-
-    // 2. StartOfTurn
-    if (msg.event === "StartOfTurn") {
-      const turnIdx = msg.turn_index ?? currentTurnIndex + 1;
-      setCurrentTurnIndex(turnIdx);
-      setTurnState("SPEAKING");
-      setLiveTurnText("");
-      setPartialTranscript("");
-      currentInterimRef.current = "";
-      turnStartTimeRef.current = Date.now();
-      addEventLog("StartOfTurn", `🎙️ StartOfTurn (Turn ${turnIdx})`, msg);
-      return;
-    }
-
-    // 3. EndOfTurn
-    if (msg.event === "EndOfTurn") {
-      const turnIdx = msg.turn_index ?? currentTurnIndex;
-      const confidence = msg.end_of_turn_confidence ?? null;
-      setLastTurnConfidence(confidence);
-      setTurnState("END_OF_TURN");
-
-      const text = (msg.transcript || currentInterimRef.current || "").trim();
-      const durationMs = turnStartTimeRef.current ? Date.now() - turnStartTimeRef.current : 0;
-      const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
-
-      if (text) {
-        setCompletedTurns((prev) => [
-          {
-            turnIndex: turnIdx,
-            text,
-            confidence,
-            wordCount,
-            durationMs,
-            timestamp: new Date().toLocaleTimeString(),
-          },
-          ...prev,
-        ]);
+  const handleFluxMessage = useCallback(
+    (msg) => {
+      // 1. Backend wrapped flux_event
+      if (msg.type === 'flux_event' && msg.event) {
+        msg = msg.event;
       }
 
-      setLiveTurnText(text);
-      setPartialTranscript("");
-      currentInterimRef.current = "";
+      // 2. StartOfTurn
+      if (msg.event === 'StartOfTurn') {
+        const turnIdx = msg.turn_index ?? currentTurnIndex + 1;
+        setCurrentTurnIndex(turnIdx);
+        setTurnState('SPEAKING');
+        setLiveTurnText('');
+        setPartialTranscript('');
+        currentInterimRef.current = '';
+        turnStartTimeRef.current = Date.now();
+        addEventLog('StartOfTurn', `🎙️ StartOfTurn (Turn ${turnIdx})`, msg);
+        return;
+      }
 
-      addEventLog("EndOfTurn", `🔇 EndOfTurn (Turn ${turnIdx}, Conf: ${confidence ?? "N/A"})`, msg);
+      // 3. EndOfTurn
+      if (msg.event === 'EndOfTurn') {
+        const turnIdx = msg.turn_index ?? currentTurnIndex;
+        const confidence = msg.end_of_turn_confidence ?? null;
+        setLastTurnConfidence(confidence);
+        setTurnState('END_OF_TURN');
 
-      setTimeout(() => {
-        setTurnState("IDLE");
-      }, 1500);
-      return;
-    }
+        const text = (msg.transcript || currentInterimRef.current || '').trim();
+        const durationMs = turnStartTimeRef.current ? Date.now() - turnStartTimeRef.current : 0;
+        const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
 
-    // 4. Standard backend transcript object
-    if (msg.type === "transcript") {
-      if (msg.isFinal) {
-        if (msg.text) {
+        if (text) {
           setCompletedTurns((prev) => [
             {
-              turnIndex: currentTurnIndex || prev.length + 1,
-              text: msg.text,
-              confidence: null,
-              wordCount: msg.text.split(/\s+/).filter(Boolean).length,
-              durationMs: turnStartTimeRef.current ? Date.now() - turnStartTimeRef.current : 0,
+              turnIndex: turnIdx,
+              text,
+              confidence,
+              wordCount,
+              durationMs,
               timestamp: new Date().toLocaleTimeString(),
             },
             ...prev,
           ]);
-          setLiveTurnText(msg.text);
-          setPartialTranscript("");
-          addEventLog("Final", `✅ Backend Final: "${msg.text}"`, msg);
+        }
+
+        setLiveTurnText(text);
+        setPartialTranscript('');
+        currentInterimRef.current = '';
+
+        addEventLog(
+          'EndOfTurn',
+          `🔇 EndOfTurn (Turn ${turnIdx}, Conf: ${confidence ?? 'N/A'})`,
+          msg
+        );
+
+        setTimeout(() => {
+          setTurnState('IDLE');
+        }, 1500);
+        return;
+      }
+
+      // 4. Standard backend transcript object
+      if (msg.type === 'transcript') {
+        if (msg.isFinal) {
+          if (msg.text) {
+            setCompletedTurns((prev) => [
+              {
+                turnIndex: currentTurnIndex || prev.length + 1,
+                text: msg.text,
+                confidence: null,
+                wordCount: msg.text.split(/\s+/).filter(Boolean).length,
+                durationMs: turnStartTimeRef.current ? Date.now() - turnStartTimeRef.current : 0,
+                timestamp: new Date().toLocaleTimeString(),
+              },
+              ...prev,
+            ]);
+            setLiveTurnText(msg.text);
+            setPartialTranscript('');
+            addEventLog('Final', `✅ Backend Final: "${msg.text}"`, msg);
+          }
+        } else {
+          setPartialTranscript(msg.text || '');
+          currentInterimRef.current = msg.text || '';
+          addEventLog('Interim', `💬 Backend Interim: "${msg.text}"`, msg);
+        }
+        return;
+      }
+
+      // 5. Direct Deepgram Turn Interim / Final
+      const text = msg.transcript ?? msg?.channel?.alternatives?.[0]?.transcript ?? '';
+      if (text) {
+        const isFinal = msg.is_final === true;
+        if (!isFinal) {
+          setPartialTranscript(text);
+          currentInterimRef.current = text;
+          addEventLog('Interim', `💬 Interim: "${text}"`, msg);
+        } else {
+          setLiveTurnText(text);
+          setPartialTranscript('');
+          currentInterimRef.current = text;
+          addEventLog('Final', `✅ Final: "${text}"`, msg);
         }
       } else {
-        setPartialTranscript(msg.text || "");
-        currentInterimRef.current = msg.text || "";
-        addEventLog("Interim", `💬 Backend Interim: "${msg.text}"`, msg);
+        addEventLog('Payload', `📦 Raw Message (${msg.type || msg.event || 'unknown'})`, msg);
       }
-      return;
-    }
-
-    // 5. Direct Deepgram Turn Interim / Final
-    const text = msg.transcript ?? msg?.channel?.alternatives?.[0]?.transcript ?? "";
-    if (text) {
-      const isFinal = msg.is_final === true;
-      if (!isFinal) {
-        setPartialTranscript(text);
-        currentInterimRef.current = text;
-        addEventLog("Interim", `💬 Interim: "${text}"`, msg);
-      } else {
-        setLiveTurnText(text);
-        setPartialTranscript("");
-        currentInterimRef.current = text;
-        addEventLog("Final", `✅ Final: "${text}"`, msg);
-      }
-    } else {
-      addEventLog("Payload", `📦 Raw Message (${msg.type || msg.event || "unknown"})`, msg);
-    }
-  }, [addEventLog, currentTurnIndex]);
+    },
+    [addEventLog, currentTurnIndex]
+  );
 
   // ── Start Recording / Connection ──────────────────────────────────────────
   const startSession = async () => {
-    setErrorMessage("");
-    setStatus("connecting");
-    addEventLog("System", `Connecting in ${mode.toUpperCase()} mode…`, { mode, eotThreshold, eotTimeoutMs });
+    setErrorMessage('');
+    setStatus('connecting');
+    addEventLog('System', `Connecting in ${mode.toUpperCase()} mode…`, {
+      mode,
+      eotThreshold,
+      eotTimeoutMs,
+    });
 
     try {
-      if (mode === "direct") {
+      if (mode === 'direct') {
         // Fetch Token from Backend
         const tokenRes = await fetch(`${BACKEND_URL}/api/deepgram/token`);
-        if (!tokenRes.ok) throw new Error("Failed to retrieve Deepgram token from server");
+        if (!tokenRes.ok) throw new Error('Failed to retrieve Deepgram token from server');
         const { token } = await tokenRes.json();
 
         const url = `wss://api.deepgram.com/v2/listen?model=flux-general-en&eot_threshold=${eotThreshold}&eot_timeout_ms=${eotTimeoutMs}&encoding=linear16&sample_rate=${SAMPLE_RATE}`;
-        const ws = new WebSocket(url, ["token", token]);
-        ws.binaryType = "arraybuffer";
+        const ws = new WebSocket(url, ['token', token]);
+        ws.binaryType = 'arraybuffer';
         wsRef.current = ws;
 
         ws.onopen = async () => {
-          setStatus("connected");
+          setStatus('connected');
           setIsRecording(true);
-          addEventLog("System", "✅ Direct WS Connected to Deepgram Flux", { url });
+          addEventLog('System', '✅ Direct WS Connected to Deepgram Flux', { url });
 
           await startAudioPipeline((chunk) => {
             if (ws.readyState === WebSocket.OPEN) {
@@ -295,33 +313,36 @@ export default function FluxDebugger() {
             const msg = JSON.parse(e.data);
             handleFluxMessage(msg);
           } catch (err) {
-            console.error("JSON parse err:", err);
+            console.error('JSON parse err:', err);
           }
         };
 
         ws.onerror = (e) => {
-          setStatus("error");
-          setErrorMessage("Direct Deepgram WebSocket connection error");
-          addEventLog("Error", "❌ WebSocket Error", e);
+          setStatus('error');
+          setErrorMessage('Direct Deepgram WebSocket connection error');
+          addEventLog('Error', '❌ WebSocket Error', e);
         };
 
         ws.onclose = (e) => {
-          setStatus("disconnected");
+          setStatus('disconnected');
           setIsRecording(false);
           cleanupAudio();
-          addEventLog("System", `🔌 WS Closed (code ${e.code})`, { code: e.code, reason: e.reason });
+          addEventLog('System', `🔌 WS Closed (code ${e.code})`, {
+            code: e.code,
+            reason: e.reason,
+          });
         };
       } else {
         // Backend Mode
         const ws = new WebSocket(WS_BACKEND_URL);
-        ws.binaryType = "arraybuffer";
+        ws.binaryType = 'arraybuffer';
         wsRef.current = ws;
 
         ws.onopen = async () => {
-          setStatus("connected");
+          setStatus('connected');
           setIsRecording(true);
-          ws.send(JSON.stringify({ type: "start_recording" }));
-          addEventLog("System", "✅ Connected to Backend Dev STT Socket", { url: WS_BACKEND_URL });
+          ws.send(JSON.stringify({ type: 'start_recording' }));
+          addEventLog('System', '✅ Connected to Backend Dev STT Socket', { url: WS_BACKEND_URL });
 
           await startAudioPipeline((chunk) => {
             if (ws.readyState === WebSocket.OPEN) {
@@ -333,47 +354,47 @@ export default function FluxDebugger() {
         ws.onmessage = (e) => {
           try {
             const msg = JSON.parse(e.data);
-            if (msg.type === "error") {
+            if (msg.type === 'error') {
               setErrorMessage(msg.message);
-              addEventLog("Error", `❌ Backend STT Error: ${msg.message}`, msg);
+              addEventLog('Error', `❌ Backend STT Error: ${msg.message}`, msg);
             } else {
               handleFluxMessage(msg);
             }
           } catch (err) {
-            console.error("JSON parse err:", err);
+            console.error('JSON parse err:', err);
           }
         };
 
         ws.onerror = (e) => {
-          setStatus("error");
-          setErrorMessage("Backend WebSocket error");
-          addEventLog("Error", "❌ Backend WS Error", e);
+          setStatus('error');
+          setErrorMessage('Backend WebSocket error');
+          addEventLog('Error', '❌ Backend WS Error', e);
         };
 
         ws.onclose = (e) => {
-          setStatus("disconnected");
+          setStatus('disconnected');
           setIsRecording(false);
           cleanupAudio();
-          addEventLog("System", `🔌 Backend WS Closed (code ${e.code})`, { code: e.code });
+          addEventLog('System', `🔌 Backend WS Closed (code ${e.code})`, { code: e.code });
         };
       }
     } catch (err) {
       console.error(err);
-      setStatus("error");
-      setErrorMessage(err.message || "Failed to start test session");
-      addEventLog("Error", `❌ ${err.message}`, err);
+      setStatus('error');
+      setErrorMessage(err.message || 'Failed to start test session');
+      addEventLog('Error', `❌ ${err.message}`, err);
       cleanupAudio();
     }
   };
 
   // ── Stop Recording ─────────────────────────────────────────────────────────
   const stopSession = () => {
-    if (mode === "backend" && wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "stop_recording" }));
+    if (mode === 'backend' && wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'stop_recording' }));
     }
     cleanupAudio();
     disconnectWs();
-    addEventLog("System", "⏹ Session Stopped", {});
+    addEventLog('System', '⏹ Session Stopped', {});
   };
 
   // ── Toggle JSON Expansion ──────────────────────────────────────────────────
@@ -395,13 +416,13 @@ export default function FluxDebugger() {
   const clearHistory = () => {
     setCompletedTurns([]);
     setCurrentTurnIndex(0);
-    setLiveTurnText("");
-    setPartialTranscript("");
+    setLiveTurnText('');
+    setPartialTranscript('');
   };
 
   // ── Filtered Events ────────────────────────────────────────────────────────
   const filteredEvents = events.filter((e) => {
-    if (filterType !== "ALL" && e.type !== filterType) return false;
+    if (filterType !== 'ALL' && e.type !== filterType) return false;
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       const labelMatch = e.label.toLowerCase().includes(query);
@@ -416,10 +437,11 @@ export default function FluxDebugger() {
   const turnsWithConf = completedTurns.filter((t) => t.confidence !== null);
   const avgConfidence = turnsWithConf.length
     ? (turnsWithConf.reduce((acc, t) => acc + t.confidence, 0) / turnsWithConf.length).toFixed(2)
-    : "—";
+    : '—';
   const avgDuration = totalTurns
-    ? (completedTurns.reduce((acc, t) => acc + t.durationMs, 0) / totalTurns / 1000).toFixed(1) + "s"
-    : "—";
+    ? (completedTurns.reduce((acc, t) => acc + t.durationMs, 0) / totalTurns / 1000).toFixed(1) +
+      's'
+    : '—';
   const totalWords = completedTurns.reduce((acc, t) => acc + t.wordCount, 0);
 
   // Clean up on unmount
@@ -443,19 +465,19 @@ export default function FluxDebugger() {
           {/* Mode Switcher */}
           <div className="fd-mode-toggle">
             <button
-              className={`fd-mode-btn ${mode === "direct" ? "active" : ""}`}
+              className={`fd-mode-btn ${mode === 'direct' ? 'active' : ''}`}
               onClick={() => {
                 if (isRecording) stopSession();
-                setMode("direct");
+                setMode('direct');
               }}
             >
               Direct Browser WS
             </button>
             <button
-              className={`fd-mode-btn ${mode === "backend" ? "active" : ""}`}
+              className={`fd-mode-btn ${mode === 'backend' ? 'active' : ''}`}
               onClick={() => {
                 if (isRecording) stopSession();
-                setMode("backend");
+                setMode('backend');
               }}
             >
               Backend Socket WS
@@ -484,12 +506,14 @@ export default function FluxDebugger() {
       {errorMessage && (
         <div className="fd-banner fd-banner-error">
           <span>⚠️ {errorMessage}</span>
-          <button className="fd-btn-icon" onClick={() => setErrorMessage("")}>✕</button>
+          <button className="fd-btn-icon" onClick={() => setErrorMessage('')}>
+            ✕
+          </button>
         </div>
       )}
 
       {/* ── Tuning Parameters (Direct Mode) ────────────────────────────────── */}
-      {mode === "direct" && (
+      {mode === 'direct' && (
         <div className="fd-tuning-panel">
           <div className="fd-tuning-title">
             <span>⚙️ Deepgram Flux EOT Parameters</span>
@@ -511,7 +535,9 @@ export default function FluxDebugger() {
                 onChange={(e) => setEotThreshold(parseFloat(e.target.value))}
                 disabled={isRecording}
               />
-              <span className="fd-param-desc">Lower (0.3-0.5) = quicker pause detection | Higher (0.8-0.9) = stricter silence wait</span>
+              <span className="fd-param-desc">
+                Lower (0.3-0.5) = quicker pause detection | Higher (0.8-0.9) = stricter silence wait
+              </span>
             </div>
 
             <div className="fd-param-group">
@@ -543,7 +569,11 @@ export default function FluxDebugger() {
             <div className="fd-card-header">
               <h3>Turn State Inspector</h3>
               <span className={`fd-turn-badge fd-turn-${turnState}`}>
-                {turnState === "SPEAKING" ? "🎙️ SPEAKING" : turnState === "END_OF_TURN" ? "🔇 END OF TURN" : "💤 IDLE"}
+                {turnState === 'SPEAKING'
+                  ? '🎙️ SPEAKING'
+                  : turnState === 'END_OF_TURN'
+                    ? '🔇 END OF TURN'
+                    : '💤 IDLE'}
               </span>
             </div>
 
@@ -554,7 +584,9 @@ export default function FluxDebugger() {
               </div>
               <div className="fd-metric-mini">
                 <span className="fd-metric-label">Last EOT Confidence</span>
-                <span className="fd-metric-val">{lastTurnConfidence !== null ? lastTurnConfidence : "—"}</span>
+                <span className="fd-metric-val">
+                  {lastTurnConfidence !== null ? lastTurnConfidence : '—'}
+                </span>
               </div>
             </div>
 
@@ -569,7 +601,7 @@ export default function FluxDebugger() {
                   className="fd-vol-fill"
                   style={{
                     width: `${volume}%`,
-                    background: volume > 70 ? "#ef4444" : volume > 20 ? "#10b981" : "#6366f1",
+                    background: volume > 70 ? '#ef4444' : volume > 20 ? '#10b981' : '#6366f1',
                   }}
                 />
               </div>
@@ -583,7 +615,9 @@ export default function FluxDebugger() {
                 {partialTranscript ? (
                   <span className="fd-text-interim">{partialTranscript}</span>
                 ) : (
-                  !liveTurnText && <span className="fd-placeholder">Speak to begin transcribing…</span>
+                  !liveTurnText && (
+                    <span className="fd-placeholder">Speak to begin transcribing…</span>
+                  )
                 )}
               </div>
             </div>
@@ -593,7 +627,9 @@ export default function FluxDebugger() {
           <div className="fd-card fd-history-card">
             <div className="fd-card-header">
               <h3>Completed Turn History ({completedTurns.length})</h3>
-              <button className="fd-btn-sm fd-btn-ghost" onClick={clearHistory}>Clear History</button>
+              <button className="fd-btn-sm fd-btn-ghost" onClick={clearHistory}>
+                Clear History
+              </button>
             </div>
 
             {/* Metrics Header */}
@@ -626,11 +662,13 @@ export default function FluxDebugger() {
                       <span className="fd-turn-num">Turn #{turn.turnIndex}</span>
                       <span className="fd-turn-time">{turn.timestamp}</span>
                       {turn.confidence !== null && (
-                        <span className={`fd-conf-pill ${turn.confidence > 0.7 ? "high" : "low"}`}>
+                        <span className={`fd-conf-pill ${turn.confidence > 0.7 ? 'high' : 'low'}`}>
                           EOT Conf: {turn.confidence}
                         </span>
                       )}
-                      <span className="fd-duration-pill">{(turn.durationMs / 1000).toFixed(1)}s</span>
+                      <span className="fd-duration-pill">
+                        {(turn.durationMs / 1000).toFixed(1)}s
+                      </span>
                     </div>
                     <div className="fd-turn-item-text">"{turn.text}"</div>
                   </div>
@@ -645,16 +683,18 @@ export default function FluxDebugger() {
           <div className="fd-card fd-events-card">
             <div className="fd-card-header">
               <h3>Flux Event Stream Log</h3>
-              <button className="fd-btn-sm fd-btn-ghost" onClick={clearLogs}>Clear Log</button>
+              <button className="fd-btn-sm fd-btn-ghost" onClick={clearLogs}>
+                Clear Log
+              </button>
             </div>
 
             {/* Event Filter & Search Bar */}
             <div className="fd-filter-bar">
               <div className="fd-filter-pills">
-                {["ALL", "StartOfTurn", "EndOfTurn", "Interim", "Final", "Error"].map((ft) => (
+                {['ALL', 'StartOfTurn', 'EndOfTurn', 'Interim', 'Final', 'Error'].map((ft) => (
                   <button
                     key={ft}
-                    className={`fd-pill ${filterType === ft ? "active" : ""}`}
+                    className={`fd-pill ${filterType === ft ? 'active' : ''}`}
                     onClick={() => setFilterType(ft)}
                   >
                     {ft}
@@ -684,12 +724,14 @@ export default function FluxDebugger() {
                         <span className="fd-event-time">{item.timestamp}</span>
                         <span className={`fd-event-type-badge ${item.type}`}>{item.type}</span>
                         <span className="fd-event-label">{item.label}</span>
-                        <span className="fd-expand-icon">{isExpanded ? "▼" : "▶"}</span>
+                        <span className="fd-expand-icon">{isExpanded ? '▼' : '▶'}</span>
                       </div>
 
                       {isExpanded && (
                         <div className="fd-event-json-wrap">
-                          <pre className="fd-json-code">{JSON.stringify(item.payload, null, 2)}</pre>
+                          <pre className="fd-json-code">
+                            {JSON.stringify(item.payload, null, 2)}
+                          </pre>
                         </div>
                       )}
                     </div>

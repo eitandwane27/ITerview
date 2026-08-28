@@ -3,14 +3,14 @@
    Set 1 Session Briefing — Spacious Studio Layout & Precision Hierarchy
    ═══════════════════════════════════════════════════════════════ */
 
-@import url("https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400..800&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400..800&display=swap');
 
 .sb-overlay {
   /* Surfaces — deep obsidian studio canvas */
-  --sb-bg: #09090B;
+  --sb-bg: #09090b;
   --sb-card: rgba(18, 18, 23, 0.96);
-  --sb-card-solid: #16161C;
-  --sb-raised: #1F1F28;
+  --sb-card-solid: #16161c;
+  --sb-raised: #1f1f28;
   --sb-inset: rgba(255, 255, 255, 0.035);
 
   /* Hairlines & Borders */
@@ -32,49 +32,49 @@
   --sb-bloom: rgba(6, 182, 212, 0.18);
 
   /* Typography / Inks */
-  --sb-font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --sb-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --sb-ink: #FFFFFF;
-  --sb-ink-dim: #E2E4EB;
-  --sb-ink-2: #9CA3AF;
-  --sb-ink-3: #6B7280;
+  --sb-font-sans: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --sb-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sb-ink: #ffffff;
+  --sb-ink-dim: #e2e4eb;
+  --sb-ink-2: #9ca3af;
+  --sb-ink-3: #6b7280;
 
   /* Signal Cyan — the primary interactive moving accent */
-  --sb-cyan: #06B6D4;
-  --sb-cyan-bright: #67E8F9;
-  --sb-cyan-deep: #0E7490;
+  --sb-cyan: #06b6d4;
+  --sb-cyan-bright: #67e8f9;
+  --sb-cyan-deep: #0e7490;
   --sb-cyan-ink: #081318;
   --sb-cyan-tint: rgba(6, 182, 212, 0.12);
   --sb-cyan-bd: rgba(6, 182, 212, 0.32);
 
   /* 3C Triad Accents */
-  --sb-sky: #5FB8FF;
+  --sb-sky: #5fb8ff;
   --sb-sky-tint: rgba(95, 184, 255, 0.12);
   --sb-sky-bd: rgba(95, 184, 255, 0.3);
 
-  --sb-mint: #4FD6A3;
-  --sb-mint-text: #8FE5BE;
+  --sb-mint: #4fd6a3;
+  --sb-mint-text: #8fe5be;
   --sb-mint-tint: rgba(79, 214, 163, 0.12);
   --sb-mint-bd: rgba(79, 214, 163, 0.3);
 
-  --sb-lilac: #B28CFF;
-  --sb-lilac-text: #CBB0FF;
+  --sb-lilac: #b28cff;
+  --sb-lilac-text: #cbb0ff;
   --sb-lilac-tint: rgba(178, 140, 255, 0.12);
   --sb-lilac-bd: rgba(178, 140, 255, 0.3);
 
-  --sb-sun: #FFC94D;
+  --sb-sun: #ffc94d;
   --sb-sun-tint: rgba(255, 201, 77, 0.12);
   --sb-sun-bd: rgba(255, 201, 77, 0.3);
 
-  --sb-rose: #FF7A8C;
-  --sb-rose-text: #FFA5B2;
+  --sb-rose: #ff7a8c;
+  --sb-rose-text: #ffa5b2;
   --sb-rose-tint: rgba(255, 122, 140, 0.14);
   --sb-rose-bd: rgba(255, 122, 140, 0.35);
 
   /* Shadows */
-  --sb-shadow-modal: 0 32px 64px -16px rgba(0, 0, 0, 0.9),
-                     0 0 0 1px rgba(255, 255, 255, 0.08),
-                     inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --sb-shadow-modal:
+    0 32px 64px -16px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --sb-shadow-btn: 0 8px 24px -4px rgba(6, 182, 212, 0.45);
 }
 
@@ -122,7 +122,7 @@
 
 /* Blueprint subtle grid + top radial bloom */
 .sb-modal::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -343,9 +343,15 @@
   border-radius: 2px;
   flex-shrink: 0;
 }
-.sb-triad-dot--sky   { background: var(--sb-sky); }
-.sb-triad-dot--mint  { background: var(--sb-mint); }
-.sb-triad-dot--lilac { background: var(--sb-lilac); }
+.sb-triad-dot--sky {
+  background: var(--sb-sky);
+}
+.sb-triad-dot--mint {
+  background: var(--sb-mint);
+}
+.sb-triad-dot--lilac {
+  background: var(--sb-lilac);
+}
 
 .sb-triad-label {
   font-size: 12.5px;
@@ -409,9 +415,15 @@
   transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sb-mini-fill--sky   { background: var(--sb-sky); }
-.sb-mini-fill--mint  { background: var(--sb-mint); }
-.sb-mini-fill--lilac { background: var(--sb-lilac); }
+.sb-mini-fill--sky {
+  background: var(--sb-sky);
+}
+.sb-mini-fill--mint {
+  background: var(--sb-mint);
+}
+.sb-mini-fill--lilac {
+  background: var(--sb-lilac);
+}
 
 /* ── 3. Session Blueprint Strip (Integrated Features) ────────────────────── */
 .sb-blueprint-strip {
@@ -552,7 +564,10 @@
   font-weight: 800;
   letter-spacing: -0.01em;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.16s ease, filter 0.16s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.16s ease,
+    filter 0.16s ease;
   box-shadow: var(--sb-shadow-btn);
 }
 
@@ -615,12 +630,18 @@
   background-size: 200% 100%;
   animation: sb-scanner-sweep 2s linear infinite;
   z-index: 10;
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.4);
+  box-shadow:
+    0 0 10px rgba(6, 182, 212, 0.8),
+    0 0 20px rgba(6, 182, 212, 0.4);
 }
 
 @keyframes sb-scanner-sweep {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .sb-tag--synthesis {
@@ -635,7 +656,9 @@
 }
 
 @keyframes sb-spin {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .sb-triad-card--calibrating {
@@ -645,8 +668,12 @@
 }
 
 @keyframes sb-card-breathe {
-  0% { background: rgba(6, 182, 212, 0.04); }
-  100% { background: rgba(6, 182, 212, 0.12); }
+  0% {
+    background: rgba(6, 182, 212, 0.04);
+  }
+  100% {
+    background: rgba(6, 182, 212, 0.12);
+  }
 }
 
 /* ── Morphing Button Progress Capsule ────────────────────────────────────── */
@@ -713,9 +740,18 @@
 }
 
 @keyframes sb-ring-pulse {
-  0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(103, 232, 249, 0.6); }
-  70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(103, 232, 249, 0); }
-  100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(103, 232, 249, 0); }
+  0% {
+    transform: scale(0.85);
+    box-shadow: 0 0 0 0 rgba(103, 232, 249, 0.6);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 6px rgba(103, 232, 249, 0);
+  }
+  100% {
+    transform: scale(0.85);
+    box-shadow: 0 0 0 0 rgba(103, 232, 249, 0);
+  }
 }
 
 .sb-morphing-text {
@@ -744,11 +780,11 @@
    The overlay sets its own data-theme attribute (it also renders in a
    standalone preview route with no themed ancestor).
    ═════════════════════════════════════════════════════════════════ */
-.sb-overlay[data-theme="light"] {
-  --sb-bg: #F7F8FB;
+.sb-overlay[data-theme='light'] {
+  --sb-bg: #f7f8fb;
   --sb-card: rgba(255, 255, 255, 0.97);
-  --sb-card-solid: #FFFFFF;
-  --sb-raised: #FFFFFF;
+  --sb-card-solid: #ffffff;
+  --sb-raised: #ffffff;
   --sb-inset: rgba(15, 16, 28, 0.045);
 
   --sb-backdrop: rgba(247, 248, 251, 0.78);
@@ -759,88 +795,90 @@
   --sb-ghost-border-hover: rgba(15, 16, 28, 0.22);
   --sb-track: rgba(15, 16, 28, 0.08);
   --sb-kbd-bg: rgba(15, 16, 28, 0.05);
-  --sb-morph-bg: #FFFFFF;
+  --sb-morph-bg: #ffffff;
   --sb-morph-shadow: 0 4px 20px rgba(19, 19, 32, 0.1), inset 0 1px 0 rgba(19, 19, 32, 0.04);
 
-  --sb-hairline: #E6E8EF;
-  --sb-hairline-strong: #D7DAE4;
+  --sb-hairline: #e6e8ef;
+  --sb-hairline-strong: #d7dae4;
 
   --sb-ink: #131320;
-  --sb-ink-dim: #33364A;
-  --sb-ink-2: #555A6E;
-  --sb-ink-3: #6E7286;
+  --sb-ink-dim: #33364a;
+  --sb-ink-2: #555a6e;
+  --sb-ink-3: #6e7286;
 
   /* Cyan retuned for light — "bright" becomes a deep AA accent (same recipe
      as Dashboard), and ink-on-cyan flips to white for clean primary pills. */
-  --sb-cyan: #0E7490;
-  --sb-cyan-bright: #0C6C86;
-  --sb-cyan-deep: #0A5E75;
-  --sb-cyan-ink: #FFFFFF;
+  --sb-cyan: #0e7490;
+  --sb-cyan-bright: #0c6c86;
+  --sb-cyan-deep: #0a5e75;
+  --sb-cyan-ink: #ffffff;
   --sb-cyan-tint: rgba(14, 116, 144, 0.1);
   --sb-cyan-bd: rgba(14, 116, 144, 0.32);
 
   /* 3C Triad accents darkened for white surfaces */
-  --sb-sky: #2E7FC2;
+  --sb-sky: #2e7fc2;
   --sb-sky-tint: rgba(46, 127, 194, 0.1);
   --sb-sky-bd: rgba(46, 127, 194, 0.3);
 
-  --sb-mint: #0E8A5C;
-  --sb-mint-text: #0B7A50;
+  --sb-mint: #0e8a5c;
+  --sb-mint-text: #0b7a50;
   --sb-mint-tint: rgba(14, 138, 92, 0.1);
   --sb-mint-bd: rgba(14, 138, 92, 0.32);
 
-  --sb-lilac: #7A51D1;
-  --sb-lilac-text: #6B43C4;
+  --sb-lilac: #7a51d1;
+  --sb-lilac-text: #6b43c4;
   --sb-lilac-tint: rgba(122, 81, 209, 0.1);
   --sb-lilac-bd: rgba(122, 81, 209, 0.32);
 
-  --sb-sun: #9A6500;
+  --sb-sun: #9a6500;
   --sb-sun-tint: rgba(154, 101, 0, 0.1);
   --sb-sun-bd: rgba(154, 101, 0, 0.3);
 
-  --sb-rose: #D4354B;
-  --sb-rose-text: #C22E43;
+  --sb-rose: #d4354b;
+  --sb-rose-text: #c22e43;
   --sb-rose-tint: rgba(212, 53, 75, 0.1);
   --sb-rose-bd: rgba(212, 53, 75, 0.32);
 
   --sb-grid-line: rgba(14, 116, 144, 0.08);
   --sb-bloom: rgba(14, 116, 144, 0.1);
 
-  --sb-shadow-modal: 0 32px 64px -16px rgba(19, 19, 32, 0.25),
-                     0 0 0 1px rgba(19, 19, 32, 0.06),
-                     inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --sb-shadow-modal:
+    0 32px 64px -16px rgba(19, 19, 32, 0.25), 0 0 0 1px rgba(19, 19, 32, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   --sb-shadow-btn: 0 8px 20px -12px rgba(12, 108, 134, 0.35);
 }
 
 /* Light-theme targeted overrides for rules whose dark values are glow/
    state-specific rather than token-driven */
-.sb-overlay[data-theme="light"] .sb-tag--synthesis {
+.sb-overlay[data-theme='light'] .sb-tag--synthesis {
   background: rgba(14, 116, 144, 0.12);
   border-color: rgba(14, 116, 144, 0.4);
   box-shadow: 0 0 12px rgba(14, 116, 144, 0.15);
 }
 
-.sb-overlay[data-theme="light"] .sb-triad-card--active {
+.sb-overlay[data-theme='light'] .sb-triad-card--active {
   border-color: rgba(212, 53, 75, 0.4);
   background: rgba(212, 53, 75, 0.04);
   box-shadow: 0 4px 20px -4px rgba(212, 53, 75, 0.12);
 }
 
-.sb-overlay[data-theme="light"] .sb-triad-card--calibrating {
+.sb-overlay[data-theme='light'] .sb-triad-card--calibrating {
   border-color: rgba(14, 116, 144, 0.45) !important;
   box-shadow: 0 0 16px rgba(14, 116, 144, 0.15);
 }
 
-.sb-overlay[data-theme="light"] .sb-modal-scanner {
-  box-shadow: 0 0 10px rgba(14, 116, 144, 0.5), 0 0 20px rgba(14, 116, 144, 0.2);
+.sb-overlay[data-theme='light'] .sb-modal-scanner {
+  box-shadow:
+    0 0 10px rgba(14, 116, 144, 0.5),
+    0 0 20px rgba(14, 116, 144, 0.2);
 }
 
-.sb-overlay[data-theme="light"] .sb-morphing-fill {
+.sb-overlay[data-theme='light'] .sb-morphing-fill {
   background: linear-gradient(90deg, rgba(14, 116, 144, 0.25) 0%, rgba(12, 108, 134, 0.45) 100%);
   box-shadow: 2px 0 12px rgba(12, 108, 134, 0.35);
 }
 
-.sb-overlay[data-theme="light"] .sb-btn-primary {
+.sb-overlay[data-theme='light'] .sb-btn-primary {
   border-color: rgba(255, 255, 255, 0.4);
 }
 

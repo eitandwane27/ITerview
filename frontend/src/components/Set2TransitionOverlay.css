@@ -36,17 +36,18 @@
 /* ── Outer white card — main-card pattern ───────────────────────────────────── */
 /* DESIGN.md: 0 2px 8px shadow-card + 1px border-card, rounded.card (16px)      */
 .s2-card {
-  background: #ffffff;                              /* surface-card */
+  background: #ffffff; /* surface-card */
   width: 100%;
   max-width: 420px;
-  border-radius: 16px;                              /* rounded.card */
-  padding: 2rem 2rem 2.25rem;                       /* card-padding rhythm */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);       /* shadow-card — no heavy shadows */
-  border: 1px solid #efefef;                        /* border-card */
+  border-radius: 16px; /* rounded.card */
+  padding: 2rem 2rem 2.25rem; /* card-padding rhythm */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); /* shadow-card — no heavy shadows */
+  border: 1px solid #efefef; /* border-card */
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
+
   gap: 0;
 }
 
@@ -56,14 +57,14 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background: #dcfce7;                              /* badge-green-bg */
-  color: #22c55e;                                   /* badge-green */
-  padding: 3px 10px;                                /* badge-recommended padding */
-  border-radius: 9999px;                            /* rounded.pill */
-  font-family: "Outfit", sans-serif;
-  font-size: 12px;                                  /* bumped slightly for Outfit */
+  background: #dcfce7; /* badge-green-bg */
+  color: #22c55e; /* badge-green */
+  padding: 3px 10px; /* badge-recommended padding */
+  border-radius: 9999px; /* rounded.pill */
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; /* bumped slightly for Outfit */
   font-weight: 600;
-  letter-spacing: 0.3px;                            /* Outfit needs slightly less spacing */
+  letter-spacing: 0.3px; /* Outfit needs slightly less spacing */
   margin-bottom: 1.5rem;
 }
 
@@ -73,7 +74,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #22c55e;                              /* online-dot / badge-green */
+  background: #22c55e; /* online-dot / badge-green */
   flex-shrink: 0;
 }
 
@@ -83,8 +84,8 @@
   width: 68px;
   height: 68px;
   border-radius: 50%;
-  background: #f0eff8;                              /* surface-card-inner */
-  border: 1.5px solid #eae8f7;                      /* primary-light as ring border */
+  background: #f0eff8; /* surface-card-inner */
+  border: 1.5px solid #eae8f7; /* primary-light as ring border */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -101,12 +102,12 @@
 /* ── Title — section-title token ────────────────────────────────────────────── */
 /* DESIGN.md typography.section-title: 20px / 700 / -0.3px / ink (#1A1A2E)      */
 .s2-title {
-  font-family: "Outfit", sans-serif;
-  font-size: 24px;                                  /* Outfit handles larger sizes beautifully */
-  font-weight: 600;                                 /* 600 is plenty bold in Outfit */
+  font-family: 'Outfit', sans-serif;
+  font-size: 24px; /* Outfit handles larger sizes beautifully */
+  font-weight: 600; /* 600 is plenty bold in Outfit */
   line-height: 1.2;
   letter-spacing: -0.4px;
-  color: #1a1a2e;                                   /* ink */
+  color: #1a1a2e; /* ink */
   margin: 0 0 1.25rem;
 }
 
@@ -114,18 +115,18 @@
 .s2-divider {
   width: 100%;
   height: 1px;
-  background: #efefef;                              /* border-card */
+  background: #efefef; /* border-card */
   margin-bottom: 1.25rem;
 }
 
 /* ── Description — body-secondary token ─────────────────────────────────────── */
 /* DESIGN.md typography.body-secondary: 13px / 400 / 1.5 / ink-secondary        */
 .s2-description {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.55;
-  color: #6b6b80;                                   /* ink-secondary */
+  color: #6b6b80; /* ink-secondary */
   margin: 0 0 2rem;
   max-width: 88%;
 }
@@ -134,7 +135,7 @@
 /* DESIGN.md: primary color only for active states / key labels — one use here  */
 .s2-role-highlight {
   font-weight: 600;
-  color: #7c6fcd;                                   /* primary */
+  color: #7c6fcd; /* primary */
 }
 
 /* ── CTA section ────────────────────────────────────────────────────────────── */
@@ -146,22 +147,24 @@
    DESIGN.md: rounded.lg (12px), full-width, no shadow, no gradient, 85% opacity fill */
 .s2-btn-primary {
   width: 100%;
-  padding: 14px 24px;                               /* button-primary padding */
-  background-color: rgba(124, 111, 205, 0.85);      /* primary at opacity 0.85 */
-  color: #ffffff;                                   /* ink-on-primary */
-  font-family: "Outfit", sans-serif;
-  font-size: 16px;                                  /* slightly larger for Outfit */
-  font-weight: 500;                                 /* 500 is extremely elegant for buttons in Outfit */
+  padding: 14px 24px; /* button-primary padding */
+  background-color: rgba(124, 111, 205, 0.85); /* primary at opacity 0.85 */
+  color: #ffffff; /* ink-on-primary */
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px; /* slightly larger for Outfit */
+  font-weight: 500; /* 500 is extremely elegant for buttons in Outfit */
   letter-spacing: 0px;
   border: none;
-  border-radius: 12px;                              /* rounded.lg — NOT pill */
+  border-radius: 12px; /* rounded.lg — NOT pill */
   cursor: pointer;
-  transition: background-color 0.18s ease, transform 0.12s ease;
+  transition:
+    background-color 0.18s ease,
+    transform 0.12s ease;
   /* DESIGN.md: "Don't add shadows to buttons" */
 }
 
 .s2-btn-primary:hover {
-  background-color: #6b5fbc;                        /* primary-hover */
+  background-color: #6b5fbc; /* primary-hover */
   transform: translateY(-1px);
 }
 

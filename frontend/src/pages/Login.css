@@ -2,7 +2,7 @@
 /* Namespace: ln- (login) to avoid collisions with other page styles.        */
 
 /* ── Fonts ── */
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Inter:wght@100..900&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Inter:wght@100..900&display=swap');
 
 /* ── Root / Page Shell ── */
 .ln-root {
@@ -235,7 +235,10 @@
   border: 1px solid #ffffff12;
   border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    transform 0.15s;
 }
 
 .ln-sso-btn:hover {
@@ -352,7 +355,9 @@
   color: #fff;
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .ln-input::placeholder {
@@ -405,7 +410,10 @@
   letter-spacing: 0.3px;
   color: #fff;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.15s,
+    box-shadow 0.2s;
 }
 
 .ln-submit-btn:hover:not(:disabled) {

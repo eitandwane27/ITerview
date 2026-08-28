@@ -10,13 +10,13 @@
 //   5. Click "Start Interview" once satisfied → navigates to /pre-test
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
-import { signOut } from "firebase/auth";
-import "./MicTest.css";
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
+import { signOut } from 'firebase/auth';
+import './MicTest.css';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 // Chevron SVG — shared by both selects
 const ChevronIcon = () => (
@@ -30,23 +30,23 @@ export default function MicTest() {
 
   // ── Device list ──────────────────────────────────────────────────────────
   const [devices, setDevices] = useState([]);
-  const [selectedMic, setSelectedMic] = useState("");
+  const [selectedMic, setSelectedMic] = useState('');
 
   // ── Voice selection ──────────────────────────────────────────────────────
-  const [selectedVoice, setSelectedVoice] = useState("aura-2-luna-en");
+  const [selectedVoice, setSelectedVoice] = useState('aura-2-luna-en');
 
   // ── Test session state ───────────────────────────────────────────────────
   const [isTesting, setIsTesting] = useState(false);
   const [volume, setVolume] = useState(0);
-  const [finalTranscript, setFinalTranscript] = useState("");
-  const [partialTranscript, setPartialTranscript] = useState("");
-  const [status, setStatus] = useState("idle");
+  const [finalTranscript, setFinalTranscript] = useState('');
+  const [partialTranscript, setPartialTranscript] = useState('');
+  const [status, setStatus] = useState('idle');
   // idle | requesting | recording | ok | denied | error
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState('');
 
   // ── TTS sample state ─────────────────────────────────────────────────────
   const [ttsLoading, setTtsLoading] = useState(false);
-  const [ttsError, setTtsError] = useState("");
+  const [ttsError, setTtsError] = useState('');
   const audioRef = useRef(null);
 
   // ── Refs ─────────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ export default function MicTest() {
 
   const refreshDevices = () => {
     navigator.mediaDevices.enumerateDevices().then((list) => {
-      const mics = list.filter((d) => d.kind === "audioinput");
+      const mics = list.filter((d) => d.kind === 'audioinput');
       setDevices(mics);
       if (mics.length > 0 && !selectedMic) {
         setSelectedMic(mics[0].deviceId);
@@ -93,7 +93,7 @@ export default function MicTest() {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    if (audioContextRef.current?.state !== "closed") {
+    if (audioContextRef.current?.state !== 'closed') {
       audioContextRef.current?.close();
       audioContextRef.current = null;
     }
@@ -104,7 +104,7 @@ export default function MicTest() {
 
     setIsTesting(false);
     setVolume(0);
-    setPartialTranscript("");
+    setPartialTranscript('');
   };
 
   // ── Volume meter (RAF loop) ───────────────────────────────────────────────
@@ -121,10 +121,10 @@ export default function MicTest() {
 
   // ── Start mic test ────────────────────────────────────────────────────────
   const startTest = async () => {
-    setStatus("requesting");
-    setErrorMsg("");
-    setFinalTranscript("");
-    setPartialTranscript("");
+    setStatus('requesting');
+    setErrorMsg('');
+    setFinalTranscript('');
+    setPartialTranscript('');
 
     let stream;
 
@@ -147,21 +147,16 @@ export default function MicTest() {
             },
       });
     } catch (err) {
-      if (
-        err.name === "NotAllowedError" ||
-        err.name === "PermissionDeniedError"
-      ) {
-        setStatus("denied");
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setStatus('denied');
         setErrorMsg(
-          'Microphone access was blocked. Click the 🔒 icon in your browser\'s address bar and set Microphone to "Allow", then try again.',
+          'Microphone access was blocked. Click the 🔒 icon in your browser\'s address bar and set Microphone to "Allow", then try again.'
         );
-      } else if (err.name === "NotFoundError") {
-        setStatus("error");
-        setErrorMsg(
-          "No microphone was found. Please connect a mic and try again.",
-        );
+      } else if (err.name === 'NotFoundError') {
+        setStatus('error');
+        setErrorMsg('No microphone was found. Please connect a mic and try again.');
       } else {
-        setStatus("error");
+        setStatus('error');
         setErrorMsg(`Unexpected error: ${err.message}`);
       }
       return;
@@ -196,22 +191,21 @@ export default function MicTest() {
 
       // 3. Fetch Deepgram token from backend
       const tokenRes = await fetch(`${BACKEND_URL}/api/deepgram/token`);
-      if (!tokenRes.ok)
-        throw new Error("Failed to get Deepgram token from backend");
+      if (!tokenRes.ok) throw new Error('Failed to get Deepgram token from backend');
       const { token } = await tokenRes.json();
 
       // 4. Open Deepgram WebSocket (browser → Deepgram directly using Flux)
       const ws = new WebSocket(
-        "wss://api.deepgram.com/v2/listen?model=flux-general-en&eot_threshold=0.7&eot_timeout_ms=5000&encoding=linear16&sample_rate=16000",
-        ["token", token],
+        'wss://api.deepgram.com/v2/listen?model=flux-general-en&eot_threshold=0.7&eot_timeout_ms=5000&encoding=linear16&sample_rate=16000',
+        ['token', token]
       );
-      ws.binaryType = "arraybuffer";
+      ws.binaryType = 'arraybuffer';
       wsRef.current = ws;
 
       ws.onopen = () => {
         isTestingRef.current = true;
         setIsTesting(true);
-        setStatus("recording");
+        setStatus('recording');
 
         processor.onaudioprocess = (e) => {
           if (ws.readyState !== WebSocket.OPEN) return;
@@ -226,7 +220,7 @@ export default function MicTest() {
       };
 
       ws.onmessage = (event) => {
-        if (typeof event.data !== "string") return;
+        if (typeof event.data !== 'string') return;
         let msg;
         try {
           msg = JSON.parse(event.data);
@@ -235,21 +229,21 @@ export default function MicTest() {
         }
 
         // Flux turn events
-        if (msg.event === "StartOfTurn") {
+        if (msg.event === 'StartOfTurn') {
           console.log(`[Flux] --- StartOfTurn (Turn ${msg.turn_index}) ---`);
-          setPartialTranscript("");
+          setPartialTranscript('');
           return;
         }
 
-        if (msg.event === "EndOfTurn") {
+        if (msg.event === 'EndOfTurn') {
           const turn = msg.turn_index;
           const confidence = msg.end_of_turn_confidence;
           console.log(`[Flux] --- EndOfTurn (Turn ${turn}, Confidence: ${confidence}) ---`);
           const text = (msg.transcript || partialTranscript)?.trim();
           if (text) {
             setFinalTranscript((prev) => (prev ? `${prev} ${text}` : text));
-            setPartialTranscript("");
-            setStatus("ok");
+            setPartialTranscript('');
+            setStatus('ok');
           }
           return;
         }
@@ -261,8 +255,8 @@ export default function MicTest() {
             const trimmed = text.trim();
             if (trimmed) {
               setFinalTranscript((prev) => (prev ? `${prev} ${trimmed}` : trimmed));
-              setPartialTranscript("");
-              setStatus("ok");
+              setPartialTranscript('');
+              setStatus('ok');
             }
           } else {
             setPartialTranscript(text);
@@ -271,22 +265,18 @@ export default function MicTest() {
       };
 
       ws.onerror = (err) => {
-        console.error("Deepgram WS error:", err);
-        setStatus("error");
-        setErrorMsg(
-          "Could not connect to speech service. Check your internet connection.",
-        );
+        console.error('Deepgram WS error:', err);
+        setStatus('error');
+        setErrorMsg('Could not connect to speech service. Check your internet connection.');
       };
 
       ws.onclose = () => {
         if (isTestingRef.current) stopTest();
       };
     } catch (err) {
-      console.error("Mic test setup failed:", err);
-      setStatus("error");
-      setErrorMsg(
-        err.message || "Something went wrong setting up the audio pipeline.",
-      );
+      console.error('Mic test setup failed:', err);
+      setStatus('error');
+      setErrorMsg(err.message || 'Something went wrong setting up the audio pipeline.');
       stopTest();
     }
   };
@@ -295,8 +285,8 @@ export default function MicTest() {
   const handleToggleTest = () => {
     if (isTesting) {
       stopTest();
-      setStatus("idle");
-      setErrorMsg("");
+      setStatus('idle');
+      setErrorMsg('');
     } else {
       startTest();
     }
@@ -305,11 +295,11 @@ export default function MicTest() {
   // ── TTS: play AI interviewer voice sample ────────────────────────────────
   const handleHearSample = async () => {
     setTtsLoading(true);
-    setTtsError("");
+    setTtsError('');
     try {
       const res = await fetch(`${BACKEND_URL}/api/tts/speak`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: "Hello! I'm your AI interviewer. When you're ready, click Start Interview and we'll begin.",
           voice: selectedVoice,
@@ -326,10 +316,8 @@ export default function MicTest() {
         audioRef.current.play();
       }
     } catch (err) {
-      console.error("[TTS] Sample playback failed:", err);
-      setTtsError(
-        "Could not play audio sample. Check your connection or try again.",
-      );
+      console.error('[TTS] Sample playback failed:', err);
+      setTtsError('Could not play audio sample. Check your connection or try again.');
     } finally {
       setTtsLoading(false);
     }
@@ -338,40 +326,40 @@ export default function MicTest() {
   // ── Proceed to interview ──────────────────────────────────────────────────
   const handleProceed = () => {
     stopTest();
-    navigate("/pre-test", { state: { voice: selectedVoice } });
+    navigate('/pre-test', { state: { voice: selectedVoice } });
   };
 
   const handleLogout = async () => {
     try {
       stopTest();
       await signOut(auth);
-      navigate("/login");
+      navigate('/login');
     } catch (err) {
-      console.error("Sign-out error:", err);
+      console.error('Sign-out error:', err);
     }
   };
 
   // ── Derived UI ────────────────────────────────────────────────────────────
-  const volumeClass = volume > 70 ? "loud" : volume > 20 ? "good" : "";
+  const volumeClass = volume > 70 ? 'loud' : volume > 20 ? 'good' : '';
 
   const dotClass =
-    status === "recording"
-      ? "recording"
-      : status === "ok"
-        ? "ok"
-        : status === "denied" || status === "error"
-          ? "error-dot"
-          : "";
+    status === 'recording'
+      ? 'recording'
+      : status === 'ok'
+        ? 'ok'
+        : status === 'denied' || status === 'error'
+          ? 'error-dot'
+          : '';
 
   const statusText =
     {
       idle: 'Idle — press "Test Microphone" to begin',
-      requesting: "Waiting for microphone permission…",
-      recording: "Listening — say something to check your mic",
-      ok: "Mic check passed ✓",
-      denied: "Permission denied",
-      error: "Error occurred",
-    }[status] ?? "";
+      requesting: 'Waiting for microphone permission…',
+      recording: 'Listening — say something to check your mic',
+      ok: 'Mic check passed ✓',
+      denied: 'Permission denied',
+      error: 'Error occurred',
+    }[status] ?? '';
 
   return (
     <div className="mictest-container">
@@ -387,21 +375,16 @@ export default function MicTest() {
         {/* ── Page heading ────────────────────────────────────────────────── */}
         <div className="mictest-header">
           <h2>Set Up Your Microphone</h2>
-          <p>
-            Choose your input device and do a quick sound check before the
-            interview begins.
-          </p>
+          <p>Choose your input device and do a quick sound check before the interview begins.</p>
         </div>
 
         {/* ── Permission / Error Banner ────────────────────────────────────── */}
         {errorMsg && (
           <div
-            className={`mictest-banner ${status === "denied" ? "denied" : "error"}`}
+            className={`mictest-banner ${status === 'denied' ? 'denied' : 'error'}`}
             role="alert"
           >
-            <span className="mictest-banner-icon">
-              {status === "denied" ? "🔒" : "⚠️"}
-            </span>
+            <span className="mictest-banner-icon">{status === 'denied' ? '🔒' : '⚠️'}</span>
             <span>{errorMsg}</span>
           </div>
         )}
@@ -423,9 +406,7 @@ export default function MicTest() {
                 onChange={(e) => setSelectedMic(e.target.value)}
                 disabled={isTesting}
               >
-                {devices.length === 0 && (
-                  <option value="">No microphones found</option>
-                )}
+                {devices.length === 0 && <option value="">No microphones found</option>}
                 {devices.map((d) => (
                   <option key={d.deviceId} value={d.deviceId}>
                     {d.label || `Microphone (${d.deviceId.slice(0, 8)}…)`}
@@ -461,10 +442,10 @@ export default function MicTest() {
             <div className="mictest-btn-row">
               <button
                 id="mic-test-btn"
-                className={`mictest-btn-test ${isTesting ? "active" : ""}`}
+                className={`mictest-btn-test ${isTesting ? 'active' : ''}`}
                 onClick={handleToggleTest}
               >
-                {isTesting ? "⏹ Stop Test" : "▶ Test Microphone"}
+                {isTesting ? '⏹ Stop Test' : '▶ Test Microphone'}
               </button>
             </div>
           </div>
@@ -486,9 +467,7 @@ export default function MicTest() {
             {finalTranscript || partialTranscript ? (
               <>
                 <span>{finalTranscript}</span>
-                {partialTranscript && (
-                  <span className="partial"> {partialTranscript}</span>
-                )}
+                {partialTranscript && <span className="partial"> {partialTranscript}</span>}
               </>
             ) : (
               <span className="placeholder">Transcript will appear here…</span>
@@ -523,7 +502,7 @@ export default function MicTest() {
             </div>
 
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <audio ref={audioRef} style={{ display: "none" }} />
+            <audio ref={audioRef} style={{ display: 'none' }} />
 
             <div className="mictest-btn-row">
               <button
@@ -532,7 +511,7 @@ export default function MicTest() {
                 onClick={handleHearSample}
                 disabled={ttsLoading}
               >
-                {ttsLoading ? "⏳ Loading…" : "▶ Hear Sample"}
+                {ttsLoading ? '⏳ Loading…' : '▶ Hear Sample'}
               </button>
             </div>
           </div>
@@ -541,7 +520,7 @@ export default function MicTest() {
             <div
               className="mictest-banner error"
               role="alert"
-              style={{ marginTop: "12px", marginBottom: 0 }}
+              style={{ marginTop: '12px', marginBottom: 0 }}
             >
               <span className="mictest-banner-icon">⚠️</span>
               <span>{ttsError}</span>
@@ -553,18 +532,14 @@ export default function MicTest() {
         <div className="mictest-tip">
           <span className="mictest-tip-icon">💡</span>
           <span>
-            Make sure you're in a quiet environment. The interview will record
-            your voice and transcribe it in real time using Deepgram. You can
-            re-test as many times as you like before starting.
+            Make sure you're in a quiet environment. The interview will record your voice and
+            transcribe it in real time using Deepgram. You can re-test as many times as you like
+            before starting.
           </span>
         </div>
 
         {/* ── Proceed CTA ─────────────────────────────────────────────────── */}
-        <button
-          id="mictest-proceed-btn"
-          className="mictest-proceed-btn"
-          onClick={handleProceed}
-        >
+        <button id="mictest-proceed-btn" className="mictest-proceed-btn" onClick={handleProceed}>
           Start Interview →
         </button>
 

@@ -53,7 +53,11 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   color: var(--aal-ink);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
   /* Scroll-safe centering: vertical scroll when content exceeds the viewport
      instead of clipping children (stages list / footer) top-and-bottom. */
   overflow-x: hidden;
@@ -82,16 +86,9 @@
 .aal-blueprint-grid {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0.02) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.02) 1px,
-      transparent 1px
-    );
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   z-index: 0;
@@ -111,7 +108,8 @@
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid var(--aal-border);
   border-radius: var(--aal-radius-card);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7),
+  box-shadow:
+    0 20px 40px -15px rgba(0, 0, 0, 0.7),
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
   overflow-x: hidden;
   overflow-y: auto;
@@ -235,7 +233,9 @@
   border-radius: 50%;
   background: var(--aal-canvas-deep);
   border: 1px solid var(--aal-border-active);
-  box-shadow: 0 0 24px var(--aal-cyan-dim), 0 0 0 1px rgba(6, 182, 212, 0.1);
+  box-shadow:
+    0 0 24px var(--aal-cyan-dim),
+    0 0 0 1px rgba(6, 182, 212, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -391,17 +391,12 @@
 }
 
 .aal-track-segment.active::after {
-  content: "";
+  content: '';
   position: absolute;
   inset-block: 0;
   left: -100%;
   width: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.8),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
   animation: aal-segment-scan 1.4s ease-in-out infinite;
 }
 

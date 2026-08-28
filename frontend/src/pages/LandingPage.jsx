@@ -5,11 +5,11 @@
 // Primitives inspired by: shadcn/ui · Rare UI · Beautiful UI
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect } from "react";
-import AuthModal from "../components/AuthModal";
-import TryItLiveDemo from "../components/TryItLiveDemo";
-import logoSrc from "../assets/logo.png";
-import "./LandingPage.css";
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import AuthModal from '../components/AuthModal';
+const TryItLiveDemo = lazy(() => import('../components/TryItLiveDemo'));
+import logoSrc from '../assets/logo';
+import './LandingPage.css';
 import {
   Sparkles,
   ShieldCheck,
@@ -23,21 +23,15 @@ import {
   TrendingUp,
   Clock,
   Target,
-  Code2,
-  MessageSquare,
   ArrowRight,
   CheckCircle2,
   Zap,
-  Terminal,
   Activity,
   CreditCard,
-  Volume2,
   Star,
-  Cloud,
-  Compass,
   HeartHandshake,
   Trash2,
-} from "lucide-react";
+} from 'lucide-react';
 
 /* ── Metric Score Bar Helper ── */
 const MetricBar = ({ score, color }) => {
@@ -47,7 +41,7 @@ const MetricBar = ({ score, color }) => {
       <div className="lp-3c-metric-header">
         <span className="lp-3c-metric-label">Benchmark Score</span>
         <span className="lp-3c-metric-val" style={{ color }}>
-          {score} <small style={{ fontSize: "0.8125rem", color: "var(--ink-faint)" }}>/ 5.0</small>
+          {score} <small style={{ fontSize: '0.8125rem', color: 'var(--ink-muted)' }}>/ 5.0</small>
         </span>
       </div>
       <div className="lp-3c-metric-bar" aria-hidden="true">
@@ -56,7 +50,6 @@ const MetricBar = ({ score, color }) => {
     </div>
   );
 };
-
 
 /* ── Standalone Atmospheric Light Sweep Component (Independent Geometry & Height) ── */
 const HeroAtmosphere = () => (
@@ -155,14 +148,36 @@ const HeroAtmosphere = () => (
 
 /* ── Mobile Menu Component ── */
 const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => (
-  <div className={`lp-mobile-menu${open ? " lp-mobile-menu--open" : ""}`}>
+  <div className={`lp-mobile-menu${open ? ' lp-mobile-menu--open' : ''}`}>
     <nav className="lp-mobile-nav" aria-label="Mobile navigation">
-      <a href="#rubric" onClick={onClose} className="lp-mobile-nav-link">The 3C rubric</a>
-      <a href="#journey" onClick={onClose} className="lp-mobile-nav-link">Learning pathway</a>
-      <a href="#how-it-works" onClick={onClose} className="lp-mobile-nav-link">How it works</a>
+      <a href="#rubric" onClick={onClose} className="lp-mobile-nav-link">
+        The 3C rubric
+      </a>
+      <a href="#journey" onClick={onClose} className="lp-mobile-nav-link">
+        Learning pathway
+      </a>
+      <a href="#how-it-works" onClick={onClose} className="lp-mobile-nav-link">
+        How it works
+      </a>
       <div className="lp-mobile-nav-actions">
-        <button className="lp-btn-ghost lp-btn-full" onClick={() => { onClose(); onSignIn(); }}>Sign In</button>
-        <button className="lp-btn-solid lp-btn-full" onClick={() => { onClose(); onGetStarted(); }}>Start practicing free</button>
+        <button
+          className="lp-btn-ghost lp-btn-full"
+          onClick={() => {
+            onClose();
+            onSignIn();
+          }}
+        >
+          Sign In
+        </button>
+        <button
+          className="lp-btn-solid lp-btn-full"
+          onClick={() => {
+            onClose();
+            onGetStarted();
+          }}
+        >
+          Start practicing free
+        </button>
       </div>
     </nav>
   </div>
@@ -172,22 +187,22 @@ const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => (
 const LandingPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState("login");
+  const [authMode, setAuthMode] = useState('login');
   const [navScrolled, setNavScrolled] = useState(false);
-  const [activeSection, setActiveSection] = useState("");
+  const [activeSection, setActiveSection] = useState('');
 
   /* Nav scroll shadow */
   useEffect(() => {
     const handleScroll = () => {
       setNavScrolled(window.scrollY > 20);
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   /* Scroll spy */
   useEffect(() => {
-    const sectionIds = ["rubric", "journey", "how-it-works"];
+    const sectionIds = ['rubric', 'journey', 'how-it-works'];
     const observers = [];
     const visible = new Set();
 
@@ -202,7 +217,7 @@ const LandingPage = () => {
             visible.delete(id);
           }
           const first = sectionIds.find((s) => visible.has(s));
-          setActiveSection(first || "");
+          setActiveSection(first || '');
         },
         { threshold: 0.2 }
       );
@@ -214,43 +229,40 @@ const LandingPage = () => {
   }, []);
 
   const openLoginModal = () => {
-    setAuthMode("login");
+    setAuthMode('login');
     setAuthModalOpen(true);
   };
 
   const openRegisterModal = () => {
-    setAuthMode("register");
+    setAuthMode('register');
     setAuthModalOpen(true);
   };
 
   return (
     <div className="lp-root">
       {/* ── Sticky Header ── */}
-      <header className={`lp-nav${navScrolled ? " lp-nav--scrolled" : ""}`} role="banner">
+      <header className={`lp-nav${navScrolled ? ' lp-nav--scrolled' : ''}`} role="banner">
         <div className="lp-nav-inner">
           <a href="/" className="lp-logo" aria-label="ITerview home">
-            <div className="lp-logo-container">
-              <img src={logoSrc} alt="ITerview Logo" className="lp-logo-img" />
-            </div>
-            <span className="lp-logo-text">ITerview<span className="lp-logo-dot">.</span></span>
+            <img src={logoSrc} alt="ITerview" className="lp-logo-img" />
           </a>
 
           <nav className="lp-nav-links" aria-label="Main navigation">
             <a
               href="#rubric"
-              className={`lp-nav-link${activeSection === "rubric" ? " lp-nav-link--active" : ""}`}
+              className={`lp-nav-link${activeSection === 'rubric' ? ' lp-nav-link--active' : ''}`}
             >
               The 3C rubric
             </a>
             <a
               href="#journey"
-              className={`lp-nav-link${activeSection === "journey" ? " lp-nav-link--active" : ""}`}
+              className={`lp-nav-link${activeSection === 'journey' ? ' lp-nav-link--active' : ''}`}
             >
               Learning pathway
             </a>
             <a
               href="#how-it-works"
-              className={`lp-nav-link${activeSection === "how-it-works" ? " lp-nav-link--active" : ""}`}
+              className={`lp-nav-link${activeSection === 'how-it-works' ? ' lp-nav-link--active' : ''}`}
             >
               How it works
             </a>
@@ -259,19 +271,23 @@ const LandingPage = () => {
           <div className="lp-nav-spacer" />
 
           <div className="lp-nav-cta">
-            <button className="lp-btn-ghost" onClick={openLoginModal}>Sign In</button>
-            <button className="lp-btn-solid" onClick={openRegisterModal}>Start practicing</button>
+            <button className="lp-btn-ghost" onClick={openLoginModal}>
+              Sign In
+            </button>
+            <button className="lp-btn-solid" onClick={openRegisterModal}>
+              Start practicing free
+            </button>
           </div>
 
           <button
             className="lp-hamburger"
-            aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
           >
-            <span className={`lp-ham-bar${menuOpen ? " lp-ham-bar--top" : ""}`} />
-            <span className={`lp-ham-bar${menuOpen ? " lp-ham-bar--mid" : ""}`} />
-            <span className={`lp-ham-bar${menuOpen ? " lp-ham-bar--bot" : ""}`} />
+            <span className={`lp-ham-bar${menuOpen ? ' lp-ham-bar--top' : ''}`} />
+            <span className={`lp-ham-bar${menuOpen ? ' lp-ham-bar--mid' : ''}`} />
+            <span className={`lp-ham-bar${menuOpen ? ' lp-ham-bar--bot' : ''}`} />
           </button>
         </div>
 
@@ -292,21 +308,22 @@ const LandingPage = () => {
           <div className="lp-hero-intro">
             <div className="lp-hero-pill-badge">
               <span className="lp-hero-pill-dot" aria-hidden="true" />
-              <span>iTerview · AI Interview Simulator</span>
+              <span>ITerview · AI Interview Simulator</span>
             </div>
 
             <h1 className="lp-hero-headline">
-              Master technical interviews <br className="hidden sm:inline" />
+              Master technical interviews <br className="lp-hero-br" />
               <span className="lp-hero-accent">in one calm place.</span>
             </h1>
 
             <p className="lp-hero-subhead">
-              Practice out loud, get scored honestly on every answer, and walk into the real room feeling ready.
+              Practice out loud, get scored honestly on every answer, and walk into the real room
+              feeling ready.
             </p>
 
             <div className="lp-hero-actions">
               <button className="lp-btn-hero-primary" onClick={openRegisterModal}>
-                <span>Start free</span>
+                <span>Start practicing free</span>
                 <ArrowRight size={17} strokeWidth={2.5} />
               </button>
             </div>
@@ -319,7 +336,8 @@ const LandingPage = () => {
                 ))}
               </div>
               <span className="lp-hero-proof-text">
-                <strong>4.8</strong> average rating · <strong>2,000+</strong> practice sessions tracked
+                <strong>4.8</strong> average rating · <strong>2,000+</strong> practice sessions
+                tracked
               </span>
               <span className="lp-hero-template-tag">TEMPLATE</span>
             </div>
@@ -341,24 +359,33 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Live Studio Showcase Stage */}
+          {/* Live Studio Showcase Stage (lazy — streams in after first paint) */}
           <div className="lp-hero-stage">
-            <TryItLiveDemo onOpenAuth={openRegisterModal} />
+            <Suspense fallback={<div className="lp-hero-stage-skeleton" aria-hidden="true" />}>
+              <TryItLiveDemo onOpenAuth={openRegisterModal} />
+            </Suspense>
           </div>
         </div>
       </section>
 
       {/* ── Section 1: The 3C Rubric (Insight Cards) ── */}
-      <section className="lp-section-wrap lp-section-wrap--alt" id="rubric" aria-labelledby="rubric-title">
+      <section
+        className="lp-section-wrap lp-section-wrap--alt"
+        id="rubric"
+        aria-labelledby="rubric-title"
+      >
         <div className="lp-section-inner">
           <div className="lp-section-head">
             <div className="lp-section-badge lp-section-badge--cyan">
               <Activity size={13} />
               <span>The 3C rubric</span>
             </div>
-            <h2 className="lp-section-title" id="rubric-title">Know exactly how every answer is scored</h2>
+            <h2 className="lp-section-title" id="rubric-title">
+              Know exactly how every answer is scored
+            </h2>
             <p className="lp-section-subtitle">
-              No more guessing what an interviewer wants. Every answer is evaluated across three core dimensions designed around real engineering hiring standards.
+              No more guessing what an interviewer wants. Every answer is evaluated across three
+              core dimensions designed around real engineering hiring standards.
             </p>
           </div>
 
@@ -431,7 +458,8 @@ const LandingPage = () => {
               <div className="lp-3c-info">
                 <h3 className="lp-3c-name">3. Completeness</h3>
                 <p className="lp-3c-desc">
-                  Did you address the full prompt and substantiate your points with concrete examples?
+                  Did you address the full prompt and substantiate your points with concrete
+                  examples?
                 </p>
               </div>
 
@@ -464,9 +492,12 @@ const LandingPage = () => {
               <TrendingUp size={13} />
               <span>Measurable improvement</span>
             </div>
-            <h2 className="lp-section-title" id="journey-title">From your first try to interview-ready</h2>
+            <h2 className="lp-section-title" id="journey-title">
+              From your first try to interview-ready
+            </h2>
             <p className="lp-section-subtitle">
-              Practice is only useful when you can prove you got better. Our diagnostic workflow measures your growth between your first attempt and your graduation test.
+              Practice is only useful when you can prove you got better. Our diagnostic workflow
+              measures your growth between your first attempt and your graduation test.
             </p>
           </div>
 
@@ -478,7 +509,8 @@ const LandingPage = () => {
                 <div className="lp-path-step-content">
                   <h3 className="lp-path-step-title">Silent Baseline Pre-Test</h3>
                   <p className="lp-path-step-desc">
-                    5 initial diagnostic questions establish your starting level without locking any interview tracks.
+                    5 initial diagnostic questions establish your starting level without locking any
+                    interview tracks.
                   </p>
                 </div>
               </div>
@@ -488,7 +520,8 @@ const LandingPage = () => {
                 <div className="lp-path-step-content">
                   <h3 className="lp-path-step-title">3-Round Scored Mock Interview</h3>
                   <p className="lp-path-step-desc">
-                    15 voice questions across Diagnostic, Role-Technical, and STAR Behavioral categories with real-time feedback.
+                    15 voice questions across Diagnostic, Role-Technical, and STAR Behavioral
+                    categories with real-time feedback.
                   </p>
                 </div>
               </div>
@@ -498,7 +531,8 @@ const LandingPage = () => {
                 <div className="lp-path-step-content">
                   <h3 className="lp-path-step-title">Graduation Benchmark Post-Test</h3>
                   <p className="lp-path-step-desc">
-                    Re-test against identical benchmark questions to clearly verify and celebrate your score growth.
+                    Re-test against identical benchmark questions to clearly verify and celebrate
+                    your score growth.
                   </p>
                 </div>
               </div>
@@ -508,8 +542,8 @@ const LandingPage = () => {
             <div className="lp-growth-card">
               <div className="lp-growth-header">
                 <div>
-                  <h3 style={{ fontSize: "1.125rem", fontWeight: 800 }}>Sample Practice Journey</h3>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--ink-faint)" }}>Frontend Engineer Track</p>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 800 }}>Sample Practice Journey</h3>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--ink-muted)' }}>Frontend Track</p>
                 </div>
                 <span className="lp-growth-badge">PROVEN DELTA</span>
               </div>
@@ -531,17 +565,17 @@ const LandingPage = () => {
 
               <div className="lp-growth-facts">
                 <div className="lp-growth-fact-item">
-                  <Target size={18} color="var(--blue)" style={{ margin: "0 auto" }} />
+                  <Target size={18} color="var(--blue)" style={{ margin: '0 auto' }} />
                   <span className="lp-growth-fact-strong">Targeted Prep</span>
                   <span className="lp-growth-fact-sub">Focus on weak spots</span>
                 </div>
                 <div className="lp-growth-fact-item">
-                  <TrendingUp size={18} color="var(--mint)" style={{ margin: "0 auto" }} />
+                  <TrendingUp size={18} color="var(--mint)" style={{ margin: '0 auto' }} />
                   <span className="lp-growth-fact-strong">75%+ Unlock</span>
                   <span className="lp-growth-fact-sub">Unlocks harder tiers</span>
                 </div>
                 <div className="lp-growth-fact-item">
-                  <Gauge size={18} color="var(--amber)" style={{ margin: "0 auto" }} />
+                  <Gauge size={18} color="var(--amber)" style={{ margin: '0 auto' }} />
                   <span className="lp-growth-fact-strong">Zero Guesswork</span>
                   <span className="lp-growth-fact-sub">Objective rubric</span>
                 </div>
@@ -552,16 +586,23 @@ const LandingPage = () => {
       </section>
 
       {/* ── Section 3: Bento Grid / How It Works (shadcn Badge System) ── */}
-      <section className="lp-section-wrap lp-section-wrap--alt" id="how-it-works" aria-labelledby="how-it-works-title">
+      <section
+        className="lp-section-wrap lp-section-wrap--alt"
+        id="how-it-works"
+        aria-labelledby="how-it-works-title"
+      >
         <div className="lp-section-inner">
           <div className="lp-section-head">
             <div className="lp-section-badge lp-section-badge--mint">
               <Zap size={13} />
               <span>How ITerview works</span>
             </div>
-            <h2 className="lp-section-title" id="how-it-works-title">Practice the questions real teams ask</h2>
+            <h2 className="lp-section-title" id="how-it-works-title">
+              Practice the questions real teams ask
+            </h2>
             <p className="lp-section-subtitle">
-              From foundational software concepts to advanced system trade-offs, practice the exact questions top tech employers ask.
+              From foundational software concepts to advanced system trade-offs, practice the exact
+              questions top tech employers ask.
             </p>
           </div>
 
@@ -572,12 +613,17 @@ const LandingPage = () => {
                 <div className="lp-3c-icon-badge lp-3c-icon-badge--blue">
                   <Mic size={22} strokeWidth={2.2} />
                 </div>
-                <h3 className="lp-bento-title">Speak your answers like it&rsquo;s the real thing</h3>
+                <h3 className="lp-bento-title">
+                  Speak your answers like it&rsquo;s the real thing
+                </h3>
               </div>
-              <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
-                Interviews are spoken, not typed. Our engine transcribes your spoken answers live and provides sentence-by-sentence rubric scoring.
+              <p style={{ color: 'var(--ink-secondary)', fontSize: '0.9375rem' }}>
+                Interviews are spoken, not typed. Our engine transcribes your spoken answers live
+                and provides sentence-by-sentence rubric scoring.
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "auto" }}>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}
+              >
                 <div className="lp-role-item">
                   <span className="lp-role-item-name">1. Speak naturally</span>
                   <span className="lp-role-item-tags">No typing required</span>
@@ -601,21 +647,22 @@ const LandingPage = () => {
                 </div>
                 <h3 className="lp-bento-title">Practice for the exact role you want</h3>
               </div>
-              <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
-                Curated question banks designed around real job requirements and technical frameworks.
+              <p style={{ color: 'var(--ink-secondary)', fontSize: '0.9375rem' }}>
+                Curated question banks designed around real job requirements and technical
+                frameworks.
               </p>
-              <div className="lp-role-list" style={{ marginTop: "auto" }}>
+              <div className="lp-role-list" style={{ marginTop: 'auto' }}>
                 <div className="lp-role-item">
-                  <span className="lp-role-item-name">Frontend Engineer</span>
+                  <span className="lp-role-item-name">Frontend Developer</span>
                   <span className="lp-role-item-tags">React, Next.js, TypeScript, CSS</span>
                 </div>
                 <div className="lp-role-item">
-                  <span className="lp-role-item-name">Backend Engineer</span>
+                  <span className="lp-role-item-name">Backend Developer</span>
                   <span className="lp-role-item-tags">Node.js, Python, PostgreSQL, REST/gRPC</span>
                 </div>
                 <div className="lp-role-item">
-                  <span className="lp-role-item-name">DevOps & Cloud</span>
-                  <span className="lp-role-item-tags">Docker, Kubernetes, AWS, CI/CD</span>
+                  <span className="lp-role-item-name">Fullstack Developer</span>
+                  <span className="lp-role-item-tags">React, Node.js, PostgreSQL, REST APIs</span>
                 </div>
               </div>
             </article>
@@ -628,10 +675,11 @@ const LandingPage = () => {
                 </div>
                 <h3 className="lp-bento-title">Move up only when you&rsquo;re ready</h3>
               </div>
-              <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
-                Earn your way forward. Advance through difficulty tiers by proving your competency with an average score of 75%+.
+              <p style={{ color: 'var(--ink-secondary)', fontSize: '0.9375rem' }}>
+                Earn your way forward. Advance through difficulty tiers by proving your competency
+                with an average score of 75%+.
               </p>
-              <div className="lp-tier-list" style={{ marginTop: "auto" }}>
+              <div className="lp-tier-list" style={{ marginTop: 'auto' }}>
                 <div className="lp-tier-item lp-tier-item--unlocked">
                   <div className="lp-tier-name-group">
                     <Check size={16} color="var(--mint)" />
@@ -664,10 +712,11 @@ const LandingPage = () => {
                 </div>
                 <h3 className="lp-bento-title">Train for the whole interview, not one round</h3>
               </div>
-              <p style={{ color: "var(--ink-secondary)", fontSize: "0.9375rem" }}>
-                Simulate a complete 360-degree interview experience that prepares you for both technical deep-dives and behavioral rounds.
+              <p style={{ color: 'var(--ink-secondary)', fontSize: '0.9375rem' }}>
+                Simulate a complete 360-degree interview experience that prepares you for both
+                technical deep-dives and behavioral rounds.
               </p>
-              <div className="lp-role-list" style={{ marginTop: "auto" }}>
+              <div className="lp-role-list" style={{ marginTop: 'auto' }}>
                 <div className="lp-role-item">
                   <span className="lp-role-item-name">Round 1: Diagnostic Weak Spots</span>
                   <span className="lp-role-item-tags">Targeted practice</span>
@@ -685,7 +734,7 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
-{/* ── Wall of Love: Community Proof Template (ClassDojo §5) ── */}
+      {/* ── Wall of Love: Community Proof Template (ClassDojo §5) ── */}
       {/* ⚠️ TEMPLATE: Replace sample quotes/avatars with real user posts before launch */}
       <section className="lp-section-wrap" id="wall-of-love" aria-label="Community proof">
         <div className="lp-section-inner">
@@ -696,73 +745,94 @@ const LandingPage = () => {
             </div>
             <h2 className="lp-section-title">Real people, real progress</h2>
             <p className="lp-section-subtitle">
-              Just like you, real candidates walked in nervous and left with the confidence they needed.
+              Just like you, real candidates walked in nervous and left with the confidence they
+              needed.
             </p>
           </div>
 
           <div className="lp-wall-grid">
             <article className="lp-wall-card">
-              <p className="lp-wall-quote">The voice scoring was the single thing that made me realize I kept saying &ldquo;um&rdquo; too much. I fixed it before my real interview and got the offer.</p>
+              <p className="lp-wall-quote">
+                The voice scoring was the single thing that made me realize I kept saying
+                &ldquo;um&rdquo; too much. I fixed it before my real interview and got the offer.
+              </p>
               <div className="lp-wall-person">
                 <div className="lp-wall-avatar lp-wall-avatar--blue">JM</div>
                 <div className="lp-wall-info">
                   <span className="lp-wall-name">Jordan M.</span>
-                  <span className="lp-wall-handle">Frontend Engineer Track</span>
+                  <span className="lp-wall-handle">Frontend Track</span>
                 </div>
               </div>
             </article>
 
             <article className="lp-wall-card">
-              <p className="lp-wall-quote">I practiced five mocks before my Google interview. The 3C rubric showed me exactly where I was losing points &mdash; I wish I had found this earlier.</p>
+              <p className="lp-wall-quote">
+                I practiced five mocks before my Google interview. The 3C rubric showed me exactly
+                where I was losing points &mdash; I wish I had found this earlier.
+              </p>
               <div className="lp-wall-person">
                 <div className="lp-wall-avatar lp-wall-avatar--cyan">AP</div>
                 <div className="lp-wall-info">
                   <span className="lp-wall-name">Alex P.</span>
-                  <span className="lp-wall-handle">Backend Engineer Track</span>
+                  <span className="lp-wall-handle">Backend Track</span>
                 </div>
               </div>
             </article>
 
             <article className="lp-wall-card">
-              <p className="lp-wall-quote">As a career switcher, I had zero interview experience. This basically held my hand through the first few rounds and gave me honest feedback.</p>
+              <p className="lp-wall-quote">
+                As a career switcher, I had zero interview experience. This basically held my hand
+                through the first few rounds and gave me honest feedback.
+              </p>
               <div className="lp-wall-person">
                 <div className="lp-wall-avatar lp-wall-avatar--mint">SK</div>
                 <div className="lp-wall-info">
                   <span className="lp-wall-name">Sam K.</span>
-                  <span className="lp-wall-handle">DevOps &amp; Cloud Track</span>
+                  <span className="lp-wall-handle">Fullstack Track</span>
                 </div>
               </div>
             </article>
 
             <article className="lp-wall-card">
-              <p className="lp-wall-quote">The STAR method round was brutal but exactly what I needed. My final mock scored 78% &mdash; up from 54% when I started.</p>
+              <p className="lp-wall-quote">
+                The STAR method round was brutal but exactly what I needed. My final mock scored 78%
+                &mdash; up from 54% when I started.
+              </p>
               <div className="lp-wall-person">
                 <div className="lp-wall-avatar lp-wall-avatar--indigo">TR</div>
                 <div className="lp-wall-info">
                   <span className="lp-wall-name">Taylor R.</span>
-                  <span className="lp-wall-handle">Full Stack Track</span>
+                  <span className="lp-wall-handle">Fullstack Track</span>
                 </div>
               </div>
             </article>
 
             <article className="lp-wall-card">
-              <p className="lp-wall-quote">What makes this different is you actually speak your answers out loud. That alone changed how I prepare. Recording myself was uncomfortable at first, now it&rsquo;s a habit.</p>
+              <p className="lp-wall-quote">
+                What makes this different is you actually speak your answers out loud. That alone
+                changed how I prepare. Recording myself was uncomfortable at first, now it&rsquo;s a
+                habit.
+              </p>
               <div className="lp-wall-person">
                 <div className="lp-wall-avatar lp-wall-avatar--amber">CN</div>
                 <div className="lp-wall-info">
                   <span className="lp-wall-name">Casey N.</span>
-                  <span className="lp-wall-handle">Software Engineering Track</span>
+                  <span className="lp-wall-handle">Frontend Track</span>
                 </div>
               </div>
             </article>
 
             <article className="lp-wall-card">
-              <p className="lp-wall-quote">The difficulty ladder keeps you honest. You cannot move to architecture questions until you prove you understand the fundamentals. That clarity builds real confidence.</p>
+              <p className="lp-wall-quote">
+                The difficulty ladder keeps you honest. You cannot move to architecture questions
+                until you prove you understand the fundamentals. That clarity builds real
+                confidence.
+              </p>
               <div className="lp-wall-person">
                 <div className="lp-wall-avatar lp-wall-avatar--coral">ML</div>
                 <div className="lp-wall-info">
                   <span className="lp-wall-name">Morgan L.</span>
-                  <span className="lp-wall-handle">Systems &amp; Infrastructure Track</span>
+                  <span className="lp-wall-handle">Backend Track</span>
                 </div>
               </div>
             </article>
@@ -781,7 +851,8 @@ const LandingPage = () => {
             </div>
             <h2 className="lp-trustvoice-title">Your voice, your data</h2>
             <p className="lp-trustvoice-sub">
-              Because ITerview records your answers through the microphone, we want you to know exactly what happens with your data &mdash; before you press record.
+              Because ITerview records your answers through the microphone, we want you to know
+              exactly what happens with your data &mdash; before you press record.
             </p>
           </div>
 
@@ -792,7 +863,8 @@ const LandingPage = () => {
               </div>
               <h3 className="lp-trustvoice-card-title">Recorded only when you choose to</h3>
               <p className="lp-trustvoice-card-desc">
-                The mic is never active unless you start a practice session. No background listening, no always-on monitoring.
+                The mic is never active unless you start a practice session. No background
+                listening, no always-on monitoring.
               </p>
             </article>
 
@@ -802,7 +874,8 @@ const LandingPage = () => {
               </div>
               <h3 className="lp-trustvoice-card-title">Scored, never sold</h3>
               <p className="lp-trustvoice-card-desc">
-                Your transcriptions are used solely to run the 3C rubric evaluation and provide your session feedback. We never share audio data with third parties.
+                Your transcriptions are used solely to run the 3C rubric evaluation and provide your
+                session feedback. We never share audio data with third parties.
               </p>
             </article>
 
@@ -812,13 +885,15 @@ const LandingPage = () => {
               </div>
               <h3 className="lp-trustvoice-card-title">You control what stays</h3>
               <p className="lp-trustvoice-card-desc">
-                Delete any recording, transcript, or entire session from your history at any time. Your practice history is yours to keep or remove.
+                Delete any recording, transcript, or entire session from your history at any time.
+                Your practice history is yours to keep or remove.
               </p>
             </article>
           </div>
 
           <p className="lp-trustvoice-note">
-            TEMPLATE &mdash; Verify these claims match your actual backend privacy workflow before launch.
+            TEMPLATE &mdash; Verify these claims match your actual backend privacy workflow before
+            launch.
           </p>
         </div>
       </section>
@@ -844,7 +919,15 @@ const LandingPage = () => {
             <ArrowRight size={18} strokeWidth={2.5} />
           </button>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.875rem", color: "var(--ink-muted)" }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.875rem',
+              color: 'var(--ink-muted)',
+            }}
+          >
             <CheckCircle2 size={15} color="var(--cyan)" />
             <span>Free to start · No credit card required</span>
           </div>
@@ -857,10 +940,7 @@ const LandingPage = () => {
           <div className="lp-footer-top">
             <div className="lp-footer-brand">
               <a href="/" className="lp-logo" aria-label="ITerview home">
-                <div className="lp-logo-container">
-                  <img src={logoSrc} alt="ITerview Logo" className="lp-logo-img" />
-                </div>
-                <span className="lp-logo-text">ITerview<span className="lp-logo-dot">.</span></span>
+                <img src={logoSrc} alt="ITerview" className="lp-logo-img" />
               </a>
               <p className="lp-footer-tagline">
                 Practice IT technical interviews out loud. Get scored on the objective 3C rubric.
@@ -870,31 +950,55 @@ const LandingPage = () => {
             <div className="lp-footer-links">
               <div className="lp-footer-link-group">
                 <span className="lp-footer-link-title">Product</span>
-                <a href="#rubric" className="lp-footer-link">The 3C rubric</a>
-                <a href="#journey" className="lp-footer-link">Learning pathway</a>
-                <a href="#how-it-works" className="lp-footer-link">How it works</a>
+                <a href="#rubric" className="lp-footer-link">
+                  The 3C rubric
+                </a>
+                <a href="#journey" className="lp-footer-link">
+                  Learning pathway
+                </a>
+                <a href="#how-it-works" className="lp-footer-link">
+                  How it works
+                </a>
               </div>
               <div className="lp-footer-link-group">
                 <span className="lp-footer-link-title">Tracks</span>
-                <a href="#how-it-works" className="lp-footer-link">Frontend Engineering</a>
-                <a href="#how-it-works" className="lp-footer-link">Backend Engineering</a>
-                <a href="#how-it-works" className="lp-footer-link">DevOps & Cloud</a>
+                <a href="#how-it-works" className="lp-footer-link">
+                  Frontend Developer
+                </a>
+                <a href="#how-it-works" className="lp-footer-link">
+                  Backend Developer
+                </a>
+                <a href="#how-it-works" className="lp-footer-link">
+                  Fullstack Developer
+                </a>
               </div>
               <div className="lp-footer-link-group">
                 <span className="lp-footer-link-title">Account</span>
                 <button
-                  style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
                   className="lp-footer-link"
                   onClick={openLoginModal}
                 >
                   Sign In
                 </button>
                 <button
-                  style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
                   className="lp-footer-link"
                   onClick={openRegisterModal}
                 >
-                  Start practicing
+                  Start practicing free
                 </button>
               </div>
             </div>

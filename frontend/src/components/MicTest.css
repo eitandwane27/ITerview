@@ -4,7 +4,7 @@
    Mirror pattern: LikertScale.css / Dashboard.css
    ===================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* ── Design Tokens ────────────────────────────────── */
 :root {
@@ -22,8 +22,7 @@
   /* Inner card border — crisp edge so the zone has a definite floor */
   --color-inner-border: rgba(124, 111, 205, 0.18);
   /* Inner card shadow — inset depth, not a floating card */
-  --shadow-inner: inset 0 1px 3px rgba(124, 111, 205, 0.08),
-                  0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-inner: inset 0 1px 3px rgba(124, 111, 205, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 
   --color-ink: #1a1a2e;
   --color-ink-secondary: #6b6b80;
@@ -68,7 +67,7 @@
 .mictest-container {
   min-height: 100vh;
   background: var(--color-canvas);
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   color: var(--color-ink);
   display: flex;
   flex-direction: column;
@@ -227,12 +226,7 @@
    ════════════════════════════════════════════════════ */
 .mictest-inner {
   /* Diagonal micro-gradient so the fill has perceived depth */
-  background: linear-gradient(
-    135deg,
-    #ece9f8 0%,
-    #f2f0fa 60%,
-    #edeaf6 100%
-  );
+  background: linear-gradient(135deg, #ece9f8 0%, #f2f0fa 60%, #edeaf6 100%);
   border: 1px solid var(--color-inner-border);
   border-radius: var(--lg-radius);
   box-shadow: var(--shadow-inner);
@@ -386,7 +380,7 @@
   border-color: var(--color-primary-muted);
   color: var(--color-primary);
   background: var(--color-primary-light);
-  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.10);
+  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.1);
 }
 
 .mictest-btn-test:focus-visible {

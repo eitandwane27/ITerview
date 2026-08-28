@@ -4,92 +4,106 @@
    Patterns inspired by: shadcn/ui · Rare UI · Beautiful UI
    ══════════════════════════════════════════════════════════════════════════════ */
 
-@import "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@500;600&display=swap";
+/* Fonts load via <link> tags in index.html (preconnect + stylesheet) — no CSS @import, which was double-fetching the families. */
 
 .lp-root {
   /* ── Canvas & Surfaces ── */
-  --canvas: #FFFFFF;
-  --canvas-subtle: #F8FAFC;
-  --canvas-ice: #F0F7FF;
-  --canvas-alt: #F1F5F9;
-  --card-bg: #FFFFFF;
-  --card-hover: #FAFCFF;
-  
+  --canvas: #ffffff;
+  --canvas-subtle: #f8fafc;
+  --canvas-ice: #f0f7ff;
+  --canvas-alt: #f1f5f9;
+  --card-bg: #ffffff;
+  --card-hover: #fafcff;
+
   /* ── Inks & Neutral Typography (Midnight Slate) ── */
-  --ink: #0F172A;
+  --ink: #0f172a;
   --ink-secondary: #334155;
-  --ink-muted: #64748B;
-  --ink-faint: #94A3B8;
-  
+  --ink-muted: #64748b;
+  --ink-faint: #94a3b8;
+
   /* ── Primary Brand: Royal Cobalt Blue ── */
-  --blue: #2563EB;
-  --blue-hover: #1D4ED8;
-  --blue-active: #1E40AF;
-  --blue-light: #EFF6FF;
-  --blue-border: #BFDBFE;
-  --blue-subtle: #DBEAFE;
-  
+  --blue: #2563eb;
+  --blue-hover: #1d4ed8;
+  --blue-active: #1e40af;
+  --blue-light: #eff6ff;
+  --blue-border: #bfdbfe;
+  --blue-subtle: #dbeafe;
+
   /* ── Live Signal & AI Voice: Sky Cyan ── */
-  --cyan: #0EA5E9;
-  --cyan-hover: #0284C7;
-  --cyan-active: #0369A1;
-  --cyan-light: #F0F9FF;
-  --cyan-border: #BAE6FD;
-  
+  --cyan: #0ea5e9;
+  --cyan-hover: #0284c7;
+  --cyan-active: #0369a1;
+  --cyan-light: #f0f9ff;
+  --cyan-border: #bae6fd;
+
   /* ── Technology & Tracks: Deep Indigo Violet ── */
-  --indigo: #6366F1;
-  --indigo-hover: #4F46E5;
-  --indigo-light: #EEF2FF;
-  --indigo-border: #C7D2FE;
-  
+  --indigo: #6366f1;
+  --indigo-hover: #4f46e5;
+  --indigo-light: #eef2ff;
+  --indigo-border: #c7d2fe;
+
   /* ── Verification & Correctness: Cool Mint Emerald ── */
-  --mint: #10B981;
+  --mint: #10b981;
   --mint-hover: #059669;
-  --mint-light: #ECFDF5;
-  --mint-border: #A7F3D0;
-  
+  --mint-light: #ecfdf5;
+  --mint-border: #a7f3d0;
+  --mint-ink: #022c22;
+
   /* ── Highlight & Completeness: Warm Golden Amber ── */
-  --amber: #F59E0B;
-  --amber-hover: #D97706;
-  --amber-light: #FEF3C7;
-  --amber-border: #FDE68A;
-  
+  --amber: #f59e0b;
+  --amber-hover: #d97706;
+  --amber-light: #fef3c7;
+  --amber-border: #fde68a;
+
   /* ── Errors: Coral Rose ── */
-  --coral: #EF4444;
-  --coral-light: #FEF2F2;
-  --coral-border: #FECACA;
-  
+  --coral: #ef4444;
+  --coral-light: #fef2f2;
+  --coral-border: #fecaca;
+  --coral-hover: #dc2626;
+  --coral-active: #b91c1c;
+  --coral-deep: #991b1b;
+
   /* ── Borders & Outlines (Hairline Slate) ── */
-  --border: #E2E8F0;
-  --border-strong: #CBD5E1;
-  --border-ice: #E0E7FF;
-  
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-ice: #e0e7ff;
+
   /* ── Squircle Radius Tokens (Rare UI Style) ── */
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 18px;
   --r-xl: 24px;
   --r-pill: 9999px;
-  
+
   /* ── Elevation & Shadows (shadcn + Rare UI) ── */
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
   --shadow-card: 0 4px 12px -2px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
-  --shadow-card-hover: 0 12px 28px -4px rgba(37, 99, 235, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
+  --shadow-card-hover:
+    0 12px 28px -4px rgba(37, 99, 235, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
   --shadow-glow-blue: 0 8px 30px -4px rgba(37, 99, 235, 0.18);
   --shadow-glow-cyan: 0 8px 30px -4px rgba(14, 165, 233, 0.18);
-  --shadow-tactile: 0 3px 0px #CBD5E1;
-  --shadow-tactile-primary: 0 3px 0px #1E40AF;
-  
+  --shadow-tactile: 0 3px 0px #cbd5e1;
+  --shadow-tactile-primary: 0 3px 0px #1e40af;
+
   /* ── Timing & Easing ── */
   --fast: 0.15s;
   --med: 0.25s;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
-/* ── Typography Display Token (Fredoka, ClassDojo-inspired rounded geometric) ── */
-  --font-display: "Fredoka", "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  
+  /* ── Typography Display Token (Fredoka, ClassDojo-inspired rounded geometric) ── */
+  --font-display:
+    'Fredoka', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
+
   background-color: var(--canvas);
   color: var(--ink);
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    'Plus Jakarta Sans',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   font-weight: 500;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -177,39 +191,36 @@
 .lp-logo {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: -0.03em;
-  color: var(--ink);
+  text-decoration: none;
+  transition:
+    transform var(--fast) cubic-bezier(0.16, 1, 0.3, 1),
+    opacity var(--fast) ease;
+  user-select: none;
+  cursor: pointer;
 }
 
-.lp-logo-container {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--r-md);
-  background: linear-gradient(135deg, var(--blue-light), var(--cyan-light));
-  border: 1.5px solid var(--blue-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
+.lp-logo:hover {
+  transform: scale(1.04);
+}
+
+.lp-logo:active {
+  transform: scale(0.96);
 }
 
 .lp-logo-img {
-  width: 26px;
-  height: 26px;
+  height: 40px;
+  width: auto;
+  max-width: 100%;
   object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(37, 99, 235, 0.14));
+  transition:
+    filter var(--fast) ease,
+    transform var(--fast) ease;
 }
 
-.lp-logo-text {
-  color: var(--ink);
-  font-weight: 800;
-}
-
-.lp-logo-dot {
-  color: var(--blue);
+.lp-logo:hover .lp-logo-img {
+  filter: drop-shadow(0 4px 14px rgba(37, 99, 235, 0.3));
 }
 
 .lp-nav-links {
@@ -225,7 +236,9 @@
   color: var(--ink-secondary);
   padding: 8px 14px;
   border-radius: var(--r-pill);
-  transition: color var(--fast) ease, background-color var(--fast) ease;
+  transition:
+    color var(--fast) ease,
+    background-color var(--fast) ease;
 }
 
 .lp-nav-link:hover {
@@ -255,14 +268,17 @@
   justify-content: center;
   gap: 8px;
   background-color: var(--blue);
-  color: #FFFFFF;
+  color: #ffffff;
   font-weight: 700;
   font-size: 0.9375rem;
   padding: 10px 20px;
   border: 1.5px solid var(--blue-hover);
   border-radius: var(--r-pill);
   box-shadow: var(--shadow-tactile-primary);
-  transition: transform var(--fast) var(--ease), background-color var(--fast) ease, box-shadow var(--fast) ease;
+  transition:
+    transform var(--fast) var(--ease),
+    background-color var(--fast) ease,
+    box-shadow var(--fast) ease;
 }
 
 .lp-btn-solid:hover {
@@ -273,7 +289,7 @@
 .lp-btn-solid:active {
   background-color: var(--blue-active);
   transform: translateY(2px);
-  box-shadow: 0 1px 0px #1E40AF;
+  box-shadow: 0 1px 0px #1e40af;
 }
 
 .lp-btn-ghost {
@@ -289,7 +305,11 @@
   border: 1.5px solid var(--border-strong);
   border-radius: var(--r-pill);
   box-shadow: var(--shadow-tactile);
-  transition: transform var(--fast) var(--ease), background-color var(--fast) ease, border-color var(--fast) ease, box-shadow var(--fast) ease;
+  transition:
+    transform var(--fast) var(--ease),
+    background-color var(--fast) ease,
+    border-color var(--fast) ease,
+    box-shadow var(--fast) ease;
 }
 
 .lp-btn-ghost:hover {
@@ -301,7 +321,7 @@
 
 .lp-btn-ghost:active {
   transform: translateY(2px);
-  box-shadow: 0 1px 0px #CBD5E1;
+  box-shadow: 0 1px 0px #cbd5e1;
 }
 
 .lp-btn-full {
@@ -328,7 +348,9 @@
   height: 2px;
   background-color: var(--ink);
   border-radius: 2px;
-  transition: transform var(--fast) ease, opacity var(--fast) ease;
+  transition:
+    transform var(--fast) ease,
+    opacity var(--fast) ease;
 }
 
 .lp-ham-bar--top {
@@ -418,8 +440,8 @@
   inset: 0;
   background: linear-gradient(
     180deg,
-    #FFFFFF 0%,
-    #FFFFFF 45%,
+    #ffffff 0%,
+    #ffffff 45%,
     rgba(248, 251, 255, 0.6) 70%,
     transparent 100%
   );
@@ -602,6 +624,17 @@
   display: inline-block;
 }
 
+/* Headline line break — desktop-only (replaces the inert Tailwind artifact) */
+.lp-hero-br {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .lp-hero-br {
+    display: inline;
+  }
+}
+
 /* ── Supporting Copy ── */
 .lp-hero-subhead {
   font-size: clamp(1.03rem, 1.8vw, 1.15rem);
@@ -626,27 +659,34 @@
   justify-content: center;
   gap: 10px;
   background-color: var(--blue);
-  color: #FFFFFF;
+  color: #ffffff;
   font-weight: 700;
   font-size: 1.0625rem;
   padding: 13px 34px;
   border-radius: var(--r-pill);
   border: 1.5px solid var(--blue-hover);
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.28), 0 2px 0px #1E40AF;
+  box-shadow:
+    0 4px 16px rgba(37, 99, 235, 0.28),
+    0 2px 0px #1e40af;
   cursor: pointer;
-  transition: transform var(--fast) var(--ease), background-color var(--fast) ease, box-shadow var(--fast) ease;
+  transition:
+    transform var(--fast) var(--ease),
+    background-color var(--fast) ease,
+    box-shadow var(--fast) ease;
 }
 
 .lp-btn-hero-primary:hover {
   background-color: var(--blue-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 22px rgba(37, 99, 235, 0.35), 0 3px 0px #1E40AF;
+  box-shadow:
+    0 6px 22px rgba(37, 99, 235, 0.35),
+    0 3px 0px #1e40af;
 }
 
 .lp-btn-hero-primary:active {
   background-color: var(--blue-active);
   transform: translateY(1px);
-  box-shadow: 0 1px 0px #1E40AF;
+  box-shadow: 0 1px 0px #1e40af;
 }
 
 /* ── Social Proof Strip ── */
@@ -663,7 +703,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  color: #F59E0B;
+  color: #f59e0b;
 }
 
 .lp-hero-star {
@@ -708,7 +748,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #FFFFFF;
+  background: #ffffff;
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
   padding: 9px 20px;
@@ -716,7 +756,10 @@
   font-weight: 600;
   color: var(--ink-secondary);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-  transition: border-color var(--fast) ease, transform var(--fast) ease, box-shadow var(--fast) ease;
+  transition:
+    border-color var(--fast) ease,
+    transform var(--fast) ease,
+    box-shadow var(--fast) ease;
 }
 
 .lp-hero-benefit-pill:hover {
@@ -739,12 +782,30 @@
   z-index: 2;
 }
 
+/* Lazy-demo placeholder: holds the stage height so first paint has no layout jump */
+.lp-hero-stage-skeleton {
+  width: 100%;
+  min-height: 620px;
+  border-radius: var(--r-xl);
+  border: 1.5px dashed var(--border-strong);
+  background: linear-gradient(180deg, var(--canvas-ice) 0%, #ffffff 100%);
+  animation: lpAtmospherePulse 2.4s ease-in-out infinite;
+}
+
+@media (max-width: 860px) {
+  .lp-hero-stage-skeleton {
+    min-height: 520px;
+  }
+}
+
 /* ── Exact Studio Card Container ── */
 .lp-exact-card {
-  background-color: #FFFFFF;
+  background-color: #ffffff;
   border: 1.5px solid var(--border);
   border-radius: 24px;
-  box-shadow: 0 20px 48px -12px rgba(15, 23, 42, 0.08), 0 4px 16px -2px rgba(15, 23, 42, 0.03);
+  box-shadow:
+    0 20px 48px -12px rgba(15, 23, 42, 0.08),
+    0 4px 16px -2px rgba(15, 23, 42, 0.03);
   padding: 26px 30px 28px;
   display: flex;
   flex-direction: column;
@@ -858,7 +919,7 @@
 
 .lp-exact-q-btn--active {
   background-color: var(--blue) !important;
-  color: #FFFFFF !important;
+  color: #ffffff !important;
 }
 
 .lp-exact-q-next {
@@ -940,7 +1001,7 @@
   border-color: var(--mint-border);
 }
 
-.lp-exact-track-tab--system-design.lp-exact-track-tab--active {
+.lp-exact-track-tab--fullstack.lp-exact-track-tab--active {
   color: var(--indigo);
   background-color: var(--indigo-light);
   border-color: var(--indigo-border);
@@ -952,7 +1013,7 @@
   gap: 6px;
   padding: 6px 14px;
   border-radius: var(--r-pill);
-  background-color: #FFFFFF;
+  background-color: #ffffff;
   border: 1px solid var(--blue-border);
   color: var(--blue);
   font-size: 0.8125rem;
@@ -971,7 +1032,7 @@
 
 .lp-exact-hear-btn--active {
   background-color: var(--blue) !important;
-  color: #FFFFFF !important;
+  color: #ffffff !important;
   border-color: var(--blue-hover) !important;
 }
 
@@ -1025,8 +1086,8 @@
 }
 
 .lp-exact-panel {
-  background-color: #FAFCFF;
-  border: 1.5px solid #E9EFF6;
+  background-color: #fafcff;
+  border: 1.5px solid #e9eff6;
   border-radius: 16px;
   padding: 16px 18px;
   display: flex;
@@ -1053,7 +1114,7 @@
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1072,16 +1133,22 @@
   background-color: var(--blue);
 }
 
-.lp-exact-wave-icon span:nth-child(1) { height: 6px; }
-.lp-exact-wave-icon span:nth-child(2) { height: 10px; }
-.lp-exact-wave-icon span:nth-child(3) { height: 6px; }
+.lp-exact-wave-icon span:nth-child(1) {
+  height: 6px;
+}
+.lp-exact-wave-icon span:nth-child(2) {
+  height: 10px;
+}
+.lp-exact-wave-icon span:nth-child(3) {
+  height: 6px;
+}
 
 .lp-exact-zap-icon {
   color: var(--blue);
 }
 
 .lp-exact-timer {
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--ink-secondary);
@@ -1091,7 +1158,7 @@
 .lp-exact-feedback-status {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 /* Left Panel Content */
@@ -1175,6 +1242,16 @@
   animation: lp-blink 0.8s infinite;
 }
 
+@keyframes lp-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
 .lp-exact-error-msg {
   display: flex;
   align-items: center;
@@ -1185,7 +1262,7 @@
   line-height: 1.5;
   padding: 10px 14px;
   border-radius: var(--r-md);
-  background-color: #FFFFFF;
+  background-color: #ffffff;
   border: 1px solid var(--coral-border);
 }
 
@@ -1199,7 +1276,7 @@
 }
 
 .lp-exact-rubric-row {
-  background-color: #FFFFFF;
+  background-color: #ffffff;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 9px 12px;
@@ -1281,7 +1358,7 @@
 }
 
 .lp-exact-row-score {
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.875rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -1293,7 +1370,7 @@
 .lp-exact-score-denom {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 .lp-exact-scale {
@@ -1331,37 +1408,40 @@
   gap: 10px;
   padding: 14px 28px;
   background-color: var(--blue);
-  color: #FFFFFF;
+  color: #ffffff;
   font-weight: 800;
   font-size: 1rem;
   border: 1.5px solid var(--blue-hover);
   border-radius: var(--r-pill);
   box-shadow: var(--shadow-tactile-primary);
   cursor: pointer;
-  transition: transform var(--fast) var(--ease), background-color var(--fast) ease, box-shadow var(--fast) ease;
+  transition:
+    transform var(--fast) var(--ease),
+    background-color var(--fast) ease,
+    box-shadow var(--fast) ease;
 }
 
 .lp-exact-main-mic-btn:hover {
   background-color: var(--blue-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 0px #1E40AF;
+  box-shadow: 0 4px 0px #1e40af;
 }
 
 .lp-exact-main-mic-btn:active {
   background-color: var(--blue-active);
   transform: translateY(2px);
-  box-shadow: 0 1px 0px #1E40AF;
+  box-shadow: 0 1px 0px #1e40af;
 }
 
 .lp-exact-main-mic-btn--recording {
   background-color: var(--coral);
-  border-color: #DC2626;
-  box-shadow: 0 3px 0px #B91C1C;
+  border-color: var(--coral-hover);
+  box-shadow: 0 3px 0px var(--coral-active);
 }
 
 .lp-exact-main-mic-btn--recording:hover {
-  background-color: #DC2626;
-  box-shadow: 0 4px 0px #991B1B;
+  background-color: var(--coral-hover);
+  box-shadow: 0 4px 0px var(--coral-deep);
 }
 
 .lp-exact-cta-sub {
@@ -1494,7 +1574,10 @@
   flex-direction: column;
   gap: 20px;
   box-shadow: var(--shadow-card);
-  transition: transform var(--fast) var(--ease), box-shadow var(--fast) ease, border-color var(--fast) ease;
+  transition:
+    transform var(--fast) var(--ease),
+    box-shadow var(--fast) ease,
+    border-color var(--fast) ease;
 }
 
 .lp-3c-card:hover {
@@ -1502,9 +1585,15 @@
   box-shadow: var(--shadow-card-hover);
 }
 
-.lp-3c-card--clarity:hover { border-color: var(--blue); }
-.lp-3c-card--correctness:hover { border-color: var(--mint); }
-.lp-3c-card--completeness:hover { border-color: var(--amber); }
+.lp-3c-card--clarity:hover {
+  border-color: var(--blue);
+}
+.lp-3c-card--correctness:hover {
+  border-color: var(--mint);
+}
+.lp-3c-card--completeness:hover {
+  border-color: var(--amber);
+}
 
 .lp-3c-icon-badge {
   width: 48px;
@@ -1516,9 +1605,21 @@
   font-size: 1.25rem;
 }
 
-.lp-3c-icon-badge--blue { background-color: var(--blue-light); color: var(--blue); border: 1.5px solid var(--blue-border); }
-.lp-3c-icon-badge--mint { background-color: var(--mint-light); color: var(--mint); border: 1.5px solid var(--mint-border); }
-.lp-3c-icon-badge--amber { background-color: var(--amber-light); color: var(--amber); border: 1.5px solid var(--amber-border); }
+.lp-3c-icon-badge--blue {
+  background-color: var(--blue-light);
+  color: var(--blue);
+  border: 1.5px solid var(--blue-border);
+}
+.lp-3c-icon-badge--mint {
+  background-color: var(--mint-light);
+  color: var(--mint);
+  border: 1.5px solid var(--mint-border);
+}
+.lp-3c-icon-badge--amber {
+  background-color: var(--amber-light);
+  color: var(--amber);
+  border: 1.5px solid var(--amber-border);
+}
 
 .lp-3c-info {
   display: flex;
@@ -1619,7 +1720,9 @@
   gap: 16px;
   align-items: flex-start;
   box-shadow: var(--shadow-sm);
-  transition: transform var(--fast) var(--ease), border-color var(--fast) ease;
+  transition:
+    transform var(--fast) var(--ease),
+    border-color var(--fast) ease;
 }
 
 .lp-path-step:hover {
@@ -1730,7 +1833,7 @@
   padding: 8px 14px;
   border-radius: var(--r-pill);
   background-color: var(--mint);
-  color: #FFFFFF;
+  color: var(--mint-ink);
   font-weight: 800;
   font-size: 1rem;
 }
@@ -1780,7 +1883,9 @@
   flex-direction: column;
   gap: 20px;
   box-shadow: var(--shadow-card);
-  transition: transform var(--fast) var(--ease), box-shadow var(--fast) ease;
+  transition:
+    transform var(--fast) var(--ease),
+    box-shadow var(--fast) ease;
 }
 
 .lp-bento-card:hover {
@@ -1869,7 +1974,7 @@
 
 .lp-tier-badge--unlocked {
   background-color: var(--mint);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .lp-tier-badge--locked {
@@ -1904,11 +2009,11 @@
 }
 
 .lp-wall-quote::before {
-  content: "\201C";
+  content: '\201C';
 }
 
 .lp-wall-quote::after {
-  content: "\201D";
+  content: '\201D';
 }
 
 .lp-wall-person {
@@ -1926,16 +2031,28 @@
   justify-content: center;
   font-size: 0.875rem;
   font-weight: 800;
-  color: #FFFFFF;
+  color: #ffffff;
   flex-shrink: 0;
 }
 
-.lp-wall-avatar--blue { background: var(--blue); }
-.lp-wall-avatar--cyan { background: var(--cyan); }
-.lp-wall-avatar--mint { background: var(--mint); }
-.lp-wall-avatar--indigo { background: var(--indigo); }
-.lp-wall-avatar--amber { background: var(--amber); }
-.lp-wall-avatar--coral { background: var(--coral); }
+.lp-wall-avatar--blue {
+  background: var(--blue);
+}
+.lp-wall-avatar--cyan {
+  background: var(--cyan);
+}
+.lp-wall-avatar--mint {
+  background: var(--mint);
+}
+.lp-wall-avatar--indigo {
+  background: var(--indigo);
+}
+.lp-wall-avatar--amber {
+  background: var(--amber);
+}
+.lp-wall-avatar--coral {
+  background: var(--coral);
+}
 
 .lp-wall-info {
   display: flex;
@@ -2160,19 +2277,14 @@
 
 /* ── Responsive Adaptations ──────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .lp-demo-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
   .lp-3c-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .lp-pathway-layout {
     grid-template-columns: 1fr;
   }
-  
+
   .lp-bento-grid {
     grid-template-columns: 1fr;
   }
@@ -2187,11 +2299,11 @@
   .lp-nav-cta {
     display: none;
   }
-  
+
   .lp-hamburger {
     display: flex;
   }
-  
+
   .lp-hero {
     padding: 36px 16px 56px;
   }
@@ -2204,36 +2316,10 @@
     gap: 14px;
   }
 
-  .lp-demo {
-    padding: 18px 16px;
-    border-radius: var(--r-lg);
-  }
-
-  .lp-demo-header-right {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .lp-demo-question-card {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 12px 14px;
-  }
-
-  .lp-demo-tts-btn {
-    align-self: flex-start;
-  }
-
-  .lp-demo-mic-main {
-    max-width: 100%;
-    padding: 12px 18px;
-    font-size: 0.9375rem;
-  }
-  
   .lp-section-wrap {
     padding: 56px 16px;
   }
-  
+
   .lp-growth-facts {
     grid-template-columns: 1fr;
   }
@@ -2246,13 +2332,6 @@
     grid-template-columns: 1fr;
   }
 
-  .lp-persona-row {
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-    max-width: 320px;
-  }
-  
   .lp-footer-top {
     flex-direction: column;
   }
@@ -2265,5 +2344,12 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* State feedback survives motion reduction: essential live indicators stay
+     fully visible instead of being blinked or faded into nothing. */
+  .lp-exact-caret {
+    animation: none !important;
+    opacity: 1 !important;
   }
 }

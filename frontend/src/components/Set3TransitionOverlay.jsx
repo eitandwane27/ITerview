@@ -1,17 +1,17 @@
-import React from "react";
-import { motion } from "framer-motion";
-import "./Set3TransitionOverlay.css";
+import React from 'react';
+import { motion } from 'framer-motion';
+import './Set3TransitionOverlay.css';
 
 // ─── Motion variants ──────────────────────────────────────────────────────────
 const overlayVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { duration: 0.35, ease: "easeOut" },
+    transition: { duration: 0.35, ease: 'easeOut' },
   },
   exit: {
     opacity: 0,
-    transition: { duration: 0.25, ease: "easeIn" },
+    transition: { duration: 0.25, ease: 'easeIn' },
   },
 };
 
@@ -21,7 +21,7 @@ const cardVariants = {
     opacity: 1,
     scale: 1,
     transition: {
-      type: "spring",
+      type: 'spring',
       stiffness: 300,
       damping: 26,
       delay: 0.08,
@@ -30,7 +30,7 @@ const cardVariants = {
   exit: {
     opacity: 0,
     scale: 0.97,
-    transition: { duration: 0.2, ease: "easeIn" },
+    transition: { duration: 0.2, ease: 'easeIn' },
   },
 };
 
@@ -39,7 +39,7 @@ const fadeUp = {
   visible: (delay = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.36, ease: "easeOut", delay },
+    transition: { duration: 0.36, ease: 'easeOut', delay },
   }),
 };
 
@@ -72,27 +72,18 @@ export default function Set3TransitionOverlay({ onReady }) {
         </motion.h2>
 
         {/* Divider */}
-        <motion.div
-          className="s3-divider"
-          variants={fadeUp}
-          custom={0.38}
-          aria-hidden="true"
-        />
+        <motion.div className="s3-divider" variants={fadeUp} custom={0.38} aria-hidden="true" />
 
         {/* Description */}
         <motion.p className="s3-description" variants={fadeUp} custom={0.44}>
-          The AI will now shift focus to your behavioral skills using the{" "}
-          <span className="s3-method-highlight">STAR method</span> (Situation, Action, Result). 
+          The AI will now shift focus to your behavioral skills using the{' '}
+          <span className="s3-method-highlight">STAR method</span> (Situation, Action, Result).
           Expect questions testing collaboration, conflict resolution, resilience, and initiative.
         </motion.p>
 
         {/* CTA */}
         <motion.div className="s3-actions" variants={fadeUp} custom={0.52}>
-          <button
-            className="s3-btn-primary"
-            onClick={onReady}
-            id="s3-begin-btn"
-          >
+          <button className="s3-btn-primary" onClick={onReady} id="s3-begin-btn">
             Begin Behavioral Set
           </button>
         </motion.div>

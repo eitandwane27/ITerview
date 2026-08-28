@@ -4,7 +4,7 @@
   min-height: 100vh;
   background-color: #0b0f19;
   color: #f3f4f6;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   padding: 24px;
   box-sizing: border-box;
 }
@@ -92,14 +92,28 @@
   border-radius: 50%;
 }
 
-.fd-dot-disconnected { background-color: #6b7280; }
-.fd-dot-connecting   { background-color: #f59e0b; animation: fdPulse 1s infinite alternate; }
-.fd-dot-connected    { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
-.fd-dot-error        { background-color: #ef4444; }
+.fd-dot-disconnected {
+  background-color: #6b7280;
+}
+.fd-dot-connecting {
+  background-color: #f59e0b;
+  animation: fdPulse 1s infinite alternate;
+}
+.fd-dot-connected {
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+.fd-dot-error {
+  background-color: #ef4444;
+}
 
 @keyframes fdPulse {
-  from { opacity: 0.4; }
-  to { opacity: 1; }
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .fd-btn {
@@ -214,7 +228,7 @@
   color: #e2e8f0;
 }
 
-.fd-param-group input[type="range"] {
+.fd-param-group input[type='range'] {
   width: 100%;
   accent-color: #6366f1;
   cursor: pointer;
@@ -270,9 +284,21 @@
   border-radius: 6px;
 }
 
-.fd-turn-SPEAKING    { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
-.fd-turn-END_OF_TURN { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
-.fd-turn-IDLE        { background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.4); }
+.fd-turn-SPEAKING {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.fd-turn-END_OF_TURN {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+.fd-turn-IDLE {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.4);
+}
 
 .fd-turn-metrics {
   display: grid;
@@ -442,8 +468,14 @@
   font-weight: 600;
 }
 
-.fd-conf-pill.high { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-.fd-conf-pill.low  { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.fd-conf-pill.high {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+.fd-conf-pill.low {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
 
 .fd-duration-pill {
   margin-left: auto;
@@ -554,13 +586,34 @@
   text-transform: uppercase;
 }
 
-.fd-event-type-badge.StartOfTurn { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-.fd-event-type-badge.EndOfTurn   { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
-.fd-event-type-badge.Interim     { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
-.fd-event-type-badge.Final       { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
-.fd-event-type-badge.Error       { background: rgba(239, 68, 68, 0.3); color: #ef4444; }
-.fd-event-type-badge.System      { background: rgba(107, 114, 128, 0.2); color: #cbd5e1; }
-.fd-event-type-badge.Payload     { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+.fd-event-type-badge.StartOfTurn {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+.fd-event-type-badge.EndOfTurn {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+.fd-event-type-badge.Interim {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+}
+.fd-event-type-badge.Final {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+.fd-event-type-badge.Error {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+.fd-event-type-badge.System {
+  background: rgba(107, 114, 128, 0.2);
+  color: #cbd5e1;
+}
+.fd-event-type-badge.Payload {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+}
 
 .fd-event-label {
   color: #e5e7eb;

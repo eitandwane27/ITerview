@@ -4,7 +4,7 @@
 /* Light theme mirroring MicTest.css                                            */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* ── Root tokens ─────────────────────────────────────────────────────────── */
 :root {
@@ -34,8 +34,7 @@
   --radius-lg: 12px;
   --radius-xl: 28px;
 
-  --shadow-card:
-    0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
 /* ── Global reset for this page ──────────────────────────────────────────── */
@@ -363,9 +362,7 @@
 }
 
 .pt-btn-success {
-  background: var(
-    --text-primary
-  ); /* Use dark gray for standard submit buttons, like MicTest */
+  background: var(--text-primary); /* Use dark gray for standard submit buttons, like MicTest */
   color: #fff;
 }
 .pt-btn-success:not(:disabled):hover {

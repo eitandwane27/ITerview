@@ -5,15 +5,15 @@
 //   - Gate subsequent animations behind isDone
 //   - Let the user call skip() to instantly reveal the full text
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from 'react';
 
 export function useTypewriter(text, speed = 30) {
-  const [displayText, setDisplayText] = useState("");
+  const [displayText, setDisplayText] = useState('');
   const [isDone, setIsDone] = useState(false);
 
   // Reset whenever the source text changes
   useEffect(() => {
-    setDisplayText("");
+    setDisplayText('');
     setIsDone(false);
 
     if (!text) {

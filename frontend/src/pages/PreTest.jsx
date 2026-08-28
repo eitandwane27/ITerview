@@ -10,21 +10,21 @@
 //   5. On confirm → { type: "submit_answer" } → server speaks next question
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { auth } from "../firebase";
-import { AnimatePresence } from "framer-motion";
-import AiAnalysisLoader from "../components/AiAnalysisLoader";
-import "./PreTest.css";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { auth } from '../firebase';
+import { AnimatePresence } from 'framer-motion';
+import AiAnalysisLoader from '../components/AiAnalysisLoader';
+import './PreTest.css';
 
 export default function PreTest() {
   const navigate = useNavigate();
   const location = useLocation();
-  const voice = location.state?.voice || "aura-2-luna-en";
+  const voice = location.state?.voice || 'aura-2-luna-en';
 
   // ── UI State ───────────────────────────────────────────────────────────────
-  const [status, setStatus] = useState("Connecting to session…");
-  const [error, setError] = useState("");
+  const [status, setStatus] = useState('Connecting to session…');
+  const [error, setError] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -33,9 +33,9 @@ export default function PreTest() {
 
   // Volume & Transcript state
   const [volume, setVolume] = useState(0);
-  const [partialTranscript, setPartialTranscript] = useState("");
-  const [finalTranscript, setFinalTranscript] = useState("");
-  const [confirmedTranscript, setConfirmedTranscript] = useState(""); // editable
+  const [partialTranscript, setPartialTranscript] = useState('');
+  const [finalTranscript, setFinalTranscript] = useState('');
+  const [confirmedTranscript, setConfirmedTranscript] = useState(''); // editable
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const [showContinueButton, setShowContinueButton] = useState(false);
@@ -49,7 +49,7 @@ export default function PreTest() {
   const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
 
-  const finalTranscriptRef = useRef(""); // to accumulate final segments reliably
+  const finalTranscriptRef = useRef(''); // to accumulate final segments reliably
 
   // ── Audio queue refs (prevents feedback + question TTS from overlapping) ───
   const audioQueueRef = useRef([]); // pending audio items (base64 or stream objects)
@@ -102,7 +102,7 @@ export default function PreTest() {
 
           audio.onerror = () => {
             cleanupThisAudio();
-            if (isMountedRef.current) onError(new Error("Audio playback failed."));
+            if (isMountedRef.current) onError(new Error('Audio playback failed.'));
           };
 
           audio.play().catch((err) => {
@@ -137,33 +137,31 @@ export default function PreTest() {
       onEnded();
     };
 
-    if (item.type === "base64") {
+    if (item.type === 'base64') {
       playBase64(item.data, onEnded, onPlaybackError);
     }
   }, [playBase64]);
 
   const enqueueBase64Audio = useCallback(
     (base64Data) => {
-      audioQueueRef.current.push({ type: "base64", data: base64Data });
+      audioQueueRef.current.push({ type: 'base64', data: base64Data });
       processQueue();
     },
-    [processQueue],
+    [processQueue]
   );
 
   // ── WebSocket connection ───────────────────────────────────────────────────
   useEffect(() => {
     const user = auth.currentUser;
-    const uid = user ? user.uid : "anonymous_user";
-    const ws = new WebSocket(
-      `ws://localhost:5000/ws/interview?voice=${voice}&uid=${uid}`,
-    );
-    ws.binaryType = "arraybuffer"; // Set to receive binary chunks as ArrayBuffers
+    const uid = user ? user.uid : 'anonymous_user';
+    const ws = new WebSocket(`ws://localhost:5000/ws/interview?voice=${voice}&uid=${uid}`);
+    ws.binaryType = 'arraybuffer'; // Set to receive binary chunks as ArrayBuffers
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log("[WS] Connected to interview session");
+      console.log('[WS] Connected to interview session');
       setIsConnected(true);
-      setError("");
+      setError('');
     };
 
     ws.onmessage = (event) => {
@@ -175,19 +173,19 @@ export default function PreTest() {
       }
 
       switch (msg.type) {
-        case "status":
+        case 'status':
           setStatus(msg.message);
           break;
 
-        case "session_resumed":
+        case 'session_resumed':
           setCurrentQuestion(msg.currentQuestionIndex + 1);
           break;
 
-        case "tts_audio":
+        case 'tts_audio':
           enqueueBase64Audio(msg.data);
           break;
 
-        case "transcript":
+        case 'transcript':
           if (msg.isFinal) {
             if (msg.text) {
               finalTranscriptRef.current = finalTranscriptRef.current
@@ -195,25 +193,25 @@ export default function PreTest() {
                 : msg.text;
             }
             setFinalTranscript(finalTranscriptRef.current);
-            setPartialTranscript("");
+            setPartialTranscript('');
           } else {
-            setPartialTranscript(msg.text || "");
+            setPartialTranscript(msg.text || '');
           }
           break;
 
-        case "error":
+        case 'error':
           setError(msg.message);
           break;
 
-        case "feedback_complete":
+        case 'feedback_complete':
           setShowContinueButton(true);
-          setStatus("Answer recorded. Click below to continue.");
+          setStatus('Answer recorded. Click below to continue.');
           break;
 
-        case "session_complete":
+        case 'session_complete':
           setIsSessionComplete(true);
           setIsAnalyzing(true);
-          setStatus("Pre-test complete! AI Analysis starting...");
+          setStatus('Pre-test complete! AI Analysis starting...');
           break;
 
         default:
@@ -222,13 +220,13 @@ export default function PreTest() {
     };
 
     ws.onerror = () => {
-      setError("WebSocket connection failed. Is the backend running?");
+      setError('WebSocket connection failed. Is the backend running?');
       setIsConnected(false);
     };
 
     ws.onclose = () => {
       setIsConnected(false);
-      console.log("[WS] Connection closed");
+      console.log('[WS] Connection closed');
     };
 
     return () => {
@@ -254,7 +252,7 @@ export default function PreTest() {
       try {
         currentAudioRef.current.pause();
         currentAudioRef.current.currentTime = 0;
-        currentAudioRef.current.src = "";
+        currentAudioRef.current.src = '';
       } catch (e) {}
       currentAudioRef.current = null;
     }
@@ -282,7 +280,7 @@ export default function PreTest() {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    if (audioContextRef.current?.state !== "closed") {
+    if (audioContextRef.current?.state !== 'closed') {
       audioContextRef.current?.close();
       audioContextRef.current = null;
     }
@@ -292,7 +290,7 @@ export default function PreTest() {
   // ── Mic controls ───────────────────────────────────────────────────────────
   const startRecording = async () => {
     if (isRecording || !isConnected) return;
-    setError("");
+    setError('');
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -306,14 +304,14 @@ export default function PreTest() {
       streamRef.current = stream;
 
       // Reset transcripts
-      finalTranscriptRef.current = "";
-      setFinalTranscript("");
-      setPartialTranscript("");
-      setConfirmedTranscript("");
+      finalTranscriptRef.current = '';
+      setFinalTranscript('');
+      setPartialTranscript('');
+      setConfirmedTranscript('');
       setAwaitingConfirmation(false);
 
       // Tell the server we're starting
-      wsRef.current.send(JSON.stringify({ type: "start_recording" }));
+      wsRef.current.send(JSON.stringify({ type: 'start_recording' }));
 
       // Setup Web Audio API exactly like MicTest for raw PCM
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
@@ -348,7 +346,7 @@ export default function PreTest() {
       };
 
       setIsRecording(true);
-      setStatus("Recording your answer…");
+      setStatus('Recording your answer…');
     } catch (err) {
       setError(`Microphone error: ${err.message}`);
     }
@@ -360,15 +358,15 @@ export default function PreTest() {
     cleanupAudio();
 
     // Tell the server to close the Deepgram session
-    wsRef.current?.send(JSON.stringify({ type: "stop_recording" }));
+    wsRef.current?.send(JSON.stringify({ type: 'stop_recording' }));
 
     setIsRecording(false);
-    setStatus("Review your answer before confirming.");
+    setStatus('Review your answer before confirming.');
 
     // Phase 2: let the user review the transcript
     const combined = (
       finalTranscriptRef.current +
-      (partialTranscript ? (finalTranscriptRef.current ? " " : "") + partialTranscript : "")
+      (partialTranscript ? (finalTranscriptRef.current ? ' ' : '') + partialTranscript : '')
     ).trim();
     setConfirmedTranscript(combined);
     setAwaitingConfirmation(true);
@@ -379,17 +377,17 @@ export default function PreTest() {
 
     wsRef.current.send(
       JSON.stringify({
-        type: "submit_answer",
+        type: 'submit_answer',
         final_text: confirmedTranscript,
-      }),
+      })
     );
 
     setAwaitingConfirmation(false);
-    setFinalTranscript("");
-    setPartialTranscript("");
-    setConfirmedTranscript("");
-    finalTranscriptRef.current = "";
-    setStatus("Answer submitted. Waiting for the next question…");
+    setFinalTranscript('');
+    setPartialTranscript('');
+    setConfirmedTranscript('');
+    finalTranscriptRef.current = '';
+    setStatus('Answer submitted. Waiting for the next question…');
   };
 
   const handleContinue = () => {
@@ -399,9 +397,9 @@ export default function PreTest() {
     if (currentAudioRef.current) {
       try {
         currentAudioRef.current.pause();
-        currentAudioRef.current.src = "";
+        currentAudioRef.current.src = '';
       } catch (err) {
-        console.error("Error stopping current audio:", err);
+        console.error('Error stopping current audio:', err);
       }
       currentAudioRef.current = null;
     }
@@ -413,21 +411,21 @@ export default function PreTest() {
 
     wsRef.current.send(
       JSON.stringify({
-        type: "next_question",
-      }),
+        type: 'next_question',
+      })
     );
 
     setCurrentQuestion((prev) => prev + 1);
     setShowContinueButton(false);
-    setStatus("Loading the next question…");
+    setStatus('Loading the next question…');
   };
 
   const reRecord = () => {
     setAwaitingConfirmation(false);
-    setFinalTranscript("");
-    setPartialTranscript("");
-    setConfirmedTranscript("");
-    finalTranscriptRef.current = "";
+    setFinalTranscript('');
+    setPartialTranscript('');
+    setConfirmedTranscript('');
+    finalTranscriptRef.current = '';
     startRecording();
   };
 
@@ -465,7 +463,7 @@ export default function PreTest() {
         {/* Left Column */}
         <div
           className="pt-content"
-          style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
         >
           {error && (
             <div className="pt-error-toast" role="alert">
@@ -476,9 +474,7 @@ export default function PreTest() {
 
           <div className="pt-card pt-question-card">
             <div className="pt-card-body">
-              <span className="pt-question-number">
-                Question {currentQuestion}
-              </span>
+              <span className="pt-question-number">Question {currentQuestion}</span>
               <div className="pt-question-text">
                 Listen to the AI's question, then record your answer.
               </div>
@@ -487,29 +483,26 @@ export default function PreTest() {
               <div
                 className={`pt-status-strip ${
                   !isConnected
-                    ? "idle"
+                    ? 'idle'
                     : isPlayingAudio
-                      ? "speaking"
+                      ? 'speaking'
                       : isRecording
-                        ? "listening"
+                        ? 'listening'
                         : awaitingConfirmation
-                          ? "verify"
-                          : "idle"
+                          ? 'verify'
+                          : 'idle'
                 }`}
               >
                 <div className="pt-status-dot" />
                 <span>
                   {status}
-                  {isPlayingAudio && " 🔊"}
+                  {isPlayingAudio && ' 🔊'}
                 </span>
               </div>
 
               {/* Verify Panel (Phase 2) */}
               {awaitingConfirmation && (
-                <div
-                  className="pt-verify-panel"
-                  style={{ marginTop: "1.5rem" }}
-                >
+                <div className="pt-verify-panel" style={{ marginTop: '1.5rem' }}>
                   <span className="pt-verify-label">Review Your Answer</span>
                   <textarea
                     className="pt-verify-textarea"
@@ -518,10 +511,7 @@ export default function PreTest() {
                     placeholder="Your transcribed answer will appear here…"
                   />
                   <div className="pt-verify-actions">
-                    <button
-                      className="pt-btn pt-btn-success"
-                      onClick={submitAnswer}
-                    >
+                    <button className="pt-btn pt-btn-success" onClick={submitAnswer}>
                       ✅ Confirm &amp; Continue
                     </button>
                     <button className="pt-btn pt-btn-ghost" onClick={reRecord}>
@@ -532,92 +522,87 @@ export default function PreTest() {
               )}
 
               {/* Mic Area */}
-              {!isSessionComplete &&
-                !awaitingConfirmation &&
-                !showContinueButton && (
-                  <div className="pt-mic-btn-wrap">
-                    {!isRecording ? (
-                      <button
-                        className="pt-mic-btn inactive"
-                        onClick={startRecording}
-                        disabled={!isConnected || isPlayingAudio}
-                      >
-                        🎙️
-                      </button>
-                    ) : (
-                      <button
-                        className="pt-mic-btn active"
-                        onClick={stopRecording}
-                      >
-                        ⏹️
-                      </button>
-                    )}
-                    <span className="pt-mic-label">
-                      {isRecording ? "Recording..." : "Tap to Speak"}
-                    </span>
+              {!isSessionComplete && !awaitingConfirmation && !showContinueButton && (
+                <div className="pt-mic-btn-wrap">
+                  {!isRecording ? (
+                    <button
+                      className="pt-mic-btn inactive"
+                      onClick={startRecording}
+                      disabled={!isConnected || isPlayingAudio}
+                    >
+                      🎙️
+                    </button>
+                  ) : (
+                    <button className="pt-mic-btn active" onClick={stopRecording}>
+                      ⏹️
+                    </button>
+                  )}
+                  <span className="pt-mic-label">
+                    {isRecording ? 'Recording...' : 'Tap to Speak'}
+                  </span>
 
-                    {/* Volume Meter */}
-                    {isRecording && (
+                  {/* Volume Meter */}
+                  {isRecording && (
+                    <div
+                      style={{
+                        marginTop: '1rem',
+                        width: '100%',
+                        maxWidth: '300px',
+                      }}
+                    >
                       <div
                         style={{
-                          marginTop: "1rem",
-                          width: "100%",
-                          maxWidth: "300px",
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '0.8rem',
+                          color: 'var(--text-muted)',
+                          marginBottom: '0.5rem',
                         }}
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: "0.8rem",
-                            color: "var(--text-muted)",
-                            marginBottom: "0.5rem",
-                          }}
-                        >
-                          <span>Microphone Level</span>
-                          <span>{volume}%</span>
-                        </div>
-                        <div
-                          className="pt-progress-bar-track"
-                          style={{ borderRadius: "4px", overflow: "hidden" }}
-                        >
-                          <div
-                            className="pt-progress-bar-fill"
-                            style={{
-                              width: `${volume}%`,
-                              background:
-                                volume > 70
-                                  ? "var(--red)"
-                                  : volume > 20
-                                    ? "var(--green)"
-                                    : "var(--accent)",
-                            }}
-                          />
-                        </div>
+                        <span>Microphone Level</span>
+                        <span>{volume}%</span>
                       </div>
-                    )}
-                  </div>
-                )}
+                      <div
+                        className="pt-progress-bar-track"
+                        style={{ borderRadius: '4px', overflow: 'hidden' }}
+                      >
+                        <div
+                          className="pt-progress-bar-fill"
+                          style={{
+                            width: `${volume}%`,
+                            background:
+                              volume > 70
+                                ? 'var(--red)'
+                                : volume > 20
+                                  ? 'var(--green)'
+                                  : 'var(--accent)',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Continue Button */}
               {showContinueButton && !isSessionComplete && (
-                <div className="pt-mic-btn-wrap" style={{ marginTop: "1rem" }}>
+                <div className="pt-mic-btn-wrap" style={{ marginTop: '1rem' }}>
                   <button
                     className="pt-btn pt-btn-primary"
                     onClick={handleContinue}
                     style={{
-                      padding: "0.8rem 2rem",
-                      fontSize: "1.05rem",
-                      fontWeight: "600",
-                      borderRadius: "12px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      background: "var(--accent)",
-                      border: "none",
-                      color: "#fff",
-                      cursor: "pointer",
-                      boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+                      padding: '0.8rem 2rem',
+                      fontSize: '1.05rem',
+                      fontWeight: '600',
+                      borderRadius: '12px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      background: 'var(--accent)',
+                      border: 'none',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
                     }}
                   >
                     Continue to Next Question ➔
@@ -627,10 +612,7 @@ export default function PreTest() {
 
               {isSessionComplete && (
                 <div className="pt-mic-btn-wrap">
-                  <button
-                    className="pt-btn pt-btn-primary"
-                    onClick={() => navigate("/dashboard")}
-                  >
+                  <button className="pt-btn pt-btn-primary" onClick={() => navigate('/dashboard')}>
                     🏁 Return to Dashboard
                   </button>
                 </div>
@@ -648,17 +630,12 @@ export default function PreTest() {
             </div>
             <div className="pt-card-body pt-transcript-body" aria-live="polite">
               {!finalTranscript && !partialTranscript ? (
-                <div className="pt-transcript-empty">
-                  Your voice transcript will appear here...
-                </div>
+                <div className="pt-transcript-empty">Your voice transcript will appear here...</div>
               ) : (
                 <>
                   <span className="pt-transcript-final">{finalTranscript}</span>
                   {partialTranscript && (
-                    <span className="pt-transcript-partial">
-                      {" "}
-                      {partialTranscript}
-                    </span>
+                    <span className="pt-transcript-partial"> {partialTranscript}</span>
                   )}
                 </>
               )}

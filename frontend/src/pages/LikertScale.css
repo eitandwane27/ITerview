@@ -4,7 +4,7 @@
    Mirror pattern: MainSets.css / Dashboard.css
    ===================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* ── Design Tokens ────────────────────────────────── */
 :root {
@@ -57,7 +57,7 @@
 .likert-container {
   min-height: 100vh;
   background: var(--color-canvas);
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   color: var(--color-ink);
   display: flex;
   flex-direction: column;
@@ -259,7 +259,9 @@
 .likert-option.selected {
   background: var(--color-primary-light);
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.18), 0 4px 12px rgba(124, 111, 205, 0.12);
+  box-shadow:
+    0 0 0 3px rgba(124, 111, 205, 0.18),
+    0 4px 12px rgba(124, 111, 205, 0.12);
   transform: translateY(-1px);
 }
 
@@ -387,9 +389,18 @@
 }
 
 @keyframes lk-pulse {
-  0%   { transform: scale(1);   opacity: 0.7; }
-  65%  { transform: scale(1.6); opacity: 0; }
-  100% { transform: scale(1.6); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  65% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
 }
 
 /* Solid lavender circle */
@@ -424,7 +435,9 @@
 }
 
 @keyframes lk-check-draw {
-  to { stroke-dashoffset: 0; }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 .likert-done-card h2 {

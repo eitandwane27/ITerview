@@ -1,7 +1,7 @@
-import React from "react";
-import "./Set2Interview.css";
+import React from 'react';
+import './Set2Interview.css';
 
-export default function Set2Interview({ role = "Frontend" }) {
+export default function Set2Interview({ role = 'Frontend' }) {
   return (
     <div className="s2-interview-container">
       <h2>Set 2: Technical Mastery</h2>
