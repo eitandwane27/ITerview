@@ -6,5 +6,8 @@ build
 .agents
 .codex
 .ai-skills
+.zcode
+artifacts
 *.log
+*_out.txt
 package-lock.json

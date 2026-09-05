@@ -19,10 +19,10 @@ const set2AnswerSchema = new mongoose.Schema(
     // Raw transcript from STT (Deepgram)
     transcript: { type: String, default: "" },
 
-    // Technical Mastery scores from AI evaluator (1–10)
-    problem_solving_score: { type: Number, min: 1, max: 10, default: null },
-    accuracy_score:        { type: Number, min: 1, max: 10, default: null },
-    depth_score:           { type: Number, min: 1, max: 10, default: null },
+    // Technical Mastery scores from AI evaluator (1–5)
+    problem_solving_score: { type: Number, min: 1, max: 5, default: null },
+    accuracy_score:        { type: Number, min: 1, max: 5, default: null },
+    depth_score:           { type: Number, min: 1, max: 5, default: null },
 
     // 1-sentence actionable tip surfaced to the user after each answer
     tip: { type: String, default: null },
@@ -122,9 +122,9 @@ set2SessionSchema.methods.computeAverages = function () {
   this.avg_accuracy        = parseFloat((sum("accuracy_score")        / scored.length).toFixed(2));
   this.avg_depth           = parseFloat((sum("depth_score")           / scored.length).toFixed(2));
 
-  // Convert to 0–100%: 3 dimensions × max 10 pts = 30 max per question
+  // Convert to 0–100%: 3 dimensions × max 5 pts = 15 max per question
   const totalPoints    = sum("problem_solving_score") + sum("accuracy_score") + sum("depth_score");
-  const maxPoints      = scored.length * 30;
+  const maxPoints      = scored.length * 15;
   this.overall_score_percentage = parseFloat(((totalPoints / maxPoints) * 100).toFixed(2));
 };
 

@@ -1,631 +1,713 @@
-/* ── AI Analysis Loader — Dark Studio Design System ───────────────────────── */
-/* Creative North Star: Live Interview Studio (Near-black, signal cyan, radar) */
-/* Blueprint: DESIGN.md tokens & Dark Studio guidelines                       */
+/* ── AI Analysis Loader — "Supportive Coach's Lab" (DESIGN.md) ─────────────────
+   Crisp white canvas · cobalt authority · signal cyan strictly for live
+   voice/TTS telemetry · 3C rubric tints (sky/mint/amber) · Fredoka reward
+   numerals · tactile 3D press buttons · squircles 8/12/18/24/pill.          */
 
-.aal-studio-container {
-  /* Design Tokens */
-  --aal-canvas: #09090b;
-  --aal-canvas-deep: #0c0b16;
-  --aal-surface: rgba(24, 24, 27, 0.9);
-  --aal-surface-inner: rgba(18, 18, 26, 0.7);
-  --aal-border: rgba(255, 255, 255, 0.08);
-  --aal-border-active: rgba(6, 182, 212, 0.35);
+.aal-overlay {
+  /* Design tokens — ITerview light system (DESIGN.md) */
+  --aal-blue: #2563eb;
+  --aal-blue-hover: #1d4ed8;
+  --aal-blue-deep: #1e40af;
+  --aal-blue-light: #eff6ff;
+  --aal-blue-border: #bfdbfe;
+  --aal-cyan: #0ea5e9;
+  --aal-cyan-hover: #0284c7;
+  --aal-cyan-light: #f0f9ff;
+  --aal-cyan-border: #bae6fd;
+  --aal-indigo: #6366f1;
+  --aal-indigo-hover: #4f46e5;
+  --aal-indigo-light: #eef2ff;
+  --aal-indigo-border: #c7d2fe;
+  --aal-mint: #10b981;
+  --aal-mint-hover: #059669;
+  --aal-mint-light: #ecfdf5;
+  --aal-mint-border: #a7f3d0;
+  --aal-amber: #f59e0b;
+  --aal-amber-hover: #d97706;
+  --aal-amber-deep: #b45309;
+  --aal-amber-light: #fef3c7;
+  --aal-amber-border: #fde68a;
+  --aal-coral: #ef4444;
+  --aal-coral-light: #fef2f2;
+  --aal-coral-border: #fecaca;
+  --aal-canvas: #ffffff;
+  --aal-canvas-subtle: #f8fafc;
+  --aal-canvas-ice: #f0f7ff;
+  --aal-border: #e2e8f0;
+  --aal-border-strong: #cbd5e1;
+  --aal-ink: #0f172a;
+  --aal-ink-secondary: #334155;
+  --aal-ink-muted: #64748b;
+  --aal-ink-faint: #94a3b8;
+  --aal-r-sm: 8px;
+  --aal-r-md: 12px;
+  --aal-r-lg: 18px;
+  --aal-r-xl: 24px;
+  --aal-r-pill: 9999px;
+  --aal-shadow-card: 0 4px 12px -2px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
+  --aal-shadow-modal:
+    0 24px 64px -16px rgba(15, 23, 42, 0.16), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
+  --aal-font-display: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --aal-font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --aal-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* Cyan Signal Palette */
-  --aal-cyan: #06b6d4;
-  --aal-cyan-bright: #22d3ee;
-  --aal-cyan-soft: #67e8f9;
-  --aal-cyan-dim: rgba(6, 182, 212, 0.12);
-  --aal-cyan-glow: rgba(6, 182, 212, 0.25);
-
-  /* Supporting Accents */
-  --aal-purple: #8b5cf6;
-  --aal-purple-bright: #a78bfa;
-  --aal-purple-dim: rgba(139, 92, 246, 0.12);
-  --aal-green: #10b981;
-  --aal-green-bright: #34d399;
-  --aal-green-dim: rgba(16, 185, 129, 0.12);
-  --aal-amber: #fbbf24;
-  --aal-amber-dim: rgba(251, 191, 36, 0.12);
-  --aal-rose: #fca5a5;
-
-  /* Typography Colors */
-  --aal-ink: #ffffff;
-  --aal-ink-dim: #c0c0d0;
-  --aal-ink-secondary: #9ca3af;
-  --aal-ink-muted: #6b7280;
-  --aal-ink-cyan: #081318;
-
-  /* Elevation & Geometry */
-  --aal-radius-card: 16px;
-  --aal-radius-inner: 12px;
-  --aal-radius-pill: 9999px;
-
-  /* Container Layout — fixed modal overlay (same recipe as .sb-overlay) */
+  /* Fixed frosted-scrim overlay — light desk, never a dark void */
   position: fixed;
   inset: 0;
   z-index: 9999;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1.5rem 1rem;
-  background: rgba(9, 9, 11, 0.84);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: var(--aal-ink);
-  font-family:
-    'Inter',
-    system-ui,
-    -apple-system,
-    sans-serif;
-  /* Scroll-safe centering: vertical scroll when content exceeds the viewport
-     instead of clipping children (stages list / footer) top-and-bottom. */
-  overflow-x: hidden;
+  padding: clamp(16px, 3vh, 32px) 20px;
   overflow-y: auto;
+  overflow-x: hidden;
+  background: rgba(248, 250, 252, 0.82);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  color: var(--aal-ink);
+  font-family: var(--aal-font-body);
+  font-weight: 500;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Ambient Radial Glow & Blueprint Grid ─────────────────────────────────── */
-.aal-ambient-glow {
-  position: absolute;
-  top: 30%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(
-    circle,
-    rgba(6, 182, 212, 0.1) 0%,
-    rgba(139, 92, 246, 0.04) 40%,
-    transparent 70%
-  );
-  filter: blur(60px);
-  pointer-events: none;
-  z-index: 0;
+.aal-overlay *,
+.aal-overlay *::before,
+.aal-overlay *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-.aal-blueprint-grid {
+.aal-overlay :focus-visible {
+  outline: 2.5px solid var(--aal-blue);
+  outline-offset: 2px;
+  border-radius: var(--aal-r-sm);
+}
+
+/* ── Soft desk-lamp ambience over a clean slate canvas ─────────────────────── */
+.aal-ambient {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 32px 32px;
   pointer-events: none;
-  z-index: 0;
+  background:
+    radial-gradient(520px 420px at 50% 12%, rgba(37, 99, 235, 0.07), transparent 68%),
+    radial-gradient(420px 420px at 85% 95%, rgba(14, 165, 233, 0.05), transparent 62%);
 }
 
-/* ── Main Studio Card ─────────────────────────────────────────────────────── */
-.aal-studio-card {
+.aal-dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(closest-side at 50% 42%, #000, transparent);
+  mask-image: radial-gradient(closest-side at 50% 42%, #000, transparent);
+  opacity: 0.6;
+}
+
+/* ── Modal card — Extra-Large Squircle (24px), hairline border (Ghost Rule) ── */
+.aal-card {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 580px;
-  max-height: calc(100dvh - 3rem);
+  max-width: 660px;
   margin: auto;
   flex-shrink: 0;
-  background: var(--aal-surface);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: var(--aal-canvas);
   border: 1px solid var(--aal-border);
-  border-radius: var(--aal-radius-card);
-  box-shadow:
-    0 20px 40px -15px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-  overflow-x: hidden;
+  border-radius: var(--aal-r-xl);
+  box-shadow: var(--aal-shadow-modal);
+  max-height: min(92dvh, 760px);
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: var(--aal-border-strong) transparent;
 }
 
-/* ── Top Header Strip ─────────────────────────────────────────────────────── */
-.aal-top-header {
+.aal-card::-webkit-scrollbar {
+  width: 5px;
+}
+
+.aal-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aal-card::-webkit-scrollbar-thumb {
+  background: var(--aal-border-strong);
+  border-radius: var(--aal-r-pill);
+}
+
+.aal-card::-webkit-scrollbar-thumb:hover {
+  background: var(--aal-ink-faint);
+}
+
+/* ── Header — brand + live status + dismiss ────────────────────────────────── */
+.aal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  gap: 16px;
+  padding: 16px 26px;
   border-bottom: 1px solid var(--aal-border);
-  background: rgba(18, 18, 22, 0.4);
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+  flex-shrink: 0;
 }
 
-.aal-brand-group {
+.aal-brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 12px;
+  min-width: 0;
 }
 
-.aal-brand-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--aal-cyan-bright);
+.aal-brand-badge {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--aal-r-md);
+  background: var(--aal-blue-light);
+  border: 1px solid var(--aal-blue-border);
+  color: var(--aal-blue);
 }
 
-.aal-header-title {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--aal-ink-dim);
+.aal-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.aal-header-badges {
+.aal-brand-name {
+  font-family: var(--aal-font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--aal-ink);
+}
+
+.aal-brand-sub {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--aal-ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aal-header-side {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.aal-role-chip {
-  padding: 3px 9px;
-  border-radius: var(--aal-radius-pill);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  background: var(--aal-purple-dim);
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  color: var(--aal-purple-bright);
-}
-
-.aal-focus-chip {
-  padding: 3px 9px;
-  border-radius: var(--aal-radius-pill);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  background: var(--aal-cyan-dim);
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  color: var(--aal-cyan-soft);
-}
-
-.aal-status-pill {
+.aal-status {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: var(--aal-radius-pill);
-  font-size: 11px;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--aal-r-pill);
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.3px;
-  background: var(--aal-cyan-dim);
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  color: var(--aal-cyan-soft);
+  letter-spacing: 0.01em;
+  background: var(--aal-blue-light);
+  border: 1px solid var(--aal-blue-border);
+  color: var(--aal-blue-hover);
+  white-space: nowrap;
 }
 
-.aal-status-pill.warning {
-  background: var(--aal-amber-dim);
-  border-color: rgba(251, 191, 36, 0.3);
-  color: var(--aal-amber);
-}
-
-.aal-pulse-dot {
-  width: 6px;
-  height: 6px;
+.aal-status-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 8px currentColor;
-  animation: aal-dot-pulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
-@keyframes aal-dot-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.4;
-    transform: scale(0.8);
-  }
+.aal-status--active .aal-status-dot {
+  animation: aal-dot-pulse 1.6s ease-in-out infinite;
 }
 
-/* ── AI Core Radar Section ────────────────────────────────────────────────── */
-.aal-core-section {
-  padding: 1.75rem 1.5rem 1.25rem;
+.aal-status--warning {
+  background: var(--aal-amber-light);
+  border-color: var(--aal-amber-border);
+  color: var(--aal-amber-deep);
+}
+
+.aal-status--done {
+  background: var(--aal-mint-light);
+  border-color: var(--aal-mint-border);
+  color: var(--aal-mint-hover);
+}
+
+.aal-close {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--aal-r-md);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--aal-ink-faint);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.aal-close:hover {
+  background: var(--aal-canvas-subtle);
+  border-color: var(--aal-border);
+  color: var(--aal-ink-secondary);
+}
+
+.aal-close:active {
+  transform: translateY(1px);
+}
+
+/* ── Core — synthesis dial + heading ──────────────────────────────────────── */
+.aal-core {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 20px 26px 14px;
+  flex-shrink: 0;
+}
+
+.aal-dial {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  flex-shrink: 0;
+}
+
+.aal-dial-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: rotate(-90deg);
+}
+
+.aal-dial-track-ring {
+  stroke: var(--aal-canvas-subtle);
+}
+
+.aal-dial-arc {
+  stroke: var(--aal-blue);
+  transition: stroke 0.3s ease;
+}
+
+.aal-dial.is-complete .aal-dial-arc {
+  stroke: var(--aal-mint);
+}
+
+.aal-dial-center {
+  position: absolute;
+  inset: 8px;
+  display: grid;
+  place-items: center;
+}
+
+.aal-dial-progress {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
-  gap: 1.25rem;
+  gap: 3.5px;
 }
 
-.aal-radar-disc {
-  position: relative;
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  background: var(--aal-canvas-deep);
-  border: 1px solid var(--aal-border-active);
-  box-shadow:
-    0 0 24px var(--aal-cyan-dim),
-    0 0 0 1px rgba(6, 182, 212, 0.1);
+.aal-dial-percent {
+  font-family: var(--aal-font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--aal-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Signal cyan equalizer — reserved for live voice/TTS synthesis telemetry */
+.aal-dial-wave {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-/* Concentric Radar Rings */
-.aal-radar-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(6, 182, 212, 0.15);
-  pointer-events: none;
-}
-
-.aal-radar-ring.outer {
-  width: 62px;
-  height: 62px;
-}
-.aal-radar-ring.mid {
-  width: 44px;
-  height: 44px;
-}
-.aal-radar-ring.inner {
-  width: 26px;
-  height: 26px;
-}
-
-/* Rotating Radar Beam */
-.aal-radar-beam {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 280deg,
-    rgba(6, 182, 212, 0.45) 360deg
-  );
-  animation: aal-radar-spin 2.8s linear infinite;
-}
-
-@keyframes aal-radar-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Mini Waveform Equalizer in Center */
-.aal-mini-waveform {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 20px;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 13px;
 }
 
 .aal-wave-bar {
-  width: 2.5px;
-  background: var(--aal-cyan-bright);
-  border-radius: 2px;
-  box-shadow: 0 0 6px rgba(34, 211, 238, 0.6);
-  animation: aal-wave-bounce 1.2s ease-in-out infinite alternate;
+  width: 3px;
+  height: 13px;
+  border-radius: var(--aal-r-pill);
+  background: var(--aal-cyan);
+  transform-origin: bottom;
+  animation: aal-wave 1.05s ease-in-out infinite;
 }
 
-.aal-wave-bar.bar-1 {
-  height: 8px;
-  animation-delay: 0.1s;
-}
-.aal-wave-bar.bar-2 {
-  height: 14px;
-  animation-delay: 0.3s;
-}
-.aal-wave-bar.bar-3 {
-  height: 18px;
+.aal-wave-bar--1 {
   animation-delay: 0s;
 }
-.aal-wave-bar.bar-4 {
-  height: 12px;
-  animation-delay: 0.4s;
+.aal-wave-bar--2 {
+  animation-delay: 0.15s;
 }
-.aal-wave-bar.bar-5 {
-  height: 7px;
-  animation-delay: 0.2s;
+.aal-wave-bar--3 {
+  animation-delay: 0.3s;
 }
-
-@keyframes aal-wave-bounce {
-  0% {
-    transform: scaleY(0.4);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scaleY(1.1);
-    opacity: 1;
-  }
+.aal-wave-bar--4 {
+  animation-delay: 0.45s;
+}
+.aal-wave-bar--5 {
+  animation-delay: 0.6s;
 }
 
-/* Heading & Subtitle */
-.aal-heading-block {
+.aal-dial-complete {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--aal-mint-light);
+  border: 1px solid var(--aal-mint-border);
+  color: var(--aal-mint-hover);
+}
+
+.aal-dial-complete svg {
+  width: 22px;
+  height: 22px;
+}
+
+.aal-heading {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 5px;
 }
 
-.aal-main-title {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.3px;
+.aal-title {
+  font-family: var(--aal-font-display);
+  font-size: 18.5px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.28;
   color: var(--aal-ink);
-  line-height: 1.35;
 }
 
 .aal-subtitle {
-  margin: 0;
-  font-size: 0.84rem;
-  color: var(--aal-ink-secondary);
+  font-size: 13px;
   line-height: 1.5;
-  max-width: 420px;
+  color: var(--aal-ink-secondary);
 }
 
-/* ── Segmented Progress Track ─────────────────────────────────────────────── */
-.aal-progress-wrapper {
-  padding: 0 1.5rem 1rem;
+.aal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 5px;
+}
+
+.aal-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--aal-r-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--aal-border);
+  background: var(--aal-canvas-subtle);
+  color: var(--aal-ink-muted);
+  white-space: nowrap;
+}
+
+.aal-chip--indigo {
+  background: var(--aal-indigo-light);
+  border-color: var(--aal-indigo-border);
+  color: var(--aal-indigo-hover);
+}
+
+.aal-chip--blue {
+  background: var(--aal-blue-light);
+  border-color: var(--aal-blue-border);
+  color: var(--aal-blue-hover);
+}
+
+.aal-chip--cyan {
+  background: var(--aal-cyan-light);
+  border-color: var(--aal-cyan-border);
+  color: var(--aal-cyan-hover);
+}
+
+.aal-chip--mint {
+  background: var(--aal-mint-light);
+  border-color: var(--aal-mint-border);
+  color: var(--aal-mint-hover);
+}
+
+.aal-chip--amber {
+  background: var(--aal-amber-light);
+  border-color: var(--aal-amber-border);
+  color: var(--aal-amber-deep);
+}
+
+/* ── 3C diagnostic baseline triad ──────────────────────────────────────────── */
+.aal-triad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 13px 26px 0;
+  flex-shrink: 0;
+}
+
+.aal-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 13px;
+  background: var(--aal-canvas);
+  border: 1px solid var(--aal-border);
+  border-radius: var(--aal-r-md);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+/* Diagnostic Focus Panel — the coach's highlight on the growth metric */
+.aal-metric--focus {
+  background: var(--aal-canvas-ice);
+  border-color: var(--aal-blue-border);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.06);
+}
+
+.aal-metric-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.aal-metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Icon tint follows the 3C rubric mapping — same hue as the score fill */
+.aal-metric--clarity .aal-metric-icon {
+  color: var(--aal-cyan);
+}
+
+.aal-metric--correctness .aal-metric-icon {
+  color: var(--aal-mint);
+}
+
+.aal-metric--completeness .aal-metric-icon {
+  color: var(--aal-amber);
+}
+
+.aal-metric-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--aal-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aal-metric-tag {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: var(--aal-r-pill);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--aal-blue-light);
+  border: 1px solid var(--aal-blue-border);
+  color: var(--aal-blue-hover);
+  flex-shrink: 0;
+}
+
+/* Rewarding Score Rule — Fredoka numerals with negative tracking */
+.aal-metric-score {
+  font-family: var(--aal-font-display);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--aal-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.aal-metric-max {
+  font-family: var(--aal-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--aal-ink-faint);
+  margin-left: 2px;
+}
+
+.aal-metric-track {
+  height: 4.5px;
+  border-radius: var(--aal-r-pill);
+  background: var(--aal-canvas-subtle);
+  overflow: hidden;
+  margin-top: 1px;
+}
+
+.aal-metric-fill {
+  height: 100%;
+  border-radius: var(--aal-r-pill);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 3C Rubric Mapping Rule — Clarity sky · Correctness mint · Completeness amber */
+.aal-metric--clarity .aal-metric-fill {
+  background: var(--aal-cyan);
+}
+
+.aal-metric--correctness .aal-metric-fill {
+  background: var(--aal-mint);
+}
+
+.aal-metric--completeness .aal-metric-fill {
+  background: var(--aal-amber);
+}
+
+/* ── Segmented progress track ─────────────────────────────────────────────── */
+.aal-track {
+  padding: 16px 26px 0;
+  flex-shrink: 0;
 }
 
 .aal-track-segments {
   display: flex;
-  gap: 5px;
-  width: 100%;
+  gap: 7px;
 }
 
 .aal-track-segment {
   flex: 1;
-  height: 4px;
-  border-radius: var(--aal-radius-pill);
-  background: rgba(255, 255, 255, 0.08);
-  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  height: 5.5px;
+  border-radius: var(--aal-r-pill);
+  background: var(--aal-border);
   position: relative;
   overflow: hidden;
+  transition: background 0.35s ease;
 }
 
 .aal-track-segment.done {
-  background: var(--aal-cyan);
-  box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+  background: var(--aal-blue);
 }
 
 .aal-track-segment.active {
-  background: rgba(6, 182, 212, 0.4);
+  background: var(--aal-blue-light);
+  border: 1px solid var(--aal-blue-border);
 }
 
 .aal-track-segment.active::after {
   content: '';
   position: absolute;
-  inset-block: 0;
-  left: -100%;
-  width: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-  animation: aal-segment-scan 1.4s ease-in-out infinite;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.45), transparent);
+  animation: aal-sweep 1.2s ease-in-out infinite;
 }
 
-@keyframes aal-segment-scan {
-  to {
-    left: 100%;
-  }
+/* ── Stage checklist ──────────────────────────────────────────────────────── */
+.aal-stages {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 26px 18px;
+  flex-shrink: 0;
 }
 
-/* ── Close Button ────────────────────────────────────────────────────────── */
-.aal-close-btn {
-  display: inline-flex;
+.aal-stage {
+  display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 13px;
+  padding: 9.5px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--aal-r-md);
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.aal-stage.is-active {
+  background: var(--aal-canvas-ice);
+  border-color: var(--aal-blue-border);
+}
+
+.aal-stage-indicator {
   width: 26px;
   height: 26px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--aal-ink-secondary);
-  cursor: pointer;
-  transition: all 0.18s ease;
   flex-shrink: 0;
-  outline: none;
-}
-
-.aal-close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.22);
-  color: var(--aal-ink);
-}
-
-.aal-close-btn:focus-visible {
-  outline: 2px solid var(--aal-cyan);
-  outline-offset: 2px;
-}
-
-.aal-close-icon {
-  width: 13px;
-  height: 13px;
-}
-
-/* ── 3C Diagnostic Baseline Triad ─────────────────────────────────────────── */
-.aal-3c-triad {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 0 1.25rem 1rem;
-}
-
-.aal-3c-card {
-  background: var(--aal-surface-inner);
+  place-items: center;
+  border-radius: var(--aal-r-sm);
+  background: var(--aal-canvas-subtle);
   border: 1px solid var(--aal-border);
-  border-radius: var(--aal-radius-inner);
-  padding: 0.65rem 0.7rem;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  transition: border-color 0.2s ease;
+  color: var(--aal-ink-faint);
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
 }
 
-.aal-3c-card--focus {
-  border-color: rgba(6, 182, 212, 0.35);
-  background: rgba(6, 182, 212, 0.04);
+.aal-stage-indicator svg {
+  width: 14px;
+  height: 14px;
 }
 
-.aal-3c-card-header {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 18px;
+.aal-stage.is-active .aal-stage-indicator {
+  background: var(--aal-blue-light);
+  border-color: var(--aal-blue-border);
+  color: var(--aal-blue);
 }
 
-.aal-3c-icon {
-  font-size: 12px;
-  line-height: 1;
+.aal-stage.is-done .aal-stage-indicator {
+  background: var(--aal-mint-light);
+  border-color: var(--aal-mint-border);
+  color: var(--aal-mint-hover);
 }
 
-.aal-3c-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  color: var(--aal-ink-muted);
-  flex: 1;
+.aal-stage-check {
+  display: grid;
+  place-items: center;
 }
 
-.aal-3c-focus-tag {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  color: var(--aal-cyan-soft);
-  background: var(--aal-cyan-dim);
-  border: 1px solid rgba(6, 182, 212, 0.25);
-  padding: 1px 5px;
-  border-radius: var(--aal-radius-pill);
-}
-
-.aal-3c-score {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--aal-ink);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.aal-3c-score-max {
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--aal-ink-muted);
-  margin-left: 1px;
-}
-
-.aal-3c-track {
-  height: 3px;
-  border-radius: var(--aal-radius-pill);
-  background: rgba(255, 255, 255, 0.07);
-  overflow: hidden;
-}
-
-.aal-3c-fill {
-  height: 100%;
-  border-radius: var(--aal-radius-pill);
-  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.aal-3c-fill--clarity {
-  background: var(--aal-cyan);
-  box-shadow: 0 0 6px rgba(6, 182, 212, 0.5);
-}
-
-.aal-3c-fill--correctness {
-  background: var(--aal-green);
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
-}
-
-.aal-3c-fill--completeness {
-  background: var(--aal-amber);
-  box-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
-}
-
-/* ── Stage Checklist ──────────────────────────────────────────────────────── */
-.aal-stages-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 1.25rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--aal-surface-inner);
-  border: 1px solid var(--aal-border);
-  border-radius: var(--aal-radius-inner);
-  padding: 0.625rem;
-}
-
-.aal-stage-row {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  transition: all 0.3s ease;
-}
-
-.aal-stage-row.is-done {
-  background: rgba(255, 255, 255, 0.02);
-  border-color: rgba(255, 255, 255, 0.04);
-}
-
-.aal-stage-row.is-active {
-  background: rgba(6, 182, 212, 0.06);
-  border-color: rgba(6, 182, 212, 0.22);
-}
-
-.aal-stage-row.is-pending {
-  opacity: 0.55;
-}
-
-/* Stage Indicators */
-.aal-stage-indicator {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-}
-
-.aal-stage-row.is-done .aal-stage-indicator {
-  border-color: var(--aal-green);
-  background: var(--aal-green-dim);
-  color: var(--aal-green-bright);
-}
-
-.aal-check-icon {
-  width: 13px;
-  height: 13px;
-  stroke-width: 3;
-}
-
-.aal-stage-row.is-active .aal-stage-indicator {
-  border-color: var(--aal-cyan);
-  background: var(--aal-cyan-dim);
-}
-
-.aal-active-spark {
+.aal-stage-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--aal-cyan-bright);
-  box-shadow: 0 0 6px var(--aal-cyan-bright);
-  animation: aal-dot-pulse 1.2s infinite;
+  background: var(--aal-ink-faint);
+  opacity: 0.6;
+  transition:
+    width 0.2s ease,
+    height 0.2s ease,
+    background 0.2s ease,
+    opacity 0.2s ease;
 }
 
-.aal-pending-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--aal-ink-muted);
+.aal-stage.is-active .aal-stage-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--aal-blue);
+  opacity: 1;
+  animation: aal-blink 1.2s ease-in-out infinite;
 }
 
-/* Stage Info */
-.aal-stage-info {
+.aal-stage-text {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -634,269 +716,571 @@
 }
 
 .aal-stage-title {
-  font-size: 0.85rem;
+  font-size: 13px;
   font-weight: 600;
+  color: var(--aal-ink-muted);
+  transition: color 0.25s ease;
+}
+
+.aal-stage.is-active .aal-stage-title {
   color: var(--aal-ink);
-  line-height: 1.3;
 }
 
-.aal-stage-row.is-active .aal-stage-title {
-  color: var(--aal-cyan-soft);
-}
-
-.aal-stage-row.is-pending .aal-stage-title {
+.aal-stage.is-done .aal-stage-title {
   color: var(--aal-ink-secondary);
 }
 
 .aal-stage-detail {
-  font-size: 0.74rem;
+  font-size: 11.5px;
+  line-height: 1.4;
   color: var(--aal-ink-muted);
-  line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.aal-stage-row.is-active .aal-stage-detail {
-  color: var(--aal-ink-secondary);
-}
-
-/* Stage Badges */
-.aal-done-badge {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: var(--aal-green-bright);
-  padding: 2px 7px;
-  border-radius: var(--aal-radius-pill);
-  background: var(--aal-green-dim);
+.aal-stage-badge {
   flex-shrink: 0;
-}
-
-.aal-generating-badge {
-  font-size: 10px;
+  padding: 2.5px 9px;
+  border-radius: var(--aal-r-pill);
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: var(--aal-cyan-soft);
-  padding: 2px 7px;
-  border-radius: var(--aal-radius-pill);
-  background: var(--aal-cyan-dim);
-  animation: aal-dot-pulse 1.6s infinite;
-  flex-shrink: 0;
+  letter-spacing: 0.02em;
 }
 
-/* ── Timeout / Warning Banner ─────────────────────────────────────────────── */
-.aal-timeout-banner {
-  margin: 0 1.25rem 1.25rem;
-  padding: 1rem;
-  background: rgba(251, 191, 36, 0.06);
-  border: 1px solid rgba(251, 191, 36, 0.25);
-  border-radius: var(--aal-radius-inner);
+.aal-stage-badge--done {
+  background: var(--aal-mint-light);
+  border: 1px solid var(--aal-mint-border);
+  color: var(--aal-mint-hover);
+}
+
+.aal-stage-badge--live {
+  background: var(--aal-blue-light);
+  border: 1px solid var(--aal-blue-border);
+  color: var(--aal-blue-hover);
+}
+
+/* ── Patience banner (error / slow generation) — Coach Voice Rule ──────────── */
+.aal-banner {
+  margin: 0 26px 16px;
+  padding: 12px 16px;
+  border-radius: var(--aal-r-lg);
+  background: var(--aal-amber-light);
+  border: 1px solid var(--aal-amber-border);
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-}
-
-.aal-timeout-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-}
-
-.aal-timeout-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--aal-amber);
+  gap: 8px;
+  overflow: hidden;
   flex-shrink: 0;
+}
+
+.aal-banner-main {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.aal-banner-icon {
+  flex-shrink: 0;
+  color: var(--aal-amber-hover);
   margin-top: 1px;
 }
 
-.aal-timeout-text {
-  font-size: 0.8rem;
+.aal-banner-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--aal-amber-deep);
+}
+
+.aal-banner-text {
+  font-size: 11.5px;
   line-height: 1.45;
-}
-
-.aal-timeout-text strong {
-  display: block;
-  color: var(--aal-amber);
-  margin-bottom: 2px;
-}
-
-.aal-timeout-text p {
-  margin: 0;
   color: var(--aal-ink-secondary);
 }
 
-.aal-timeout-actions {
+.aal-banner-actions {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.6rem;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
-.aal-btn-retry {
+/* ── Tactile buttons (Physical Press Rule) ─────────────────────────────────── */
+.aal-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 14px;
-  border-radius: var(--aal-radius-pill);
-  font-size: 12px;
-  font-weight: 600;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: var(--aal-ink);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.aal-btn-retry:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.aal-btn-proceed {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 14px;
-  border-radius: var(--aal-radius-pill);
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 15px;
+  border-radius: var(--aal-r-pill);
+  font-family: var(--aal-font-body);
   font-size: 12px;
   font-weight: 700;
-  background: var(--aal-cyan);
+  letter-spacing: 0.01em;
   border: 1px solid transparent;
-  color: var(--aal-ink-cyan);
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.aal-btn-proceed:hover {
-  background: var(--aal-cyan-bright);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.15s ease;
 }
 
 .aal-btn-icon {
-  width: 13px;
-  height: 13px;
+  flex-shrink: 0;
 }
 
-/* ── Studio Footer Strip ──────────────────────────────────────────────────── */
-.aal-card-footer {
+.aal-btn-primary {
+  background: var(--aal-blue);
+  color: var(--aal-canvas);
+  box-shadow: 0 3px 0 var(--aal-blue-deep);
+}
+
+.aal-btn-primary:hover {
+  background: var(--aal-blue-hover);
+}
+
+.aal-btn-primary:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--aal-blue-deep);
+}
+
+.aal-btn-secondary {
+  background: var(--aal-canvas);
+  color: var(--aal-ink-secondary);
+  border-color: var(--aal-border-strong);
+  box-shadow: 0 3px 0 var(--aal-border-strong);
+}
+
+.aal-btn-secondary:hover {
+  background: var(--aal-canvas-subtle);
+}
+
+.aal-btn-secondary:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--aal-border-strong);
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+.aal-footer {
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 1.25rem;
+  gap: 12px;
+  padding: 12px 26px;
   border-top: 1px solid var(--aal-border);
-  background: rgba(18, 18, 22, 0.4);
+  background: var(--aal-canvas-subtle);
   font-size: 11px;
-}
-
-.aal-engine-meta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
   color: var(--aal-ink-muted);
-  font-weight: 500;
-  letter-spacing: 0.2px;
+  flex-shrink: 0;
 }
 
-.aal-footer-icon {
-  width: 13px;
-  height: 13px;
-  color: var(--aal-cyan-soft);
-}
-
-.aal-step-meta {
-  display: flex;
+.aal-footer-meta {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+.aal-footer-meta svg {
+  flex-shrink: 0;
+  color: var(--aal-ink-faint);
+}
+
+.aal-footer-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aal-footer-timing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
 
-.aal-elapsed-tag {
+.aal-elapsed {
+  font-family: var(--aal-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--aal-ink-secondary);
+  background: var(--aal-canvas);
+  border: 1px solid var(--aal-border);
+  padding: 2px 8px;
+  border-radius: var(--aal-r-pill);
+}
+
+.aal-stepcount {
+  font-weight: 600;
   color: var(--aal-ink-muted);
-  font-weight: 500;
 }
 
-.aal-step-tag {
-  color: var(--aal-cyan-soft);
-  font-weight: 700;
-  letter-spacing: 0.3px;
+.aal-esc {
+  border-left: 1px solid var(--aal-border);
+  padding-left: 10px;
+  color: var(--aal-ink-faint);
+  font-size: 11px;
 }
 
-.aal-shortcut-hint {
-  color: var(--aal-ink-muted);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.2px;
-  opacity: 0.7;
-  padding-left: 4px;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+/* ── Keyframes ────────────────────────────────────────────────────────────── */
+@keyframes aal-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(0.75);
+    opacity: 0.6;
+  }
 }
 
-/* ── Accessibility & Reduced Motion ───────────────────────────────────────── */
+@keyframes aal-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes aal-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes aal-blink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.35);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px rgba(37, 99, 235, 0);
+  }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .aal-radar-beam,
+  .aal-status--active .aal-status-dot,
   .aal-wave-bar,
   .aal-track-segment.active::after,
-  .aal-pulse-dot,
-  .aal-generating-badge {
+  .aal-stage.is-active .aal-stage-dot {
     animation: none !important;
-  }
-
-  .aal-studio-card {
-    transition: none !important;
   }
 }
 
-/* ── Responsive Mobile Optimization ───────────────────────────────────────── */
-@media (max-width: 540px) {
-  .aal-studio-container {
-    padding: 1rem 0.75rem;
+/* ── Responsive & Media Queries ───────────────────────────────────────────── */
+
+/* Viewport height <= 680px (Compact height laptop viewports / windows) */
+@media (max-height: 680px) {
+  .aal-card {
+    max-height: calc(100dvh - 20px);
   }
 
-  .aal-3c-triad {
+  .aal-header {
+    padding: 12px 20px;
+  }
+
+  .aal-brand-badge {
+    width: 34px;
+    height: 34px;
+  }
+
+  .aal-brand-name {
+    font-size: 14.5px;
+  }
+
+  .aal-core {
+    padding: 14px 20px 10px;
+    gap: 18px;
+  }
+
+  .aal-dial {
+    width: 92px;
+    height: 92px;
+  }
+
+  .aal-dial-percent {
+    font-size: 21px;
+  }
+
+  .aal-dial-complete {
+    width: 36px;
+    height: 36px;
+  }
+
+  .aal-dial-complete svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .aal-title {
+    font-size: 17px;
+  }
+
+  .aal-subtitle {
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .aal-triad {
+    padding: 10px 20px 0;
+    gap: 8px;
+  }
+
+  .aal-metric {
+    padding: 8px 11px;
+    gap: 5px;
+  }
+
+  .aal-metric-score {
+    font-size: 17.5px;
+  }
+
+  .aal-track {
+    padding: 12px 20px 0;
+  }
+
+  .aal-stages {
+    padding: 11px 20px 15px;
     gap: 6px;
-    margin: 0 0.85rem 0.85rem;
   }
 
-  .aal-3c-score {
-    font-size: 0.95rem;
+  .aal-stage {
+    padding: 8px 12px;
+    gap: 11px;
   }
 
-  .aal-shortcut-hint {
-    display: none;
+  .aal-stage-indicator {
+    width: 24px;
+    height: 24px;
   }
 
-  .aal-top-header,
-  .aal-card-footer {
-    padding: 0.75rem 1rem;
-  }
-
-  .aal-core-section {
-    padding: 1.25rem 1rem 1rem;
-  }
-
-  .aal-progress-wrapper {
-    padding: 0 1rem 0.75rem;
-  }
-
-  .aal-stages-list {
-    margin: 0 0.85rem 1rem;
-    padding: 0.5rem;
-  }
-
-  .aal-stage-row {
-    padding: 0.5rem;
-    gap: 0.65rem;
+  .aal-stage-title {
+    font-size: 12.5px;
   }
 
   .aal-stage-detail {
-    display: none; /* Keep mobile height compact */
+    font-size: 11px;
+    line-height: 1.35;
   }
 
-  .aal-main-title {
-    font-size: 1.05rem;
+  .aal-banner {
+    margin: 0 20px 12px;
+    padding: 10px 14px;
+  }
+
+  .aal-footer {
+    padding: 10px 20px;
+    font-size: 10.5px;
+  }
+}
+
+/* Viewport height <= 540px (Short laptop viewports or split screen) */
+@media (max-height: 540px) {
+  .aal-overlay {
+    padding: 8px 10px;
+  }
+
+  .aal-card {
+    max-height: calc(100dvh - 12px);
+  }
+
+  .aal-header {
+    padding: 9px 16px;
+  }
+
+  .aal-brand-badge {
+    width: 30px;
+    height: 30px;
+  }
+
+  .aal-core {
+    padding: 10px 16px 6px;
+    gap: 14px;
+  }
+
+  .aal-dial {
+    width: 80px;
+    height: 80px;
+  }
+
+  .aal-dial-percent {
+    font-size: 18px;
+  }
+
+  .aal-title {
+    font-size: 15.5px;
+  }
+
+  .aal-subtitle {
+    font-size: 11.5px;
+    line-height: 1.38;
+  }
+
+  .aal-triad {
+    padding: 8px 16px 0;
+    gap: 6px;
+  }
+
+  .aal-metric {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .aal-metric-score {
+    font-size: 16px;
+  }
+
+  .aal-track {
+    padding: 10px 16px 0;
+  }
+
+  .aal-stages {
+    padding: 8px 16px 11px;
+    gap: 5px;
+  }
+
+  .aal-stage {
+    padding: 6.5px 10px;
+    gap: 9px;
+  }
+
+  .aal-stage-detail {
+    font-size: 10.5px;
+  }
+
+  .aal-banner {
+    margin: 0 16px 10px;
+    padding: 9px 12px;
+  }
+
+  .aal-footer {
+    padding: 8px 16px;
+  }
+}
+
+/* Mobile & Tablet Width <= 600px */
+@media (max-width: 600px) {
+  .aal-overlay {
+    padding: 12px 10px;
+  }
+
+  .aal-card {
+    max-height: calc(100dvh - 24px);
+    border-radius: var(--aal-r-lg);
+  }
+
+  .aal-header {
+    padding: 12px 16px;
+  }
+
+  .aal-brand-sub {
+    display: none;
+  }
+
+  .aal-core {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    gap: 16px;
+    padding: 16px 16px 8px;
+  }
+
+  .aal-dial {
+    width: 90px;
+    height: 90px;
+  }
+
+  .aal-title {
+    font-size: 16.5px;
+  }
+
+  .aal-subtitle {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .aal-triad {
+    padding: 10px 16px 0;
+    gap: 8px;
+  }
+
+  .aal-metric {
+    padding: 8px 10px;
+    gap: 5px;
+  }
+
+  .aal-metric-label {
+    font-size: 10.5px;
+  }
+
+  .aal-metric-score {
+    font-size: 17px;
+  }
+
+  .aal-track {
+    padding: 12px 16px 0;
+  }
+
+  .aal-stages {
+    padding: 12px 16px 16px;
+    gap: 6px;
+  }
+
+  .aal-stage {
+    padding: 8px 12px;
+    gap: 10px;
+  }
+
+  .aal-stage-title {
+    font-size: 13px;
+  }
+
+  .aal-stage-detail {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .aal-banner {
+    margin: 0 16px 12px;
+    padding: 12px 14px;
+  }
+
+  .aal-footer {
+    padding: 11px 16px;
+  }
+
+  .aal-footer-meta {
+    display: none;
+  }
+
+  .aal-esc {
+    display: none;
+  }
+}
+
+/* Very narrow screens <= 400px */
+@media (max-width: 400px) {
+  .aal-core {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .aal-chips {
+    justify-content: center;
+  }
+
+  .aal-metric-tag {
+    display: none;
   }
 }

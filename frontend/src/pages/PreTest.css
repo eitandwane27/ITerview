@@ -1,43 +1,106 @@
-/* src/pages/PreTest.css */
-/* ─────────────────────────────────────────────────────────────────────────── */
-/* ITerview Pre-Test Interview UI                                               */
-/* Light theme mirroring MicTest.css                                            */
-/* ─────────────────────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   PreTest.css — Cool Color Spectrum Design System
+   Pre-Test Diagnostic Arena — the prelude to the MainSets interview studio.
+   Royal Cobalt · Signal Sky Cyan · Deep Indigo · Cool Mint · Warm Amber
+   Mirror patterns: MicTest.css (tokens, meter, transcript) + Dashboard.css
+   (topnav, chips) + MainSets.css (AI orb, arena layout).
+   Fonts load via <link> tags in index.html — no CSS @import. All tokens are
+   scoped to .pt-root so nothing leaks into other routes.
+   ════════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* ── Design Tokens (scoped to this screen) ────────────────────────────────── */
+.pt-root {
+  /* Canvas & surfaces */
+  --pt-canvas: #ffffff;
+  --pt-canvas-subtle: #f8fafc;
+  --pt-canvas-ice: #f0f7ff;
+  --pt-card-bg: #ffffff;
 
-/* ── Root tokens ─────────────────────────────────────────────────────────── */
-:root {
-  --bg-base: #f9fafb;
-  --bg-surface: #ffffff;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f3f4f6;
-  --border: #e5e7eb;
-  --border-accent: rgba(59, 130, 246, 0.3);
+  /* Inks — Midnight Slate */
+  --pt-ink: #0f172a;
+  --pt-ink-secondary: #334155;
+  --pt-ink-muted: #64748b;
+  --pt-ink-faint: #94a3b8;
 
-  --accent: #3b82f6;
-  --accent-glow: rgba(59, 130, 246, 0.1);
-  --accent-light: #60a5fa;
+  /* Royal Cobalt — primary flow (CTAs, progress, AI speaking) */
+  --pt-blue: #2563eb;
+  --pt-blue-hover: #1d4ed8;
+  --pt-blue-active: #1e40af;
+  --pt-blue-light: #eff6ff;
+  --pt-blue-border: #bfdbfe;
 
-  --green: #22c55e;
-  --green-glow: rgba(34, 197, 94, 0.1);
-  --amber: #f59e0b;
-  --red: #ef4444;
-  --red-glow: rgba(239, 68, 68, 0.1);
+  /* Signal Sky Cyan — live signal (transcript, listening) */
+  --pt-cyan: #0ea5e9;
+  --pt-cyan-hover: #0284c7;
+  --pt-cyan-light: #f0f9ff;
+  --pt-cyan-border: #bae6fd;
 
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #6b7280;
+  /* Deep Indigo — review state */
+  --pt-indigo: #6366f1;
+  --pt-indigo-hover: #4f46e5;
+  --pt-indigo-light: #eef2ff;
+  --pt-indigo-border: #c7d2fe;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 12px;
-  --radius-xl: 28px;
+  /* Cool Mint — good levels */
+  --pt-mint: #10b981;
+  --pt-mint-hover: #059669;
 
-  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  /* Warm Amber — too-loud caution */
+  --pt-amber: #f59e0b;
+  --pt-amber-hover: #d97706;
+  --pt-amber-deep: #b45309;
+
+  /* Coral Rose — errors & destructive (stop recording) */
+  --pt-coral: #ef4444;
+  --pt-coral-hover: #dc2626;
+  --pt-coral-light: #fef2f2;
+  --pt-coral-border: #fecaca;
+
+  /* Hairline borders */
+  --pt-border: #e2e8f0;
+  --pt-border-strong: #cbd5e1;
+
+  /* Squircle radii */
+  --pt-r-sm: 8px;
+  --pt-r-md: 12px;
+  --pt-r-lg: 18px;
+  --pt-r-xl: 24px;
+  --pt-r-pill: 9999px;
+
+  /* Elevation — card shadow + tactile button presses */
+  --pt-shadow-card: 0 4px 12px -2px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
+  --pt-shadow-tactile: 0 3px 0 #cbd5e1;
+  --pt-shadow-tactile-primary: 0 3px 0 #1e40af;
+
+  /* Timing & easing */
+  --pt-fast: 0.15s;
+  --pt-med: 0.25s;
+  --pt-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Type — display (Fredoka) for headings, mono for the live transcript */
+  --pt-font-display: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --pt-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--pt-canvas);
+  color: var(--pt-ink);
+  font-family:
+    'Plus Jakarta Sans',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-weight: 500;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Global reset for this page ──────────────────────────────────────────── */
+/* ── Scoped reset & base type ─────────────────────────────────────────────── */
 .pt-root *,
 .pt-root *::before,
 .pt-root *::after {
@@ -46,216 +109,242 @@
   padding: 0;
 }
 
-.pt-root {
-  min-height: 100vh;
-  background: var(--bg-base);
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
-  color: var(--text-primary);
-  display: flex;
-  flex-direction: column;
+.pt-root h1,
+.pt-root h2 {
+  color: var(--pt-ink);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
-/* ── Top navigation bar ──────────────────────────────────────────────────── */
+.pt-root p {
+  color: var(--pt-ink-secondary);
+}
+
+.pt-root button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pt-root textarea {
+  font-family: inherit;
+}
+
+.pt-root :focus-visible {
+  outline: 2.5px solid var(--pt-blue);
+  outline-offset: 2px;
+  border-radius: var(--pt-r-sm);
+}
+
+/* The textarea draws its own focus ring (border + glow) */
+.pt-verify-textarea:focus-visible {
+  outline: none;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   TOP BAR — db-topnav pattern (frosted white bar, logo + Fredoka wordmark)
+   ════════════════════════════════════════════════════════════════════════════ */
 .pt-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 2rem;
-  background: white;
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   position: sticky;
   top: 0;
   z-index: 50;
-}
-
-.pt-topbar-brand {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.5px;
-}
-
-.pt-topbar-meta {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-}
-
-.pt-phase-badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.3rem 0.8rem;
-  border-radius: 99px;
-  background: var(--accent-glow);
-  border: 1px solid var(--border-accent);
-  color: var(--accent);
-  letter-spacing: 0.02em;
-}
-
-.pt-q-counter {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-/* ── Progress bar ────────────────────────────────────────────────────────── */
-.pt-progress-bar-track {
-  height: 4px;
-  background: var(--border);
-  width: 100%;
-}
-
-.pt-progress-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.6s ease;
-}
-
-/* ── Main layout ─────────────────────────────────────────────────────────── */
-.pt-main {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 1.5rem;
-  max-width: 1100px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 3rem 2rem;
-}
-
-@media (max-width: 820px) {
-  .pt-main {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ── Card base ───────────────────────────────────────────────────────────── */
-.pt-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-  transition: border-color 0.3s;
-}
-
-.pt-card-header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.pt-card-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1.5px solid var(--pt-border);
   flex-shrink: 0;
 }
 
-.pt-card-icon.accent {
-  background: var(--accent-glow);
-  color: var(--accent);
-}
-.pt-card-icon.green {
-  background: var(--green-glow);
-  color: var(--green);
-}
-
-.pt-card-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-}
-
-.pt-card-body {
-  padding: 1.5rem;
-}
-
-/* ── Question display ────────────────────────────────────────────────────── */
-.pt-question-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.pt-question-number {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-}
-
-.pt-question-text {
-  font-size: 1.35rem;
-  font-weight: 600;
-  line-height: 1.55;
-  color: var(--text-primary);
-  min-height: 80px;
-}
-
-.pt-question-text.loading {
+.pt-topbar__brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--text-secondary);
-  font-size: 1rem;
-  font-weight: 400;
+  gap: 10px;
+  min-width: 0;
 }
 
-/* ── Status indicator strip ──────────────────────────────────────────────── */
+.pt-logo-img {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
+.pt-topbar__wordmark {
+  font-family: var(--pt-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--pt-ink);
+  white-space: nowrap;
+}
+
+.pt-topbar__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Phase badge — cobalt section-badge pill (lp-section-badge pattern).
+   Cobalt, not cyan: cyan is reserved for the live microphone. */
+.pt-phase-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  background: var(--pt-blue-light);
+  border: 1px solid var(--pt-blue-border);
+  border-radius: var(--pt-r-pill);
+  color: var(--pt-blue-hover);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Question counter — neutral status chip (db-status-chip pattern) */
+.pt-q-counter {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1.5px solid var(--pt-border-strong);
+  border-radius: var(--pt-r-pill);
+  background: var(--pt-canvas);
+  color: var(--pt-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Progress bar (cobalt fill on a hairline track) ───────────────────────── */
+.pt-progress-track {
+  height: 4px;
+  width: 100%;
+  background: var(--pt-border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.pt-progress-fill {
+  height: 100%;
+  background: var(--pt-blue);
+  border-radius: 0 var(--pt-r-pill) var(--pt-r-pill) 0;
+  transition: width 0.5s var(--pt-ease);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MAIN LAYOUT — stage (1fr) + transcript sidebar (340px), db-practice-grid kin
+   ════════════════════════════════════════════════════════════════════════════ */
+.pt-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   STAGE CARD — the session centerpiece (AIOrb, question head, status strip)
+   ════════════════════════════════════════════════════════════════════════════ */
+.pt-stage-card {
+  background: var(--pt-card-bg);
+  border: 1.5px solid var(--pt-border);
+  border-radius: var(--pt-r-xl);
+  padding: 32px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  box-shadow: var(--pt-shadow-card);
+}
+
+/* Shared AIOrb component from MainSets — same arena visual, centered here */
+.pt-orb-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 0;
+}
+
+.pt-stage-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+/* Question chip — blue badge pill (db-journey-mini-badge pattern) */
+.pt-question-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background: var(--pt-blue-light);
+  border: 1px solid var(--pt-blue-border);
+  border-radius: var(--pt-r-pill);
+  color: var(--pt-blue);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pt-stage-title {
+  font-family: var(--pt-font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--pt-ink);
+  text-wrap: balance;
+  max-width: 440px;
+}
+
+/* ── Status strip — soft tinted banner, one tone per pipeline state ──
+   neutral = idle/offline · cobalt = AI speaking · cyan = listening ·
+   indigo = review your answer */
 .pt-status-strip {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.4s ease;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: var(--pt-r-md);
+  border: 1.5px solid var(--pt-border);
+  background: var(--pt-canvas-subtle);
+  color: var(--pt-ink-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  transition:
+    background-color var(--pt-fast) ease,
+    border-color var(--pt-fast) ease,
+    color var(--pt-fast) ease;
 }
 
-.pt-status-strip.idle {
-  background: #f9fafb;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
+.pt-status-strip--speaking {
+  background: var(--pt-blue-light);
+  border-color: var(--pt-blue-border);
+  color: var(--pt-blue-hover);
 }
-.pt-status-strip.speaking {
-  background: rgba(59, 130, 246, 0.08);
-  color: var(--accent);
-  border: 1px solid var(--border-accent);
+
+.pt-status-strip--listening {
+  background: var(--pt-cyan-light);
+  border-color: var(--pt-cyan-border);
+  color: var(--pt-cyan-hover);
 }
-.pt-status-strip.listening {
-  background: rgba(34, 197, 94, 0.08);
-  color: var(--green);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-.pt-status-strip.thinking {
-  background: rgba(245, 158, 11, 0.08);
-  color: var(--amber);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-.pt-status-strip.verify {
-  background: rgba(59, 130, 246, 0.08);
-  color: var(--accent);
-  border: 1px solid var(--border-accent);
-}
-.pt-status-strip.done {
-  background: rgba(34, 197, 94, 0.08);
-  color: var(--green);
-  border: 1px solid rgba(34, 197, 94, 0.3);
+
+.pt-status-strip--verify {
+  background: var(--pt-indigo-light);
+  border-color: var(--pt-indigo-border);
+  color: var(--pt-indigo-hover);
 }
 
 .pt-status-dot {
@@ -266,481 +355,454 @@
   background: currentColor;
 }
 
-.pt-status-strip.speaking .pt-status-dot,
-.pt-status-strip.listening .pt-status-dot {
-  animation: pulse-dot 1.2s ease-in-out infinite;
+.pt-status-strip--speaking .pt-status-dot,
+.pt-status-strip--listening .pt-status-dot {
+  animation: pt-dot-breathe 1.4s ease-in-out infinite;
 }
 
-@keyframes pulse-dot {
+@keyframes pt-dot-breathe {
   0%,
   100% {
     opacity: 1;
-    transform: scale(1);
   }
   50% {
     opacity: 0.4;
-    transform: scale(0.7);
   }
 }
 
-/* ── Phase 2: Verify panel ───────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   VERIFY PANEL — editable transcript review (db-insight-card, indigo tint)
+   ════════════════════════════════════════════════════════════════════════════ */
 .pt-verify-panel {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-accent);
-  border-radius: var(--radius-md);
+  background: var(--pt-indigo-light);
+  border: 1.5px solid var(--pt-indigo-border);
+  border-radius: var(--pt-r-lg);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .pt-verify-label {
-  font-size: 0.75rem;
+  font-size: 11.5px;
   font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  padding: 0.75rem 1rem 0;
-  display: block;
+  color: var(--pt-indigo-hover);
+  padding: 12px 16px 0;
 }
 
 .pt-verify-textarea {
   width: 100%;
-  padding: 0.75rem 1rem 1rem;
+  padding: 10px 16px 14px;
   background: transparent;
   border: none;
   outline: none;
-  resize: none;
-  font-family: inherit;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--text-primary);
+  resize: vertical;
   min-height: 100px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--pt-ink);
 }
 
 .pt-verify-textarea::placeholder {
-  color: var(--text-muted);
+  color: var(--pt-ink-faint);
 }
 
 .pt-verify-actions {
   display: flex;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--border);
+  gap: 10px;
   flex-wrap: wrap;
+  padding: 12px 16px;
+  border-top: 1.5px solid var(--pt-indigo-border);
+  background: rgba(255, 255, 255, 0.55);
 }
 
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   BUTTONS — tactile pills (lp-btn-solid / lp-btn-ghost patterns)
+   ════════════════════════════════════════════════════════════════════════════ */
 .pt-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  border: none;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: var(--pt-r-pill);
+  border: 1.5px solid transparent;
   font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 13.5px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  user-select: none;
   white-space: nowrap;
+  transition:
+    transform var(--pt-fast) var(--pt-ease),
+    background-color var(--pt-fast) ease,
+    border-color var(--pt-fast) ease,
+    color var(--pt-fast) ease,
+    box-shadow var(--pt-fast) ease;
 }
 
 .pt-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
+  box-shadow: none;
+  transform: none;
 }
 
-.pt-btn-primary {
-  background: var(--text-primary);
-  color: #fff;
-}
-.pt-btn-primary:not(:disabled):hover {
-  background: #374151;
-}
-
-.pt-btn-success {
-  background: var(--text-primary); /* Use dark gray for standard submit buttons, like MicTest */
-  color: #fff;
-}
-.pt-btn-success:not(:disabled):hover {
-  background: #374151;
+/* Solid cobalt tactile — confirm & continue */
+.pt-btn-cta {
+  background: var(--pt-blue);
+  border-color: var(--pt-blue-hover);
+  color: #ffffff;
+  box-shadow: var(--pt-shadow-tactile-primary);
 }
 
-.pt-btn-danger {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--red);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-.pt-btn-danger:not(:disabled):hover {
-  background: rgba(239, 68, 68, 0.15);
+.pt-btn-cta:hover:not(:disabled) {
+  background: var(--pt-blue-hover);
+  transform: translateY(-1px);
 }
 
+.pt-btn-cta:active:not(:disabled) {
+  background: var(--pt-blue-active);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1e40af;
+}
+
+.pt-btn-cta--lg {
+  padding: 13px 26px;
+  font-size: 14.5px;
+}
+
+/* Ghost tactile — re-record / return */
 .pt-btn-ghost {
-  background: white;
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-}
-.pt-btn-ghost:not(:disabled):hover {
-  background: #f3f4f6;
+  background: var(--pt-canvas);
+  border-color: var(--pt-border-strong);
+  color: var(--pt-ink);
+  box-shadow: var(--pt-shadow-tactile);
 }
 
-.pt-btn-full {
-  width: 100%;
+.pt-btn-ghost:hover:not(:disabled) {
+  background: var(--pt-canvas-ice);
+  border-color: var(--pt-blue-border);
+  color: var(--pt-blue);
+  transform: translateY(-1px);
 }
 
-/* ── Mic button ──────────────────────────────────────────────────────────── */
-.pt-mic-btn-wrap {
+.pt-btn-ghost:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #cbd5e1;
+}
+
+.pt-stage-actions {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MIC BUTTON — studio record affordance (cobalt idle, cyan live)
+   ════════════════════════════════════════════════════════════════════════════ */
+.pt-mic-zone {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 1.5rem 0;
+  gap: 14px;
+  padding: 8px 0 4px;
 }
 
 .pt-mic-btn {
-  width: 80px;
-  height: 80px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  cursor: pointer;
+  border: 1.5px solid var(--pt-border-strong);
+  background: var(--pt-canvas);
+  color: var(--pt-ink-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.75rem;
-  transition: all 0.25s ease;
-  position: relative;
-  background: white;
-  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: var(--pt-shadow-tactile);
+  transition:
+    transform var(--pt-fast) var(--pt-ease),
+    border-color var(--pt-fast) ease,
+    color var(--pt-fast) ease,
+    background-color var(--pt-fast) ease,
+    box-shadow var(--pt-fast) ease;
 }
 
-.pt-mic-btn.inactive:hover {
-  background: #f3f4f6;
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: scale(1.06);
+.pt-mic-btn:hover:not(:disabled) {
+  border-color: var(--pt-blue);
+  color: var(--pt-blue);
+  background: var(--pt-blue-light);
+  transform: scale(1.05);
 }
 
-.pt-mic-btn.active {
-  background: #fef2f2;
-  border-color: var(--red);
-  color: var(--red);
-  animation: mic-pulse 1.5s ease-in-out infinite;
+.pt-mic-btn:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 0 1px 0 #cbd5e1;
 }
 
-@keyframes mic-pulse {
+.pt-mic-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Recording state — cyan live button with an expanding ring.
+   Cyan is the brand's "you are being heard" signal (DESIGN.md law); coral
+   stays reserved for errors, so the mic no longer reads as an alarm. */
+.pt-mic-btn--active {
+  background: var(--pt-cyan-light);
+  border-color: var(--pt-cyan);
+  color: var(--pt-cyan-hover);
+  animation: pt-mic-pulse 1.5s ease-in-out infinite;
+}
+
+.pt-mic-btn--active:hover:not(:disabled) {
+  background: var(--pt-cyan-light);
+  border-color: var(--pt-cyan-hover);
+  color: var(--pt-cyan-hover);
+  transform: scale(1.03);
+}
+
+@keyframes pt-mic-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2);
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.25);
   }
   50% {
-    box-shadow: 0 0 0 14px rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 14px rgba(14, 165, 233, 0);
   }
 }
 
 .pt-mic-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--pt-ink-muted);
 }
 
-.pt-mic-btn.active + .pt-mic-label {
-  color: var(--red);
+.pt-mic-label--active {
+  color: var(--pt-cyan-hover);
 }
 
-/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   VOLUME METER — lp-3c-metric-bar pattern (cobalt → mint → amber)
+   ════════════════════════════════════════════════════════════════════════════ */
+.pt-volume {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.pt-volume__labels {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pt-volume__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pt-ink-muted);
+}
+
+.pt-volume__val {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--pt-ink-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pt-volume__val--good {
+  color: var(--pt-mint-hover);
+}
+
+.pt-volume__val--loud {
+  color: var(--pt-amber-deep);
+}
+
+.pt-volume__track {
+  height: 10px;
+  background: var(--pt-canvas-subtle);
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-r-pill);
+  overflow: hidden;
+}
+
+.pt-volume__fill {
+  height: 100%;
+  background: var(--pt-blue);
+  border-radius: var(--pt-r-pill);
+  transition:
+    width 0.08s linear,
+    background-color var(--pt-fast) ease;
+}
+
+.pt-volume__fill--good {
+  background: var(--pt-mint);
+}
+
+.pt-volume__fill--loud {
+  background: var(--pt-amber);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SIDEBAR — live transcript card (cyan icon badge, mono console surface)
+   ════════════════════════════════════════════════════════════════════════════ */
 .pt-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 16px;
 }
 
-/* ── Live transcript panel ───────────────────────────────────────────────── */
+.pt-transcript-card {
+  background: var(--pt-card-bg);
+  border: 1.5px solid var(--pt-border);
+  border-radius: var(--pt-r-xl);
+  box-shadow: var(--pt-shadow-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pt-transcript-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1.5px solid var(--pt-border);
+}
+
+/* 38px tinted squircle badge (lp-3c-icon-badge pattern, compact) */
+.pt-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--pt-r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pt-icon-badge--cyan {
+  background: var(--pt-cyan-light);
+  color: var(--pt-cyan);
+  border: 1.5px solid var(--pt-cyan-border);
+}
+
+.pt-transcript-card__title {
+  font-family: var(--pt-font-display);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--pt-ink);
+  flex: 1;
+  min-width: 0;
+}
+
+/* Live chip — sits on the card head while recording */
+.pt-live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  background: var(--pt-cyan-light);
+  border: 1.5px solid var(--pt-cyan-border);
+  border-radius: var(--pt-r-pill);
+  color: var(--pt-cyan-hover);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pt-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+  animation: pt-dot-breathe 1.4s ease-in-out infinite;
+}
+
 .pt-transcript-body {
-  min-height: 140px;
-  max-height: 200px;
+  padding: 16px 18px;
+  min-height: 160px;
+  max-height: 340px;
   overflow-y: auto;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--text-primary);
-  background-color: #f9fafb;
+  background: var(--pt-canvas-subtle);
+  font-family: var(--pt-font-mono);
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--pt-ink);
+  overflow-wrap: anywhere;
+  flex: 1;
+  transition: background-color var(--pt-fast) ease;
+}
+
+/* Cyan wash while the mic is live — same live-surface signal as MicTest */
+.pt-transcript-body--live {
+  background: var(--pt-cyan-light);
 }
 
 .pt-transcript-body::-webkit-scrollbar {
   width: 4px;
 }
+
 .pt-transcript-body::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .pt-transcript-body::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--pt-border-strong);
   border-radius: 2px;
 }
 
 .pt-transcript-empty {
-  color: var(--text-muted);
+  color: var(--pt-ink-muted);
   font-style: italic;
-  font-size: 0.85rem;
+}
+
+.pt-transcript-final {
+  color: var(--pt-ink);
 }
 
 .pt-transcript-partial {
-  color: var(--text-muted);
-}
-.pt-transcript-final {
-  color: var(--text-primary);
+  color: var(--pt-ink-faint);
 }
 
-/* ── Scores panel ────────────────────────────────────────────────────────── */
-.pt-scores-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.pt-score-row {
+/* ════════════════════════════════════════════════════════════════════════════
+   ERROR TOAST — coral pill, fixed bottom (db-form-error pattern)
+   ════════════════════════════════════════════════════════════════════════════ */
+.pt-error-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 0.875rem;
-}
-
-.pt-score-label {
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.pt-score-bars {
-  display: flex;
-  gap: 3px;
-}
-
-.pt-score-bar {
-  width: 18px;
-  height: 6px;
-  border-radius: 2px;
-  background: var(--bg-base);
-  border: 1px solid var(--border);
-  transition:
-    background 0.4s,
-    border-color 0.4s;
-}
-
-.pt-score-bar.filled {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.pt-score-num {
-  font-weight: 700;
-  color: var(--text-primary);
-  min-width: 1.5rem;
-  text-align: right;
-  font-size: 0.875rem;
-}
-
-.pt-scores-avg {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
-
-.pt-scores-avg span:last-child {
-  font-weight: 700;
-  color: var(--green);
-}
-
-.pt-scores-empty {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  font-style: italic;
-  text-align: center;
-  padding: 1rem 0;
-}
-
-/* ── Question history mini-list ──────────────────────────────────────────── */
-.pt-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.pt-history-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  padding: 0.45rem 0.6rem;
-  border-radius: var(--radius-sm);
-  transition: background 0.2s;
-}
-
-.pt-history-item.done {
-  color: var(--text-secondary);
-  background: #f9fafb;
-}
-
-.pt-history-item.current {
-  color: var(--accent);
-  background: var(--accent-glow);
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--pt-coral-light);
+  border: 1.5px solid var(--pt-coral-border);
+  border-radius: var(--pt-r-pill);
+  color: var(--pt-coral);
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.5;
+  z-index: 300;
+  box-shadow: 0 8px 24px -6px rgba(15, 23, 42, 0.18);
+  max-width: min(92vw, 560px);
+  animation: pt-toast-in 0.3s var(--pt-ease);
 }
 
-.pt-history-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--border);
+.pt-error-toast svg {
   flex-shrink: 0;
 }
 
-.pt-history-item.done .pt-history-dot {
-  background: var(--green);
-}
-.pt-history-item.current .pt-history-dot {
-  background: var(--accent);
-  animation: pulse-dot 1.4s infinite;
-}
-
-/* ── Connecting / done overlay ───────────────────────────────────────────── */
-.pt-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  z-index: 200;
-}
-
-.pt-overlay-icon {
-  font-size: 3.5rem;
-  line-height: 1;
-}
-
-.pt-overlay-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  text-align: center;
-}
-
-.pt-overlay-sub {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  text-align: center;
-  max-width: 400px;
-  line-height: 1.6;
-}
-
-/* ── Done screen results ─────────────────────────────────────────────────── */
-.pt-done-card {
-  max-width: 700px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.pt-done-scores-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin: 1.5rem 0;
-}
-
-.pt-done-score-box {
-  background: var(--bg-base);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  text-align: center;
-}
-
-.pt-done-score-box .label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  font-weight: 600;
-  margin-bottom: 0.4rem;
-}
-
-.pt-done-score-box .value {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--accent);
-}
-
-.pt-done-overall {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  background: var(--accent-glow);
-  border: 1px solid var(--border-accent);
-  border-radius: var(--radius-md);
-  margin-bottom: 1.5rem;
-}
-
-.pt-done-overall .label {
-  font-size: 0.875rem;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.pt-done-overall .value {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--green);
-}
-
-.pt-done-feedback {
-  font-size: 0.95rem;
-  line-height: 1.7;
-  color: var(--text-secondary);
-  padding: 1rem 1.25rem;
-  background: var(--bg-base);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  margin-bottom: 1.5rem;
-}
-
-.pt-done-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-/* ── Error toast ─────────────────────────────────────────────────────────── */
-.pt-error-toast {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  z-index: 300;
-  backdrop-filter: blur(8px);
-  animation: toast-in 0.3s ease;
-}
-
-@keyframes toast-in {
+@keyframes pt-toast-in {
   from {
     opacity: 0;
     transform: translateX(-50%) translateY(10px);
@@ -751,30 +813,248 @@
   }
 }
 
-/* ── Spinner ─────────────────────────────────────────────────────────────── */
-.pt-spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(0, 0, 0, 0.1);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+/* ════════════════════════════════════════════════════════════════════════════
+   MOTION & RESPONSIVE
+   ════════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════════
+   REVIEW & RECOVERY — textarea focus, hints, reconnect banner, toast dismiss
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* The textarea draws its own focus ring (border + glow) */
+.pt-verify-textarea:focus-visible {
+  outline: none;
+}
+
+/* Visible keyboard/typing focus for the borderless review textarea */
+.pt-verify-textarea:focus {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.28);
+  border-radius: var(--pt-r-sm);
+}
+
+.pt-verify-hint {
+  padding: 0 16px 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pt-ink-muted);
+}
+
+.pt-verify-error {
+  padding: 0 16px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pt-coral-hover);
+}
+
+/* Reconnect banner — amber caution strip under the top bar */
+.pt-reconnect-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 1100px;
+  margin: 16px auto 0;
+  padding: 12px 16px;
+  width: calc(100% - 48px);
+  background: var(--pt-amber-light);
+  border: 1.5px solid var(--pt-amber-border, #fde68a);
+  border-radius: var(--pt-r-md);
+  color: var(--pt-amber-deep);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.pt-reconnect-banner span {
+  flex: 1;
+}
+
+.pt-reconnect-banner svg {
   flex-shrink: 0;
 }
 
-.pt-spinner-lg {
-  width: 40px;
-  height: 40px;
-  border-width: 3px;
-  border-color: var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
+.pt-btn--sm {
+  padding: 8px 16px;
+  font-size: 12.5px;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+.pt-replay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--pt-canvas);
+  border: 1.5px solid var(--pt-border-strong);
+  border-radius: var(--pt-r-pill);
+  color: var(--pt-ink-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color var(--pt-fast) ease,
+    color var(--pt-fast) ease,
+    background-color var(--pt-fast) ease;
+}
+
+.pt-replay-btn:hover {
+  border-color: var(--pt-cyan);
+  color: var(--pt-cyan-hover);
+  background: var(--pt-cyan-light);
+}
+
+/* Coach note — warm reassurance under the idle mic */
+.pt-coach-note {
+  max-width: 340px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pt-ink-muted);
+  text-align: center;
+}
+
+/* Toast dismiss */
+.pt-toast-close {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.pt-toast-close:hover {
+  opacity: 1;
+}
+
+/* Screen-reader-only live region (throttled announcements) */
+.pt-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   BASELINE REVEAL — the payoff panel (Fredoka number, cobalt CTA)
+   Also renders the "already completed" saved-baseline state (--saved)
+   ════════════════════════════════════════════════════════════════════════════ */
+.pt-complete-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px 8px;
+  background: var(--pt-canvas-ice);
+  border: 1.5px solid var(--pt-blue-border);
+  border-radius: var(--pt-r-lg);
+  text-align: center;
+}
+
+.pt-complete-panel--saved {
+  background: var(--pt-canvas-subtle);
+  border-color: var(--pt-border);
+}
+
+.pt-complete-kicker {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pt-blue-hover);
+}
+
+.pt-complete-panel--saved .pt-complete-kicker {
+  color: var(--pt-ink-muted);
+}
+
+.pt-complete-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.pt-complete-num {
+  font-family: var(--pt-font-display);
+  font-size: 52px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--pt-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.pt-complete-num-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pt-ink-muted);
+}
+
+.pt-complete-note {
+  max-width: 420px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--pt-ink-secondary);
+}
+
+.pt-complete-note strong {
+  color: var(--pt-ink);
+}
+
+.pt-complete-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pt-status-dot,
+  .pt-pulse-dot,
+  .pt-mic-btn--active {
+    animation: none;
+  }
+
+  .pt-volume__fill {
+    transition: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .pt-main {
+    grid-template-columns: 1fr;
+    padding: 24px 16px 40px;
+  }
+
+  .pt-sidebar {
+    order: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .pt-topbar {
+    padding: 10px 16px;
+  }
+
+  .pt-phase-badge {
+    display: none;
+  }
+
+  .pt-stage-card {
+    padding: 24px 18px 20px;
+    gap: 18px;
+    border-radius: var(--pt-r-lg);
+  }
+
+  .pt-stage-title {
+    font-size: 21px;
   }
 }

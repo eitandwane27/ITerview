@@ -1,4 +1,4 @@
-# Logs
+# Logs & CLI dumps
 logs
 *.log
 npm-debug.log*
@@ -6,6 +6,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*_out.txt
+*.out
+build_out.txt
+fmt_out.txt
+lint_out.txt
 
 # Dependencies
 node_modules
@@ -36,7 +41,9 @@ PRODUCT.md
 *.sln
 *.sw?
 
-# Tool state
+# Tool state & artifacts
 .codex/
 .impeccable/
+.zcode/
+artifacts/
 skills-lock.json

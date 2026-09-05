@@ -1,592 +1,914 @@
-/* =====================================================
-   MicTest.css — Soft Productivity SaaS
-   ITerview Design System (DESIGN.md)
-   Mirror pattern: LikertScale.css / Dashboard.css
-   ===================================================== */
+/* ════════════════════════════════════════════════════════════════════════════
+   MicTest.css — Cool Color Spectrum Design System
+   Royal Cobalt · Signal Sky Cyan · Deep Indigo · Cool Mint · Warm Amber
+   Mirror patterns: Dashboard.css (topnav, selects, tactile buttons, status
+   chips) + LandingPage.css (icon badges, metric bars, section badges).
+   Fonts load via <link> tags in index.html — no CSS @import. All tokens are
+   scoped to .mictest-root so nothing leaks into other routes.
+   ════════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* ── Design Tokens (scoped to this screen) ────────────────────────────────── */
+.mictest-root {
+  /* Canvas & surfaces */
+  --mt-canvas: #ffffff;
+  --mt-canvas-subtle: #f8fafc;
+  --mt-canvas-ice: #f0f7ff;
+  --mt-card-bg: #ffffff;
 
-/* ── Design Tokens ────────────────────────────────── */
-:root {
-  --color-primary: #7c6fcd;
-  --color-primary-light: #eae8f7;
-  --color-primary-hover: #6b5fbc;
-  --color-primary-muted: #b8b0e8;
+  /* Inks — Midnight Slate */
+  --mt-ink: #0f172a;
+  --mt-ink-secondary: #334155;
+  --mt-ink-muted: #64748b;
+  --mt-ink-faint: #94a3b8;
 
-  --color-canvas: #f4f4f6;
-  --color-surface-card: #ffffff;
-  /* inner card — was flat #f0eff8; now defined as a gradient via class */
-  --color-surface-inner: #f0eff8;
-  --color-surface-input: #f7f7f9;
+  /* Royal Cobalt — primary flow (audio input, CTAs) */
+  --mt-blue: #2563eb;
+  --mt-blue-hover: #1d4ed8;
+  --mt-blue-active: #1e40af;
+  --mt-blue-light: #eff6ff;
+  --mt-blue-border: #bfdbfe;
 
-  /* Inner card border — crisp edge so the zone has a definite floor */
-  --color-inner-border: rgba(124, 111, 205, 0.18);
-  /* Inner card shadow — inset depth, not a floating card */
-  --shadow-inner: inset 0 1px 3px rgba(124, 111, 205, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  /* Signal Sky Cyan — live signal (transcript, phase badge, tips) */
+  --mt-cyan: #0ea5e9;
+  --mt-cyan-hover: #0284c7;
+  --mt-cyan-light: #f0f9ff;
+  --mt-cyan-border: #bae6fd;
 
-  --color-ink: #1a1a2e;
-  --color-ink-secondary: #6b6b80;
-  --color-ink-muted: #9b9bad;
-  --color-ink-on-primary: #ffffff;
+  /* Deep Indigo — AI voice & select icons */
+  --mt-indigo: #6366f1;
+  --mt-indigo-hover: #4f46e5;
+  --mt-indigo-light: #eef2ff;
+  --mt-indigo-border: #c7d2fe;
 
-  --color-border-soft: #e8e8ee;
-  --color-border-card: #efefef;
+  /* Cool Mint — verified / passed */
+  --mt-mint: #10b981;
+  --mt-mint-hover: #059669;
+  --mt-mint-light: #ecfdf5;
+  --mt-mint-border: #a7f3d0;
 
-  --color-badge-green: #22c55e;
-  --color-badge-green-bg: #dcfce7;
-  --color-badge-purple: #7c6fcd;
-  --color-badge-purple-bg: #eae8f7;
-  --color-badge-orange: #f97316;
-  --color-badge-orange-bg: #ffedd5;
-  --color-badge-red: #ef4444;
-  --color-badge-red-bg: #fee2e2;
+  /* Warm Amber — waiting / caution */
+  --mt-amber: #f59e0b;
+  --mt-amber-hover: #d97706;
+  --mt-amber-light: #fef3c7;
+  --mt-amber-border: #fde68a;
 
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  /* Coral Rose — errors & destructive (stop test) */
+  --mt-coral: #ef4444;
+  --mt-coral-hover: #dc2626;
+  --mt-coral-active: #b91c1c;
+  --mt-coral-light: #fef2f2;
+  --mt-coral-border: #fecaca;
 
-  --card-radius: 16px;
-  --lg-radius: 12px;
-  --md-radius: 8px;
-  --sm-radius: 6px;
-  --pill-radius: 9999px;
+  /* Hairline borders */
+  --mt-border: #e2e8f0;
+  --mt-border-strong: #cbd5e1;
 
-  --topnav-height: 52px;
+  /* Squircle radii */
+  --mt-r-sm: 8px;
+  --mt-r-md: 12px;
+  --mt-r-lg: 18px;
+  --mt-r-xl: 24px;
+  --mt-r-pill: 9999px;
+
+  /* Elevation — card shadow + tactile button presses */
+  --mt-shadow-card: 0 4px 12px -2px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
+  --mt-shadow-tactile: 0 3px 0 #cbd5e1;
+  --mt-shadow-tactile-primary: 0 3px 0 #1e40af;
+  --mt-shadow-tactile-coral: 0 3px 0 #b91c1c;
+
+  /* Timing & easing */
+  --mt-fast: 0.15s;
+  --mt-med: 0.25s;
+  --mt-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Type — display (Fredoka) for headings, mono for the live transcript */
+  --mt-font-display: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --mt-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--mt-canvas);
+  color: var(--mt-ink);
+  font-family:
+    'Plus Jakarta Sans',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-weight: 500;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Reset ─────────────────────────────────────────── */
-*,
-*::before,
-*::after {
+/* ── Scoped reset & base type ─────────────────────────────────────────────── */
+.mictest-root *,
+.mictest-root *::before,
+.mictest-root *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-/* ════════════════════════════════════════════════════
-   ROOT SHELL
-   ════════════════════════════════════════════════════ */
-.mictest-container {
-  min-height: 100vh;
-  background: var(--color-canvas);
-  font-family: 'Inter', system-ui, sans-serif;
-  color: var(--color-ink);
-  display: flex;
-  flex-direction: column;
+.mictest-root h1,
+.mictest-root h2 {
+  color: var(--mt-ink);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
-/* ════════════════════════════════════════════════════
-   TOP BAR  (mirrors LikertScale .likert-topbar)
-   ════════════════════════════════════════════════════ */
-.mictest-topbar {
+.mictest-root p {
+  color: var(--mt-ink-secondary);
+}
+
+.mictest-root button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mictest-root :focus-visible {
+  outline: 2.5px solid var(--mt-blue);
+  outline-offset: 2px;
+  border-radius: var(--mt-r-sm);
+}
+
+/* The select draws its own focus ring (border + glow) */
+.mictest-select:focus-visible {
+  outline: none;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   TOP NAV — mirrors db-topnav (frosted white bar, logo + Fredoka wordmark)
+   ════════════════════════════════════════════════════════════════════════════ */
+.mictest-topnav {
   position: sticky;
   top: 0;
   z-index: 50;
-  height: var(--topnav-height);
-  background: var(--color-surface-card);
-  border-bottom: 1px solid var(--color-border-card);
+  min-height: 64px;
   display: flex;
   align-items: center;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1.5px solid var(--mt-border);
   flex-shrink: 0;
 }
 
-.mictest-topbar-content {
+.mictest-topnav__inner {
   width: 100%;
-  max-width: 680px;
+  max-width: 768px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 10px 24px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 14px;
 }
 
-/* Brand wordmark — primary color */
-.mictest-topbar-content h1 {
-  font-size: 15px;
+.mictest-topnav__logo-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mictest-logo-img {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
+.mictest-topnav__wordmark {
+  font-family: var(--mt-font-display);
+  font-size: 19px;
   font-weight: 700;
-  letter-spacing: -0.3px;
-  color: var(--color-primary);
-  margin: 0;
+  letter-spacing: -0.02em;
+  color: var(--mt-ink);
+  white-space: nowrap;
 }
 
-/* Phase badge — pill-shaped, purple tint */
+.mictest-topnav__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Phase badge — cyan section-badge pill (lp-section-badge pattern) */
 .mictest-phase-badge {
   display: inline-flex;
   align-items: center;
-  background: var(--color-badge-purple-bg);
-  color: var(--color-badge-purple);
+  padding: 5px 12px;
+  background: var(--mt-cyan-light);
+  border: 1px solid var(--mt-cyan-border);
+  border-radius: var(--mt-r-pill);
+  color: var(--mt-cyan-hover);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  padding: 3px 10px;
-  border-radius: var(--pill-radius);
-}
-
-/* ════════════════════════════════════════════════════
-   MAIN CONTENT
-   ════════════════════════════════════════════════════ */
-.mictest-main {
-  max-width: 680px;
-  margin: 28px auto;
-  padding: 0 20px 48px;
-  width: 100%;
-  flex: 1;
-}
-
-/* ── Page header ────────────────────────────────── */
-.mictest-header {
-  margin-bottom: 20px;
-}
-
-/* Page title — primary color, 28px/700 */
-.mictest-header h2 {
-  font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.5px;
-  color: var(--color-primary);
-  line-height: 1.2;
-  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.mictest-header p {
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--color-ink-secondary);
-  line-height: 1.5;
+/* Sign out — db-signout-btn pattern (coral on hover) */
+.mictest-signout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1.5px solid var(--mt-border);
+  border-radius: var(--mt-r-pill);
+  background: transparent;
+  color: var(--mt-ink-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    border-color var(--mt-fast) ease,
+    color var(--mt-fast) ease;
 }
 
-/* ════════════════════════════════════════════════════
-   PERMISSION / ERROR BANNER
-   ════════════════════════════════════════════════════ */
+.mictest-signout-btn:hover {
+  border-color: var(--mt-coral);
+  color: var(--mt-coral);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MAIN COLUMN
+   ════════════════════════════════════════════════════════════════════════════ */
+.mictest-main {
+  flex: 1;
+  width: 100%;
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 36px 24px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Page header — db-page-header proportions, Fredoka display title */
+.mictest-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 6px;
+}
+
+.mictest-header__title {
+  font-family: var(--mt-font-display);
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--mt-ink);
+  text-wrap: balance;
+}
+
+.mictest-header__sub {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--mt-ink-secondary);
+}
+
+/* ── Permission / error banners ──
+   amber = user action needed (blocked permission), coral = hard failure */
 .mictest-banner {
   display: flex;
-  gap: 10px;
   align-items: flex-start;
+  gap: 10px;
   padding: 12px 16px;
-  border-radius: var(--md-radius);
+  border-radius: var(--mt-r-md);
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1.5;
-  margin-bottom: 16px;
-  border: 1px solid;
 }
 
-.mictest-banner.denied {
-  background: var(--color-badge-orange-bg);
-  border-color: rgba(249, 115, 22, 0.3);
-  color: #92400e;
-}
-
-.mictest-banner.error {
-  background: var(--color-badge-red-bg);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #991b1b;
-}
-
-.mictest-banner-icon {
-  font-size: 1rem;
+.mictest-banner svg {
   flex-shrink: 0;
   margin-top: 1px;
 }
 
-/* ════════════════════════════════════════════════════
-   OUTER CARD  (white card — mirrors .likert-question-card)
-   ════════════════════════════════════════════════════ */
+.mictest-banner--denied {
+  background: var(--mt-amber-light);
+  border: 1.5px solid var(--mt-amber-border);
+  color: var(--mt-amber-hover);
+}
+
+.mictest-banner--error {
+  background: var(--mt-coral-light);
+  border: 1.5px solid var(--mt-coral-border);
+  color: var(--mt-coral);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   CARDS — db-setup-card shell + lp-3c-icon-badge tinted heads
+   ════════════════════════════════════════════════════════════════════════════ */
 .mictest-card {
-  background: var(--color-surface-card);
-  border: 1px solid var(--color-border-card);
-  border-radius: var(--card-radius);
-  box-shadow: var(--shadow-card);
-  padding: 20px;
-  margin-bottom: 16px;
-  animation: mt-fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--mt-card-bg);
+  border: 1.5px solid var(--mt-border);
+  border-radius: var(--mt-r-xl);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: var(--mt-shadow-card);
+  transition: border-color var(--mt-fast) ease;
 }
 
-@keyframes mt-fade-in {
-  from {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-  to {
+/* Each card leans into its flow tint on hover (lp-3c-card pattern) */
+.mictest-card--blue:hover {
+  border-color: var(--mt-blue-border);
+}
+
+.mictest-card--cyan:hover {
+  border-color: var(--mt-cyan-border);
+}
+
+.mictest-card--indigo:hover {
+  border-color: var(--mt-indigo-border);
+}
+
+.mictest-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* 48px tinted squircle badge (lp-3c-icon-badge pattern) */
+.mictest-icon-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--mt-r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mictest-icon-badge--blue {
+  background: var(--mt-blue-light);
+  color: var(--mt-blue);
+  border: 1.5px solid var(--mt-blue-border);
+}
+
+.mictest-icon-badge--cyan {
+  background: var(--mt-cyan-light);
+  color: var(--mt-cyan);
+  border: 1.5px solid var(--mt-cyan-border);
+}
+
+.mictest-icon-badge--indigo {
+  background: var(--mt-indigo-light);
+  color: var(--mt-indigo);
+  border: 1.5px solid var(--mt-indigo-border);
+}
+
+.mictest-card__head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.mictest-card__title {
+  font-family: var(--mt-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--mt-ink);
+}
+
+.mictest-card__sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mt-ink-muted);
+}
+
+/* ── Status chip (db-status-chip pattern) ──
+   neutral = idle · amber = requesting · cyan = recording · mint = passed ·
+   coral = denied/error */
+.mictest-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1.5px solid var(--mt-border-strong);
+  border-radius: var(--mt-r-pill);
+  background: var(--mt-canvas);
+  color: var(--mt-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mictest-status-chip--requesting {
+  border-color: var(--mt-amber-border);
+  background: var(--mt-amber-light);
+  color: var(--mt-amber-hover);
+}
+
+.mictest-status-chip--recording {
+  border-color: var(--mt-cyan-border);
+  background: var(--mt-cyan-light);
+  color: var(--mt-cyan-hover);
+}
+
+.mictest-status-chip--ok {
+  border-color: var(--mt-mint-border);
+  background: var(--mt-mint-light);
+  color: var(--mt-mint-hover);
+}
+
+.mictest-status-chip--error {
+  border-color: var(--mt-coral-border);
+  background: var(--mt-coral-light);
+  color: var(--mt-coral);
+}
+
+/* Pulse dot — breathes while the pipeline is waiting / live */
+.mictest-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.mictest-status-chip--requesting .mictest-pulse-dot,
+.mictest-status-chip--recording .mictest-pulse-dot,
+.mictest-live-chip .mictest-pulse-dot {
+  animation: mictest-dot-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes mictest-dot-breathe {
+  0%,
+  100% {
     opacity: 1;
-    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
   }
 }
 
-/* Card section label — sidebar-section-label style */
-.mictest-card-title {
+/* Live chip — sits on the transcript card head while recording */
+.mictest-live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 5px 12px;
+  background: var(--mt-cyan-light);
+  border: 1.5px solid var(--mt-cyan-border);
+  border-radius: var(--mt-r-pill);
+  color: var(--mt-cyan-hover);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--color-ink-muted);
-  margin-bottom: 16px;
+  white-space: nowrap;
 }
 
-/* ════════════════════════════════════════════════════
-   INNER CARD  (card-in-card — textured, not flat)
-   ════════════════════════════════════════════════════ */
-.mictest-inner {
-  /* Diagonal micro-gradient so the fill has perceived depth */
-  background: linear-gradient(135deg, #ece9f8 0%, #f2f0fa 60%, #edeaf6 100%);
-  border: 1px solid var(--color-inner-border);
-  border-radius: var(--lg-radius);
-  box-shadow: var(--shadow-inner);
-  padding: 16px;
+/* ════════════════════════════════════════════════════════════════════════════
+   FORM CONTROLS — db-field / db-select-wrap / db-select patterns
+   ════════════════════════════════════════════════════════════════════════════ */
+.mictest-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* ── Field label ────────────────────────────────── */
-.mictest-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-ink-secondary);
-  margin-bottom: 6px;
-  letter-spacing: 0;
+.mictest-field__label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mt-ink-muted);
+  line-height: 1.5;
 }
 
-/* ── Mic / Voice Select ─────────────────────────── */
 .mictest-select-wrap {
   position: relative;
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
 }
 
-.mictest-select-wrap:last-child {
-  margin-bottom: 0;
+.mictest-select-wrap__icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  flex-shrink: 0;
+  z-index: 1;
+  color: var(--mt-indigo);
+}
+
+.mictest-select-wrap__chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--mt-ink-faint);
+  flex-shrink: 0;
 }
 
 .mictest-select {
   width: 100%;
-  padding: 10px 36px 10px 14px;
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--md-radius);
-  font-size: 14px;
+  padding: 10px 38px;
+  background: var(--mt-canvas-subtle);
+  border: 1.5px solid var(--mt-border);
+  border-radius: var(--mt-r-md);
+  color: var(--mt-ink);
   font-family: inherit;
-  outline: none;
-  background: var(--color-surface-card);
-  color: var(--color-ink);
-  appearance: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
   cursor: pointer;
+  outline: none;
   transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
+    border-color var(--mt-fast) ease,
+    box-shadow var(--mt-fast) ease;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
-.mictest-select:focus,
-.mictest-select:focus-visible {
-  border-color: var(--color-primary-muted);
-  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.18);
-  outline: none;
+.mictest-select:hover {
+  border-color: var(--mt-border-strong);
+}
+
+.mictest-select:focus {
+  border-color: var(--mt-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .mictest-select:disabled {
-  background: var(--color-surface-input);
-  color: var(--color-ink-muted);
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.mictest-select-chevron {
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 12px;
-  display: flex;
-  align-items: center;
-  color: var(--color-ink-muted);
+.mictest-select option {
+  background: #ffffff;
 }
 
-/* ════════════════════════════════════════════════════
-   VOLUME METER
-   ════════════════════════════════════════════════════ */
-.mictest-volume-bar-wrap {
-  margin-bottom: 16px;
+/* ════════════════════════════════════════════════════════════════════════════
+   VOLUME METER — lp-3c-metric-bar pattern, widened for live input
+   Fill spectrum: cobalt (quiet) → mint (good) → amber (too loud)
+   ════════════════════════════════════════════════════════════════════════════ */
+.mictest-volume {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.mictest-volume-label {
+.mictest-volume__labels {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-ink-secondary);
-  margin-bottom: 6px;
+  gap: 10px;
 }
 
-.mictest-volume-label span:last-child {
+.mictest-volume__label {
+  font-size: 12.5px;
   font-weight: 600;
-  color: var(--color-primary);
-  min-width: 32px;
-  text-align: right;
+  color: var(--mt-ink-muted);
 }
 
-.mictest-volume-track {
-  width: 100%;
-  height: 6px;
-  background: var(--color-border-soft);
-  border-radius: var(--pill-radius);
+.mictest-volume__val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mt-ink-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.mictest-volume__val--good {
+  color: var(--mt-mint-hover);
+}
+
+.mictest-volume__val--loud {
+  color: var(--mt-amber-hover);
+}
+
+.mictest-volume__track {
+  height: 10px;
+  background: var(--mt-canvas-subtle);
+  border: 1px solid var(--mt-border);
+  border-radius: var(--mt-r-pill);
   overflow: hidden;
 }
 
-/* Default fill — primary lavender */
-.mictest-volume-fill {
+.mictest-volume__fill {
   height: 100%;
-  border-radius: var(--pill-radius);
-  background: var(--color-primary);
-  transition: width 0.08s ease-out;
+  background: var(--mt-blue);
+  border-radius: var(--mt-r-pill);
+  transition:
+    width 0.08s linear,
+    background-color var(--mt-fast) ease;
 }
 
-/* Good level (20–70%) — same primary, no color switch needed */
-.mictest-volume-fill.good {
-  background: var(--color-badge-green);
+.mictest-volume__fill--good {
+  background: var(--mt-mint);
 }
 
-/* Loud (>70%) — orange warning */
-.mictest-volume-fill.loud {
-  background: var(--color-badge-orange);
+.mictest-volume__fill--loud {
+  background: var(--mt-amber);
 }
 
-/* ════════════════════════════════════════════════════
-   BUTTONS
-   ════════════════════════════════════════════════════ */
-.mictest-btn-row {
+.mictest-volume__scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mt-ink-faint);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   BUTTONS — tactile pills (lp-btn-solid / lp-btn-ghost / db-cta-btn patterns)
+   ════════════════════════════════════════════════════════════════════════════ */
+.mictest-card__actions {
   display: flex;
   gap: 10px;
-  margin-top: 4px;
+  flex-wrap: wrap;
 }
 
-/* Secondary / ghost button — "Test Microphone" / "Hear Sample" */
+/* Primary test toggle — cobalt while idle, coral stop while recording */
 .mictest-btn-test {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  flex: 1;
-  padding: 10px 16px;
-  background: var(--color-surface-card);
-  /* Start at ink, not secondary — creates a stronger hover delta */
-  color: var(--color-ink);
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--md-radius);
+  gap: 8px;
+  padding: 11px 22px;
+  background: var(--mt-blue);
+  border: 1.5px solid var(--mt-blue-hover);
+  border-radius: var(--mt-r-pill);
+  color: #ffffff;
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: var(--mt-shadow-tactile-primary);
   transition:
-    border-color 0.15s,
-    background 0.15s,
-    color 0.15s,
-    box-shadow 0.15s;
+    transform var(--mt-fast) var(--mt-ease),
+    background-color var(--mt-fast) ease,
+    border-color var(--mt-fast) ease,
+    box-shadow var(--mt-fast) ease;
 }
 
 .mictest-btn-test:hover:not(:disabled) {
-  border-color: var(--color-primary-muted);
-  color: var(--color-primary);
-  background: var(--color-primary-light);
-  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.1);
+  background: var(--mt-blue-hover);
+  transform: translateY(-1px);
 }
 
-.mictest-btn-test:focus-visible {
-  outline: none;
-  border-color: var(--color-primary-muted);
-  box-shadow: 0 0 0 3px rgba(124, 111, 205, 0.22);
+.mictest-btn-test:active:not(:disabled) {
+  background: var(--mt-blue-active);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1e40af;
 }
 
 .mictest-btn-test:disabled {
-  color: var(--color-ink-muted);
-  cursor: not-allowed;
   opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
-/* Active / stop state — red tint */
-.mictest-btn-test.active {
-  border-color: rgba(239, 68, 68, 0.4);
-  color: var(--color-badge-red);
-  background: var(--color-badge-red-bg);
+/* Recording state — solid coral stop button */
+.mictest-btn-test--stop {
+  background: var(--mt-coral);
+  border-color: var(--mt-coral-hover);
+  box-shadow: var(--mt-shadow-tactile-coral);
 }
 
-.mictest-btn-test.active:hover:not(:disabled) {
-  background: #fecaca;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+.mictest-btn-test--stop:hover:not(:disabled) {
+  background: var(--mt-coral-hover);
 }
 
-/* ════════════════════════════════════════════════════
-   STATUS INDICATOR
-   ════════════════════════════════════════════════════ */
-.mictest-status {
-  display: flex;
+.mictest-btn-test--stop:active:not(:disabled) {
+  background: var(--mt-coral-active);
+  box-shadow: 0 1px 0 #b91c1c;
+}
+
+/* Ghost tactile — "Hear sample" (lp-btn-ghost pattern) */
+.mictest-btn-ghost {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  margin-top: 12px;
-  font-size: 13px;
-  color: var(--color-ink-secondary);
-  min-height: 20px;
+  padding: 10px 20px;
+  background: var(--mt-canvas);
+  border: 1.5px solid var(--mt-border-strong);
+  border-radius: var(--mt-r-pill);
+  color: var(--mt-ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: var(--mt-shadow-tactile);
+  transition:
+    transform var(--mt-fast) var(--mt-ease),
+    background-color var(--mt-fast) ease,
+    border-color var(--mt-fast) ease,
+    color var(--mt-fast) ease,
+    box-shadow var(--mt-fast) ease;
 }
 
-.mictest-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-ink-muted);
-  flex-shrink: 0;
+.mictest-btn-ghost:hover:not(:disabled) {
+  background: var(--mt-canvas-ice);
+  border-color: var(--mt-blue-border);
+  color: var(--mt-blue);
+  transform: translateY(-1px);
 }
 
-.mictest-dot.recording {
-  background: var(--color-badge-red);
-  animation: mt-pulse-dot 1.1s ease-in-out infinite;
+.mictest-btn-ghost:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #cbd5e1;
 }
 
-.mictest-dot.ok {
-  background: var(--color-badge-green);
+.mictest-btn-ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
-.mictest-dot.error-dot {
-  background: var(--color-badge-red);
+/* Spinner for loading states */
+.mictest-spin {
+  animation: mictest-rotate 0.9s linear infinite;
 }
 
-@keyframes mt-pulse-dot {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
+@keyframes mictest-rotate {
+  to {
+    transform: rotate(360deg);
   }
-  50% {
-    opacity: 0.35;
-    transform: scale(0.75);
-  }
 }
 
-/* ════════════════════════════════════════════════════
-   TRANSCRIPT PREVIEW
-   (content display zone — distinct from inner card)
-   ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════════
+   LIVE TRANSCRIPT — mono console surface, cyan wash while live
+   ════════════════════════════════════════════════════════════════════════════ */
 .mictest-transcript {
-  /* Slightly cooler, more neutral than the inner card —
-     signals "content output" rather than "input zone" */
-  background: linear-gradient(135deg, #f5f4fb 0%, #f9f8fd 100%);
-  border: 1px solid var(--color-inner-border);
-  /* Left accent bar — marks this as a live output surface */
-  border-left: 3px solid var(--color-primary-muted);
-  border-radius: var(--lg-radius);
-  box-shadow: var(--shadow-inner);
-  padding: 14px 16px;
-  min-height: 80px;
-  font-size: 14px;
-  color: var(--color-ink);
-  line-height: 1.6;
+  background: var(--mt-canvas-subtle);
+  border: 1.5px solid var(--mt-border);
+  border-radius: var(--mt-r-md);
+  padding: 16px 18px;
+  min-height: 96px;
+  font-family: var(--mt-font-mono);
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--mt-ink);
+  overflow-wrap: anywhere;
+  transition:
+    border-color var(--mt-fast) ease,
+    background-color var(--mt-fast) ease;
 }
 
-.mictest-transcript .placeholder {
-  color: var(--color-ink-muted);
+.mictest-transcript--live {
+  background: var(--mt-cyan-light);
+  border-color: var(--mt-cyan-border);
+}
+
+.mictest-transcript__final {
+  color: var(--mt-ink);
+}
+
+.mictest-transcript__partial {
+  color: var(--mt-ink-faint);
+}
+
+.mictest-transcript__placeholder {
+  color: var(--mt-ink-faint);
   font-style: italic;
-  font-size: 13px;
 }
 
-.mictest-transcript .partial {
-  color: var(--color-ink-secondary);
-}
-
-/* ════════════════════════════════════════════════════
-   INFO TIP
-   ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════════
+   TIP BANNER — cyan info note (db-resume-banner pattern)
+   ════════════════════════════════════════════════════════════════════════════ */
 .mictest-tip {
   display: flex;
-  gap: 10px;
   align-items: flex-start;
+  gap: 10px;
   padding: 14px 16px;
-  background: var(--color-primary-light);
-  border: 1px solid var(--color-primary-muted);
-  border-radius: var(--md-radius);
+  background: var(--mt-cyan-light);
+  border: 1.5px solid var(--mt-cyan-border);
+  border-radius: var(--mt-r-md);
   font-size: 13px;
-  font-weight: 400;
-  color: var(--color-ink-secondary);
   line-height: 1.55;
-  margin-top: 4px;
+  color: var(--mt-ink-secondary);
 }
 
-.mictest-tip-icon {
-  font-size: 1rem;
+.mictest-tip__icon {
   flex-shrink: 0;
   margin-top: 1px;
+  color: var(--mt-cyan);
 }
 
-/* ════════════════════════════════════════════════════
-   PROCEED CTA — full-width primary button
-   (mirrors .likert-btn-next / db-btn-primary)
-   ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════════
+   PROCEED CTA — full-width tactile cobalt pill (db-cta-btn pattern)
+   ════════════════════════════════════════════════════════════════════════════ */
 .mictest-proceed-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
-  padding: 14px 24px;
-  background: rgba(124, 111, 205, 0.88);
-  color: var(--color-ink-on-primary);
+  padding: 15px 28px;
+  margin-top: 6px;
+  background: var(--mt-blue);
   border: none;
-  border-radius: var(--lg-radius);
+  border-radius: var(--mt-r-pill);
+  color: #ffffff;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  cursor: pointer;
+  box-shadow: var(--mt-shadow-tactile-primary);
   transition:
-    background 0.15s,
-    transform 0.1s;
-  margin-top: 8px;
-  letter-spacing: 0;
+    transform var(--mt-fast) ease,
+    box-shadow var(--mt-fast) ease,
+    background-color var(--mt-fast) ease;
 }
 
-.mictest-proceed-btn:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+.mictest-proceed-btn:hover {
+  background: var(--mt-blue-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.35);
 }
 
-.mictest-proceed-btn:active:not(:disabled) {
-  transform: scale(0.99);
+.mictest-proceed-btn:active {
+  background: var(--mt-blue-active);
+  transform: translateY(0);
+  box-shadow: var(--mt-shadow-tactile-primary);
 }
 
-.mictest-proceed-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+/* Privacy footnote — echoes the landing page trust language */
+.mictest-footnote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mt-ink-faint);
 }
 
-/* ── Sign out link ──────────────────────────────── */
-.mictest-signout-wrap {
-  text-align: center;
-  margin-top: 12px;
+.mictest-footnote svg {
+  flex-shrink: 0;
 }
 
-.mictest-signout-btn {
-  background: none;
-  border: none;
-  color: var(--color-ink-muted);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 400;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  transition: color 0.15s;
+/* ════════════════════════════════════════════════════════════════════════════
+   MOTION & RESPONSIVE
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .mictest-pulse-dot {
+    animation: none;
+  }
+
+  .mictest-volume__fill {
+    transition: none;
+  }
 }
 
-.mictest-signout-btn:hover {
-  color: var(--color-ink-secondary);
-}
+@media (max-width: 640px) {
+  .mictest-topnav__inner {
+    padding: 10px 16px;
+  }
 
-/* ════════════════════════════════════════════════════
-   RESPONSIVE
-   ════════════════════════════════════════════════════ */
-@media (max-width: 600px) {
   .mictest-phase-badge {
     display: none;
   }
 
+  /* Icon-only sign out once the label no longer fits */
+  .mictest-signout-btn__label {
+    display: none;
+  }
+
+  .mictest-signout-btn {
+    padding: 9px 11px;
+  }
+
   .mictest-main {
-    padding-left: 14px;
-    padding-right: 14px;
+    padding: 26px 16px 44px;
+    gap: 14px;
   }
 
-  .mictest-header h2 {
-    font-size: 22px;
+  .mictest-header__title {
+    font-size: 25px;
   }
 
-  .mictest-proceed-btn {
-    font-size: 15px;
+  .mictest-card {
+    padding: 18px;
+    gap: 15px;
+    border-radius: var(--mt-r-lg);
+  }
+
+  /* Head wraps: chips align left under the text instead of pushing right */
+  .mictest-status-chip,
+  .mictest-live-chip {
+    margin-left: 0;
   }
 }

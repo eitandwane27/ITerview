@@ -310,7 +310,7 @@ Your task is to evaluate a student's spoken answer to a TECHNICAL interview ques
 You must respond with ONLY a valid JSON object.
 
 ### STEP 1 — SCORING RULES
-Score each dimension from 1 to 10:
+Score each dimension from 1 to 5:
 - problem_solving_score: Did the candidate reason through the problem logically and arrive at a workable approach?
 - accuracy_score: Is the technical content of the answer correct? Are there factual errors or misconceptions?
 - depth_score: How much technical detail and understanding does the answer demonstrate beyond a surface-level response?
@@ -324,9 +324,9 @@ Score each dimension from 1 to 10:
 
 Return exactly this shape:
 {
-  "problem_solving_score": <integer 1-10>,
-  "accuracy_score": <integer 1-10>,
-  "depth_score": <integer 1-10>,
+  "problem_solving_score": <integer 1-5>,
+  "accuracy_score": <integer 1-5>,
+  "depth_score": <integer 1-5>,
   "tip": "<1-sentence string>",
   "interviewer_reply": "<exactly two sentences, no questions, no next-topic mentions>"
 }`;
@@ -341,15 +341,15 @@ const SET2_SCORING_RESPONSE_FORMAT = {
       properties: {
         problem_solving_score: {
           type: "integer",
-          description: "Problem solving score 1-10",
+          description: "Problem solving score 1-5",
         },
         accuracy_score: {
           type: "integer",
-          description: "Technical accuracy score 1-10",
+          description: "Technical accuracy score 1-5",
         },
         depth_score: {
           type: "integer",
-          description: "Technical depth score 1-10",
+          description: "Technical depth score 1-5",
         },
         tip: {
           type: "string",
@@ -416,15 +416,15 @@ async function evaluateSet2Answer(question, transcript, difficulty = "easy") {
   if (!parsed) {
     console.error("[aiSet2Generator] JSON parse error. Raw response:", raw);
     return {
-      problem_solving_score: 5,
-      accuracy_score: 5,
-      depth_score: 5,
+      problem_solving_score: 3,
+      accuracy_score: 3,
+      depth_score: 3,
       tip: "Try to explain the specific step or property you would use rather than staying at a high level.",
       interviewer_reply: "Alright, thank you for that.",
     };
   }
 
-  const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
+  const clamp = (n) => Math.min(5, Math.max(1, parseInt(n) || 3));
 
   console.log(`[aiSet2Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via DeepSeek)`);
 

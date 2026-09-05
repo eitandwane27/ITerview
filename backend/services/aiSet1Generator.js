@@ -278,7 +278,7 @@ Your task is to evaluate a student's spoken answer against the specific intervie
 You must respond with ONLY a valid JSON object.
 
 ### STEP 1 — SCORING RULES
-Score each dimension from 1 to 10:
+Score each dimension from 1 to 5:
 - clarity_score: How well-organised, articulate, and easy to follow is the answer?
 - correctness_score: Does the answer directly and correctly respond to what the question is asking?
 - completeness_score: How thoroughly does the answer cover the specific points the question is asking about?
@@ -296,9 +296,9 @@ Based on the answer, provide two separate strings:
 
 Return exactly this shape:
 {
-  "clarity_score": <integer 1-10>,
-  "correctness_score": <integer 1-10>,
-  "completeness_score": <integer 1-10>,
+  "clarity_score": <integer 1-5>,
+  "correctness_score": <integer 1-5>,
+  "completeness_score": <integer 1-5>,
   "tip": "<1-sentence string>",
   "interviewer_reply": "<exactly two sentences warm reply>"
 }`;
@@ -311,14 +311,14 @@ const SET1_SCORING_RESPONSE_FORMAT = {
     schema: {
       type: "object",
       properties: {
-        clarity_score: { type: "integer", description: "Clarity score 1-10" },
+        clarity_score: { type: "integer", description: "Clarity score 1-5" },
         correctness_score: {
           type: "integer",
-          description: "Correctness score 1-10",
+          description: "Correctness score 1-5",
         },
         completeness_score: {
           type: "integer",
-          description: "Completeness score 1-10",
+          description: "Completeness score 1-5",
         },
         tip: {
           type: "string",
@@ -387,16 +387,16 @@ async function evaluateSet1Answer(question, transcript, difficulty = "easy") {
   if (!parsed) {
     console.error("[aiSet1Generator] JSON parse error. Raw response:", raw);
     return {
-      clarity_score: 5,
-      correctness_score: 5,
-      completeness_score: 5,
+      clarity_score: 3,
+      correctness_score: 3,
+      completeness_score: 3,
       tip: "Try to provide a bit more detail next time to fully address the question.",
       interviewer_reply:
         "That was a solid start. Let's build on that in the next parts.",
     };
   }
 
-  const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
+  const clamp = (n) => Math.min(5, Math.max(1, parseInt(n) || 3));
 
   console.log(
     `[aiSet1Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via DeepSeek V3)`,

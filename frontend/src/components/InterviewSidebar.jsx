@@ -7,14 +7,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
-import {
-  Clock,
-  Check,
-  Activity,
-  Trash2,
-  ThumbsUp,
-  Lightbulb,
-} from 'lucide-react';
+import { Clock, Check, Activity, Trash2, ThumbsUp, Lightbulb } from 'lucide-react';
 import mascotHeadSrc from '../assets/mascot-head.png';
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -73,12 +66,8 @@ export function QuestionListCard({
           <div className="ix-notes-footer">
             <span className="ix-notes-saved-hint">Auto-saved locally</span>
             {candidateNotes && onClearNotes && (
-              <button
-                type="button"
-                className="ix-notes-clear-btn"
-                onClick={onClearNotes}
-              >
-                <Trash2 size={11} />
+              <button type="button" className="ix-notes-clear-btn" onClick={onClearNotes}>
+                <Trash2 size={12} />
                 <span>Clear</span>
               </button>
             )}
@@ -92,11 +81,7 @@ export function QuestionListCard({
             const isAnswered = asked ? asked.answered : i < activeQuestionIndex;
             const qText = asked ? asked.text : titleFor(i);
 
-            const stateClass = isCurrent
-              ? 'active'
-              : isAnswered
-                ? 'answered'
-                : 'pending';
+            const stateClass = isCurrent ? 'active' : isAnswered ? 'answered' : 'pending';
 
             return (
               <div key={i} className={`ix-q-list-item ${stateClass}`}>
@@ -109,11 +94,11 @@ export function QuestionListCard({
                       : 'Waiting for the interviewer...'}
                 </span>
                 {isCurrent ? (
-                  <Activity size={14} className="ix-q-list-icon-active" />
+                  <Activity size={15} className="ix-q-list-icon-active" />
                 ) : isAnswered ? (
-                  <Check size={14} className="ix-q-list-icon-answered" />
+                  <Check size={15} className="ix-q-list-icon-answered" />
                 ) : (
-                  <Clock size={14} className="ix-q-list-icon-pending" />
+                  <Clock size={15} className="ix-q-list-icon-pending" />
                 )}
               </div>
             );
@@ -155,8 +140,7 @@ export function AICoachCard({ coachTip }) {
             <h4 className="ix-coach-title">AI Coach</h4>
             <p className="ix-coach-tip">
               {coachTip &&
-              coachTip !==
-                'Your personalized AI feedback will appear here after each answer.'
+              coachTip !== 'Your personalized AI feedback will appear here after each answer.'
                 ? coachTip
                 : 'Great structure! Now try adding more concrete trade-offs or edge cases.'}
             </p>

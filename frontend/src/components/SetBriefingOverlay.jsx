@@ -1,27 +1,29 @@
 // frontend/src/components/SetBriefingOverlay.jsx
 // ─────────────────────────────────────────────────────────────────────────────
-// Set 1 Session Briefing — Technical Practice Studio (ITerview)
-// Streamlined Studio Briefing · 3C Diagnostic Baseline · Practice Session
+// Set 1 Session Briefing - Technical Practice Studio (ITerview)
+// Interactive 3C Diagnostic Calibration & Practice Studio Launch
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion as Motion, useReducedMotion } from 'framer-motion';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import {
   Sparkles,
   Target,
-  Mic,
+  CircleCheckBig,
   ArrowRight,
   X,
-  Bot,
-  TrendingUp,
-  BarChart3,
-  Loader2,
-  CheckCircle2,
-  Cpu,
+  Mic,
+  Clock,
+  Radio,
+  Check,
 } from 'lucide-react';
+import mascotLaptopSrc from '../assets/mascot-laptop.png';
 import './SetBriefingOverlay.css';
+
+// Env-driven backend URL
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 // ─── Format & Role Helpers ───────────────────────────────────────────────────
 
@@ -49,14 +51,6 @@ function formatRole(role) {
     .join(' ');
 }
 
-function getRoleScopeSummary(role) {
-  const lower = (role || '').toLowerCase();
-  if (lower.includes('frontend')) return 'HTML/CSS · JavaScript · DOM · Web APIs';
-  if (lower.includes('backend')) return 'APIs · Node/Express · Databases · Architecture';
-  if (lower.includes('fullstack')) return 'Client-Server · Data Flow · APIs · Performance';
-  return 'Core Concepts · Architecture · Problem Solving';
-}
-
 // ─── Animation Variants ──────────────────────────────────────────────────────
 
 const overlayVariants = {
@@ -67,28 +61,28 @@ const overlayVariants = {
   },
   exit: {
     opacity: 0,
-    transition: { duration: 0.15, ease: 'easeIn' },
+    transition: { duration: 0.15, ease: [0.23, 1, 0.32, 1] },
   },
 };
 
 const modalVariants = {
-  hidden: { opacity: 0, scale: 0.96, y: 12 },
+  hidden: { opacity: 0, scale: 0.97, y: 10 },
   visible: {
     opacity: 1,
     scale: 1,
     y: 0,
     transition: {
-      duration: 0.26,
+      duration: 0.24,
       ease: [0.16, 1, 0.3, 1],
       staggerChildren: 0.04,
-      delayChildren: 0.03,
+      delayChildren: 0.02,
     },
   },
   exit: {
     opacity: 0,
-    scale: 0.97,
-    y: -8,
-    transition: { duration: 0.16, ease: 'easeInOut' },
+    scale: 0.98,
+    y: -6,
+    transition: { duration: 0.15, ease: [0.23, 1, 0.32, 1] },
   },
 };
 
@@ -97,7 +91,7 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
   },
 };
 
@@ -112,28 +106,27 @@ export default function SetBriefingOverlay({
   onReady, // legacy alias
 }) {
   const [profile, setProfile] = useState(null);
+  const [isSampleBaseline, setIsSampleBaseline] = useState(false);
   const [loading, setLoading] = useState(!role && !diagnosticData);
+  const prefersReducedMotion = useReducedMotion();
   const isTriggeredRef = useRef(false);
   const modalCardRef = useRef(null);
-  const launchBtnRef = useRef(null);
-
-  // Theme — mirrors Dashboard's localStorage-backed toggle ("iterview-theme").
-  // Read once at mount: the overlay is short-lived and always opened after the
-  // dashboard has rendered, so the stored preference is current.
-  const [theme] = useState(() => {
-    try {
-      return localStorage.getItem('iterview-theme') || 'dark';
-    } catch {
-      return 'dark';
-    }
-  });
+  const cancelBtnRef = useRef(null);
+  const previousFocusRef = useRef(null);
 
   // Disable background body scroll while modal is open
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
+    previousFocusRef.current = document.activeElement;
     document.body.style.overflow = 'hidden';
+    modalCardRef.current?.focus({ preventScroll: true });
+
     return () => {
       document.body.style.overflow = prevOverflow;
+      const previousFocus = previousFocusRef.current;
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+        previousFocus.focus({ preventScroll: true });
+      }
     };
   }, []);
 
@@ -150,12 +143,13 @@ export default function SetBriefingOverlay({
         setProfile({
           role: 'Frontend',
           threeCBreakdown: {
-            clarity: 6.5,
-            correctness: 8.5,
-            completeness: 7.2,
+            clarity: 3.2,
+            correctness: 4.2,
+            completeness: 3.6,
             lowestMetric: 'clarity',
           },
         });
+        setIsSampleBaseline(true);
         setLoading(false);
         return;
       }
@@ -188,25 +182,16 @@ export default function SetBriefingOverlay({
   // Derived effective values
   const effectiveRole = role || profile?.role || profile?.user?.role || 'Frontend';
   const formattedRole = formatRole(effectiveRole);
-  const roleScope = getRoleScopeSummary(effectiveRole);
   const effectiveDiagnostic = diagnosticData || profile;
 
   // Extract 3C Breakdown scores
-  const threeC = effectiveDiagnostic?.threeCBreakdown || {};
+  const threeC = useMemo(() => effectiveDiagnostic?.threeCBreakdown || {}, [effectiveDiagnostic]);
   const clarityScore = typeof threeC.clarity === 'number' ? threeC.clarity : null;
   const correctnessScore = typeof threeC.correctness === 'number' ? threeC.correctness : null;
   const completenessScore = typeof threeC.completeness === 'number' ? threeC.completeness : null;
 
-  const isAuto = !focusArea || focusArea === 'auto';
-
-  // Determine target metric (either custom focusArea or lowest metric from diagnostic)
-  const targetKey = useMemo(() => {
-    if (focusArea && focusArea !== 'auto') {
-      const lower = focusArea.toLowerCase();
-      if (lower.includes('clarity')) return 'clarity';
-      if (lower.includes('correctness') || lower.includes('accuracy')) return 'correctness';
-      if (lower.includes('completeness') || lower.includes('depth')) return 'completeness';
-    }
+  // Identify baseline lowest metric to recommend
+  const baselineLowestKey = useMemo(() => {
     if (threeC.lowestMetric) return threeC.lowestMetric;
     if (clarityScore != null && correctnessScore != null && completenessScore != null) {
       if (clarityScore <= correctnessScore && clarityScore <= completenessScore) return 'clarity';
@@ -219,39 +204,41 @@ export default function SetBriefingOverlay({
       effectiveDiagnostic?.weaknessTag ||
       '';
     if (tag.includes('clarity')) return 'clarity';
-    if (tag.includes('correctness')) return 'correctness';
+    if (tag.includes('correctness') || tag.includes('accuracy')) return 'correctness';
     if (tag.includes('completeness')) return 'completeness';
-    return null;
-  }, [focusArea, threeC, clarityScore, correctnessScore, completenessScore, effectiveDiagnostic]);
+    return 'clarity';
+  }, [threeC, clarityScore, correctnessScore, completenessScore, effectiveDiagnostic]);
 
-  // Pattern B: Morphing Loading / Preparation State
+  // Determine initial focus: honor explicit focusArea prop if provided, else baseline lowest
+  const initialFocusKey = useMemo(() => {
+    if (focusArea && focusArea !== 'auto') {
+      const lower = focusArea.toLowerCase();
+      if (lower.includes('clarity')) return 'clarity';
+      if (lower.includes('correctness') || lower.includes('accuracy')) return 'correctness';
+      if (lower.includes('completeness') || lower.includes('depth')) return 'completeness';
+    }
+    return baselineLowestKey;
+  }, [focusArea, baselineLowestKey]);
+
+  // User-selectable active coaching focus
+  const [selectedFocus, setSelectedFocus] = useState(initialFocusKey);
+
+  // Keep selectedFocus synced if initialFocusKey changes upon loading data
+  useEffect(() => {
+    if (initialFocusKey) {
+      setSelectedFocus(initialFocusKey);
+    }
+  }, [initialFocusKey]);
+
+  // Morphing Loading / Preparation State
   const [isPreparing, setIsPreparing] = useState(false);
-  const [prepStage, setPrepStage] = useState(0);
+  const [isSessionReady, setIsSessionReady] = useState(false);
   const [prepProgress, setPrepProgress] = useState(0);
   const [stageText, setStageText] = useState('');
   const prepTimersRef = useRef([]);
   const wsRef = useRef(null);
 
-  // Telemetry stages for Pattern B morphing preparation
-  const targetLabel = useMemo(() => {
-    if (targetKey === 'clarity') return 'Clarity & Delivery';
-    if (targetKey === 'correctness') return 'Technical Accuracy';
-    if (targetKey === 'completeness') return 'Depth & Completeness';
-    return 'Technical Mastery';
-  }, [targetKey]);
-
-  const prepStages = useMemo(
-    () => [
-      { label: `Analyzing diagnostic baseline for ${formattedRole}...`, pct: 20 },
-      { label: `Calibrating rubric targeting ${targetLabel}...`, pct: 48 },
-      { label: `Synthesizing 5 personalized questions (DeepSeek)...`, pct: 76 },
-      { label: `Compiling Aura-2 voice audio stream...`, pct: 94 },
-      { label: `Session ready! Launching Practice Arena...`, pct: 100 },
-    ],
-    [formattedRole, targetLabel]
-  );
-
-  // Clean up preparation timers and WebSocket on unmount
+  // Clean up timers & socket on unmount
   useEffect(() => {
     return () => {
       prepTimersRef.current.forEach(clearTimeout);
@@ -263,25 +250,21 @@ export default function SetBriefingOverlay({
     };
   }, []);
 
-  // Dismiss callback
   const handleDismiss = useCallback(() => {
-    if (isPreparing) {
-      prepTimersRef.current.forEach(clearTimeout);
-      prepTimersRef.current = [];
-      if (wsRef.current) {
-        wsRef.current.onclose = null;
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      setIsPreparing(false);
-      isTriggeredRef.current = false;
+    prepTimersRef.current.forEach(clearTimeout);
+    prepTimersRef.current = [];
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
     }
+    setIsPreparing(false);
+    isTriggeredRef.current = false;
     if (typeof onClose === 'function') {
       onClose();
     }
-  }, [isPreparing, onClose]);
+  }, [onClose]);
 
-  // Cancel / Abort preparation if user cancels
   const handleCancelPreparation = useCallback(() => {
     if (isPreparing) {
       prepTimersRef.current.forEach(clearTimeout);
@@ -292,9 +275,9 @@ export default function SetBriefingOverlay({
         wsRef.current = null;
       }
       setIsPreparing(false);
-      setPrepStage(0);
       setPrepProgress(0);
       setStageText('');
+      setIsSessionReady(false);
       isTriggeredRef.current = false;
     } else {
       handleDismiss();
@@ -304,18 +287,33 @@ export default function SetBriefingOverlay({
   // Launch callback with real backend WebSocket telemetry
   const handleLaunch = useCallback(async () => {
     if (isTriggeredRef.current || isPreparing) return;
-    setIsPreparing(true);
-    setPrepProgress(18);
-    setStageText(`Initializing session for ${formattedRole}...`);
 
-    // Clear any previous timers
+    if (isSessionReady) {
+      isTriggeredRef.current = true;
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      if (typeof onConfirm === 'function') {
+        onConfirm(selectedFocus);
+      } else if (typeof onReady === 'function') {
+        onReady(selectedFocus);
+      }
+      return;
+    }
+
+    setIsPreparing(true);
+    setPrepProgress(20);
+    setStageText(`Preparing your ${formattedRole} studio...`);
+
     prepTimersRef.current.forEach(clearTimeout);
     prepTimersRef.current = [];
 
     const user = auth.currentUser;
     const uid = user ? user.uid : 'anonymous_user';
 
-    // 1. Persist role and focus area to backend if authenticated
+    // 1. Persist chosen role and chosen focus area to backend
     if (user) {
       try {
         await fetch('/api/users/role', {
@@ -324,7 +322,7 @@ export default function SetBriefingOverlay({
           body: JSON.stringify({
             firebaseUid: user.uid,
             role: effectiveRole,
-            focusArea: focusArea || 'auto',
+            focusArea: selectedFocus,
           }),
         });
       } catch (err) {
@@ -332,65 +330,50 @@ export default function SetBriefingOverlay({
       }
     }
 
-    // 2. Open live WebSocket connection to trigger & stream question generation
+    // 2. Open live WebSocket connection to stream question generation
     let isSocketHandled = false;
 
     const runFallbackSimulation = () => {
       if (isSocketHandled) return;
       isSocketHandled = true;
+      setPrepProgress(28);
+      setStageText('Generating five practice questions calibrated to your baseline...');
       if (wsRef.current) {
         wsRef.current.onclose = null;
         wsRef.current.close();
         wsRef.current = null;
       }
 
-      // Smooth fallback progression
       const t1 = setTimeout(() => {
-        setPrepStage(1);
-        setPrepProgress(prepStages[1].pct);
-        setStageText(prepStages[1].label);
+        setPrepProgress(52);
+        setStageText(`Adapting questions for ${formattedRole} (${selectedFocus})...`);
       }, 700);
 
       const t2 = setTimeout(() => {
-        setPrepStage(2);
-        setPrepProgress(prepStages[2].pct);
-        setStageText(prepStages[2].label);
-      }, 1600);
+        setPrepProgress(78);
+        setStageText('Synthesizing voice prompt audio...');
+      }, 1500);
 
       const t3 = setTimeout(() => {
-        setPrepStage(3);
-        setPrepProgress(prepStages[3].pct);
-        setStageText(prepStages[3].label);
-      }, 2500);
+        setPrepProgress(100);
+        setStageText('Practice studio ready.');
+        setIsPreparing(false);
+        setIsSessionReady(true);
+      }, 2300);
 
-      const t4 = setTimeout(() => {
-        setPrepStage(4);
-        setPrepProgress(prepStages[4].pct);
-        setStageText(prepStages[4].label);
-      }, 3300);
-
-      const tFinal = setTimeout(() => {
-        isTriggeredRef.current = true;
-        if (typeof onConfirm === 'function') {
-          onConfirm();
-        } else if (typeof onReady === 'function') {
-          onReady();
-        }
-      }, 3900);
-
-      prepTimersRef.current = [t1, t2, t3, t4, tFinal];
+      prepTimersRef.current = [t1, t2, t3];
     };
 
     try {
-      const focusParam = focusArea ? `&focusArea=${encodeURIComponent(focusArea)}` : '';
+      const focusParam = selectedFocus ? `&focusArea=${encodeURIComponent(selectedFocus)}` : '';
       const ws = new WebSocket(
-        `ws://localhost:5000/ws/set1?voice=aura-2-luna-en&uid=${uid}${focusParam}`
+        `${BACKEND_URL.replace(/^http/, 'ws')}/ws/set1?voice=aura-2-luna-en&uid=${uid}${focusParam}`
       );
       wsRef.current = ws;
 
       ws.onopen = () => {
         setPrepProgress(25);
-        setStageText(`Connected to DeepSeek AI Engine...`);
+        setStageText('Connected to coaching studio. Generating questions...');
       };
 
       ws.onmessage = (event) => {
@@ -404,42 +387,29 @@ export default function SetBriefingOverlay({
         switch (msg.type) {
           case 'generation_progress':
             if (msg.stage === 'evaluating_baseline') {
-              setPrepProgress(28);
-              setStageText(msg.message || `Evaluating baseline 3C scores...`);
+              setPrepProgress(32);
+              setStageText(msg.message || 'Evaluating your 3C diagnostic baseline...');
             } else if (msg.stage === 'generating_questions') {
               const current = msg.current || 1;
               const total = msg.total || 5;
-              const pct = 30 + Math.round((current / total) * 60);
+              const pct = 32 + Math.round((current / total) * 58);
               setPrepProgress(pct);
-              setStageText(
-                msg.message || `Synthesizing question ${current} of ${total} (${formattedRole})...`
-              );
+              setStageText(msg.message || `Generating question ${current} of ${total}...`);
             }
             break;
 
           case 'question_text':
-            setPrepProgress(94);
-            setStageText(`Question ready · Compiling voice audio...`);
+            setPrepProgress(92);
+            setStageText('Questions ready. Preparing voice audio...');
             break;
 
           case 'generation_complete':
           case 'tts_audio':
             isSocketHandled = true;
             setPrepProgress(100);
-            setStageText(`Session ready! Launching Practice Arena...`);
-            setTimeout(() => {
-              if (wsRef.current) {
-                wsRef.current.onclose = null;
-                wsRef.current.close();
-                wsRef.current = null;
-              }
-              isTriggeredRef.current = true;
-              if (typeof onConfirm === 'function') {
-                onConfirm();
-              } else if (typeof onReady === 'function') {
-                onReady();
-              }
-            }, 450);
+            setStageText('Studio ready.');
+            setIsPreparing(false);
+            setIsSessionReady(true);
             break;
 
           case 'error':
@@ -453,29 +423,30 @@ export default function SetBriefingOverlay({
       };
 
       ws.onerror = () => {
-        console.warn('[SetBriefingOverlay] WS connection failed, running fallback simulation.');
+        console.warn('[SetBriefingOverlay] WS error, using safe fallback simulation.');
         runFallbackSimulation();
       };
 
-      // Guard timer: if real WS takes > 12s, complete safely
+      // Guard timer
       const guardTimer = setTimeout(() => {
         if (!isTriggeredRef.current) {
           runFallbackSimulation();
         }
-      }, 12000);
+      }, 10000);
       prepTimersRef.current.push(guardTimer);
     } catch (err) {
       console.warn('[SetBriefingOverlay] WS exception:', err);
       runFallbackSimulation();
     }
-  }, [isPreparing, formattedRole, effectiveRole, focusArea, prepStages, onConfirm, onReady]);
-
-  // Auto focus launch button
-  useEffect(() => {
-    if (!loading && launchBtnRef.current) {
-      launchBtnRef.current.focus();
-    }
-  }, [loading]);
+  }, [
+    isPreparing,
+    isSessionReady,
+    formattedRole,
+    effectiveRole,
+    selectedFocus,
+    onConfirm,
+    onReady,
+  ]);
 
   // Keyboard accessibility
   const handleKeyDown = useCallback(
@@ -483,333 +454,355 @@ export default function SetBriefingOverlay({
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        handleDismiss();
+        if (isPreparing) {
+          handleCancelPreparation();
+        } else {
+          handleDismiss();
+        }
         return;
       }
       if (e.key === 'Enter' && !e.shiftKey) {
-        if (document.activeElement?.tagName === 'BUTTON') return;
-        e.preventDefault();
-        handleLaunch();
-        return;
-      }
-      if (e.key === 'Tab') {
-        const modal = modalCardRef.current;
-        if (!modal) return;
-        const focusables = Array.from(
-          modal.querySelectorAll(
-            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-          )
-        ).filter((el) => el.offsetParent !== null || el === document.activeElement);
-
-        if (focusables.length === 0) {
+        if (loading || isPreparing) return;
+        if (document.activeElement === modalCardRef.current) {
           e.preventDefault();
-          return;
-        }
-
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
+          handleLaunch();
         }
       }
     },
-    [handleDismiss, handleLaunch]
+    [handleCancelPreparation, handleDismiss, handleLaunch, isPreparing, loading]
+  );
+
+  // 3C Metric definition with standardized naming & descriptions
+  const scoreItems = useMemo(
+    () => [
+      {
+        key: 'clarity',
+        label: 'Clarity',
+        shortLabel: 'Clarity',
+        score: clarityScore,
+        description: 'Structured reasoning, clear signposting, and logical flow from premise to conclusion.',
+        coachTip:
+          "I'll focus on how logically your answers unfold. Structure your thoughts clearly before diving into code!",
+      },
+      {
+        key: 'correctness',
+        label: 'Correctness',
+        shortLabel: 'Correctness',
+        score: correctnessScore,
+        description: 'Precise engineering terminology, sound architectural concepts, and correct trade-offs.',
+        coachTip:
+          "I'll listen closely for precise concepts, accurate API usage, and technically sound reasoning!",
+      },
+      {
+        key: 'completeness',
+        label: 'Completeness',
+        shortLabel: 'Completeness',
+        score: completenessScore,
+        description: 'Edge cases, performance trade-offs, scalability, and holistic implementation details.',
+        coachTip:
+          "I'll challenge you on edge cases, scaling limits, and realistic production trade-offs!",
+      },
+    ],
+    [clarityScore, correctnessScore, completenessScore]
+  );
+
+  const activeMetricObj = useMemo(
+    () => scoreItems.find((item) => item.key === selectedFocus) || scoreItems[0],
+    [scoreItems, selectedFocus]
   );
 
   return (
-    <motion.div
+    <Motion.div
       className="sb-overlay"
-      data-theme={theme}
       variants={overlayVariants}
-      initial="hidden"
+      initial={prefersReducedMotion ? false : 'hidden'}
       animate="visible"
       exit="exit"
-      onClick={handleDismiss}
+      onClick={isPreparing ? handleCancelPreparation : handleDismiss}
       onKeyDown={handleKeyDown}
       tabIndex={-1}
       role="presentation"
     >
-      <motion.div
+      <Motion.div
         ref={modalCardRef}
-        className="sb-modal"
+        className={`sb-modal ${isPreparing ? 'sb-modal--preparing' : ''}`}
         variants={modalVariants}
-        initial="hidden"
+        initial={prefersReducedMotion ? false : 'hidden'}
         animate="visible"
         exit="exit"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="sb-title"
+        aria-labelledby={loading ? undefined : 'sb-title'}
+        aria-describedby={loading ? undefined : 'sb-description'}
+        aria-label={loading ? 'Loading practice studio briefing' : undefined}
+        aria-busy={loading || isPreparing}
         onClick={(e) => e.stopPropagation()}
+        tabIndex={-1}
       >
-        {/* ── Top Atmospheric Glow & Active Scanner ── */}
-        <div className="sb-modal-bloom" aria-hidden="true" />
-        {isPreparing && <div className="sb-modal-scanner" aria-hidden="true" />}
-
-        {/* ── 1. Header Section ── */}
-        <motion.div className="sb-header" variants={itemVariants}>
-          <div className="sb-header-main">
-            <h2 id="sb-title" className="sb-title">
-              {isPreparing ? 'Calibrating your session...' : `${formattedRole} · Set 01`}
-            </h2>
-
-            <div className="sb-role-strip">
-              <span className="sb-role-scope">{roleScope}</span>
-            </div>
+        {/* Topbar: Clean, honest metadata without faux buttons */}
+        <div className="sb-topbar">
+          <div className="sb-topbar-meta">
+            <span className="sb-studio-tag">Practice Studio</span>
+            <span className="sb-meta-divider" aria-hidden="true">
+              /
+            </span>
+            <span className="sb-role-badge">{formattedRole}</span>
           </div>
 
-          <div className="sb-header-side">
-            {isPreparing ? (
-              <span className="sb-tag sb-tag--synthesis">
-                <Cpu size={11} className="sb-tag-icon sb-spin-slow" />
-                Generating questions…
-              </span>
-            ) : isAuto ? (
-              <span className="sb-tag sb-tag--cyan">
-                <Sparkles size={11} className="sb-tag-icon" />
-                Auto-calibrated Focus
-              </span>
-            ) : (
-              <span className="sb-tag sb-tag--sun">
-                <Target size={11} className="sb-tag-icon" />
-                Custom Target
-              </span>
-            )}
-
+          <div className="sb-topbar-actions">
             {onClose && (
               <button
                 type="button"
                 className="sb-close-btn"
                 onClick={handleDismiss}
-                aria-label="Close session calibration modal"
+                aria-label="Close practice briefing"
                 title="Close (Esc)"
               >
-                <X size={16} />
+                <X size={18} aria-hidden="true" />
               </button>
             )}
           </div>
-        </motion.div>
+        </div>
 
-        {/* ── 2. 3C Diagnostic Baseline (Airy Triad Grid) ── */}
-        <motion.div className="sb-breakdown-section" variants={itemVariants}>
-          <div className="sb-section-header">
-            <div className="sb-section-title-wrap">
-              <BarChart3 size={13} className="sb-section-icon" />
-              <span className="sb-section-title">
-                {isPreparing ? 'Calibrating Metric Thresholds' : 'Diagnostic Baseline'}
-              </span>
+        {loading ? (
+          <div className="sb-skeleton" aria-label="Loading your practice briefing" role="status">
+            <span className="sb-sr-only">Loading your practice briefing</span>
+            <div className="sb-skeleton-col">
+              <span className="sb-skeleton-line sb-skeleton-line--title" />
+              <span className="sb-skeleton-line sb-skeleton-line--body" />
+              <span className="sb-skeleton-block" />
             </div>
-            <span className="sb-section-sub">
-              {isPreparing ? `Targeting ${targetLabel}` : 'Scored out of 10'}
-            </span>
+            <div className="sb-skeleton-col">
+              <span className="sb-skeleton-row" />
+              <span className="sb-skeleton-row" />
+              <span className="sb-skeleton-row" />
+            </div>
           </div>
+        ) : (
+          <Motion.div className="sb-content" variants={itemVariants}>
+            {/* Header: Direct & Authoritative */}
+            <header className="sb-header">
+              <h2 id="sb-title" className="sb-title">
+                {formattedRole} Practice Briefing
+              </h2>
+              <p id="sb-description" className="sb-subtitle">
+                Calibrated to your diagnostic baseline. Select your coaching focus to customize the
+                adaptive AI questions.
+              </p>
+            </header>
 
-          <div className="sb-triad-grid">
-            {/* Metric 1: Clarity (Sky) */}
-            <div
-              className={`sb-triad-card sb-triad-card--sky ${
-                targetKey === 'clarity' ? 'sb-triad-card--active' : ''
-              } ${isPreparing && targetKey === 'clarity' ? 'sb-triad-card--calibrating' : ''}`}
-            >
-              <div className="sb-triad-head">
-                <div className="sb-triad-indicator">
-                  <span className="sb-triad-dot sb-triad-dot--sky" />
-                  <span className="sb-triad-label">Clarity</span>
+            {/* Split Body: Coach Guide (Left) + Interactive 3C Matrix (Right) */}
+            <div className="sb-grid">
+              {/* Left Column: Mascot & Session Checklist */}
+              <section className="sb-coach-panel" aria-label="Coaching Overview">
+                <div className="sb-coach-card">
+                  <div className="sb-mascot-wrap">
+                    <img
+                      src={mascotLaptopSrc}
+                      alt="ITerview AI coach at laptop"
+                      className="sb-mascot-img"
+                      draggable="false"
+                    />
+                  </div>
+
+                  <div className="sb-speech-bubble" role="status" aria-live="polite">
+                    <div className="sb-bubble-header">
+                      <Sparkles size={14} className="sb-bubble-icon" aria-hidden="true" />
+                      <strong>Coach Focus: {activeMetricObj.label}</strong>
+                    </div>
+                    <p>{activeMetricObj.coachTip}</p>
+                  </div>
                 </div>
-                {targetKey === 'clarity' && (
-                  <span className="sb-mini-tag sb-mini-tag--rose">Focus</span>
-                )}
-              </div>
-              <div className="sb-triad-val-row">
-                <span className="sb-triad-val">{clarityScore != null ? clarityScore : '7.0'}</span>
-                <span className="sb-triad-max">/ 10</span>
-              </div>
-              <div className="sb-mini-track">
-                <div
-                  className="sb-mini-fill sb-mini-fill--sky"
-                  style={{
-                    width: `${Math.min(100, ((clarityScore != null ? clarityScore : 7.0) / 10) * 100)}%`,
-                  }}
-                />
-              </div>
-            </div>
 
-            {/* Metric 2: Accuracy / Correctness (Mint) */}
-            <div
-              className={`sb-triad-card sb-triad-card--mint ${
-                targetKey === 'correctness' ? 'sb-triad-card--active' : ''
-              } ${isPreparing && targetKey === 'correctness' ? 'sb-triad-card--calibrating' : ''}`}
-            >
-              <div className="sb-triad-head">
-                <div className="sb-triad-indicator">
-                  <span className="sb-triad-dot sb-triad-dot--mint" />
-                  <span className="sb-triad-label">Accuracy</span>
+                {/* Session Parameters / Readiness List */}
+                <div className="sb-parameters-card">
+                  <div className="sb-param-item">
+                    <Radio size={16} className="sb-param-icon" aria-hidden="true" />
+                    <div>
+                      <strong>5 Spoken Questions</strong>
+                      <span>Adaptive difficulty</span>
+                    </div>
+                  </div>
+
+                  <div className="sb-param-item">
+                    <Clock size={16} className="sb-param-icon" aria-hidden="true" />
+                    <div>
+                      <strong>~10 Minutes</strong>
+                      <span>Self-paced answers</span>
+                    </div>
+                  </div>
+
+                  <div className="sb-param-item">
+                    <Mic size={16} className="sb-param-icon" aria-hidden="true" />
+                    <div>
+                      <strong>Voice Audio Studio</strong>
+                      <span>Real-time speech evaluation</span>
+                    </div>
+                  </div>
                 </div>
-                {targetKey === 'correctness' && (
-                  <span className="sb-mini-tag sb-mini-tag--rose">Focus</span>
-                )}
-              </div>
-              <div className="sb-triad-val-row">
-                <span className="sb-triad-val">
-                  {correctnessScore != null ? correctnessScore : '7.0'}
-                </span>
-                <span className="sb-triad-max">/ 10</span>
-              </div>
-              <div className="sb-mini-track">
-                <div
-                  className="sb-mini-fill sb-mini-fill--mint"
-                  style={{
-                    width: `${Math.min(100, ((correctnessScore != null ? correctnessScore : 7.0) / 10) * 100)}%`,
-                  }}
-                />
-              </div>
-            </div>
+              </section>
 
-            {/* Metric 3: Depth / Completeness (Lilac) */}
-            <div
-              className={`sb-triad-card sb-triad-card--lilac ${
-                targetKey === 'completeness' ? 'sb-triad-card--active' : ''
-              } ${isPreparing && targetKey === 'completeness' ? 'sb-triad-card--calibrating' : ''}`}
-            >
-              <div className="sb-triad-head">
-                <div className="sb-triad-indicator">
-                  <span className="sb-triad-dot sb-triad-dot--lilac" />
-                  <span className="sb-triad-label">Completeness</span>
-                </div>
-                {targetKey === 'completeness' && (
-                  <span className="sb-mini-tag sb-mini-tag--rose">Focus</span>
-                )}
-              </div>
-              <div className="sb-triad-val-row">
-                <span className="sb-triad-val">
-                  {completenessScore != null ? completenessScore : '7.0'}
-                </span>
-                <span className="sb-triad-max">/ 10</span>
-              </div>
-              <div className="sb-mini-track">
-                <div
-                  className="sb-mini-fill sb-mini-fill--lilac"
-                  style={{
-                    width: `${Math.min(100, ((completenessScore != null ? completenessScore : 7.0) / 10) * 100)}%`,
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── 3. Session Blueprint Strip (Integrated Features) ── */}
-        <motion.div className="sb-blueprint-strip" variants={itemVariants}>
-          <div className="sb-blueprint-item">
-            <div className="sb-blueprint-icon-halo sb-blueprint-icon-halo--cyan">
-              <Mic size={13} />
-            </div>
-            <div className="sb-blueprint-text">
-              <span className="sb-blueprint-title">5 Voice Prompts</span>
-              <span className="sb-blueprint-desc">Targeted technical set</span>
-            </div>
-          </div>
-
-          <div className="sb-blueprint-divider" aria-hidden="true" />
-
-          <div className="sb-blueprint-item">
-            <div className="sb-blueprint-icon-halo sb-blueprint-icon-halo--lilac">
-              <Bot size={13} />
-            </div>
-            <div className="sb-blueprint-text">
-              <span className="sb-blueprint-title">AI Coach Tips</span>
-              <span className="sb-blueprint-desc">Dynamic guidance</span>
-            </div>
-          </div>
-
-          <div className="sb-blueprint-divider" aria-hidden="true" />
-
-          <div className="sb-blueprint-item">
-            <div className="sb-blueprint-icon-halo sb-blueprint-icon-halo--mint">
-              <TrendingUp size={13} />
-            </div>
-            <div className="sb-blueprint-text">
-              <span className="sb-blueprint-title">Live 3C Scoring</span>
-              <span className="sb-blueprint-desc">Rubric updates</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── 4. Action Footer — Pattern B Morphing Execution ── */}
-        <motion.div className="sb-footer" variants={itemVariants}>
-          <div className="sb-actions">
-            {onClose && (
-              <button
-                type="button"
-                className="sb-btn-secondary"
-                onClick={isPreparing ? handleCancelPreparation : handleDismiss}
+              {/* Right Column: Interactive 3C Diagnostic Selector */}
+              <section
+                className="sb-matrix-panel"
+                aria-label="3C Diagnostic Baseline & Focus Selection"
               >
-                {isPreparing ? 'Cancel' : 'Cancel'}
-              </button>
-            )}
+                <div className="sb-matrix-header">
+                  <div>
+                    <h3 className="sb-matrix-title">Diagnostic Baseline</h3>
+                    <p className="sb-matrix-subtitle">
+                      {isSampleBaseline ? 'Sample diagnostic profile' : 'Your recent diagnostic scores'}.{' '}
+                      <strong>Click to set your practice focus.</strong>
+                    </p>
+                  </div>
+                  <span className="sb-scale-hint">Scale /5</span>
+                </div>
 
+                <div
+                  className="sb-metric-list"
+                  role="radiogroup"
+                  aria-label="Select your practice coaching focus"
+                >
+                  {scoreItems.map((item) => {
+                    const isSelected = selectedFocus === item.key;
+                    const isLowest = baselineLowestKey === item.key;
+
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        disabled={isPreparing}
+                        onClick={() => setSelectedFocus(item.key)}
+                        className={`sb-metric-card ${isSelected ? 'sb-metric-card--selected' : ''}`}
+                      >
+                        <div className="sb-metric-left">
+                          <div className="sb-radio-indicator" aria-hidden="true">
+                            {isSelected ? (
+                              <div className="sb-radio-dot" />
+                            ) : (
+                              <div className="sb-radio-empty" />
+                            )}
+                          </div>
+
+                          <div className="sb-metric-info">
+                            <div className="sb-metric-title-row">
+                              <span
+                                className={`sb-metric-icon sb-metric-icon--${item.key}`}
+                                aria-hidden="true"
+                              >
+                                {item.key === 'clarity' ? (
+                                  <Sparkles size={15} />
+                                ) : item.key === 'correctness' ? (
+                                  <Target size={15} />
+                                ) : (
+                                  <CircleCheckBig size={15} />
+                                )}
+                              </span>
+                              <strong className="sb-metric-name">{item.label}</strong>
+
+                              {isSelected ? (
+                                <span className="sb-badge-focus">
+                                  <Check size={11} aria-hidden="true" /> Active Focus
+                                </span>
+                              ) : isLowest ? (
+                                <span className="sb-badge-recommended">Recommended</span>
+                              ) : null}
+                            </div>
+                            <p className="sb-metric-desc">{item.description}</p>
+                          </div>
+                        </div>
+
+                        <div className="sb-metric-score" aria-label={`Score: ${item.score ?? 'N/A'} out of 5`}>
+                          <span className="sb-score-num">{item.score != null ? item.score : '—'}</span>
+                          {item.score != null && <span className="sb-score-denom">/5</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+          </Motion.div>
+        )}
+
+        {/* Footer: Single-Flow Launch & Progress Display */}
+        <div className="sb-footer">
+          <div className="sb-footer-status">
             {isPreparing ? (
               <div
-                className="sb-morphing-btn"
+                className="sb-progress-wrap"
                 role="progressbar"
                 aria-valuenow={prepProgress}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label={`Session calibration progress: ${prepProgress}%`}
+                aria-label={`Studio preparation: ${prepProgress}%`}
               >
-                {/* Progress fill bar */}
-                <div className="sb-morphing-fill" style={{ width: `${prepProgress}%` }} />
-
-                {/* Content row */}
-                <div className="sb-morphing-content">
-                  <div className="sb-morphing-left">
-                    <div className="sb-mini-pulse-ring" aria-hidden="true">
-                      <span className="sb-mini-pulse-core" />
-                    </div>
-                    <span className="sb-morphing-text">
-                      {stageText || prepStages[prepStage]?.label}
-                    </span>
-                  </div>
-                  <span className="sb-morphing-pct">{prepProgress}%</span>
+                <div className="sb-progress-label">
+                  <span>{stageText || 'Configuring voice studio...'}</span>
+                  <span className="sb-progress-pct">{prepProgress}%</span>
+                </div>
+                <div className="sb-progress-track">
+                  <div
+                    className="sb-progress-fill"
+                    style={{ width: `${prepProgress}%` }}
+                  />
+                </div>
+              </div>
+            ) : isSessionReady ? (
+              <div className="sb-status-ready">
+                <span className="sb-ready-dot" aria-hidden="true" />
+                <div>
+                  <strong>Studio Ready</strong>
+                  <span>5 calibrated questions prepared. Click enter to begin.</span>
                 </div>
               </div>
             ) : (
-              <button
-                ref={launchBtnRef}
-                type="button"
-                className="sb-btn-primary"
-                onClick={handleLaunch}
-                id="btn-confirm-launch-practice"
-              >
-                <span>Start Set 1 Practice</span>
-                <ArrowRight size={15} className="sb-btn-arrow" aria-hidden="true" />
-              </button>
+              <div className="sb-status-idle">
+                <strong>Focusing on {activeMetricObj.label}</strong>
+                <span>Instant voice coaching begins upon entering the studio.</span>
+              </div>
             )}
           </div>
 
-          <div className="sb-shortcut-hint" aria-hidden="true">
-            {isPreparing ? (
-              <span>
-                Synthesizing session parameters · Press <kbd className="sb-kbd">Esc</kbd> to abort
-              </span>
-            ) : (
-              <>
-                <span>
-                  Press <kbd className="sb-kbd">Enter ↵</kbd> to begin
-                </span>
-                <span className="sb-shortcut-sep">·</span>
-                <span>
-                  <kbd className="sb-kbd">Esc</kbd> to dismiss
-                </span>
-              </>
+          <div className="sb-footer-actions">
+            {onClose && (
+              <button
+                ref={cancelBtnRef}
+                type="button"
+                className="sb-btn-secondary"
+                onClick={isPreparing ? handleCancelPreparation : handleDismiss}
+              >
+                Cancel
+              </button>
             )}
+
+            <button
+              type="button"
+              className="sb-btn-primary"
+              onClick={handleLaunch}
+              id="btn-confirm-launch-practice"
+              disabled={loading || isPreparing}
+            >
+              <span>
+                {loading
+                  ? 'Loading studio...'
+                  : isPreparing
+                    ? 'Preparing session...'
+                    : isSessionReady
+                      ? 'Enter Studio'
+                      : 'Start Practice Studio'}
+              </span>
+              {isPreparing ? (
+                <span className="sb-btn-spinner" aria-hidden="true" />
+              ) : (
+                <ArrowRight size={17} className="sb-btn-arrow" aria-hidden="true" />
+              )}
+            </button>
           </div>
-        </motion.div>
-      </motion.div>
-    </motion.div>
+        </div>
+      </Motion.div>
+    </Motion.div>
   );
 }

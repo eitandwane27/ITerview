@@ -26,10 +26,10 @@ const set1AnswerSchema = new mongoose.Schema(
     // Raw transcript from STT (Deepgram)
     transcript: { type: String, default: "" },
 
-    // 3C scores from AI evaluator (1–10)
-    clarity_score:      { type: Number, min: 1, max: 10, default: null },
-    correctness_score:  { type: Number, min: 1, max: 10, default: null },
-    completeness_score: { type: Number, min: 1, max: 10, default: null },
+    // 3C scores from AI evaluator (1–5)
+    clarity_score:      { type: Number, min: 1, max: 5, default: null },
+    correctness_score:  { type: Number, min: 1, max: 5, default: null },
+    completeness_score: { type: Number, min: 1, max: 5, default: null },
 
     // 1-sentence actionable tip surfaced to the user after each answer
     tip: { type: String, default: null },
@@ -149,7 +149,7 @@ set1SessionSchema.methods.finalise = function (baselinePercent = null) {
   if (baselinePercent !== null && this.avg_clarity !== null) {
     // Convert the new avg to a comparable 0-100 percentage, then diff
     const newPercent =
-      ((this.avg_clarity + this.avg_correctness + this.avg_completeness) / 30) * 100;
+      ((this.avg_clarity + this.avg_correctness + this.avg_completeness) / 15) * 100;
     this.improvement_score = parseFloat((newPercent - baselinePercent).toFixed(2));
   }
 

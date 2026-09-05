@@ -18,6 +18,10 @@ import AiAnalysisLoader from '../components/AiAnalysisLoader';
 import './PreTest.css';
 import './PostTest.css';
 
+// Env-driven backend URL — same derivation as PreTest/MicTest.
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const WS_BASE = BACKEND_URL.replace(/^http/, 'ws');
+
 export default function PostTest() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,6 +47,9 @@ export default function PostTest() {
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const [showContinueButton, setShowContinueButton] = useState(false);
+  const [currentQuestionText, setCurrentQuestionText] = useState('');
+  // Once-only gate: the graduation challenge is taken exactly once per account.
+  const [alreadyCompleted, setAlreadyCompleted] = useState(null); // { score, weakness }
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const wsRef = useRef(null);
@@ -116,6 +123,10 @@ export default function PostTest() {
     }
   }, []);
 
+  // Recursive "play next" hop: the queue processor calls itself through a ref
+  // so the callback stays dependency-clean while the chain keeps going.
+  const processQueueRef = useRef(() => {});
+
   const processQueue = useCallback(() => {
     if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
     const item = audioQueueRef.current[0];
@@ -126,7 +137,7 @@ export default function PostTest() {
       isPlayingRef.current = false;
       audioQueueRef.current.shift();
       if (audioQueueRef.current.length === 0) setIsPlayingAudio(false);
-      processQueue();
+      processQueueRef.current(); // play next
     };
     const onPlaybackError = (err) => {
       setError(`Audio playback error: ${err.message}`);
@@ -137,6 +148,10 @@ export default function PostTest() {
     }
   }, [playBase64]);
 
+  useEffect(() => {
+    processQueueRef.current = processQueue;
+  }, [processQueue]);
+
   const enqueueBase64Audio = useCallback(
     (base64Data) => {
       audioQueueRef.current.push({ type: 'base64', data: base64Data });
@@ -145,13 +160,58 @@ export default function PostTest() {
     [processQueue]
   );
 
+  // ── Audio cleanup — declared before the WS effect that tears down with it.
+  // Stable identity (refs + setters only), so it can live in the effect deps.
+  const cleanupAudio = useCallback(() => {
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+        currentAudioRef.current.src = '';
+      } catch {
+        // element already released
+      }
+      currentAudioRef.current = null;
+    }
+
+    if (currentObjectUrlRef.current) {
+      try {
+        URL.revokeObjectURL(currentObjectUrlRef.current);
+      } catch {
+        // URL already revoked
+      }
+      currentObjectUrlRef.current = null;
+    }
+
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    setIsPlayingAudio(false);
+
+    cancelAnimationFrame(animFrameRef.current);
+    processorRef.current?.disconnect();
+    processorRef.current = null;
+    sourceRef.current?.disconnect();
+    sourceRef.current = null;
+    analyserRef.current?.disconnect();
+    analyserRef.current = null;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (audioContextRef.current?.state !== 'closed') {
+      audioContextRef.current?.close();
+      audioContextRef.current = null;
+    }
+    setVolume(0);
+  }, []);
+
   // ── WebSocket connection (only starts AFTER briefing dismissed) ────────────
   useEffect(() => {
     if (showBriefing) return; // wait until user clicks "Start Graduation Challenge"
 
     const user = auth.currentUser;
     const uid = user ? user.uid : 'anonymous_user';
-    const ws = new WebSocket(`ws://localhost:5000/ws/posttest?voice=${voice}&uid=${uid}`);
+    const ws = new WebSocket(`${WS_BASE}/ws/posttest?voice=${voice}&uid=${uid}`);
     ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
 
@@ -177,6 +237,10 @@ export default function PostTest() {
           setCurrentQuestion(msg.currentQuestionIndex + 1);
           break;
         case 'tts_audio':
+          if (typeof msg.questionIndex === 'number') {
+            setCurrentQuestion(msg.questionIndex + 1);
+          }
+          if (msg.questionText) setCurrentQuestionText(msg.questionText);
           enqueueBase64Audio(msg.data);
           break;
         case 'transcript':
@@ -204,6 +268,15 @@ export default function PostTest() {
           setIsAnalyzing(true);
           setStatus('Graduation Challenge complete! Calculating your growth…');
           break;
+        case 'posttest_completed':
+          // Once-only rule: the graduation challenge already exists for this account.
+          setAlreadyCompleted({
+            score: msg.final_score ?? null,
+            weakness: msg.weakness_tag ?? null,
+          });
+          setShowBriefing(false);
+          ws.close();
+          break;
         default:
           break;
       }
@@ -221,7 +294,7 @@ export default function PostTest() {
       ws.close();
       cleanupAudio();
     };
-  }, [showBriefing, enqueueBase64Audio, processQueue, voice]);
+  }, [showBriefing, enqueueBase64Audio, processQueue, voice, cleanupAudio]);
 
   // ── Volume meter ──────────────────────────────────────────────────────────
   const startVolumeMeter = (analyser) => {
@@ -233,45 +306,6 @@ export default function PostTest() {
       animFrameRef.current = requestAnimationFrame(tick);
     };
     animFrameRef.current = requestAnimationFrame(tick);
-  };
-
-  const cleanupAudio = () => {
-    if (currentAudioRef.current) {
-      try {
-        currentAudioRef.current.pause();
-        currentAudioRef.current.currentTime = 0;
-        currentAudioRef.current.src = '';
-      } catch (e) {}
-      currentAudioRef.current = null;
-    }
-
-    if (currentObjectUrlRef.current) {
-      try {
-        URL.revokeObjectURL(currentObjectUrlRef.current);
-      } catch (e) {}
-      currentObjectUrlRef.current = null;
-    }
-
-    audioQueueRef.current = [];
-    isPlayingRef.current = false;
-    setIsPlayingAudio(false);
-
-    cancelAnimationFrame(animFrameRef.current);
-    processorRef.current?.disconnect();
-    processorRef.current = null;
-    sourceRef.current?.disconnect();
-    sourceRef.current = null;
-    analyserRef.current?.disconnect();
-    analyserRef.current = null;
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    if (audioContextRef.current?.state !== 'closed') {
-      audioContextRef.current?.close();
-      audioContextRef.current = null;
-    }
-    setVolume(0);
   };
 
   // ── Mic controls ──────────────────────────────────────────────────────────
@@ -349,6 +383,10 @@ export default function PostTest() {
 
   const submitAnswer = () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    if (!confirmedTranscript.trim()) {
+      setError('Your answer is empty — record it first, or press Re-Record to try again.');
+      return;
+    }
     wsRef.current.send(JSON.stringify({ type: 'submit_answer', final_text: confirmedTranscript }));
     setAwaitingConfirmation(false);
     setFinalTranscript('');
@@ -364,7 +402,9 @@ export default function PostTest() {
       try {
         currentAudioRef.current.pause();
         currentAudioRef.current.src = '';
-      } catch {}
+      } catch {
+        // element already released
+      }
       currentAudioRef.current = null;
     }
     audioQueueRef.current = [];
@@ -420,6 +460,46 @@ export default function PostTest() {
     );
   }
 
+  // ── Once-only gate: saved-baseline panel instead of the arena ──────────────
+  if (alreadyCompleted) {
+    return (
+      <div className="pt-root posttest-root">
+        <header className="pt-topbar posttest-topbar">
+          <div className="pt-topbar-brand">ITerview</div>
+          <div className="pt-topbar-meta">
+            <span className="pt-phase-badge posttest-phase-badge">🎓 Graduation Challenge</span>
+          </div>
+        </header>
+        <main className="pt-main">
+          <div
+            className="pt-content"
+            style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+          >
+            <div className="pt-complete-panel pt-complete-panel--saved">
+              <span className="pt-complete-kicker">Graduation Challenge already completed</span>
+              <p className="pt-complete-score">
+                <span className="pt-complete-num">{alreadyCompleted.score ?? '—'}%</span>
+                <span className="pt-complete-num-label">final score</span>
+              </p>
+              <p className="pt-complete-note">
+                Your graduation challenge is taken once so we can measure how far you've grown.
+                View your results, or head back to the dashboard to keep practicing.
+              </p>
+              <div className="pt-complete-actions">
+                <button className="pt-btn pt-btn-cta" onClick={() => navigate('/results')}>
+                  View results
+                </button>
+                <button className="pt-btn pt-btn-ghost" onClick={() => navigate('/dashboard')}>
+                  Return to dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // ── Main Arena ─────────────────────────────────────────────────────────────
   return (
     <div className="pt-root posttest-root">
@@ -443,14 +523,14 @@ export default function PostTest() {
         />
       </div>
 
-      {isAnalyzing && (
-        <AnimatePresence>
+      <AnimatePresence>
+        {isAnalyzing && (
           <AiAnalysisLoader
             key="post-analysis-loader"
             onComplete={() => navigate('/likert-post', { state: { voice } })}
           />
-        </AnimatePresence>
-      )}
+        )}
+      </AnimatePresence>
       <main className="pt-main">
         {/* Left Column */}
         <div
@@ -470,7 +550,7 @@ export default function PostTest() {
                 Question {currentQuestion}
               </span>
               <div className="pt-question-text">
-                Listen to the AI's question, then record your answer.
+                {currentQuestionText || "Listen to the AI's question, then record your answer."}
               </div>
 
               {/* Status Strip */}

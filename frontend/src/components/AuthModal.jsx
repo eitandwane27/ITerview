@@ -449,37 +449,55 @@ export default function AuthModal({
           type="button"
           disabled={loading}
         >
-          <X size={18} />
+          <X size={16} strokeWidth={2.5} />
+        </button>
+      )}
+
+      {/* Symmetrical back button for forgot password mode */}
+      {mode === 'forgot' && (
+        <button
+          type="button"
+          className="am-back-btn"
+          onClick={() => handleSwitchMode('login')}
+          aria-label="Back to sign in"
+          disabled={isAnyLoading}
+        >
+          <ArrowLeft size={16} strokeWidth={2.5} />
         </button>
       )}
 
       {/* Mode: Reset Email Sent Successfully */}
       {mode === 'reset-success' ? (
         <div className="am-success-view">
-          <div className="am-logo-mark" aria-hidden="true">
-            <img src={logoImg} alt="" className="am-logo-mark-img" />
-          </div>
-
           <div className="am-success-icon-wrap" aria-hidden="true">
-            <CheckCircle2 size={36} className="am-success-icon" />
+            <CheckCircle2 size={34} className="am-success-icon" strokeWidth={2.2} />
           </div>
 
           <h2 id="am-title" className="am-title">
             Check your inbox
           </h2>
+
           <p id="am-subheading" className="am-subheading">
-            We sent a password reset link to{' '}
-            <span className="am-highlight-email">{resetEmailSent}</span>. Follow the instructions in
-            the email to set a new password.
+            We sent a password reset link to
           </p>
 
-          <div className="am-spacer-md" />
+          <div className="am-email-chip" title={resetEmailSent}>
+            <Mail size={15} className="am-email-chip-icon" aria-hidden="true" />
+            <span className="am-email-chip-address">{resetEmailSent}</span>
+          </div>
 
-          <button type="button" className="am-submit-btn" onClick={() => handleSwitchMode('login')}>
-            Return to sign in
+          <p className="am-subtext-secondary">
+            Follow the instructions in the email to set a new password.
+          </p>
+
+          <button
+            type="button"
+            className="am-submit-btn am-submit-btn--return"
+            onClick={() => handleSwitchMode('login')}
+          >
+            <span>Return to sign in</span>
+            <ArrowRight size={17} strokeWidth={2.5} aria-hidden="true" />
           </button>
-
-          <div className="am-spacer-sm" />
 
           <div className="am-footer">
             <span className="am-footer-text">Didn't get the email?</span>
@@ -496,21 +514,6 @@ export default function AuthModal({
         <>
           {/* Brand Hero block */}
           <div className="am-brand-hero">
-            {mode === 'forgot' && (
-              <div className="am-forgot-nav">
-                <button
-                  type="button"
-                  className="am-back-btn"
-                  onClick={() => handleSwitchMode('login')}
-                  aria-label="Back to sign in"
-                  disabled={isAnyLoading}
-                >
-                  <ArrowLeft size={14} />
-                  <span>Back to sign in</span>
-                </button>
-              </div>
-            )}
-
             <div className="am-logo-mark" aria-hidden="true">
               <img src={logoImg} alt="" className="am-logo-mark-img" />
             </div>

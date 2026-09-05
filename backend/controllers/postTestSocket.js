@@ -42,7 +42,7 @@ function computeFinalScores(scores) {
   const n = scores.length;
 
   let totalPoints = 0;
-  const maxPossiblePoints = n * 30; // 3 dimensions * max 10 pts * N questions
+  const maxPossiblePoints = n * 15; // 3 dimensions * max 5 pts * N questions
 
   const sum = { clarity: 0, correctness: 0, completeness: 0 };
   scores.forEach((s) => {
@@ -122,7 +122,10 @@ function handlePostTestSocket(ws, request) {
     }
   }
 
-  async function speakQuestion(text) {
+  /** Speak a question via TTS and send the MP3 back over the WebSocket.
+   *  The payload carries questionIndex + questionText so the browser can show
+   *  the question as text (recognition, not recall) while it is spoken. */
+  async function speakQuestion(text, label, questionIndex = currentQuestionIndex) {
     if (ws.readyState !== ws.OPEN) return;
     try {
       send({ type: "status", message: "Generating question audio…" });
@@ -132,7 +135,12 @@ function handlePostTestSocket(ws, request) {
       const latency = Date.now() - t0;
       metrics.ttsLatencies.push(latency);
       const base64Audio = audioBuffer.toString("base64");
-      send({ type: "tts_audio", data: base64Audio });
+      send({
+        type: "tts_audio",
+        data: base64Audio,
+        questionIndex,
+        questionText: POST_TEST_QUESTIONS[questionIndex] ?? text,
+      });
       console.log(
         `[TTS/Post] 🔊 Sent audio in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`
       );
@@ -205,6 +213,32 @@ function handlePostTestSocket(ws, request) {
       }
     } catch (err) {
       console.error("[WS/Post] Failed to fetch user difficulty:", err.message);
+    }
+
+    // ── Once-only gate: a completed Post-Test can never be retaken ──────────
+    // The graduation score is the final anchor of the research pipeline, so it
+    // is taken exactly once per account. Dev tooling can bypass `?reset=true`.
+    if (!isResetRequested) {
+      try {
+        const completedSession = await PostTestSession.findOne({
+          firebaseUid,
+          completedAt: { $ne: null },
+        });
+        if (completedSession) {
+          console.log(
+            `[WS/Post] ⛔ Post-test already completed for ${firebaseUid} — score ${completedSession.final_score_percentage ?? "?"}%. Rejecting retake.`
+          );
+          send({
+            type: "posttest_completed",
+            final_score: completedSession.final_score_percentage,
+            weakness_tag: completedSession.final_weakness_tag,
+          });
+          ws.close();
+          return;
+        }
+      } catch (err) {
+        console.error("[WS/Post] Failed to check for completed post-test:", err.message);
+      }
     }
 
     // Check for an active, incomplete post-test session
@@ -321,8 +355,31 @@ function handlePostTestSocket(ws, request) {
         send({ type: "status", message: "Recording stopped. Review your answer, then confirm to continue." });
         break;
 
+      // Client asked to hear the current question again (recognition aid —
+      // the answer itself is untouched, so this is always safe)
+      case "replay_question":
+        if (!isRecording) {
+          send({ type: "status", message: "Playing the question again…" });
+          (async () => {
+            await speakQuestion(
+              POST_TEST_QUESTIONS[currentQuestionIndex],
+              "Replay",
+              currentQuestionIndex
+            );
+          })();
+        }
+        break;
+
       case "submit_answer": {
-        const confirmedText = msg.final_text || fullTranscript;
+        const confirmedText = (msg.final_text || fullTranscript || "").trim();
+        if (!confirmedText) {
+          console.warn(`[WS/Post] submit_answer rejected for Q${currentQuestionIndex + 1} — empty transcript`);
+          send({
+            type: "error",
+            message: "No answer was recorded for this question yet. Press the mic and speak your answer.",
+          });
+          break;
+        }
         const answeredQuestion = POST_TEST_QUESTIONS[currentQuestionIndex];
         const questionNumber = currentQuestionIndex + 1;
         console.log(`[WS/Post] Answer confirmed for Q${questionNumber}: "${confirmedText.substring(0, 80)}…"`);
@@ -360,7 +417,7 @@ function handlePostTestSocket(ws, request) {
             console.error(`[AI/Post] ❌ Background evaluation failed for Q${questionNumber}:`, err.message);
             sessionScores.push({
               questionIndex: capturedIndex,
-              clarity_score: 6, correctness_score: 6, completeness_score: 6,
+              clarity_score: 3, correctness_score: 3, completeness_score: 3,
               primary_weakness: "focus_completeness",
             });
             metrics.evaluationLatencies.push(0);
@@ -412,7 +469,12 @@ function handlePostTestSocket(ws, request) {
               preGeneratedNextQuestionIndex === currentQuestionIndex
             ) {
               const base64Audio = preGeneratedNextQuestionAudio.toString("base64");
-              send({ type: "tts_audio", data: base64Audio });
+              send({
+                type: "tts_audio",
+                data: base64Audio,
+                questionIndex: currentQuestionIndex,
+                questionText: POST_TEST_QUESTIONS[currentQuestionIndex],
+              });
               console.log(`[TTS/Post] 🔊 Sent pre-generated Q${currentQuestionIndex + 1} audio (cached).`);
               metrics.ttsLatencies.push(0);
               preGeneratedNextQuestionAudio = null;

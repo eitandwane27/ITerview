@@ -226,6 +226,7 @@ export default function MainSets() {
   const isMountedRef = useRef(true);
   const isSessionCompleteRef = useRef(false);
   const processQueueRef = useRef(null);
+  const liveTranscriptScrollRef = useRef(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -233,6 +234,13 @@ export default function MainSets() {
       isMountedRef.current = false;
     };
   }, []);
+
+  // Auto-scroll the live transcription container smoothly to bottom as candidate speaks
+  useEffect(() => {
+    if (isRecording && liveTranscriptScrollRef.current) {
+      liveTranscriptScrollRef.current.scrollTop = liveTranscriptScrollRef.current.scrollHeight;
+    }
+  }, [finalTranscript, partialTranscript, isRecording]);
 
   // ── Playback Functions ─────────────────────────────────────────────────────
 
@@ -652,10 +660,34 @@ export default function MainSets() {
       } else {
         setIsRecording(true);
         setStatus('Listening...');
-        const previewSample =
-          'This is a preview transcription of your response. Variables declared with const are block-scoped and cannot be reassigned, whereas let allows reassignment while still maintaining block scope.';
-        setFinalTranscript(previewSample);
-        finalTranscriptRef.current = previewSample;
+        setFinalTranscript('');
+        setPartialTranscript('');
+        finalTranscriptRef.current = '';
+
+        // Progressive preview simulation: sentence 1 interim -> finalized -> sentence 2
+        setTimeout(() => {
+          if (!isMountedRef.current) return;
+          setPartialTranscript('This is a preview transcription of your response.');
+        }, 500);
+
+        setTimeout(() => {
+          if (!isMountedRef.current) return;
+          const s1 = 'This is a preview transcription of your response.';
+          finalTranscriptRef.current = s1;
+          setFinalTranscript(s1);
+          setPartialTranscript(
+            'Variables declared with const are block-scoped and cannot be reassigned,'
+          );
+        }, 1800);
+
+        setTimeout(() => {
+          if (!isMountedRef.current) return;
+          const fullText =
+            'This is a preview transcription of your response. Variables declared with const are block-scoped and cannot be reassigned, whereas let allows reassignment while still maintaining block scope.';
+          finalTranscriptRef.current = fullText;
+          setFinalTranscript(fullText);
+          setPartialTranscript('');
+        }, 3400);
       }
       return;
     }
@@ -833,9 +865,7 @@ export default function MainSets() {
             </div>
 
             <div className="ix-topbar-center">
-              <span className="ix-topbar-progress">
-                Question {activeQuestionIndex} of 5
-              </span>
+              <span className="ix-topbar-progress">Question {activeQuestionIndex} of 5</span>
             </div>
 
             <div className="ix-topbar-right">
@@ -960,7 +990,7 @@ export default function MainSets() {
                       <div className="ix-answer-meta-row">
                         <div className="ix-answer-status">
                           <span className="ix-rec-pulse-dot" />
-                          <span className="ix-answer-lead">Listening & Recording</span>
+                          <span className="ix-answer-lead">Listening &amp; Recording</span>
                           <span className="ix-rec-timer">{formatMS(elapsedSec)}</span>
                         </div>
                         <span className="ix-speech-hint">Speak clearly into your microphone</span>
@@ -969,9 +999,9 @@ export default function MainSets() {
                       <div className="ix-waveform-row">
                         <div className="ix-waveform" aria-hidden="true">
                           {[
-                            4, 6, 12, 8, 16, 24, 14, 8, 18, 28, 36, 20, 10, 16, 26, 32, 18, 12,
-                            22, 38, 44, 30, 16, 24, 34, 40, 22, 14, 20, 32, 36, 18, 10, 14, 28,
-                            34, 16, 8, 12, 22, 30, 18, 8, 14, 20, 12, 6, 4,
+                            4, 6, 12, 8, 16, 24, 14, 8, 18, 28, 36, 20, 10, 16, 26, 32, 18, 12, 22,
+                            38, 44, 30, 16, 24, 34, 40, 22, 14, 20, 32, 36, 18, 10, 14, 28, 34, 16,
+                            8, 12, 22, 30, 18, 8, 14, 20, 12, 6, 4,
                           ].map((height, i) => (
                             <span
                               key={i}
@@ -984,9 +1014,27 @@ export default function MainSets() {
                         </div>
                       </div>
 
-                      {partialTranscript && (
-                        <p className="ix-transcript-live-preview">"{partialTranscript}"</p>
-                      )}
+                      {/* Live Multi-Line Unified Transcription Stream */}
+                      <div className="ix-transcript-live-box" ref={liveTranscriptScrollRef}>
+                        {finalTranscript || partialTranscript ? (
+                          <p className="ix-transcript-live-stream">
+                            {finalTranscript && (
+                              <span className="ix-transcript-final">{finalTranscript}</span>
+                            )}
+                            {partialTranscript && (
+                              <span className="ix-transcript-interim">
+                                {finalTranscript ? ' ' : ''}
+                                {partialTranscript}
+                              </span>
+                            )}
+                            <span className="ix-transcript-caret" aria-hidden="true" />
+                          </p>
+                        ) : (
+                          <p className="ix-transcript-listening-placeholder">
+                            Listening... your spoken response will transcribe here in real time.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ) : isEvaluating ? (
                     <div className="ix-response-state ix-state-evaluating">
@@ -1024,7 +1072,9 @@ export default function MainSets() {
                           <ArrowRight size={13} />
                         </button>
                       </div>
-                      <p className="ix-transcript-quote">"{finalTranscript}"</p>
+                      <div className="ix-transcript-recorded-box">
+                        <p className="ix-transcript-quote">"{finalTranscript}"</p>
+                      </div>
                     </div>
                   ) : (
                     <div className="ix-response-state ix-state-idle">
@@ -1071,9 +1121,7 @@ export default function MainSets() {
                         onClick={toggleMic}
                         disabled={micDisabled}
                         title={
-                          isRecording
-                            ? 'Stop & Submit Answer (Space)'
-                            : 'Start Answering (Space)'
+                          isRecording ? 'Stop & Submit Answer (Space)' : 'Start Answering (Space)'
                         }
                       >
                         {isRecording ? <Square size={16} /> : <Mic size={16} />}
@@ -1095,12 +1143,6 @@ export default function MainSets() {
                   )}
                 </div>
               </section>
-
-              {/* Centered Privacy Footer */}
-              <footer className="ix-footer">
-                <Shield size={13} className="ix-footer-shield" />
-                <span>Your answers are saved automatically and kept private.</span>
-              </footer>
             </main>
 
             {/* ════ Right Sidebar ════ */}
@@ -1124,6 +1166,12 @@ export default function MainSets() {
               coachTip={coachTip}
             />
           </div>
+
+          {/* Centered Privacy Footer */}
+          <footer className="ix-footer">
+            <Shield size={13} className="ix-footer-shield" />
+            <span>Your answers are saved automatically and kept private.</span>
+          </footer>
 
           {/* ── Full Transcript Modal ── */}
           {showTranscriptModal && transcriptModalData && (
@@ -1164,9 +1212,7 @@ export default function MainSets() {
                 </div>
                 <div className="ix-modal-footer">
                   <span className="ix-modal-wordcount">
-                    {
-                      transcriptModalData.transcript.trim().split(/\s+/).filter(Boolean).length
-                    }{' '}
+                    {transcriptModalData.transcript.trim().split(/\s+/).filter(Boolean).length}{' '}
                     words recorded
                   </span>
                   <button
@@ -1210,7 +1256,8 @@ export default function MainSets() {
                 </div>
                 <div className="ix-modal-body">
                   <p className="ix-modal-desc">
-                    Are you sure you want to exit? Any answered questions and coach feedback for this session will be preserved.
+                    Are you sure you want to exit? Any answered questions and coach feedback for
+                    this session will be preserved.
                   </p>
                 </div>
                 <div className="ix-modal-footer">

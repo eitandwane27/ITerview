@@ -585,11 +585,16 @@ function handleSet3Socket(ws, request) {
                 }, 0);
                 const nextAttempt = maxAttempt > 0 ? maxAttempt + 1 : existingHist.length + 1;
 
+                const avgOutOf5 = set1Doc && set1Doc.avg_clarity !== null
+                  ? parseFloat(((set1Doc.avg_clarity + set1Doc.avg_correctness + set1Doc.avg_completeness) / 3).toFixed(1))
+                  : null;
+
                 const threeCBreakdown = set1Doc ? {
                   clarity: set1Doc.avg_clarity,
                   correctness: set1Doc.avg_correctness,
                   completeness: set1Doc.avg_completeness,
-                  averageOutOf10: set1Doc.avg_clarity !== null ? parseFloat(((set1Doc.avg_clarity + set1Doc.avg_correctness + set1Doc.avg_completeness) / 3).toFixed(1)) : null,
+                  averageOutOf5: avgOutOf5,
+                  averageOutOf10: avgOutOf5,
                 } : null;
 
                 await User.findOneAndUpdate(

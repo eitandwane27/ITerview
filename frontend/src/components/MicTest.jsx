@@ -8,22 +8,50 @@
 //      (uses the short-lived token from GET /api/deepgram/token)
 //   4. Hear the AI interviewer voice via POST /api/tts/speak (aura-2-luna-en)
 //   5. Click "Start Interview" once satisfied → navigates to /pre-test
+//
+// Design: Cool Color Spectrum system (Royal Cobalt · Signal Sky Cyan · Deep
+// Indigo · Cool Mint · Warm Amber) — the same token family as LandingPage
+// and Dashboard. Card tints follow the flow: blue = audio input, cyan = live
+// signal (transcript), indigo = AI voice. Status spectrum: amber = waiting,
+// cyan = live, mint = passed, coral = blocked / error.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Mic,
+  AudioLines,
+  AudioWaveform,
+  Volume2,
+  ChevronDown,
+  Play,
+  Square,
+  Loader2,
+  ArrowRight,
+  Lightbulb,
+  Lock,
+  AlertCircle,
+  CheckCircle2,
+  LogOut,
+} from 'lucide-react';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
+import logoSrc from '../assets/logo';
 import './MicTest.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-// Chevron SVG — shared by both selects
-const ChevronIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-  </svg>
-);
+// Status chip copy per pipeline state — the state machine lives in
+// startTest()/stopTest() below (idle → requesting → recording → ok, with
+// denied / error as terminal failures).
+const STATUS_TEXT = {
+  idle: 'Ready — run a quick test to check your levels',
+  requesting: 'Waiting for microphone permission…',
+  recording: 'Listening — say something to check your mic',
+  ok: 'Mic check passed',
+  denied: 'Permission denied',
+  error: 'Error occurred',
+};
 
 export default function MicTest() {
   const navigate = useNavigate();
@@ -150,7 +178,7 @@ export default function MicTest() {
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setStatus('denied');
         setErrorMsg(
-          'Microphone access was blocked. Click the 🔒 icon in your browser\'s address bar and set Microphone to "Allow", then try again.'
+          'Microphone access was blocked. Click the lock icon in your browser\'s address bar and set Microphone to "Allow", then try again.'
         );
       } else if (err.name === 'NotFoundError') {
         setStatus('error');
@@ -340,65 +368,114 @@ export default function MicTest() {
   };
 
   // ── Derived UI ────────────────────────────────────────────────────────────
-  const volumeClass = volume > 70 ? 'loud' : volume > 20 ? 'good' : '';
+  // Volume fill follows the status spectrum: cobalt (quiet) → mint (good) →
+  // amber (too loud) — same thresholds the previous meter used.
+  const volumeFillClass =
+    volume > 70 ? 'mictest-volume__fill--loud' : volume > 20 ? 'mictest-volume__fill--good' : '';
+  const volumeValClass =
+    volume > 70 ? 'mictest-volume__val--loud' : volume > 20 ? 'mictest-volume__val--good' : '';
 
-  const dotClass =
+  // Status chip tone: neutral idle · amber requesting · cyan recording ·
+  // mint passed · coral denied/error
+  const statusTone =
     status === 'recording'
       ? 'recording'
       : status === 'ok'
         ? 'ok'
-        : status === 'denied' || status === 'error'
-          ? 'error-dot'
-          : '';
+        : status === 'requesting'
+          ? 'requesting'
+          : status === 'denied' || status === 'error'
+            ? 'error'
+            : 'idle';
 
-  const statusText =
-    {
-      idle: 'Idle — press "Test Microphone" to begin',
-      requesting: 'Waiting for microphone permission…',
-      recording: 'Listening — say something to check your mic',
-      ok: 'Mic check passed ✓',
-      denied: 'Permission denied',
-      error: 'Error occurred',
-    }[status] ?? '';
+  // Chips swap their dot for an icon on terminal states
+  const StatusIcon =
+    status === 'ok' ? CheckCircle2 : status === 'denied' || status === 'error' ? AlertCircle : null;
+
+  const isDenied = status === 'denied';
 
   return (
-    <div className="mictest-container">
-      {/* ── Top Bar ─────────────────────────────────────────────────────── */}
-      <header className="mictest-topbar">
-        <div className="mictest-topbar-content">
-          <h1>ITerview</h1>
-          <span className="mictest-phase-badge">Pre-Test · Mic Setup</span>
+    <div className="mictest-root">
+      {/* ── Top Bar — db-topnav pattern: logo + wordmark, phase chip, sign out ── */}
+      <header className="mictest-topnav">
+        <div className="mictest-topnav__inner">
+          <div className="mictest-topnav__logo-group">
+            <img src={logoSrc} alt="ITerview" className="mictest-logo-img" />
+            <span className="mictest-topnav__wordmark">ITerview</span>
+          </div>
+          <div className="mictest-topnav__right">
+            <span className="mictest-phase-badge">Pre-Test · Mic Setup</span>
+            <button
+              type="button"
+              className="mictest-signout-btn"
+              onClick={handleLogout}
+              aria-label="Sign out"
+            >
+              <LogOut size={14} aria-hidden="true" />
+              <span className="mictest-signout-btn__label">Sign out</span>
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="mictest-main">
-        {/* ── Page heading ────────────────────────────────────────────────── */}
+        {/* ── Page heading ── */}
         <div className="mictest-header">
-          <h2>Set Up Your Microphone</h2>
-          <p>Choose your input device and do a quick sound check before the interview begins.</p>
+          <h1 className="mictest-header__title">Set up your microphone</h1>
+          <p className="mictest-header__sub">
+            Choose your input device and do a quick sound check before the interview begins.
+          </p>
         </div>
 
-        {/* ── Permission / Error Banner ────────────────────────────────────── */}
+        {/* ── Permission / error banner (amber = user action, coral = failure) ── */}
         {errorMsg && (
           <div
-            className={`mictest-banner ${status === 'denied' ? 'denied' : 'error'}`}
+            className={`mictest-banner ${isDenied ? 'mictest-banner--denied' : 'mictest-banner--error'}`}
             role="alert"
           >
-            <span className="mictest-banner-icon">{status === 'denied' ? '🔒' : '⚠️'}</span>
+            {isDenied ? (
+              <Lock size={16} aria-hidden="true" />
+            ) : (
+              <AlertCircle size={16} aria-hidden="true" />
+            )}
             <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* ── Audio Input Card ─────────────────────────────────────────────── */}
-        <div className="mictest-card">
-          <p className="mictest-card-title">🎙️ Audio Input</p>
+        {/* ── Card 1 · Audio Input (cobalt — the primary setup flow) ── */}
+        <section className="mictest-card mictest-card--blue" aria-labelledby="mictest-audio-title">
+          <div className="mictest-card__head">
+            <span className="mictest-icon-badge mictest-icon-badge--blue" aria-hidden="true">
+              <Mic size={22} strokeWidth={2.2} />
+            </span>
+            <div className="mictest-card__head-text">
+              <h2 className="mictest-card__title" id="mictest-audio-title">
+                Audio input
+              </h2>
+              <p className="mictest-card__sub">
+                Pick the microphone you'll speak into, then run a live level check.
+              </p>
+            </div>
+            <span
+              className={`mictest-status-chip mictest-status-chip--${statusTone}`}
+              role="status"
+            >
+              {StatusIcon ? (
+                <StatusIcon size={13} aria-hidden="true" />
+              ) : (
+                <span className="mictest-pulse-dot" aria-hidden="true" />
+              )}
+              {STATUS_TEXT[status] ?? ''}
+            </span>
+          </div>
 
-          {/* Inner lavender card — card-in-card pattern */}
-          <div className="mictest-inner">
-            <label htmlFor="mic-select" className="mictest-label">
-              Select Microphone
+          {/* Microphone picker — db-select-wrap pattern (icon + chevron) */}
+          <div className="mictest-field">
+            <label htmlFor="mic-select" className="mictest-field__label">
+              Microphone
             </label>
             <div className="mictest-select-wrap">
+              <Mic size={17} className="mictest-select-wrap__icon" aria-hidden="true" />
               <select
                 id="mic-select"
                 className="mictest-select"
@@ -413,77 +490,137 @@ export default function MicTest() {
                   </option>
                 ))}
               </select>
-              <span className="mictest-select-chevron">
-                <ChevronIcon />
-              </span>
+              <ChevronDown size={17} className="mictest-select-wrap__chevron" aria-hidden="true" />
             </div>
+          </div>
 
-            {/* Volume Meter */}
-            <div className="mictest-volume-bar-wrap">
-              <div className="mictest-volume-label">
-                <span>Microphone Level</span>
-                <span>{volume}%</span>
-              </div>
+          {/* Live volume meter — lp-3c-metric-bar pattern + quiet/good/loud scale */}
+          <div className="mictest-volume">
+            <div className="mictest-volume__labels">
+              <span className="mictest-volume__label">Microphone level</span>
+              <span className={`mictest-volume__val ${volumeValClass}`}>{volume}%</span>
+            </div>
+            <div
+              className="mictest-volume__track"
+              role="meter"
+              aria-valuenow={volume}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Microphone input level"
+            >
               <div
-                className="mictest-volume-track"
-                role="meter"
-                aria-valuenow={volume}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <div
-                  className={`mictest-volume-fill ${volumeClass}`}
-                  style={{ width: `${volume}%` }}
-                />
-              </div>
+                className={`mictest-volume__fill ${volumeFillClass}`}
+                style={{ width: `${volume}%` }}
+              />
             </div>
-
-            {/* Test Button */}
-            <div className="mictest-btn-row">
-              <button
-                id="mic-test-btn"
-                className={`mictest-btn-test ${isTesting ? 'active' : ''}`}
-                onClick={handleToggleTest}
-              >
-                {isTesting ? '⏹ Stop Test' : '▶ Test Microphone'}
-              </button>
+            <div className="mictest-volume__scale" aria-hidden="true">
+              <span>Quiet</span>
+              <span>Good</span>
+              <span>Loud</span>
             </div>
           </div>
 
-          {/* Status */}
-          <div className="mictest-status">
-            <span className={`mictest-dot ${dotClass}`} />
-            <span>{statusText}</span>
+          {/* Test toggle — cobalt while idle, coral stop while recording */}
+          <div className="mictest-card__actions">
+            <button
+              type="button"
+              id="mic-test-btn"
+              className={`mictest-btn-test ${isTesting ? 'mictest-btn-test--stop' : ''}`}
+              onClick={handleToggleTest}
+              disabled={status === 'requesting'}
+            >
+              {status === 'requesting' ? (
+                <>
+                  <Loader2 size={15} className="mictest-spin" aria-hidden="true" />
+                  Requesting…
+                </>
+              ) : isTesting ? (
+                <>
+                  <Square size={12} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+                  Stop test
+                </>
+              ) : (
+                <>
+                  <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+                  Test microphone
+                </>
+              )}
+            </button>
           </div>
-        </div>
+        </section>
 
-        {/* ── Voice Preview Card ───────────────────────────────────────────── */}
-        <div className="mictest-card">
-          <p className="mictest-card-title">📝 Voice Preview</p>
-          <p className="mictest-label">
-            Say something — your speech will appear below in real time.
-          </p>
-          <div className="mictest-transcript" aria-live="polite">
-            {finalTranscript || partialTranscript ? (
-              <>
-                <span>{finalTranscript}</span>
-                {partialTranscript && <span className="partial"> {partialTranscript}</span>}
-              </>
-            ) : (
-              <span className="placeholder">Transcript will appear here…</span>
+        {/* ── Card 2 · Live Transcript (cyan — the live signal surface) ── */}
+        <section
+          className="mictest-card mictest-card--cyan"
+          aria-labelledby="mictest-transcript-title"
+        >
+          <div className="mictest-card__head">
+            <span className="mictest-icon-badge mictest-icon-badge--cyan" aria-hidden="true">
+              <AudioLines size={22} strokeWidth={2.2} />
+            </span>
+            <div className="mictest-card__head-text">
+              <h2 className="mictest-card__title" id="mictest-transcript-title">
+                Live transcript
+              </h2>
+              <p className="mictest-card__sub">
+                Say something while the test runs — your speech appears here in real time.
+              </p>
+            </div>
+            {isTesting && (
+              <span className="mictest-live-chip">
+                <span className="mictest-pulse-dot" aria-hidden="true" />
+                Live
+              </span>
             )}
           </div>
-        </div>
 
-        {/* ── AI Voice Card ────────────────────────────────────────────────── */}
-        <div className="mictest-card">
-          <p className="mictest-card-title">🔊 AI Interviewer Voice</p>
+          <div
+            className={`mictest-transcript ${isTesting ? 'mictest-transcript--live' : ''}`}
+            aria-live="polite"
+          >
+            {finalTranscript || partialTranscript ? (
+              <>
+                <span className="mictest-transcript__final">{finalTranscript}</span>
+                {partialTranscript && (
+                  <span className="mictest-transcript__partial"> {partialTranscript}</span>
+                )}
+              </>
+            ) : (
+              <span className="mictest-transcript__placeholder">
+                {isTesting
+                  ? 'Listening… start talking and your words will appear here'
+                  : 'Transcript will appear here…'}
+              </span>
+            )}
+          </div>
+        </section>
 
-          <div className="mictest-inner">
-            <label htmlFor="voice-select" className="mictest-label">
-              AI Voice Model
+        {/* ── Card 3 · AI Interviewer Voice (indigo — the AI/tech tint) ── */}
+        <section
+          className="mictest-card mictest-card--indigo"
+          aria-labelledby="mictest-voice-title"
+        >
+          <div className="mictest-card__head">
+            <span className="mictest-icon-badge mictest-icon-badge--indigo" aria-hidden="true">
+              <Volume2 size={22} strokeWidth={2.2} />
+            </span>
+            <div className="mictest-card__head-text">
+              <h2 className="mictest-card__title" id="mictest-voice-title">
+                AI interviewer voice
+              </h2>
+              <p className="mictest-card__sub">
+                Pick the voice that will ask your questions, then hear a sample.
+              </p>
+            </div>
+          </div>
+
+          {/* Voice picker */}
+          <div className="mictest-field">
+            <label htmlFor="voice-select" className="mictest-field__label">
+              Voice model
             </label>
             <div className="mictest-select-wrap">
+              <AudioWaveform size={17} className="mictest-select-wrap__icon" aria-hidden="true" />
               <select
                 id="voice-select"
                 className="mictest-select"
@@ -496,59 +633,68 @@ export default function MicTest() {
                 <option value="aura-2-zeus-en">Zeus (Male)</option>
                 <option value="aura-2-amalthea-en">Amalthea (Female)</option>
               </select>
-              <span className="mictest-select-chevron">
-                <ChevronIcon />
-              </span>
-            </div>
-
-            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <audio ref={audioRef} style={{ display: 'none' }} />
-
-            <div className="mictest-btn-row">
-              <button
-                id="mic-tts-sample-btn"
-                className="mictest-btn-test"
-                onClick={handleHearSample}
-                disabled={ttsLoading}
-              >
-                {ttsLoading ? '⏳ Loading…' : '▶ Hear Sample'}
-              </button>
+              <ChevronDown size={17} className="mictest-select-wrap__chevron" aria-hidden="true" />
             </div>
           </div>
 
-          {ttsError && (
-            <div
-              className="mictest-banner error"
-              role="alert"
-              style={{ marginTop: '12px', marginBottom: 0 }}
+          {/* Hidden TTS playback element — no controls, driven by ref */}
+          <audio ref={audioRef} style={{ display: 'none' }} />
+
+          <div className="mictest-card__actions">
+            <button
+              type="button"
+              id="mic-tts-sample-btn"
+              className="mictest-btn-ghost"
+              onClick={handleHearSample}
+              disabled={ttsLoading}
             >
-              <span className="mictest-banner-icon">⚠️</span>
+              {ttsLoading ? (
+                <>
+                  <Loader2 size={15} className="mictest-spin" aria-hidden="true" />
+                  Loading sample…
+                </>
+              ) : (
+                <>
+                  <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+                  Hear sample
+                </>
+              )}
+            </button>
+          </div>
+
+          {ttsError && (
+            <div className="mictest-banner mictest-banner--error" role="alert">
+              <AlertCircle size={16} aria-hidden="true" />
               <span>{ttsError}</span>
             </div>
           )}
-        </div>
+        </section>
 
-        {/* ── Info tip ─────────────────────────────────────────────────────── */}
+        {/* ── Setup tip — cyan info banner (db-resume-banner pattern) ── */}
         <div className="mictest-tip">
-          <span className="mictest-tip-icon">💡</span>
+          <Lightbulb size={16} className="mictest-tip__icon" aria-hidden="true" />
           <span>
-            Make sure you're in a quiet environment. The interview will record your voice and
-            transcribe it in real time using Deepgram. You can re-test as many times as you like
-            before starting.
+            Find a quiet spot before you begin. The interview records your voice and transcribes it
+            in real time — you can re-test as many times as you like.
           </span>
         </div>
 
-        {/* ── Proceed CTA ─────────────────────────────────────────────────── */}
-        <button id="mictest-proceed-btn" className="mictest-proceed-btn" onClick={handleProceed}>
-          Start Interview →
+        {/* ── Proceed CTA — full-width tactile cobalt pill (db-cta-btn pattern) ── */}
+        <button
+          type="button"
+          id="mictest-proceed-btn"
+          className="mictest-proceed-btn"
+          onClick={handleProceed}
+        >
+          Start interview
+          <ArrowRight size={17} strokeWidth={2.5} aria-hidden="true" />
         </button>
 
-        {/* ── Sign out ────────────────────────────────────────────────────── */}
-        <div className="mictest-signout-wrap">
-          <button className="mictest-signout-btn" onClick={handleLogout}>
-            Sign out
-          </button>
-        </div>
+        {/* ── Privacy footnote — echoes the landing page trust language ── */}
+        <p className="mictest-footnote">
+          <Lock size={12} aria-hidden="true" />
+          The mic is only active while a test runs — nothing is recorded or saved on this screen.
+        </p>
       </main>
     </div>
   );

@@ -10,9 +10,9 @@ const answerResultSchema = new mongoose.Schema(
     questionIndex:      { type: Number, required: true },   // 0–4
     question:           { type: String, required: true },
     transcript:         { type: String, required: true },
-    clarity_score:      { type: Number, min: 1, max: 10 },
-    correctness_score:  { type: Number, min: 1, max: 10 },
-    completeness_score: { type: Number, min: 1, max: 10 },
+    clarity_score:      { type: Number, min: 1, max: 5 },
+    correctness_score:  { type: Number, min: 1, max: 5 },
+    completeness_score: { type: Number, min: 1, max: 5 },
     primary_weakness:   { type: String },                   // per-answer lowest dim
     evaluatedAt:        { type: Date, default: Date.now },
   },

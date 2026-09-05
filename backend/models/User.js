@@ -83,6 +83,7 @@ const userSchema = new mongoose.Schema({
           clarity: Number,
           correctness: Number,
           completeness: Number,
+          averageOutOf5: Number,
           averageOutOf10: Number,
         },
         weaknessTag: { type: String },

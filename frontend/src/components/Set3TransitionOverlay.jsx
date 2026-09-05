@@ -1,8 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import mascotHeadSrc from '../assets/mascot-head.png';
 import './Set3TransitionOverlay.css';
 
-// ─── Motion variants ──────────────────────────────────────────────────────────
+// ─── Motion variants (frontend.md § Loading States & Modal Overlays) ──────────
+// "Entrance = fade + subtle scale (0.96 -> 1.0), not slide-up"
 const overlayVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -52,21 +54,24 @@ export default function Set3TransitionOverlay({ onReady }) {
       animate="visible"
       exit="exit"
     >
+      {/* Outer white card: Extra-Large Squircle (24px) */}
       <motion.div className="s3-card" variants={cardVariants}>
-        {/* Completion badge */}
+        {/* Completion badge: Cool Mint tokens */}
         <motion.div className="s3-badge" variants={fadeUp} custom={0.15}>
           <span className="s3-badge-dot" aria-hidden="true" />
           Set 2 Complete
         </motion.div>
 
-        {/* Behavioral icon ring */}
+        {/* AI Coach mascot in Deep Tech Indigo / Icy Blue squircle ring */}
         <motion.div className="s3-icon-ring" variants={fadeUp} custom={0.25}>
-          <span className="s3-icon" role="img" aria-label="Behavioral icon">
-            🤝
-          </span>
+          <img
+            src={mascotHeadSrc}
+            alt="iTerview AI Coach mascot"
+            className="s3-mascot-img"
+          />
         </motion.div>
 
-        {/* Title */}
+        {/* Title: Fredoka display font */}
         <motion.h2 className="s3-title" variants={fadeUp} custom={0.32}>
           Prepare for Set 3
         </motion.h2>
@@ -74,14 +79,14 @@ export default function Set3TransitionOverlay({ onReady }) {
         {/* Divider */}
         <motion.div className="s3-divider" variants={fadeUp} custom={0.38} aria-hidden="true" />
 
-        {/* Description */}
+        {/* Description: Plus Jakarta Sans body */}
         <motion.p className="s3-description" variants={fadeUp} custom={0.44}>
           The AI will now shift focus to your behavioral skills using the{' '}
           <span className="s3-method-highlight">STAR method</span> (Situation, Action, Result).
           Expect questions testing collaboration, conflict resolution, resilience, and initiative.
         </motion.p>
 
-        {/* CTA */}
+        {/* CTA: Tactile 3D Royal Cobalt pill button per DESIGN.md */}
         <motion.div className="s3-actions" variants={fadeUp} custom={0.52}>
           <button className="s3-btn-primary" onClick={onReady} id="s3-begin-btn">
             Begin Behavioral Set

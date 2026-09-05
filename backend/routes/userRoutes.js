@@ -179,7 +179,7 @@ router.get("/results-summary", async (req, res) => {
     const preConf   = user?.confidenceScore                  ?? null;
     const postConf  = user?.postConfidenceScore              ?? null;
 
-    // Formulate individual set averages (out of 10)
+    // Formulate individual set averages (out of 5)
     const set1Score = set1 && set1.isCompleted && set1.avg_clarity !== null
       ? parseFloat(((set1.avg_clarity + set1.avg_correctness + set1.avg_completeness) / 3).toFixed(1))
       : null;
@@ -192,13 +192,13 @@ router.get("/results-summary", async (req, res) => {
       ? parseFloat(((set3.avg_situation + set3.avg_action + set3.avg_result) / 3).toFixed(1))
       : null;
 
-    // Calculate overall practice sets average (out of 10 and 100%)
+    // Calculate overall practice sets average (out of 5 and 100%)
     const completedPracticeScores = [set1Score, set2Score, set3Score].filter((s) => s !== null);
     const practiceSetsAvgScore = completedPracticeScores.length > 0
       ? parseFloat((completedPracticeScores.reduce((a, b) => a + b, 0) / completedPracticeScores.length).toFixed(1))
       : null;
     const practiceSetsAvgPercentage = practiceSetsAvgScore !== null
-      ? parseFloat((practiceSetsAvgScore * 10).toFixed(1))
+      ? parseFloat(((practiceSetsAvgScore / 5) * 100).toFixed(1))
       : null;
 
     // Calculate grand average across the entire journey (Pre-Test, Practice Sets Avg, Post-Test)
@@ -227,7 +227,7 @@ router.get("/results-summary", async (req, res) => {
             completeness: a.completeness_score ?? null,
           },
           questionAverage: avg,
-          questionPercentage: avg !== null ? parseFloat((avg * 10).toFixed(1)) : null,
+          questionPercentage: avg !== null ? parseFloat(((avg / 5) * 100).toFixed(1)) : null,
         };
       });
 
@@ -286,13 +286,13 @@ router.get("/results-summary", async (req, res) => {
       preCompleteness = set1.avg_completeness;
     }
 
-    let threeCAvgOutOf10 = null;
+    let threeCAvgOutOf5 = null;
     let threeCAvgPercentage = null;
     let lowestThreeCMetric = null;
 
     if (preClarity !== null && preCorrectness !== null && preCompleteness !== null) {
-      threeCAvgOutOf10 = parseFloat(((preClarity + preCorrectness + preCompleteness) / 3).toFixed(1));
-      threeCAvgPercentage = parseFloat((threeCAvgOutOf10 * 10).toFixed(1));
+      threeCAvgOutOf5 = parseFloat(((preClarity + preCorrectness + preCompleteness) / 3).toFixed(1));
+      threeCAvgPercentage = parseFloat(((threeCAvgOutOf5 / 5) * 100).toFixed(1));
 
       const minVal = Math.min(preClarity, preCorrectness, preCompleteness);
       if (minVal === preClarity) lowestThreeCMetric = "clarity";
@@ -312,7 +312,8 @@ router.get("/results-summary", async (req, res) => {
         clarity: preClarity,
         correctness: preCorrectness,
         completeness: preCompleteness,
-        averageOutOf10: threeCAvgOutOf10,
+        averageOutOf5: threeCAvgOutOf5,
+        averageOutOf10: threeCAvgOutOf5,
         averagePercentage: threeCAvgPercentage,
         lowestMetric: lowestThreeCMetric,
       },
@@ -320,19 +321,19 @@ router.get("/results-summary", async (req, res) => {
       // Overall Session Averages
       sessionAverages: {
         preTest: { scorePercentage: preScore, label: "Pre-Test Diagnostic" },
-        set1: { scoreOutOf10: set1Score, scorePercentage: set1Score !== null ? parseFloat((set1Score * 10).toFixed(1)) : null, label: "Set 1 · Personalized" },
-        set2: { scoreOutOf10: set2Score, scorePercentage: set2Score !== null ? parseFloat((set2Score * 10).toFixed(1)) : null, label: "Set 2 · Technical" },
-        set3: { scoreOutOf10: set3Score, scorePercentage: set3Score !== null ? parseFloat((set3Score * 10).toFixed(1)) : null, label: "Set 3 · Behavioral STAR" },
+        set1: { scoreOutOf5: set1Score, scoreOutOf10: set1Score, scorePercentage: set1Score !== null ? parseFloat(((set1Score / 5) * 100).toFixed(1)) : null, label: "Set 1 · Personalized" },
+        set2: { scoreOutOf5: set2Score, scoreOutOf10: set2Score, scorePercentage: set2Score !== null ? parseFloat(((set2Score / 5) * 100).toFixed(1)) : null, label: "Set 2 · Technical" },
+        set3: { scoreOutOf5: set3Score, scoreOutOf10: set3Score, scorePercentage: set3Score !== null ? parseFloat(((set3Score / 5) * 100).toFixed(1)) : null, label: "Set 3 · Behavioral STAR" },
         postTest: { scorePercentage: postScore, label: "Post-Test Graduation" },
-        practiceSetsAverage: { scoreOutOf10: practiceSetsAvgScore, scorePercentage: practiceSetsAvgPercentage },
+        practiceSetsAverage: { scoreOutOf5: practiceSetsAvgScore, scoreOutOf10: practiceSetsAvgScore, scorePercentage: practiceSetsAvgPercentage },
         overallJourneyAveragePercentage,
       },
 
       // Individual set scores details
       setScores: {
-        set1: { label: "Set 1 · Personalized",   score: set1Score, outOf: 10, emoji: "🤖", completed: !!(set1?.isCompleted) },
-        set2: { label: "Set 2 · Technical",       score: set2Score, outOf: 10, emoji: "💻", completed: !!(set2?.isCompleted) },
-        set3: { label: "Set 3 · Behavioral STAR", score: set3Score, outOf: 10, emoji: "🎯", completed: !!(set3?.isCompleted) },
+        set1: { label: "Set 1 · Personalized",   score: set1Score, outOf: 5, emoji: "🤖", completed: !!(set1?.isCompleted) },
+        set2: { label: "Set 2 · Technical",       score: set2Score, outOf: 5, emoji: "💻", completed: !!(set2?.isCompleted) },
+        set3: { label: "Set 3 · Behavioral STAR", score: set3Score, outOf: 5, emoji: "🎯", completed: !!(set3?.isCompleted) },
       },
 
       // STAR dimension averages from Set 3 (out of 10)
@@ -351,8 +352,9 @@ router.get("/results-summary", async (req, res) => {
         },
         set1: {
           sessionLabel: "Practice Set 1 · Personalized (3C)",
+          sessionAverageOutOf5: set1Score,
           sessionAverageOutOf10: set1Score,
-          sessionAveragePercentage: set1Score !== null ? parseFloat((set1Score * 10).toFixed(1)) : null,
+          sessionAveragePercentage: set1Score !== null ? parseFloat(((set1Score / 5) * 100).toFixed(1)) : null,
           metricsAverage: {
             clarity: set1?.avg_clarity ?? null,
             correctness: set1?.avg_correctness ?? null,
@@ -368,15 +370,16 @@ router.get("/results-summary", async (req, res) => {
               transcript: a.transcript,
               metrics: { clarity: a.clarity_score, correctness: a.correctness_score, completeness: a.completeness_score },
               questionAverage: avg,
-              questionPercentage: avg !== null ? parseFloat((avg * 10).toFixed(1)) : null,
+              questionPercentage: avg !== null ? parseFloat(((avg / 5) * 100).toFixed(1)) : null,
               tip: a.tip,
             };
           }),
         },
         set2: {
           sessionLabel: "Practice Set 2 · Technical Mastery",
+          sessionAverageOutOf5: set2Score,
           sessionAverageOutOf10: set2Score,
-          sessionAveragePercentage: set2Score !== null ? parseFloat((set2Score * 10).toFixed(1)) : null,
+          sessionAveragePercentage: set2Score !== null ? parseFloat(((set2Score / 5) * 100).toFixed(1)) : null,
           metricsAverage: {
             problemSolving: set2?.avg_problem_solving ?? null,
             accuracy: set2?.avg_accuracy ?? null,
@@ -392,15 +395,16 @@ router.get("/results-summary", async (req, res) => {
               transcript: a.transcript,
               metrics: { problemSolving: a.problem_solving_score, accuracy: a.accuracy_score, depth: a.depth_score },
               questionAverage: avg,
-              questionPercentage: avg !== null ? parseFloat((avg * 10).toFixed(1)) : null,
+              questionPercentage: avg !== null ? parseFloat(((avg / 5) * 100).toFixed(1)) : null,
               tip: a.tip,
             };
           }),
         },
         set3: {
           sessionLabel: "Practice Set 3 · Behavioral STAR",
+          sessionAverageOutOf5: set3Score,
           sessionAverageOutOf10: set3Score,
-          sessionAveragePercentage: set3Score !== null ? parseFloat((set3Score * 10).toFixed(1)) : null,
+          sessionAveragePercentage: set3Score !== null ? parseFloat(((set3Score / 5) * 100).toFixed(1)) : null,
           metricsAverage: {
             situation: set3?.avg_situation ?? null,
             action: set3?.avg_action ?? null,
@@ -416,7 +420,7 @@ router.get("/results-summary", async (req, res) => {
               transcript: a.transcript,
               metrics: { situation: a.situation_score, action: a.action_score, result: a.result_score },
               questionAverage: avg,
-              questionPercentage: avg !== null ? parseFloat((avg * 10).toFixed(1)) : null,
+              questionPercentage: avg !== null ? parseFloat(((avg / 5) * 100).toFixed(1)) : null,
               tip: a.tip,
             };
           }),

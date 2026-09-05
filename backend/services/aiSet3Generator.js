@@ -217,18 +217,18 @@ Your task is to evaluate a student's spoken answer to a BEHAVIORAL interview que
 You must respond with ONLY a valid JSON object.
 
 ### STEP 1 — SCORING RULES
-Score each STAR dimension from 1 to 10:
+Score each STAR dimension from 1 to 5:
 
 - situation_score: Did the candidate clearly describe the CONTEXT and the specific challenge or task they were facing?
-  (1 = no context given or very vague, 10 = clear and specific situation established)
+  (1 = no context given or very vague, 5 = clear and specific situation established)
 
 - action_score: Did the candidate describe the SPECIFIC STEPS they personally took to address the situation?
   Award high scores for the use of "I" statements that highlight personal ownership of actions.
   Penalise answers that only say "we did this" without explaining what the candidate specifically did.
-  (1 = only vague group actions described with no personal ownership, 10 = clear personal steps and reasoning explained)
+  (1 = only vague group actions described with no personal ownership, 5 = clear personal steps and reasoning explained)
 
 - result_score: Did the candidate describe the OUTCOME of their actions and/or what they LEARNED from the experience?
-  (1 = no result or lesson mentioned, 10 = concrete outcome and clear lesson or growth described)
+  (1 = no result or lesson mentioned, 5 = concrete outcome and clear lesson or growth described)
 
 ### STEP 2 — COACHING TIP & INTERVIEWER REPLY
 1. "tip": Exactly ONE SENTENCE of actionable coaching on how to improve the STAR structure (e.g. "Next time, be sure to end your answer with a specific result or what you personally learned from the situation.").
@@ -239,9 +239,9 @@ Score each STAR dimension from 1 to 10:
 
 Return exactly this shape:
 {
-  "situation_score": <integer 1-10>,
-  "action_score": <integer 1-10>,
-  "result_score": <integer 1-10>,
+  "situation_score": <integer 1-5>,
+  "action_score": <integer 1-5>,
+  "result_score": <integer 1-5>,
   "tip": "<1-sentence string>",
   "interviewer_reply": "<short conversational string>"
 }`;
@@ -254,9 +254,9 @@ const SET3_SCORING_RESPONSE_FORMAT = {
     schema: {
       type: "object",
       properties: {
-        situation_score:   { type: "integer", description: "STAR Situation score 1-10" },
-        action_score:      { type: "integer", description: "STAR Action score 1-10" },
-        result_score:      { type: "integer", description: "STAR Result/Learning score 1-10" },
+        situation_score:   { type: "integer", description: "STAR Situation score 1-5" },
+        action_score:      { type: "integer", description: "STAR Action score 1-5" },
+        result_score:      { type: "integer", description: "STAR Result/Learning score 1-5" },
         tip:               { type: "string",  description: "One sentence actionable feedback tip to improve STAR structure" },
         interviewer_reply: { type: "string",  description: "Exactly two sentences warm interviewer reply, no questions, no next topic mentions" },
       },
@@ -315,15 +315,15 @@ async function evaluateSet3Answer(question, transcript, difficulty = "easy") {
   if (!parsed) {
     console.error("[aiSet3Generator] JSON parse error. Raw response:", raw);
     return {
-      situation_score: 5,
-      action_score: 5,
-      result_score: 5,
+      situation_score: 3,
+      action_score: 3,
+      result_score: 3,
       tip: "Try to structure your answer by describing the situation, your specific actions, and the final result or lesson learned.",
       interviewer_reply: "Alright, thank you for sharing that.",
     };
   }
 
-  const clamp = (n) => Math.min(10, Math.max(1, parseInt(n) || 6));
+  const clamp = (n) => Math.min(5, Math.max(1, parseInt(n) || 3));
 
   console.log(`[aiSet3Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via DeepSeek)`);
 

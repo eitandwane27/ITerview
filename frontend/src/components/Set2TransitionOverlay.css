@@ -1,179 +1,320 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
-
 /* frontend/src/components/Set2TransitionOverlay.css
-   Design system: ITerview — Soft Productivity SaaS (DESIGN.md)
-   ─────────────────────────────────────────────────────────────
+   Design system: ITerview - The Supportive Coach's Lab (DESIGN.md)
+   =============================================================
    Tokens used:
-     --canvas:            #F4F4F6
-     --surface-card:      #FFFFFF
-     --surface-card-inner:#F0EFF8
-     --primary:           #7C6FCD
-     --primary-hover:     #6B5FBC
-     --primary-light:     #EAE8F7
-     --ink:               #1A1A2E
-     --ink-secondary:     #6B6B80
-     --border-card:       #EFEFEF
-     --badge-green:       #22C55E
-     --badge-green-bg:    #DCFCE7
-     --shadow-card:       rgba(0,0,0,0.06)
+     --s2-blue:            #2563eb (Royal Cobalt Blue - primary authority)
+     --s2-blue-hover:      #1d4ed8
+     --s2-blue-deep:       #1e40af (tactile bottom bevel)
+     --s2-blue-light:      #eff6ff
+     --s2-blue-border:     #bfdbfe
+     --s2-mint:            #10b981 (Cool Mint - Set 1 completion status)
+     --s2-mint-hover:      #059669
+     --s2-mint-light:      #ecfdf5
+     --s2-mint-border:     #a7f3d0
+     --s2-indigo:          #6366f1 (Deep Tech Indigo - engineering tracks)
+     --s2-indigo-deep:     #4338ca
+     --s2-indigo-light:    #eef2ff
+     --s2-indigo-border:   #c7d2fe
+     --s2-canvas:          #ffffff
+     --s2-canvas-subtle:   #f8fafc
+     --s2-canvas-ice:      #f0f7ff
+     --s2-border:          #e2e8f0 (hairline border)
+     --s2-border-strong:   #cbd5e1
+     --s2-ink:             #0f172a (Midnight Slate Ink)
+     --s2-ink-secondary:   #334155
+     --s2-ink-muted:       #64748b
+     --s2-ink-faint:       #94a3b8
+     --s2-r-sm:            8px
+     --s2-r-md:            12px
+     --s2-r-lg:            18px
+     --s2-r-xl:            24px (Modal squircle)
+     --s2-r-pill:          9999px (Buttons, badges)
+     --s2-font-display:    'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif
+     --s2-font-body:       'Plus Jakarta Sans', system-ui, -apple-system, sans-serif
 */
 
-/* ── Overlay backdrop ───────────────────────────────────────────────────────── */
-/* frontend.md: "Prefer backdrop-filter: blur() over solid black overlays"       */
 .s2-overlay {
+  --s2-blue: #2563eb;
+  --s2-blue-hover: #1d4ed8;
+  --s2-blue-deep: #1e40af;
+  --s2-blue-light: #eff6ff;
+  --s2-blue-border: #bfdbfe;
+  --s2-mint: #10b981;
+  --s2-mint-hover: #059669;
+  --s2-mint-light: #ecfdf5;
+  --s2-mint-border: #a7f3d0;
+  --s2-indigo: #6366f1;
+  --s2-indigo-deep: #4338ca;
+  --s2-indigo-light: #eef2ff;
+  --s2-indigo-border: #c7d2fe;
+  --s2-canvas: #ffffff;
+  --s2-canvas-subtle: #f8fafc;
+  --s2-canvas-ice: #f0f7ff;
+  --s2-border: #e2e8f0;
+  --s2-border-strong: #cbd5e1;
+  --s2-ink: #0f172a;
+  --s2-ink-secondary: #334155;
+  --s2-ink-muted: #64748b;
+  --s2-ink-faint: #94a3b8;
+  --s2-r-sm: 8px;
+  --s2-r-md: 12px;
+  --s2-r-lg: 18px;
+  --s2-r-xl: 24px;
+  --s2-r-pill: 9999px;
+  --s2-font-display: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --s2-font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+
   position: fixed;
   inset: 0;
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(244, 244, 246, 0.72); /* canvas at 72% — not white, not dark */
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: 1rem;
+  padding: 1.25rem;
+  background-color: rgba(248, 250, 252, 0.82);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  font-family: var(--s2-font-body);
+  color: var(--s2-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Outer white card — main-card pattern ───────────────────────────────────── */
-/* DESIGN.md: 0 2px 8px shadow-card + 1px border-card, rounded.card (16px)      */
+/* Subtle coach's lab ambient radiant light behind the card */
+.s2-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(560px 420px at 50% 25%, rgba(37, 99, 235, 0.07), transparent 70%),
+    radial-gradient(420px 380px at 78% 85%, rgba(16, 185, 129, 0.05), transparent 65%);
+}
+
+/* Modal Card: Extra Large Squircle (24px) per DESIGN.md */
 .s2-card {
-  background: #ffffff; /* surface-card */
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 420px;
-  border-radius: 16px; /* rounded.card */
-  padding: 2rem 2rem 2.25rem; /* card-padding rhythm */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); /* shadow-card — no heavy shadows */
-  border: 1px solid #efefef; /* border-card */
+  max-width: 440px;
+  background: var(--s2-canvas);
+  border: 1px solid var(--s2-border);
+  border-radius: var(--s2-r-xl);
+  padding: 2rem 2rem 2.25rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 24px 64px -16px rgba(15, 23, 42, 0.12),
+    0 4px 16px -2px rgba(15, 23, 42, 0.04);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-
-  gap: 0;
+  box-sizing: border-box;
 }
 
-/* ── Completion badge — badge-green tokens ──────────────────────────────────── */
-/* DESIGN.md: pill shape (9999px), badge-green-bg fill, badge-green text        */
+/* Completion Badge: Cool Mint tokens */
 .s2-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  background: #dcfce7; /* badge-green-bg */
-  color: #22c55e; /* badge-green */
-  padding: 3px 10px; /* badge-recommended padding */
-  border-radius: 9999px; /* rounded.pill */
-  font-family: 'Outfit', sans-serif;
-  font-size: 12px; /* bumped slightly for Outfit */
+  gap: 0.5rem;
+  background: var(--s2-mint-light);
+  border: 1px solid var(--s2-mint-border);
+  color: var(--s2-mint-hover);
+  padding: 5px 14px;
+  border-radius: var(--s2-r-pill);
+  font-family: var(--s2-font-body);
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.3px; /* Outfit needs slightly less spacing */
-  margin-bottom: 1.5rem;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.35rem;
 }
 
-/* Online dot indicator — mirrors avatar chip online-dot pattern */
+/* Live pulse dot indicator */
 .s2-badge-dot {
   display: inline-block;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #22c55e; /* online-dot / badge-green */
+  background: var(--s2-mint);
   flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  animation: s2-dot-pulse 2.2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
-/* ── Role icon — inner-card (lavender) ring ─────────────────────────────────── */
-/* DESIGN.md: surface-card-inner (#F0EFF8) for inner card bg, card-in-card depth */
+@keyframes s2-dot-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
+  }
+}
+
+/* AI Coach mascot in Deep Tech Indigo / Icy Blue squircle ring */
 .s2-icon-ring {
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  background: #f0eff8; /* surface-card-inner */
-  border: 1.5px solid #eae8f7; /* primary-light as ring border */
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--s2-canvas-ice) 0%, var(--s2-indigo-light) 100%);
+  border: 1.5px solid var(--s2-indigo-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1.5rem;
-  /* DESIGN.md: no shadows on chips/badges — icon ring is a chip-like element */
+  margin-bottom: 1.25rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 18px -4px rgba(37, 99, 235, 0.14);
+  position: relative;
 }
 
-.s2-icon {
-  font-size: 1.875rem;
-  line-height: 1;
+.s2-mascot-img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
   user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.1));
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* ── Title — section-title token ────────────────────────────────────────────── */
-/* DESIGN.md typography.section-title: 20px / 700 / -0.3px / ink (#1A1A2E)      */
+.s2-card:hover .s2-mascot-img {
+  transform: scale(1.05) rotate(1.5deg);
+}
+
+/* Title: Fredoka Display Font */
 .s2-title {
-  font-family: 'Outfit', sans-serif;
-  font-size: 24px; /* Outfit handles larger sizes beautifully */
-  font-weight: 600; /* 600 is plenty bold in Outfit */
-  line-height: 1.2;
-  letter-spacing: -0.4px;
-  color: #1a1a2e; /* ink */
-  margin: 0 0 1.25rem;
+  font-family: var(--s2-font-display);
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--s2-ink);
+  margin: 0 0 1rem;
 }
 
-/* ── Structural divider — subtle, like sidebar section borders ──────────────── */
+/* Soft hairline divider with gradient fade */
 .s2-divider {
   width: 100%;
   height: 1px;
-  background: #efefef; /* border-card */
-  margin-bottom: 1.25rem;
+  background: linear-gradient(90deg, transparent, var(--s2-border) 20%, var(--s2-border) 80%, transparent);
+  margin-bottom: 1.15rem;
 }
 
-/* ── Description — body-secondary token ─────────────────────────────────────── */
-/* DESIGN.md typography.body-secondary: 13px / 400 / 1.5 / ink-secondary        */
+/* Description: Plus Jakarta Sans Body */
 .s2-description {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.55;
-  color: #6b6b80; /* ink-secondary */
-  margin: 0 0 2rem;
-  max-width: 88%;
+  font-family: var(--s2-font-body);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--s2-ink-secondary);
+  margin: 0 0 1.75rem;
+  max-width: 92%;
 }
 
-/* Role name inline highlight — primary color, weight 600 */
-/* DESIGN.md: primary color only for active states / key labels — one use here  */
+/* Role highlight chip inside description */
 .s2-role-highlight {
   font-weight: 600;
-  color: #7c6fcd; /* primary */
+  color: var(--s2-indigo-deep);
+  background: var(--s2-indigo-light);
+  border: 1px solid var(--s2-indigo-border);
+  padding: 1.5px 8px;
+  border-radius: var(--s2-r-sm);
+  display: inline-block;
+  white-space: nowrap;
 }
 
-/* ── CTA section ────────────────────────────────────────────────────────────── */
+/* CTA container */
 .s2-actions {
   width: 100%;
 }
 
-/* Primary button — button-primary component rules
-   DESIGN.md: rounded.lg (12px), full-width, no shadow, no gradient, 85% opacity fill */
+/* Primary button: Royal Cobalt Blue with physical 3D press bevel per DESIGN.md */
 .s2-btn-primary {
   width: 100%;
-  padding: 14px 24px; /* button-primary padding */
-  background-color: rgba(124, 111, 205, 0.85); /* primary at opacity 0.85 */
-  color: #ffffff; /* ink-on-primary */
-  font-family: 'Outfit', sans-serif;
-  font-size: 16px; /* slightly larger for Outfit */
-  font-weight: 500; /* 500 is extremely elegant for buttons in Outfit */
-  letter-spacing: 0px;
+  padding: 13px 28px;
+  background-color: var(--s2-blue);
+  color: var(--s2-canvas);
+  font-family: var(--s2-font-body);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   border: none;
-  border-radius: 12px; /* rounded.lg — NOT pill */
+  border-radius: var(--s2-r-pill);
+  box-shadow:
+    0 3px 0px var(--s2-blue-deep),
+    0 8px 18px -4px rgba(37, 99, 235, 0.28);
   cursor: pointer;
+  white-space: nowrap;
   transition:
-    background-color 0.18s ease,
-    transform 0.12s ease;
-  /* DESIGN.md: "Don't add shadows to buttons" */
+    background-color 0.15s ease,
+    transform 0.1s cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 0.1s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .s2-btn-primary:hover {
-  background-color: #6b5fbc; /* primary-hover */
+  background-color: var(--s2-blue-hover);
   transform: translateY(-1px);
+  box-shadow:
+    0 4px 0px var(--s2-blue-deep),
+    0 12px 22px -4px rgba(37, 99, 235, 0.34);
 }
 
+/* The Physical Press Rule: Sinks 2px on click */
 .s2-btn-primary:active {
-  transform: translateY(0);
-  background-color: rgba(124, 111, 205, 0.9);
+  transform: translateY(2px);
+  background-color: var(--s2-blue-deep);
+  box-shadow:
+    0 1px 0px var(--s2-blue-deep),
+    0 3px 8px -2px rgba(37, 99, 235, 0.2);
 }
 
 .s2-btn-primary:focus-visible {
-  outline: 2px solid #7c6fcd;
-  outline-offset: 3px;
+  outline: 2.5px solid var(--s2-blue);
+  outline-offset: 2px;
+}
+
+/* Responsive collapse for small mobile viewports */
+@media (max-width: 480px) {
+  .s2-card {
+    padding: 1.5rem 1.25rem 1.75rem;
+    border-radius: var(--s2-r-lg);
+  }
+
+  .s2-title {
+    font-size: 1.375rem;
+  }
+
+  .s2-description {
+    font-size: 13.5px;
+    max-width: 100%;
+  }
+
+  .s2-btn-primary {
+    padding: 12px 20px;
+    font-size: 14.5px;
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .s2-badge-dot {
+    animation: none;
+  }
+
+  .s2-mascot-img {
+    transition: none;
+  }
+
+  .s2-card:hover .s2-mascot-img {
+    transform: none;
+  }
+
+  .s2-btn-primary {
+    transition: none;
+  }
+
+  .s2-btn-primary:hover,
+  .s2-btn-primary:active {
+    transform: none;
+  }
 }

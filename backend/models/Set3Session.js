@@ -37,10 +37,10 @@ const set3AnswerSchema = new mongoose.Schema(
     // Raw transcript from STT (Deepgram)
     transcript: { type: String, default: "" },
 
-    // STAR scores from AI evaluator (1–10)
-    situation_score: { type: Number, min: 1, max: 10, default: null },
-    action_score:    { type: Number, min: 1, max: 10, default: null },
-    result_score:    { type: Number, min: 1, max: 10, default: null },
+    // STAR scores from AI evaluator (1–5)
+    situation_score: { type: Number, min: 1, max: 5, default: null },
+    action_score:    { type: Number, min: 1, max: 5, default: null },
+    result_score:    { type: Number, min: 1, max: 5, default: null },
 
     // 1-sentence actionable coaching tip surfaced to the user after each answer
     tip: { type: String, default: null },
@@ -140,9 +140,9 @@ set3SessionSchema.methods.computeAverages = function () {
   this.avg_action    = parseFloat((sum("action_score")    / scored.length).toFixed(2));
   this.avg_result    = parseFloat((sum("result_score")    / scored.length).toFixed(2));
 
-  // Convert to 0–100%: 3 dimensions × max 10 pts = 30 max per question
+  // Convert to 0–100%: 3 dimensions × max 5 pts = 15 max per question
   const totalPoints    = sum("situation_score") + sum("action_score") + sum("result_score");
-  const maxPoints      = scored.length * 30;
+  const maxPoints      = scored.length * 15;
   this.overall_score_percentage = parseFloat(((totalPoints / maxPoints) * 100).toFixed(2));
 };
 

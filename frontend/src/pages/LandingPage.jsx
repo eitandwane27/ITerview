@@ -307,8 +307,15 @@ const LandingPage = () => {
         <div className="lp-hero-container">
           <div className="lp-hero-intro">
             <div className="lp-hero-pill-badge">
-              <span className="lp-hero-pill-dot" aria-hidden="true" />
-              <span>ITerview · AI Interview Simulator</span>
+              <span className="lp-hero-pill-tag">
+                <span className="lp-hero-pill-pulse-beacon" aria-hidden="true">
+                  <span className="lp-hero-pill-pulse-core" />
+                  <span className="lp-hero-pill-pulse-wave" />
+                </span>
+                <span>VOICE AI</span>
+              </span>
+              <span className="lp-hero-pill-divider" aria-hidden="true" />
+              <span className="lp-hero-pill-title">ITerview Simulator</span>
             </div>
 
             <h1 className="lp-hero-headline">

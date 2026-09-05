@@ -23,9 +23,18 @@
 //
 //   Server → Browser:
 //     { type: "transcript", text, isFinal }   — live STT result
-//     { type: "tts_audio", data: <base64> }   — MP3 bytes for playback
+//     { type: "tts_audio", data, questionIndex, questionText } — MP3 bytes +
+//                                               the question as text (recognition aid)
 //     { type: "status", message }             — informational updates
 //     { type: "error", message }              — error notifications
+//     { type: "feedback_complete" }           — answer recorded, ready to continue
+//     { type: "session_resumed", currentQuestionIndex } — in-progress session restored
+//     { type: "pretest_completed", baseline_score, weakness_tag } — retake rejected:
+//                                               the once-only baseline already exists
+//     { type: "session_complete", weakness_tag, baseline_score } — all 5 done
+//
+//   Browser → Server:
+//     { type: "replay_question" }             — hear the current question again
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { createDeepgramLiveSession } = require("../services/sttService");
@@ -60,7 +69,7 @@ function computeFinalScores(scores) {
   const n = scores.length;
   
   let totalPoints = 0;
-  const maxPossiblePoints = n * 30; // 3 dimensions * max 10 pts * N questions
+  const maxPossiblePoints = n * 15; // 3 dimensions * max 5 pts * N questions
 
   const sum = { clarity: 0, correctness: 0, completeness: 0 };
   scores.forEach(s => {
@@ -145,8 +154,10 @@ function handleInterviewSocket(ws, request) {
     }
   }
 
-  /** Speak a question via TTS and send the MP3 back over the WebSocket. */
-  async function speakQuestion(text, label = "TTS") {
+  /** Speak a question via TTS and send the MP3 back over the WebSocket.
+   *  The payload carries questionIndex + questionText so the browser can show
+   *  the question as text (recognition, not recall) while it is spoken. */
+  async function speakQuestion(text, label = "TTS", questionIndex = currentQuestionIndex) {
     if (ws.readyState !== ws.OPEN) return;
     try {
       send({ type: "status", message: "Generating question audio…" });
@@ -156,7 +167,12 @@ function handleInterviewSocket(ws, request) {
       const latency = Date.now() - t0;
       metrics.ttsLatencies.push(latency);
       const base64Audio = audioBuffer.toString("base64");
-      send({ type: "tts_audio", data: base64Audio });
+      send({
+        type: "tts_audio",
+        data: base64Audio,
+        questionIndex,
+        questionText: PRE_TEST_QUESTIONS[questionIndex] ?? text,
+      });
       console.log(
         `[TTS] 🔊 Sent audio to user in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`,
       );
@@ -241,6 +257,32 @@ function handleInterviewSocket(ws, request) {
         }
       } catch (err) {
         console.error("[WS] Failed to fetch user difficulty:", err.message);
+      }
+
+      // ── Once-only gate: a completed Pre-Test can never be retaken ───────────
+      // The baseline anchors the pre-vs-post growth measurement, so it is taken
+      // exactly once per account. Dev tooling can bypass with `?reset=true`.
+      if (!isResetRequested) {
+        try {
+          const completedSession = await PreTestSession.findOne({
+            firebaseUid,
+            completedAt: { $ne: null },
+          });
+          if (completedSession) {
+            console.log(
+              `[WS] ⛔ Pre-test already completed for ${firebaseUid} — baseline ${completedSession.baseline_score_percentage ?? "?"}%. Rejecting retake.`
+            );
+            send({
+              type: "pretest_completed",
+              baseline_score: completedSession.baseline_score_percentage,
+              weakness_tag: completedSession.final_weakness_tag,
+            });
+            ws.close();
+            return;
+          }
+        } catch (err) {
+          console.error("[WS] Failed to check for completed pre-test:", err.message);
+        }
       }
 
       // Check for an active, incomplete pre-test session
@@ -378,9 +420,32 @@ function handleInterviewSocket(ws, request) {
         });
         break;
 
+      // Client asked to hear the current question again (recognition aid —
+      // the answer itself is untouched, so this is always safe)
+      case "replay_question":
+        if (!isRecording) {
+          send({ type: "status", message: "Playing the question again…" });
+          (async () => {
+            await speakQuestion(
+              PRE_TEST_QUESTIONS[currentQuestionIndex],
+              "Replay",
+              currentQuestionIndex
+            );
+          })();
+        }
+        break;
+
       // User confirmed the transcript → evaluate with AI, speak feedback, then advance
       case "submit_answer": {
-        const confirmedText = msg.final_text || fullTranscript;
+        const confirmedText = (msg.final_text || fullTranscript || "").trim();
+        if (!confirmedText) {
+          console.warn(`[WS] submit_answer rejected for Q${currentQuestionIndex + 1} — empty transcript`);
+          send({
+            type: "error",
+            message: "No answer was recorded for this question yet. Press the mic and speak your answer.",
+          });
+          break;
+        }
         const answeredQuestion = PRE_TEST_QUESTIONS[currentQuestionIndex];
         const questionNumber = currentQuestionIndex + 1;
         console.log(
@@ -422,7 +487,7 @@ function handleInterviewSocket(ws, request) {
           } catch (err) {
             console.error(`[AI] ❌ Background evaluation failed for Q${questionNumber}:`, err.message);
             // Push a neutral fallback so the final average is not skewed
-            sessionScores.push({ questionIndex: capturedIndex, clarity_score: 6, correctness_score: 6, completeness_score: 6, primary_weakness: "focus_completeness" });
+            sessionScores.push({ questionIndex: capturedIndex, clarity_score: 3, correctness_score: 3, completeness_score: 3, primary_weakness: "focus_completeness" });
             metrics.evaluationLatencies.push(0);
           }
         })();
@@ -483,7 +548,12 @@ function handleInterviewSocket(ws, request) {
               // Send pre-generated question audio immediately if ready and matching the index, otherwise fallback
               if (preGeneratedNextQuestionAudio && preGeneratedNextQuestionIndex === currentQuestionIndex) {
                 const base64Audio = preGeneratedNextQuestionAudio.toString("base64");
-                send({ type: "tts_audio", data: base64Audio });
+                send({
+                  type: "tts_audio",
+                  data: base64Audio,
+                  questionIndex: currentQuestionIndex,
+                  questionText: PRE_TEST_QUESTIONS[currentQuestionIndex],
+                });
                 console.log(
                   `[TTS] 🔊 Sent pre-generated question audio to user — "${PRE_TEST_QUESTIONS[currentQuestionIndex].substring(0, 50)}…"`,
                 );

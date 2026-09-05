@@ -221,12 +221,10 @@
 .ix-body {
   flex: 1;
   min-height: 0;
-  height: calc(100vh - 52px);
-  height: calc(100dvh - 52px);
   max-width: 1440px;
   width: 100%;
   margin: 0 auto;
-  padding: 12px 24px 10px;
+  padding: 10px 24px 6px;
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 16px;
@@ -662,7 +660,9 @@
   justify-content: center;
   position: relative;
   overflow: hidden;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .ix-response-state {
@@ -785,14 +785,72 @@
   min-height: 4px;
 }
 
-.ix-transcript-live-preview {
+/* Live Multi-Line Unified Transcription Stream Styles */
+.ix-transcript-live-box {
+  max-height: 72px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 3px 4px 3px 0;
+  margin-top: 1px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.ix-transcript-live-box::-webkit-scrollbar {
+  width: 3px;
+}
+
+.ix-transcript-live-box::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.ix-transcript-live-stream {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ix-ink-primary);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ix-transcript-final {
+  color: var(--ix-ink-primary);
+  font-weight: 500;
+}
+
+.ix-transcript-interim {
+  color: var(--ix-blue);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.ix-transcript-caret {
+  display: inline-block;
+  width: 2px;
+  height: 13px;
+  background-color: var(--ix-blue);
+  margin-left: 3px;
+  vertical-align: -1.5px;
+  border-radius: 1px;
+  animation: ixCaretBlink 0.9s infinite;
+}
+
+@keyframes ixCaretBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.ix-transcript-listening-placeholder {
   font-size: 11.5px;
   line-height: 1.4;
-  color: var(--ix-ink-secondary);
+  color: var(--ix-ink-muted);
   font-style: italic;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   margin: 0;
 }
 
@@ -829,15 +887,31 @@
   font-weight: 500;
 }
 
+.ix-transcript-recorded-box {
+  max-height: 65px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 2px 2px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.ix-transcript-recorded-box::-webkit-scrollbar {
+  width: 3px;
+}
+
+.ix-transcript-recorded-box::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
 .ix-transcript-quote {
   font-size: 12px;
   line-height: 1.45;
   color: var(--ix-ink-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .ix-btn-view-transcript {
@@ -1009,7 +1083,7 @@
   color: var(--ix-ink-muted);
   font-weight: 500;
   flex-shrink: 0;
-  padding: 2px 0;
+  padding: 2px 0 6px;
 }
 
 .ix-footer-shield {
@@ -1039,12 +1113,12 @@
 }
 
 .ix-sidebar-card {
-  flex: 0 0 auto;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 200px;
   background: var(--ix-surface);
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 10px 12px 12px;
+  padding: 12px 14px 14px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
@@ -1055,21 +1129,21 @@
   display: flex;
   gap: 16px;
   border-bottom: 1px solid #e2e8f0;
-  padding: 0 4px 6px 4px;
-  margin-bottom: 8px;
+  padding: 0 4px 7px 4px;
+  margin-bottom: 10px;
   flex-shrink: 0;
 }
 
 .ix-sidebar-tab {
   background: none;
   border: none;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #64748b;
   font-family: inherit;
   cursor: pointer;
-  padding: 0 0 6px 0;
-  margin-bottom: -7px;
+  padding: 0 0 7px 0;
+  margin-bottom: -9px;
   transition: color 0.15s ease;
   position: relative;
 }
@@ -1083,17 +1157,20 @@
 .ix-question-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   overflow-y: auto;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .ix-q-list-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  flex: 1 1 auto;
+  min-height: 40px;
   transition: all 0.15s ease;
   border: 1px solid #f1f5f9;
   background: #ffffff;
@@ -1105,13 +1182,13 @@
 }
 
 .ix-q-list-num {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -1132,7 +1209,7 @@
 }
 
 .ix-q-list-title {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
   flex: 1;
   white-space: nowrap;
@@ -1174,22 +1251,27 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .ix-notes-textarea {
   width: 100%;
-  padding: 8px 10px;
+  flex: 1 1 auto;
+  min-height: 120px;
+  padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
   background: #f8fafc;
   color: var(--ix-ink-primary);
   font-family: inherit;
-  font-size: 11.5px;
-  line-height: 1.45;
-  resize: vertical;
-  min-height: 100px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  resize: none;
   outline: none;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .ix-notes-textarea:focus {
@@ -1202,7 +1284,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 10.5px;
+  font-size: 11.5px;
 }
 
 .ix-notes-saved-hint {
@@ -1214,14 +1296,14 @@
   background: none;
   border: none;
   color: var(--ix-red);
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-family: inherit;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 4px 6px;
   border-radius: 4px;
 }
 
@@ -1409,7 +1491,9 @@
   background: var(--ix-surface);
   border: 1px solid var(--ix-border);
   border-radius: var(--ix-radius-xl);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   width: 100%;
   max-width: 520px;
   display: flex;

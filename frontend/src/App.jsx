@@ -12,6 +12,7 @@ import MainSets from './pages/MainSets';
 import Results from './pages/Results';
 import AiAnalysisLoader from './components/AiAnalysisLoader';
 import Set2TransitionOverlay from './components/Set2TransitionOverlay';
+import Set3TransitionOverlay from './components/Set3TransitionOverlay';
 import SetBriefingOverlay from './components/SetBriefingOverlay';
 import FluxDebugger from './components/FluxDebugger';
 import LandingPage from './pages/LandingPage';
@@ -45,7 +46,23 @@ function App() {
 
           <Route
             path="/test-loader"
-            element={<AiAnalysisLoader onComplete={() => console.log('Loader complete!')} />}
+            element={
+              <AiAnalysisLoader
+                role="frontend"
+                weakness="focus_completeness"
+                focusArea="completeness"
+                diagnosticData={{
+                  threeCBreakdown: {
+                    clarity: 4.2,
+                    correctness: 4.5,
+                    completeness: 3.1,
+                    lowestMetric: 'completeness',
+                  },
+                }}
+                onClose={() => console.log('Dismissed loader')}
+                onComplete={() => console.log('Loader complete!')}
+              />
+            }
           />
           <Route path="/interview" element={<MainSets />} />
           <Route path="/dev/interview" element={<MainSets />} />
@@ -90,6 +107,16 @@ function App() {
             element={
               <div style={{ width: '100vw', height: '100vh', background: '#f8f9fa' }}>
                 <Set2TransitionOverlay onReady={() => console.log('Start Set 2!')} />
+              </div>
+            }
+          />
+
+          {/* Dev only route to preview Set 3 transition design */}
+          <Route
+            path="/dev/set3-transition"
+            element={
+              <div style={{ width: '100vw', height: '100vh', background: '#f8f9fa' }}>
+                <Set3TransitionOverlay onReady={() => console.log('Start Set 3!')} />
               </div>
             }
           />
