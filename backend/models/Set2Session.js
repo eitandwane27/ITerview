@@ -42,6 +42,12 @@ const set2SessionSchema = new mongoose.Schema({
   // Active WebSocket session ID (generated on connect)
   sessionId: { type: String, required: true },
 
+  mode: {
+    type: String,
+    enum: ["diagnostic", "practice"],
+    default: "diagnostic",
+  },
+
   role: {
     type: String,
     enum: ["frontend", "backend", "fullstack"],

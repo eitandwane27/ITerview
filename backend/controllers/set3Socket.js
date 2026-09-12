@@ -47,6 +47,8 @@ function handleSet3Socket(ws, request) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
   const firebaseUid = url.searchParams.get("uid");
+  const sessionMode =
+    url.searchParams.get("mode") === "practice" ? "practice" : "diagnostic";
 
   if (!firebaseUid) {
     ws.send(
@@ -218,9 +220,21 @@ function handleSet3Socket(ws, request) {
         !existingDoc.isCompleted;
 
       if (isResuming) {
-        sessionDoc = existingDoc;
-        sessionDoc.sessionId = sessionId;
-        await sessionDoc.save();
+        sessionDoc = await Set3Session.findOneAndUpdate(
+          {
+            _id: existingDoc._id,
+            sessionId: existingDoc.sessionId,
+            isCompleted: false,
+          },
+          { $set: { sessionId } },
+          { returnDocument: "after" },
+        );
+        if (!sessionDoc) {
+          console.log(
+            `[WS] Stale Set 3 connection for ${firebaseUid}; startup cancelled.`,
+          );
+          return;
+        }
 
         if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
           questions = existingDoc.questions;
@@ -230,8 +244,17 @@ function handleSet3Socket(ws, request) {
             const q = await generateSet3Question(questions, sessionDifficulty);
             questions.push(q);
           }
-          sessionDoc.questions = questions;
-          await sessionDoc.save();
+          sessionDoc = await Set3Session.findOneAndUpdate(
+            { _id: sessionDoc._id, sessionId },
+            { $set: { questions } },
+            { returnDocument: "after" },
+          );
+          if (!sessionDoc) {
+            console.log(
+              "[WS] Set 3 ownership changed during resume; generated questions discarded.",
+            );
+            return;
+          }
         }
 
         currentQuestionIndex = existingDoc.answers.length;
@@ -271,6 +294,7 @@ function handleSet3Socket(ws, request) {
           sessionId,
           role: sessionRole,
           difficulty: sessionDifficulty,
+          mode: sessionMode,
           questions: [],
           answers: [],
           avg_situation: null,
@@ -318,8 +342,17 @@ function handleSet3Socket(ws, request) {
       });
 
       // Save generated questions array to DB for resumption persistence
-      sessionDoc.questions = questions;
-      await sessionDoc.save();
+      sessionDoc = await Set3Session.findOneAndUpdate(
+        { _id: sessionDoc._id, sessionId },
+        { $set: { questions } },
+        { returnDocument: "after" },
+      );
+      if (!sessionDoc) {
+        console.log(
+          "[WS] Set 3 ownership changed during startup; generated questions discarded.",
+        );
+        return;
+      }
 
       // 4. Set Q1 as current question and send text to frontend
       currentQuestionText = questions[0];
@@ -451,7 +484,7 @@ function handleSet3Socket(ws, request) {
 
           // 2. Save to DB
           console.time("[Perf] DB Record Save");
-          sessionDoc.recordAnswer({
+          const answerRecord = {
             questionIndex: currentQuestionIndex,
             question: currentQuestionText,
             competency_topic: currentCompetency,
@@ -460,8 +493,22 @@ function handleSet3Socket(ws, request) {
             action_score: evaluation.action_score,
             result_score: evaluation.result_score,
             tip: evaluation.tip,
-          });
-          await sessionDoc.save();
+            evaluatedAt: new Date(),
+          };
+          sessionDoc = await Set3Session.findOneAndUpdate(
+            {
+              _id: sessionDoc._id,
+              sessionId,
+              isCompleted: false,
+              "answers.questionIndex": { $ne: currentQuestionIndex },
+            },
+            { $push: { answers: answerRecord } },
+            { returnDocument: "after" },
+          );
+          if (!sessionDoc) {
+            console.log("[WS] Set 3 answer ignored because this socket no longer owns the session.");
+            return;
+          }
           console.timeEnd("[Perf] DB Record Save");
 
           if (ws.readyState !== ws.OPEN) {
@@ -473,6 +520,7 @@ function handleSet3Socket(ws, request) {
           send({
             type: "coach_tip",
             tip: evaluation.tip,
+            interviewer_reply: evaluation.interviewer_reply,
             situation_score: evaluation.situation_score,
             action_score: evaluation.action_score,
             result_score: evaluation.result_score,
@@ -546,7 +594,24 @@ function handleSet3Socket(ws, request) {
 
             console.time("[Perf] Finalise Session");
             sessionDoc.finalise();
-            await sessionDoc.save();
+            sessionDoc = await Set3Session.findOneAndUpdate(
+              { _id: sessionDoc._id, sessionId, isCompleted: false },
+              {
+                $set: {
+                  avg_situation: sessionDoc.avg_situation,
+                  avg_action: sessionDoc.avg_action,
+                  avg_result: sessionDoc.avg_result,
+                  overall_score_percentage: sessionDoc.overall_score_percentage,
+                  isCompleted: true,
+                  completedAt: sessionDoc.completedAt,
+                },
+              },
+              { returnDocument: "after" },
+            );
+            if (!sessionDoc) {
+              console.log("[WS] Set 3 finalisation ignored because this socket no longer owns the session.");
+              return;
+            }
             console.timeEnd("[Perf] Finalise Session");
 
             console.log(
@@ -573,10 +638,10 @@ function handleSet3Socket(ws, request) {
                   : null;
 
                 const completedScores = [set1Score, set2Score, set3Score].filter((s) => s !== null);
-                const avgScoreOutOf10 = completedScores.length > 0
+                const avgScoreOutOf5 = completedScores.length > 0
                   ? parseFloat((completedScores.reduce((a, b) => a + b, 0) / completedScores.length).toFixed(1))
                   : (set3Score ?? 0);
-                const overallScorePercentage = parseFloat((avgScoreOutOf10 * 10).toFixed(1));
+                const overallScorePercentage = parseFloat((avgScoreOutOf5 * 20).toFixed(1));
 
                 const existingHist = userDoc.practiceHistory || [];
                 const maxAttempt = existingHist.reduce((max, item) => {
@@ -594,7 +659,9 @@ function handleSet3Socket(ws, request) {
                   correctness: set1Doc.avg_correctness,
                   completeness: set1Doc.avg_completeness,
                   averageOutOf5: avgOutOf5,
-                  averageOutOf10: avgOutOf5,
+                  averageOutOf10: avgOutOf5 !== null
+                    ? parseFloat((avgOutOf5 * 2).toFixed(1))
+                    : null,
                 } : null;
 
                 await User.findOneAndUpdate(

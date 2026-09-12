@@ -49,6 +49,13 @@ const set1SessionSchema = new mongoose.Schema({
   // Active WebSocket session ID (generated on connect, like the Pre-Test)
   sessionId: { type: String, required: true },
 
+  // Distinguishes the one-time research journey from repeat practice.
+  mode: {
+    type: String,
+    enum: ["diagnostic", "practice"],
+    default: "diagnostic",
+  },
+
   // Weakness tag inherited from the user's most recent PreTestSession.
   // Drives all AI question generation for this session.
   weakness_tag: {

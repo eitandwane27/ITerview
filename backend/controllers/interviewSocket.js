@@ -262,7 +262,8 @@ function handleInterviewSocket(ws, request) {
       // ── Once-only gate: a completed Pre-Test can never be retaken ───────────
       // The baseline anchors the pre-vs-post growth measurement, so it is taken
       // exactly once per account. Dev tooling can bypass with `?reset=true`.
-      if (!isResetRequested) {
+      // Anonymous sessions should never lock out subsequent users or tests.
+      if (!isResetRequested && firebaseUid && firebaseUid !== "anonymous_user") {
         try {
           const completedSession = await PreTestSession.findOne({
             firebaseUid,
@@ -298,10 +299,19 @@ function handleInterviewSocket(ws, request) {
       if (activeSession) {
         console.log(`[WS] 🔄 Active session found for user: ${firebaseUid}. Resuming session ID: ${activeSession.sessionId} as new session ID: ${sessionId}`);
         try {
-          await PreTestSession.findOneAndUpdate(
-            { firebaseUid, completedAt: null },
-            { sessionId }
+          activeSession = await PreTestSession.findOneAndUpdate(
+            {
+              _id: activeSession._id,
+              sessionId: activeSession.sessionId,
+              completedAt: null,
+            },
+            { $set: { sessionId } },
+            { returnDocument: "after" }
           );
+          if (!activeSession) {
+            console.log("[WS] Pre-test startup cancelled because a newer socket owns the session.");
+            return;
+          }
 
           currentQuestionIndex = activeSession.answers.length;
           activeSession.answers.forEach(ans => {
@@ -313,6 +323,29 @@ function handleInterviewSocket(ws, request) {
               primary_weakness: ans.primary_weakness,
             });
           });
+
+          if (currentQuestionIndex >= PRE_TEST_QUESTIONS.length) {
+            const { weakness_tag, percentage } = computeFinalScores(sessionScores);
+            const recoveredSession = await PreTestSession.findOneAndUpdate(
+              { _id: activeSession._id, sessionId, completedAt: null },
+              {
+                $set: {
+                  final_weakness_tag: weakness_tag,
+                  baseline_score_percentage: percentage,
+                  completedAt: new Date(),
+                },
+              },
+              { returnDocument: "after" }
+            );
+            if (recoveredSession) {
+              send({
+                type: "session_complete",
+                weakness_tag,
+                baseline_score: percentage,
+              });
+            }
+            return;
+          }
 
           console.log(`[WS] Resumed session at question index: ${currentQuestionIndex}`);
           send({ type: "session_resumed", currentQuestionIndex });
@@ -340,9 +373,11 @@ function handleInterviewSocket(ws, request) {
         }
       }
 
-      // Play the first question
-      await speakQuestion(PRE_TEST_QUESTIONS[currentQuestionIndex]);
-      send({ type: "status", message: "Question ready. Press the mic button to begin your answer." });
+      // Play the first (or resumed) question
+      if (currentQuestionIndex < PRE_TEST_QUESTIONS.length) {
+        await speakQuestion(PRE_TEST_QUESTIONS[currentQuestionIndex]);
+        send({ type: "status", message: "Question ready. Press the mic button to begin your answer." });
+      }
     } catch (fatalErr) {
       console.error("[WS] Fatal session startup error:", fatalErr);
       send({ type: "error", message: `Failed to start session: ${fatalErr.message}` });
@@ -458,19 +493,20 @@ function handleInterviewSocket(ws, request) {
         const capturedIndex = currentQuestionIndex; // freeze before next_question mutates it
         const evalPromise = (async () => {
           try {
-            console.log(`[AI] 🔄 Background 3C evaluation started for Q${questionNumber}...`);
+            console.log("[AI] Evaluating pre-test answer Q" + questionNumber + "...");
             const tEval0 = Date.now();
-            const scores = await evaluate3CScores(answeredQuestion, confirmedText, sessionDifficulty);
-            const evalDuration = Date.now() - tEval0;
-            metrics.evaluationLatencies.push(evalDuration);
-
-            sessionScores.push({ questionIndex: capturedIndex, ...scores });
-            console.log(
-              `[AI] ✅ Q${questionNumber} (Evaluated in ${(evalDuration / 1000).toFixed(2)}s) — Clarity: ${scores.clarity_score} | Correctness: ${scores.correctness_score} | Completeness: ${scores.completeness_score} | Tag: ${scores.primary_weakness}`
+            const scores = await evaluate3CScores(
+              answeredQuestion,
+              confirmedText,
+              sessionDifficulty
             );
-            // Persist this answer's scores to MongoDB
-            await PreTestSession.findOneAndUpdate(
-              { sessionId },
+            metrics.evaluationLatencies.push(Date.now() - tEval0);
+
+            const savedSession = await PreTestSession.findOneAndUpdate(
+              {
+                sessionId,
+                "answers.questionIndex": { $ne: capturedIndex },
+              },
               {
                 $push: {
                   answers: {
@@ -481,17 +517,35 @@ function handleInterviewSocket(ws, request) {
                     evaluatedAt: new Date(),
                   },
                 },
-              }
+              },
+              { returnDocument: "after" }
             );
-            console.log(`[DB] ✅ Scores persisted for Q${questionNumber}`);
+            if (!savedSession) return false;
+
+            sessionScores.push({ questionIndex: capturedIndex, ...scores });
+            console.log("[DB] Pre-test score saved for Q" + questionNumber);
+            return true;
           } catch (err) {
-            console.error(`[AI] ❌ Background evaluation failed for Q${questionNumber}:`, err.message);
-            // Push a neutral fallback so the final average is not skewed
-            sessionScores.push({ questionIndex: capturedIndex, clarity_score: 3, correctness_score: 3, completeness_score: 3, primary_weakness: "focus_completeness" });
+            console.error(
+              "[AI] Pre-test evaluation failed for Q" + questionNumber + ":",
+              err.message
+            );
             metrics.evaluationLatencies.push(0);
+            return false;
           }
         })();
         evaluationPromises.push(evalPromise);
+        evalPromise.then((saved) => {
+          if (saved && ws.readyState === ws.OPEN) {
+            send({ type: "feedback_complete" });
+          } else if (!saved && ws.readyState === ws.OPEN) {
+            send({
+              type: "answer_save_failed",
+              transcript: confirmedText,
+              message: "Your answer could not be scored or saved. Please submit it again.",
+            });
+          }
+        });
 
         // ── Pre-generate next-question TTS (fire-and-forget) ──────────────
         const nextIndex = currentQuestionIndex + 1;
@@ -526,8 +580,6 @@ function handleInterviewSocket(ws, request) {
         }
 
         // Notify client immediately — no blocking wait
-        send({ type: "feedback_complete" });
-
         break;
       }
 
@@ -578,14 +630,21 @@ function handleInterviewSocket(ws, request) {
 
               // Persist final result to MongoDB
               try {
-                await PreTestSession.findOneAndUpdate(
-                  { sessionId },
-                  { 
-                    final_weakness_tag: weakness_tag,
-                    baseline_score_percentage: percentage,
-                    completedAt: new Date() 
-                  }
+                const finalisedSession = await PreTestSession.findOneAndUpdate(
+                  { sessionId, completedAt: null },
+                  {
+                    $set: {
+                      final_weakness_tag: weakness_tag,
+                      baseline_score_percentage: percentage,
+                      completedAt: new Date(),
+                    },
+                  },
+                  { returnDocument: "after" }
                 );
+                if (!finalisedSession) {
+                  console.log("[WS] Pre-test finalisation skipped because session ownership changed.");
+                  return;
+                }
                 console.log(`[DB] ✅ Session finalised — ${sessionId}`);
               } catch (err) {
                 console.error(`[DB] ❌ Failed to finalise session:`, err.message);

@@ -6,6 +6,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { motion as Motion, useReducedMotion } from 'framer-motion';
+import { EASE } from './motion/motion';
 import {
   Mic,
   Square,
@@ -20,6 +22,7 @@ import {
   Cpu,
   AlertCircle,
 } from 'lucide-react';
+import mascotHeadSrc from '../assets/mascot-head.png';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 // Env-driven backend URL — same derivation pattern as FluxDebugger.jsx.
@@ -123,17 +126,40 @@ const TRACK_DATA = [
 ];
 
 // ── Segmented Scale Dashes Helper ───────────────────────────────────────────
-const SegmentedScale = ({ color, filled }) => (
-  <div className="lp-exact-scale" aria-hidden="true">
-    {Array.from({ length: 8 }).map((_, i) => (
-      <span
-        key={i}
-        className={`lp-exact-scale-dash${i < filled ? ' lp-exact-scale-dash--filled' : ''}`}
-        style={i < filled ? { backgroundColor: color } : undefined}
-      />
-    ))}
-  </div>
-);
+// Dashes stagger-in (scaleY settle) when a score lands: each becoming-filled
+// dash remounts with a per-index delay so the rubric reads as "being scored",
+// not "swapped in". Reduced motion renders all dashes at their final state.
+const SegmentedScale = ({ color, filled }) => {
+  const reduce = useReducedMotion();
+  const activeCount = Math.min(8, Math.max(0, filled));
+  return (
+    <div className="lp-exact-scale" aria-hidden="true">
+      {Array.from({ length: 8 }).map((_, i) => {
+        const on = i < activeCount;
+        return (
+          <Motion.span
+            key={`${i}-${on ? 'on' : 'off'}`}
+            className={`lp-exact-scale-dash${on ? ' lp-exact-scale-dash--filled' : ''}`}
+            style={on ? { backgroundColor: color } : undefined}
+            initial={
+              reduce
+                ? false
+                : on
+                  ? { scaleY: 0.35, opacity: 0.3 }
+                  : { scaleY: 1, opacity: 1 }
+            }
+            animate={{ scaleY: 1, opacity: 1 }}
+            transition={{
+              duration: 0.3,
+              ease: EASE,
+              delay: on ? 0.15 + i * 0.055 : 0,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+};
 
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function TryItLiveDemo({ onOpenAuth }) {
@@ -147,6 +173,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
   const [scores, setScores] = useState(null);
   const [micError, setMicError] = useState('');
   const [attemptCount, setAttemptCount] = useState(0);
+  const [switchConfirm, setSwitchConfirm] = useState(null);
 
   const wsRef = useRef(null);
   const streamRef = useRef(null);
@@ -398,7 +425,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
   }, [attemptCount, onOpenAuth, isRecording, cleanupAudio, beginMicCapture, stopAudio]);
 
   // ── Track & Question Switchers ─────────────────────────────────────────────
-  const handleSelectTrack = (idx) => {
+  const applySelectTrack = (idx) => {
     stopRecording();
     stopAudio();
     setSelectedTrackIndex(idx);
@@ -409,7 +436,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     setMicError('');
   };
 
-  const handleSelectQuestion = (idx) => {
+  const applySelectQuestion = (idx) => {
     stopRecording();
     stopAudio();
     setSelectedQuestionIndex(idx);
@@ -419,8 +446,41 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     setMicError('');
   };
 
+  const handleSelectTrack = (idx) => {
+    if (idx === selectedTrackIndex) return;
+    if ((transcriptText || scores) && !isRecording) {
+      setSwitchConfirm({ type: 'track', index: idx });
+      return;
+    }
+    applySelectTrack(idx);
+  };
+
+  const handleSelectQuestion = (idx) => {
+    if (idx === selectedQuestionIndex) return;
+    if ((transcriptText || scores) && !isRecording) {
+      setSwitchConfirm({ type: 'question', index: idx });
+      return;
+    }
+    applySelectQuestion(idx);
+  };
+
   const handleNextQuestion = () => {
-    handleSelectQuestion((selectedQuestionIndex + 1) % currentTrack.questions.length);
+    const nextIdx = (selectedQuestionIndex + 1) % currentTrack.questions.length;
+    handleSelectQuestion(nextIdx);
+  };
+
+  const confirmSwitch = () => {
+    if (!switchConfirm) return;
+    if (switchConfirm.type === 'track') {
+      applySelectTrack(switchConfirm.index);
+    } else {
+      applySelectQuestion(switchConfirm.index);
+    }
+    setSwitchConfirm(null);
+  };
+
+  const cancelSwitch = () => {
+    setSwitchConfirm(null);
   };
 
   const playQuestionAudio = useCallback(async () => {
@@ -536,92 +596,15 @@ export default function TryItLiveDemo({ onOpenAuth }) {
         {/* Left: Mascot Avatar & Brand */}
         <div className="lp-exact-brand">
           <div className="lp-exact-avatar-box">
-            <svg
-              className="lp-exact-avatar-svg"
-              viewBox="0 0 100 100"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <circle cx="50" cy="50" r="46" fill="url(#exact-avatar-glow)" opacity="0.3" />
-              <rect
-                x="24"
-                y="28"
-                width="52"
-                height="46"
-                rx="23"
-                fill="url(#exact-avatar-head)"
-                stroke="#3B82F6"
-                strokeWidth="2"
-              />
-              <path
-                d="M 18 44 C 18 20, 82 20, 82 44"
-                stroke="#60A5FA"
-                strokeWidth="4.5"
-                strokeLinecap="round"
-                fill="none"
-              />
-              <rect
-                x="14"
-                y="38"
-                width="10"
-                height="20"
-                rx="5"
-                fill="#1D4ED8"
-                stroke="#93C5FD"
-                strokeWidth="1.5"
-              />
-              <rect
-                x="76"
-                y="38"
-                width="10"
-                height="20"
-                rx="5"
-                fill="#1D4ED8"
-                stroke="#93C5FD"
-                strokeWidth="1.5"
-              />
-              <rect
-                x="32"
-                y="38"
-                width="36"
-                height="22"
-                rx="11"
-                fill="#0B132B"
-                stroke="#38BDF8"
-                strokeWidth="1.5"
-              />
-              <rect x="41" y="45" width="2.5" height="7" rx="1" fill="#38BDF8" />
-              <rect x="46" y="42" width="2.5" height="13" rx="1" fill="#38BDF8" />
-              <rect x="51" y="41" width="2.5" height="15" rx="1" fill="#60A5FA" />
-              <rect x="56" y="42" width="2.5" height="13" rx="1" fill="#38BDF8" />
-              <rect x="61" y="45" width="2.5" height="7" rx="1" fill="#38BDF8" />
-              <path
-                d="M 22 54 Q 32 70, 46 68"
-                stroke="#94A3B8"
-                strokeWidth="2"
-                strokeLinecap="round"
-                fill="none"
-              />
-              <circle cx="48" cy="68" r="3.5" fill="#38BDF8" />
-              <defs>
-                <radialGradient id="exact-avatar-glow" cx="0.5" cy="0.5" r="0.5">
-                  <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.9" />
-                  <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
-                </radialGradient>
-                <linearGradient
-                  id="exact-avatar-head"
-                  x1="24"
-                  y1="28"
-                  x2="76"
-                  y2="74"
-                  gradientUnits="userSpaceOnUse"
-                >
-                  <stop stopColor="#1E3A8A" />
-                  <stop offset="100%" stopColor="#0F172A" />
-                </linearGradient>
-              </defs>
-            </svg>
+            <img
+              src={mascotHeadSrc}
+              alt="ITerview AI Coach mascot"
+              className="lp-exact-avatar-img"
+              width={34}
+              height={34}
+              loading="eager"
+              decoding="async"
+            />
           </div>
           <div className="lp-exact-brand-text">
             <span className="lp-exact-brand-name">ITerview</span>
@@ -702,6 +685,31 @@ export default function TryItLiveDemo({ onOpenAuth }) {
           </span>
         </button>
       </div>
+
+      {/* ── Accidental Loss Confirmation Guard (Stress Tester Protection) ── */}
+      {switchConfirm && (
+        <div className="lp-exact-switch-confirm" role="alert">
+          <span className="lp-exact-switch-text">
+            Switching {switchConfirm.type === 'track' ? 'tracks' : 'questions'} will reset your current answer and 3C evaluation.
+          </span>
+          <div className="lp-exact-switch-actions">
+            <button
+              type="button"
+              className="lp-exact-switch-btn lp-exact-switch-btn--confirm"
+              onClick={confirmSwitch}
+            >
+              Switch & Reset
+            </button>
+            <button
+              type="button"
+              className="lp-exact-switch-btn lp-exact-switch-btn--cancel"
+              onClick={cancelSwitch}
+            >
+              Keep Answer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── 3. Context First (Tags, Question, Hint) ── */}
       <div className="lp-exact-context">
@@ -907,6 +915,17 @@ export default function TryItLiveDemo({ onOpenAuth }) {
             </span>
           )}
         </p>
+
+        {/* Quiet, transparent data-use reassurance */}
+        <div className="lp-exact-privacy-strip">
+          <ShieldCheck size={13} className="lp-exact-privacy-icon" />
+          <span>
+            Audio streams only while recording to evaluate speech · Transcripts processed securely ·{' '}
+            <a href="#privacy" className="lp-exact-privacy-link">
+              Privacy details
+            </a>
+          </span>
+        </div>
       </div>
     </div>
   );

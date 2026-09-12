@@ -34,6 +34,8 @@ function handleSet1Socket(ws, request) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
   const firebaseUid = url.searchParams.get("uid");
+  const sessionMode =
+    url.searchParams.get("mode") === "practice" ? "practice" : "diagnostic";
 
   if (!firebaseUid) {
     ws.send(
@@ -203,9 +205,23 @@ function handleSet1Socket(ws, request) {
         !existingDoc.isCompleted;
 
       if (isResuming) {
-        sessionDoc = existingDoc;
-        sessionDoc.sessionId = sessionId;
-        await sessionDoc.save();
+        // Claim this session atomically. Another socket may have taken ownership
+        // while this connection was starting.
+        sessionDoc = await Set1Session.findOneAndUpdate(
+          {
+            _id: existingDoc._id,
+            sessionId: existingDoc.sessionId,
+            isCompleted: false,
+          },
+          { $set: { sessionId } },
+          { returnDocument: "after" },
+        );
+        if (!sessionDoc) {
+          console.log(
+            `[WS] Stale Set 1 connection for ${firebaseUid}; startup cancelled.`,
+          );
+          return;
+        }
 
         if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
           questions = existingDoc.questions;
@@ -220,8 +236,17 @@ function handleSet1Socket(ws, request) {
             );
             questions.push(q);
           }
-          sessionDoc.questions = questions;
-          await sessionDoc.save();
+          sessionDoc = await Set1Session.findOneAndUpdate(
+            { _id: sessionDoc._id, sessionId },
+            { $set: { questions } },
+            { returnDocument: "after" },
+          );
+          if (!sessionDoc) {
+            console.log(
+              "[WS] Set 1 ownership changed during resume; generated questions discarded.",
+            );
+            return;
+          }
         }
 
         currentQuestionIndex = existingDoc.answers.length;
@@ -262,6 +287,7 @@ function handleSet1Socket(ws, request) {
           weakness_tag: sessionWeaknessTag,
           role: sessionRole,
           difficulty: sessionDifficulty,
+          mode: sessionMode,
           questions: [],
           answers: [],
           avg_clarity: null,
@@ -325,8 +351,17 @@ function handleSet1Socket(ws, request) {
       });
 
       // Save generated questions array to DB for resumption persistence
-      sessionDoc.questions = questions;
-      await sessionDoc.save();
+      sessionDoc = await Set1Session.findOneAndUpdate(
+        { _id: sessionDoc._id, sessionId },
+        { $set: { questions } },
+        { returnDocument: "after" },
+      );
+      if (!sessionDoc) {
+        console.log(
+          "[WS] Set 1 ownership changed during startup; generated questions discarded.",
+        );
+        return;
+      }
 
       currentQuestionText = questions[0];
 
@@ -440,7 +475,7 @@ function handleSet1Socket(ws, request) {
 
           // 2. Save to DB
           console.time("[Perf] DB Record Save");
-          sessionDoc.recordAnswer({
+          const answerRecord = {
             questionIndex: currentQuestionIndex,
             question: currentQuestionText,
             weakness_tag: sessionWeaknessTag,
@@ -449,8 +484,22 @@ function handleSet1Socket(ws, request) {
             correctness_score: evaluation.correctness_score,
             completeness_score: evaluation.completeness_score,
             tip: evaluation.tip,
-          });
-          await sessionDoc.save();
+            evaluatedAt: new Date(),
+          };
+          sessionDoc = await Set1Session.findOneAndUpdate(
+            {
+              _id: sessionDoc._id,
+              sessionId,
+              isCompleted: false,
+              "answers.questionIndex": { $ne: currentQuestionIndex },
+            },
+            { $push: { answers: answerRecord } },
+            { returnDocument: "after" },
+          );
+          if (!sessionDoc) {
+            console.log("[WS] Set 1 answer ignored because this socket no longer owns the session.");
+            return;
+          }
           console.timeEnd("[Perf] DB Record Save");
 
           if (ws.readyState !== ws.OPEN) {
@@ -584,7 +633,24 @@ function handleSet1Socket(ws, request) {
 
             console.time("[Perf] Finalise Session");
             sessionDoc.finalise(preTestBaseline);
-            await sessionDoc.save();
+            sessionDoc = await Set1Session.findOneAndUpdate(
+              { _id: sessionDoc._id, sessionId, isCompleted: false },
+              {
+                $set: {
+                  avg_clarity: sessionDoc.avg_clarity,
+                  avg_correctness: sessionDoc.avg_correctness,
+                  avg_completeness: sessionDoc.avg_completeness,
+                  improvement_score: sessionDoc.improvement_score,
+                  isCompleted: true,
+                  completedAt: sessionDoc.completedAt,
+                },
+              },
+              { returnDocument: "after" },
+            );
+            if (!sessionDoc) {
+              console.log("[WS] Set 1 finalisation ignored because this socket no longer owns the session.");
+              return;
+            }
             console.timeEnd("[Perf] Finalise Session");
 
             if (ws.readyState !== ws.OPEN) return;

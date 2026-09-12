@@ -42,6 +42,8 @@ function handleSet2Socket(ws, request) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
   const firebaseUid = url.searchParams.get("uid");
+  const sessionMode =
+    url.searchParams.get("mode") === "practice" ? "practice" : "diagnostic";
 
   if (!firebaseUid) {
     ws.send(
@@ -160,9 +162,21 @@ function handleSet2Socket(ws, request) {
         !existingDoc.isCompleted;
 
       if (isResuming) {
-        sessionDoc = existingDoc;
-        sessionDoc.sessionId = sessionId;
-        await sessionDoc.save();
+        sessionDoc = await Set2Session.findOneAndUpdate(
+          {
+            _id: existingDoc._id,
+            sessionId: existingDoc.sessionId,
+            isCompleted: false,
+          },
+          { $set: { sessionId } },
+          { returnDocument: "after" },
+        );
+        if (!sessionDoc) {
+          console.log(
+            `[WS] Stale Set 2 connection for ${firebaseUid}; startup cancelled.`,
+          );
+          return;
+        }
 
         if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
           questions = existingDoc.questions;
@@ -176,8 +190,17 @@ function handleSet2Socket(ws, request) {
             );
             questions.push(q);
           }
-          sessionDoc.questions = questions;
-          await sessionDoc.save();
+          sessionDoc = await Set2Session.findOneAndUpdate(
+            { _id: sessionDoc._id, sessionId },
+            { $set: { questions } },
+            { returnDocument: "after" },
+          );
+          if (!sessionDoc) {
+            console.log(
+              "[WS] Set 2 ownership changed during resume; generated questions discarded.",
+            );
+            return;
+          }
         }
 
         currentQuestionIndex = existingDoc.answers.length;
@@ -217,6 +240,7 @@ function handleSet2Socket(ws, request) {
           sessionId,
           role: sessionRole,
           difficulty: sessionDifficulty,
+          mode: sessionMode,
           questions: [],
           answers: [],
           avg_problem_solving: null,
@@ -280,8 +304,17 @@ function handleSet2Socket(ws, request) {
       });
 
       // Save generated questions array to DB for resumption persistence
-      sessionDoc.questions = questions;
-      await sessionDoc.save();
+      sessionDoc = await Set2Session.findOneAndUpdate(
+        { _id: sessionDoc._id, sessionId },
+        { $set: { questions } },
+        { returnDocument: "after" },
+      );
+      if (!sessionDoc) {
+        console.log(
+          "[WS] Set 2 ownership changed during startup; generated questions discarded.",
+        );
+        return;
+      }
 
       currentQuestionText = questions[0];
 
@@ -402,7 +435,7 @@ function handleSet2Socket(ws, request) {
 
           // 2. Save to DB
           console.time("[Perf] DB Record Save");
-          sessionDoc.recordAnswer({
+          const answerRecord = {
             questionIndex: currentQuestionIndex,
             question: currentQuestionText,
             transcript: confirmedText,
@@ -410,8 +443,22 @@ function handleSet2Socket(ws, request) {
             accuracy_score: evaluation.accuracy_score,
             depth_score: evaluation.depth_score,
             tip: evaluation.tip,
-          });
-          await sessionDoc.save();
+            evaluatedAt: new Date(),
+          };
+          sessionDoc = await Set2Session.findOneAndUpdate(
+            {
+              _id: sessionDoc._id,
+              sessionId,
+              isCompleted: false,
+              "answers.questionIndex": { $ne: currentQuestionIndex },
+            },
+            { $push: { answers: answerRecord } },
+            { returnDocument: "after" },
+          );
+          if (!sessionDoc) {
+            console.log("[WS] Set 2 answer ignored because this socket no longer owns the session.");
+            return;
+          }
           console.timeEnd("[Perf] DB Record Save");
 
           if (ws.readyState !== ws.OPEN) {
@@ -423,6 +470,7 @@ function handleSet2Socket(ws, request) {
           send({
             type: "coach_tip",
             tip: evaluation.tip,
+            interviewer_reply: evaluation.interviewer_reply,
             problem_solving_score: evaluation.problem_solving_score,
             accuracy_score: evaluation.accuracy_score,
             depth_score: evaluation.depth_score,
@@ -543,7 +591,24 @@ function handleSet2Socket(ws, request) {
 
             console.time("[Perf] Finalise Session");
             sessionDoc.finalise();
-            await sessionDoc.save();
+            sessionDoc = await Set2Session.findOneAndUpdate(
+              { _id: sessionDoc._id, sessionId, isCompleted: false },
+              {
+                $set: {
+                  avg_problem_solving: sessionDoc.avg_problem_solving,
+                  avg_accuracy: sessionDoc.avg_accuracy,
+                  avg_depth: sessionDoc.avg_depth,
+                  overall_score_percentage: sessionDoc.overall_score_percentage,
+                  isCompleted: true,
+                  completedAt: sessionDoc.completedAt,
+                },
+              },
+              { returnDocument: "after" },
+            );
+            if (!sessionDoc) {
+              console.log("[WS] Set 2 finalisation ignored because this socket no longer owns the session.");
+              return;
+            }
             console.timeEnd("[Perf] Finalise Session");
 
             console.log(

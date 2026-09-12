@@ -259,6 +259,12 @@ export default function PostTest() {
         case 'error':
           setError(msg.message);
           break;
+        case 'answer_save_failed':
+          setConfirmedTranscript(msg.transcript || '');
+          setAwaitingConfirmation(true);
+          setStatus('Your answer is still here. Confirm it again to retry.');
+          setError(msg.message);
+          break;
         case 'feedback_complete':
           setShowContinueButton(true);
           setStatus('Answer recorded. Click below to continue.');

@@ -7,18 +7,21 @@
 // - Connects to ws://localhost:5000/ws/set{n}
 // - AI Coach Panel for 1-sentence tips
 // - Stabilized Zero-CLS Live Transcript & Response Panel
-// - Interactive candidate notes scratchpad & full transcript modal
+// - Chat-style Transcript tab: AI question → candidate answer → AI reply
+// - Full answer transcript modal for the recorded response
 // - SetBriefingOverlay shown on mount
 // - Design: ITerview studio world (Session Ramp neutrals, cyan signal)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../firebase';
 import { AnimatePresence } from 'framer-motion';
 import Set2TransitionOverlay from '../components/Set2TransitionOverlay';
 import Set3TransitionOverlay from '../components/Set3TransitionOverlay';
 import InterviewSidebar from '../components/InterviewSidebar';
+// Living orb lives in its own component now; re-exported for PreTest compat.
+import { AIOrb } from '../components/AIOrb';
 import logoSrc from '../assets/logo';
 import {
   Mic,
@@ -36,6 +39,9 @@ import {
   X,
 } from 'lucide-react';
 import './MainSets.css';
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const WS_BASE = BACKEND_URL.replace(/^http/, 'ws');
 
 // ── Set metadata ───────────────────────────────────────────────────────────
 const SET_META = {
@@ -76,7 +82,116 @@ const formatHMS = (t) =>
   `${pad2(Math.floor(t / 3600))}:${pad2(Math.floor((t % 3600) / 60))}:${pad2(t % 60)}`;
 const formatMS = (t) => `${pad2(Math.floor(t / 60))}:${pad2(t % 60)}`;
 
-// ── Isolated Mascot & AI Orb Components ─────────────────────────────────────
+const STAGE_STATE_COPY = {
+  ready: {
+    label: 'AI interviewer is ready',
+    title: 'Ready when you are',
+    detail: 'Take a breath. You’ve got this.',
+  },
+  speaking: {
+    label: 'AI interviewer is speaking',
+    title: 'Your interviewer is speaking',
+    detail: 'Listen for the heart of the question.',
+  },
+  listening: {
+    label: 'AI interviewer is listening',
+    title: 'Listening to you',
+    detail: 'Take your time. I’m right here.',
+  },
+  evaluating: {
+    label: 'AI interviewer is evaluating your response',
+    title: 'Thinking through your answer',
+    detail: 'Finding the feedback that will help most.',
+  },
+  booting: {
+    label: 'AI interviewer is preparing your questions',
+    title: 'Preparing your interview',
+    detail: 'Personalizing the next question for you.',
+  },
+  complete: {
+    label: 'Interview session complete',
+    title: 'You made it through',
+    detail: 'Your interview is complete. Nice work.',
+  },
+  offline: {
+    label: 'AI interviewer is connecting',
+    title: 'Connecting your interviewer',
+    detail: 'Hold on. We’ll continue in a moment.',
+  },
+  error: {
+    label: 'AI interviewer needs attention',
+    title: 'Something needs attention',
+    detail: 'Check the message below, then try again.',
+  },
+};
+
+function resolveStageState({
+  isSpeaking,
+  isListening,
+  isComplete,
+  isEvaluating,
+  isBooting,
+  isOffline,
+  hasError,
+}) {
+  if (hasError) return 'error';
+  if (isComplete) return 'complete';
+  if (isListening) return 'listening';
+  if (isSpeaking) return 'speaking';
+  if (isEvaluating) return 'evaluating';
+  if (isBooting) return 'booting';
+  if (isOffline) return 'offline';
+  return 'ready';
+}
+
+function StageAtmosphere() {
+  return (
+    <div className="ix-stage-atmosphere" aria-hidden="true">
+      <span className="ix-stage-glow" />
+      <span className="ix-stage-arch ix-stage-arch--left" />
+      <span className="ix-stage-arch ix-stage-arch--right" />
+      <span className="ix-stage-ribbon ix-stage-ribbon--vault" />
+      <span className="ix-stage-ribbon ix-stage-ribbon--violet" />
+      <span className="ix-stage-ribbon ix-stage-ribbon--cyan" />
+      <span className="ix-stage-ribbon ix-stage-ribbon--pearl" />
+      <span className="ix-stage-floor" />
+      <span className="ix-stage-particle ix-stage-particle--one" />
+      <span className="ix-stage-particle ix-stage-particle--two" />
+      <span className="ix-stage-particle ix-stage-particle--three" />
+      <span className="ix-stage-particle ix-stage-particle--four" />
+      <span className="ix-stage-particle ix-stage-particle--five" />
+      <span className="ix-stage-particle ix-stage-particle--six" />
+      <span className="ix-stage-particle ix-stage-particle--seven" />
+      <span className="ix-stage-particle ix-stage-particle--eight" />
+      <span className="ix-stage-particle ix-stage-particle--nine" />
+      <span className="ix-stage-particle ix-stage-particle--ten" />
+    </div>
+  );
+}
+
+/**
+ * Maps the arena's single state enum onto the shared WebGL companion API.
+ * Keeping this adapter local avoids duplicating the interview state resolver.
+ */
+function InterviewBubbleBot({ state, volume = 0 }) {
+  return (
+    <AIOrb
+      isSpeaking={state === 'speaking'}
+      isListening={state === 'listening'}
+      isComplete={state === 'complete'}
+      isEvaluating={state === 'evaluating'}
+      isBooting={state === 'booting'}
+      isOffline={state === 'offline'}
+      hasError={state === 'error'}
+      volume={volume}
+    />
+  );
+}
+
+// ── Isolated Mascot Component ────────────────────────────────────────────────
+// AIOrb is re-exported here for compatibility with older interview imports.
+
+export { AIOrb };
 
 export function MascotLogo({ src = logoSrc, size = 32, className = '' }) {
   return (
@@ -90,24 +205,6 @@ export function MascotLogo({ src = logoSrc, size = 32, className = '' }) {
         alt="iTerview mascot"
         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
       />
-    </div>
-  );
-}
-
-export function AIOrb({ isSpeaking = false, isListening = false, isComplete = false }) {
-  return (
-    <div
-      className={`ix-orb-container ${isSpeaking ? 'speaking' : ''} ${isListening ? 'listening' : ''} ${isComplete ? 'complete' : ''}`}
-      aria-label="AI Interviewer Orb"
-    >
-      <div className="ix-orb-glow-backdrop" />
-      <div className="ix-orb-sphere">
-        <div className="ix-orb-specular" />
-        <div className="ix-orb-eyes">
-          <span className="ix-orb-pill" />
-          <span className="ix-orb-pill" />
-        </div>
-      </div>
     </div>
   );
 }
@@ -162,23 +259,6 @@ export default function MainSets() {
   const [questionsAsked, setQuestionsAsked] = useState([]);
   const [activeTab, setActiveTab] = useState('questions');
   const [userInitials, setUserInitials] = useState('ME');
-  const [candidateNotes, setCandidateNotes] = useState(() => {
-    try {
-      return localStorage.getItem(`iterview_notes_set_${setNumber}`) || '';
-    } catch {
-      return '';
-    }
-  });
-
-  const handleNotesChange = (e) => {
-    const val = e.target.value;
-    setCandidateNotes(val);
-    try {
-      localStorage.setItem(`iterview_notes_set_${setNumber}`, val);
-    } catch {
-      // ignore storage error
-    }
-  };
 
   // Stage clock ticks only while a session is live.
   useEffect(() => {
@@ -187,22 +267,28 @@ export default function MainSets() {
     return () => clearInterval(id);
   }, [isConnected, isSessionComplete]);
 
-  // ── Sidebar question list helpers ──────────────────────────────────────────
+  // ── Sidebar question list & transcript thread helpers ──────────────────────
   const addQuestion = useCallback((index, text) => {
     setQuestionsAsked((prev) =>
       prev.some((q) => q.index === index)
         ? prev.map((q) => (q.index === index ? { ...q, text } : q))
-        : [...prev, { index, text, answered: false, answer: '' }]
+        : [...prev, { index, text, answered: false, answer: '', reply: '' }]
     );
   }, []);
 
-  // Flags the most recent unanswered question as answered.
-  const markCurrentAnswered = useCallback((answerText) => {
+  // Flags the most recent unanswered question as answered and attaches the AI's
+  // spoken reply (interviewer_reply) that drives the transcript thread.
+  const markCurrentAnswered = useCallback((answerText, replyText) => {
     setQuestionsAsked((prev) => {
       const next = [...prev];
       for (let i = next.length - 1; i >= 0; i -= 1) {
         if (!next[i].answered) {
-          next[i] = { ...next[i], answered: true, answer: answerText || '' };
+          next[i] = {
+            ...next[i],
+            answered: true,
+            answer: answerText || '',
+            reply: replyText || '',
+          };
           break;
         }
       }
@@ -408,6 +494,12 @@ export default function MainSets() {
   const startSession = useCallback(() => {
     setShowBriefing(false);
 
+    if (!isResume) {
+      // Fresh session (preview or real) → start the transcript thread clean;
+      // preview startSession synchronously re-adds Q1 right after this.
+      setQuestionsAsked([]);
+    }
+
     if (preview) {
       setIsConnected(true);
       setIsGeneratingQuestions(false);
@@ -443,9 +535,9 @@ export default function MainSets() {
 
     const user = auth.currentUser;
     const uid = user ? user.uid : 'anonymous_user';
-    const focusParam = focusArea ? `&focusArea=${focusArea}` : '';
+    const focusParam = focusArea ? `&focusArea=${encodeURIComponent(focusArea)}` : '';
     const ws = new WebSocket(
-      `ws://localhost:5000/ws/set${setNumber}?voice=${voice}&uid=${uid}${focusParam}`
+      `${WS_BASE}/ws/set${setNumber}?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(mode)}${focusParam}`
     );
     ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
@@ -487,7 +579,7 @@ export default function MainSets() {
           break;
         case 'coach_tip':
           setCoachTip(msg.tip);
-          markCurrentAnswered(finalTranscriptRef.current);
+          markCurrentAnswered(finalTranscriptRef.current, msg.interviewer_reply);
           if (setNumber === 2) {
             setScores({
               problem_solving: msg.problem_solving_score,
@@ -548,6 +640,7 @@ export default function MainSets() {
     setNumber,
     voice,
     focusArea,
+    mode,
     isResume,
     enqueueBase64Audio,
     addQuestion,
@@ -567,12 +660,16 @@ export default function MainSets() {
   // ── Reset & Initialize on route change ────────────────────────────────────
   useEffect(() => {
     isSessionCompleteRef.current = false;
+    let startTimer = null;
     if (setNumber === 1 || isResume || isAutostart) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      startSession();
+      // Defer the connection by one task. In React Strict Mode the first
+      // development-only effect pass is cleaned up before this runs, preventing
+      // two sockets from racing to own the same MongoDB session document.
+      startTimer = window.setTimeout(startSession, 0);
     }
 
     return () => {
+      if (startTimer !== null) window.clearTimeout(startTimer);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -601,10 +698,25 @@ export default function MainSets() {
   // ── Volume meter ─────────────────────────────────────────────────────────
   const startVolumeMeter = (analyser) => {
     const data = new Uint8Array(analyser.frequencyBinCount);
-    const tick = () => {
+    let smoothedVolume = 0;
+    let lastPublishedAt = 0;
+
+    const tick = (now) => {
       analyser.getByteFrequencyData(data);
       const avg = data.reduce((s, v) => s + v, 0) / data.length;
-      setVolume(Math.min(100, Math.round((avg / 128) * 100)));
+      const nextVolume = Math.min(100, (avg / 128) * 100);
+      smoothedVolume = smoothedVolume * 0.68 + nextVolume * 0.32;
+
+      // Audio analysis can stay frame-synced, but publishing at 20fps avoids
+      // rerendering the full interview layout on every display frame.
+      if (now - lastPublishedAt >= 50) {
+        const roundedVolume = Math.round(smoothedVolume);
+        setVolume((previousVolume) =>
+          Math.abs(previousVolume - roundedVolume) >= 2 ? roundedVolume : previousVolume
+        );
+        lastPublishedAt = now;
+      }
+
       animFrameRef.current = requestAnimationFrame(tick);
     };
     animFrameRef.current = requestAnimationFrame(tick);
@@ -634,7 +746,14 @@ export default function MainSets() {
             setScores({ situation: 8, action: 7, result: 9 });
           }
 
-          markCurrentAnswered(finalTranscriptRef.current);
+          markCurrentAnswered(
+            finalTranscriptRef.current,
+            setNumber === 1
+              ? 'That is a solid answer. Let us move on to how you handled testing in that project.'
+              : setNumber === 2
+                ? 'Good explanation of database types. Focus on scaling trade-offs next time.'
+                : 'Excellent use of the STAR method. You clearly outlined the situation and task.'
+          );
 
           const nextQ = currentQuestion + 1;
           if (nextQ > 5) {
@@ -806,8 +925,6 @@ export default function MainSets() {
   ]);
 
   // ── Sidebar derivations ────────────────────────────────────────────────────
-  const answeredRows = questionsAsked.filter((q) => q.answered);
-
   const titleFor = (i) => {
     const asked = questionsAsked.find((q) => q.index === i);
     if (asked) return asked.text;
@@ -815,6 +932,18 @@ export default function MainSets() {
     if (mocks && mocks[i - 1]) return mocks[i - 1];
     return null;
   };
+
+  const handlePauseAndReturn = useCallback(() => {
+    if (isRecording || isEvaluating) return;
+    setShowEndModal(false);
+    cleanupAudio();
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    navigate('/dashboard', { replace: true });
+  }, [cleanupAudio, isEvaluating, isRecording, navigate]);
 
   const finishSession = () => {
     if (mode === 'practice' && setNumber === 3) {
@@ -827,6 +956,79 @@ export default function MainSets() {
   };
 
   const activeQuestionIndex = currentQuestion > 0 ? currentQuestion : 1;
+  const stageState = resolveStageState({
+    isSpeaking: isPlayingAudio,
+    isListening: isRecording,
+    isComplete: isSessionComplete,
+    isEvaluating,
+    isBooting: isGenerating,
+    isOffline: !preview && !isConnected,
+    hasError: Boolean(error),
+  });
+  const stageCopy = STAGE_STATE_COPY[stageState];
+
+  // ── Transcript tab thread (AI question → candidate answer → AI reply) ──────
+  // Derived from the same questionsAsked log that drives the question list, so
+  // the chat can never drift from the real session state.
+  const chatTurns = useMemo(() => {
+    const turns = [];
+    questionsAsked.forEach((q) => {
+      turns.push({
+        id: `q${q.index}-question`,
+        role: 'ai',
+        label: `AI Interviewer · Q${q.index}`,
+        text: q.text || '',
+      });
+      if (q.answered) {
+        if (q.answer) {
+          turns.push({
+            id: `q${q.index}-answer`,
+            role: 'candidate',
+            label: 'You',
+            text: q.answer,
+          });
+        }
+        if (q.reply) {
+          turns.push({
+            id: `q${q.index}-reply`,
+            role: 'ai',
+            label: 'AI Interviewer · reply',
+            text: q.reply,
+          });
+        }
+      }
+    });
+
+    // Live tail: the in-flight candidate turn, finalised into the log once the
+    // coach feedback lands for this question (see markCurrentAnswered).
+    const currentAnswered = questionsAsked.some(
+      (q) => q.index === activeQuestionIndex && q.answered
+    );
+    if (!isSessionComplete && !currentAnswered) {
+      const liveText = (
+        finalTranscript +
+        (partialTranscript ? (finalTranscript ? ' ' : '') + partialTranscript : '')
+      ).trim();
+      if (isRecording || isEvaluating || liveText) {
+        turns.push({
+          id: `q${activeQuestionIndex}-live`,
+          role: 'candidate',
+          label: 'You',
+          text: liveText,
+          live: isRecording ? 'recording' : isEvaluating ? 'evaluating' : null,
+        });
+      }
+    }
+    return turns;
+  }, [
+    questionsAsked,
+    activeQuestionIndex,
+    isSessionComplete,
+    isRecording,
+    isEvaluating,
+    finalTranscript,
+    partialTranscript,
+  ]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -889,10 +1091,10 @@ export default function MainSets() {
                   type="button"
                   className="ix-topbar-end-btn"
                   onClick={() => setShowEndModal(true)}
-                  title="End interview"
+                  title="Pause interview"
                 >
                   <Phone size={13} />
-                  <span>End</span>
+                  <span>Pause</span>
                 </button>
               </div>
             </div>
@@ -903,12 +1105,21 @@ export default function MainSets() {
             {/* Left Column (Stage + Question Card + Footer) */}
             <main className="ix-main-column">
               {/* ── Main Interview Stage Card (Top Card) ── */}
-              <section className="ix-stage-card" aria-label="AI interviewer stage">
+              <section
+                className="ix-stage-card"
+                data-state={stageState}
+                aria-label="AI interviewer stage"
+              >
+                <StageAtmosphere />
+
                 {/* Header row: AI Interviewer pill, LIVE + Timer, PIP avatar */}
                 <div className="ix-stage-header-row">
                   <div className="ix-stage-interviewer-pill">
                     <span className="ix-dot-blue" />
-                    <span>AI Interviewer · Mrs. Tania Shahira</span>
+                    <span className="ix-stage-interviewer-label">
+                      <span>AI Interviewer</span>
+                      <span className="ix-stage-interviewer-name"> · Mrs. Tania Shahira</span>
+                    </span>
                   </div>
 
                   <div className="ix-stage-live-timer-pill">
@@ -926,27 +1137,27 @@ export default function MainSets() {
                   </div>
                 </div>
 
-                {/* Center AI Orb */}
+                {/* Shader-driven glass companion; it pauses offscreen and has a CSS fallback. */}
                 <div className="ix-stage-orb-wrap">
-                  <AIOrb
-                    isSpeaking={isPlayingAudio}
-                    isListening={isRecording}
-                    isComplete={isSessionComplete}
-                  />
+                  <InterviewBubbleBot state={stageState} volume={isRecording ? volume : 0} />
                 </div>
 
                 {/* Bottom Heading & Subtext */}
-                <div className="ix-stage-bottom-text">
-                  <h3 className="ix-stage-heading">
-                    {isRecording
-                      ? 'AI Interviewer is listening to your answer...'
-                      : isPlayingAudio
-                        ? 'AI Interviewer is speaking...'
-                        : isEvaluating
-                          ? 'Evaluating your response...'
-                          : 'AI Interviewer is ready'}
-                  </h3>
-                  <p className="ix-stage-subtext">Speak clearly and take your time.</p>
+                <div
+                  className="ix-stage-bottom-text"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  <div className="ix-stage-signal" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <h3 className="ix-stage-heading">{stageCopy.title}</h3>
+                  <p className="ix-stage-subtext">{stageCopy.detail}</p>
                 </div>
               </section>
 
@@ -1134,10 +1345,10 @@ export default function MainSets() {
                         type="button"
                         className="ix-dock-btn-secondary"
                         onClick={() => setShowEndModal(true)}
-                        title="End interview session"
+                        title="Pause interview session"
                       >
                         <PhoneOff size={15} />
-                        <span>End</span>
+                        <span>Pause</span>
                       </button>
                     </>
                   )}
@@ -1151,16 +1362,8 @@ export default function MainSets() {
               questionsAsked={questionsAsked}
               currentQuestionText={currentQuestionText}
               titleFor={titleFor}
-              candidateNotes={candidateNotes}
-              onNotesChange={handleNotesChange}
-              onClearNotes={() => {
-                setCandidateNotes('');
-                try {
-                  localStorage.removeItem(`iterview_notes_set_${setNumber}`);
-                } catch {
-                  // ignore
-                }
-              }}
+              chatTurns={chatTurns}
+              userInitials={userInitials}
               activeTab={activeTab}
               onTabChange={setActiveTab}
               coachTip={coachTip}
@@ -1243,7 +1446,7 @@ export default function MainSets() {
               >
                 <div className="ix-modal-header">
                   <h3 id="modal-end-title" className="ix-modal-title">
-                    End Interview Session?
+                    Pause Interview Session?
                   </h3>
                   <button
                     type="button"
@@ -1256,8 +1459,11 @@ export default function MainSets() {
                 </div>
                 <div className="ix-modal-body">
                   <p className="ix-modal-desc">
-                    Are you sure you want to exit? Any answered questions and coach feedback for
-                    this session will be preserved.
+                    {isRecording
+                      ? 'Stop and submit your current answer before leaving. The current recording has not been saved yet.'
+                      : isEvaluating
+                        ? 'Your answer is being scored and saved. Please wait a moment before leaving.'
+                        : 'Your generated questions, submitted answers, and coach feedback are saved. You can resume this exact set from the dashboard.'}
                   </p>
                 </div>
                 <div className="ix-modal-footer">
@@ -1271,9 +1477,14 @@ export default function MainSets() {
                   <button
                     type="button"
                     className="ix-btn-danger-action"
-                    onClick={() => navigate('/dashboard')}
+                    onClick={handlePauseAndReturn}
+                    disabled={isRecording || isEvaluating}
                   >
-                    End & Return to Dashboard
+                    {isRecording
+                      ? 'Stop Answer First'
+                      : isEvaluating
+                        ? 'Saving Answer?'
+                        : 'Pause & Return to Dashboard'}
                   </button>
                 </div>
               </div>

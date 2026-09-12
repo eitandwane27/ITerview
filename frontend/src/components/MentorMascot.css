@@ -1,0 +1,124 @@
+.lp-bench-scene {
+  --mentor-size: 260px;
+  --mentor-accent: var(--blue);
+  position: relative;
+  isolation: isolate;
+}
+
+.lp-mentor {
+  position: absolute;
+  left: 18px;
+  width: var(--mentor-size);
+  pointer-events: none;
+  user-select: none;
+}
+
+.lp-mentor--back {
+  top: calc(var(--mentor-size) * -1);
+  height: calc(var(--mentor-size) * 1.3);
+  z-index: 0;
+}
+
+.lp-mentor--front {
+  top: 0;
+  height: 80px;
+  z-index: 2;
+}
+
+.lp-mentor-sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.lp-mentor-head {
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(var(--mentor-size) * 1.0294);
+  transform-origin: 52% 89%;
+}
+
+.lp-mentor-body {
+  position: absolute;
+  left: 17%;
+  top: calc(var(--mentor-size) * 0.725);
+  width: 65.4%;
+  aspect-ratio: 530 / 470;
+}
+
+.lp-mentor-resting-paw {
+  position: absolute;
+  left: 62%;
+  top: calc(var(--mentor-size) * -0.17);
+  width: 25%;
+  aspect-ratio: 350 / 430;
+  transform: rotate(-8deg);
+}
+
+.lp-mentor-anchor,
+.lp-mentor-teach {
+  position: absolute;
+  left: 59.4%;
+  top: calc(var(--mentor-size) * 0.025);
+  width: 1px;
+  height: 1px;
+}
+
+.lp-mentor-teach {
+  transform-origin: 0 0;
+}
+
+.lp-mentor-pointing-arm {
+  position: absolute;
+  width: calc(var(--mentor-size) * 0.44);
+  height: calc(var(--mentor-size) * 0.2616);
+  left: calc(var(--mentor-size) * -0.3326);
+  top: calc(var(--mentor-size) * -0.1427);
+  transform-origin: 75.6% 54.5%;
+}
+
+.lp-mentor-stick {
+  position: absolute;
+  left: -9px;
+  top: -3px;
+  width: 200px;
+  height: 6px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #f8d7ad, #d28e48);
+  box-shadow: 0 1px 2px rgba(99, 55, 13, 0.12);
+  transform-origin: 9px center;
+}
+
+.lp-mentor-stick-tip {
+  position: absolute;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mentor-accent);
+  transition: background-color 150ms ease;
+}
+
+@media (max-width: 1024px) {
+  .lp-bench-scene {
+    --mentor-size: 230px;
+  }
+}
+
+@media (max-width: 640px) {
+  .lp-bench-scene {
+    --mentor-size: 188px;
+    margin-top: 174px;
+  }
+
+  .lp-mentor {
+    left: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-mentor-stick-tip {
+    transition: none;
+  }
+}

@@ -191,12 +191,22 @@
 .lp-logo {
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   text-decoration: none;
   transition:
     transform var(--fast) cubic-bezier(0.16, 1, 0.3, 1),
     opacity var(--fast) ease;
   user-select: none;
   cursor: pointer;
+}
+
+.lp-logo-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .lp-logo:hover {
@@ -231,6 +241,8 @@
 }
 
 .lp-nav-link {
+  position: relative;
+  isolation: isolate;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--ink-secondary);
@@ -246,8 +258,19 @@
   background-color: var(--canvas-subtle);
 }
 
+/* Active-state background is provided by the animated layoutId pill so it can
+   slide between links; the anchor only re-colors its text. */
 .lp-nav-link--active {
   color: var(--blue);
+}
+
+/* Shared-layout pill (slid by Framer Motion between nav links). z-index -1 sits
+   inside the anchor's isolated stacking context, behind the link text. */
+.lp-nav-link-pill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--r-pill);
   background-color: var(--blue-light);
 }
 
@@ -334,12 +357,14 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   background: var(--canvas-subtle);
   border: 1.5px solid var(--border);
   border-radius: var(--r-md);
-  padding: 8px;
+  padding: 10px;
   gap: 5px;
 }
 
@@ -366,14 +391,14 @@
 }
 
 .lp-mobile-menu {
-  display: none;
+  /* Rendered only while open (AnimatePresence mounts it conditionally), so the
+     old display:none/--open toggle is gone. box-sizing keeps the height
+     animation collapse to zero cleanly during the exit. */
+  overflow: hidden;
+  box-sizing: border-box;
   background-color: var(--canvas);
   border-bottom: 1px solid var(--border);
   padding: 16px 24px;
-}
-
-.lp-mobile-menu--open {
-  display: block;
 }
 
 .lp-mobile-nav {
@@ -582,82 +607,34 @@
   gap: 20px;
 }
 
-/* ── Eyebrow Badge (Dual-Segment Voice AI Badge) ── */
+/* ── Eyebrow Badge (Static Sentence-Case Micro-Promise) ── */
 .lp-hero-pill-badge {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 14px 4px 6px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(191, 219, 254, 0.85);
+  gap: 8px;
+  padding: 6px 16px;
+  background: var(--canvas-subtle);
+  border: 1px solid var(--border);
   border-radius: var(--r-pill);
-  box-shadow: 0 2px 10px -2px rgba(37, 99, 235, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
-  backdrop-filter: blur(10px);
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: border-color var(--fast) ease;
 }
 
 .lp-hero-pill-badge:hover {
-  border-color: rgba(147, 197, 253, 1);
-  box-shadow: 0 4px 16px -2px rgba(37, 99, 235, 0.14);
+  border-color: var(--border-strong);
 }
 
-.lp-hero-pill-tag {
+.lp-hero-pill-icon {
+  color: var(--blue);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 9px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: var(--r-pill);
-  font-size: 0.725rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: #1d4ed8;
-  text-transform: uppercase;
 }
 
-.lp-hero-pill-pulse-beacon {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 8px;
-  height: 8px;
-}
-
-.lp-hero-pill-pulse-core {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--blue);
-}
-
-.lp-hero-pill-pulse-wave {
-  position: absolute;
-  inset: -2px;
-  border-radius: 50%;
-  background-color: rgba(37, 99, 235, 0.4);
-  opacity: 1;
-  animation: lpHeroPulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-.lp-hero-pill-divider {
-  width: 1px;
-  height: 12px;
-  background: #cbd5e1;
-}
-
-.lp-hero-pill-title {
-  font-size: 0.84rem;
+.lp-hero-pill-text {
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--ink-secondary);
   letter-spacing: -0.01em;
-}
-
-@keyframes lpHeroPulse {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  70% { transform: scale(2.2); opacity: 0; }
-  100% { transform: scale(2.2); opacity: 0; }
 }
 
 /* ── Headline (Fredoka ~600 Weight) ── */
@@ -743,88 +720,53 @@
   box-shadow: 0 1px 0px #1e40af;
 }
 
-/* ── Social Proof Strip ── */
-.lp-hero-proof {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 2px;
-  flex-wrap: wrap;
-}
-
-.lp-hero-stars {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  color: #f59e0b;
-}
-
-.lp-hero-star {
-  filter: drop-shadow(0 1px 2px rgba(245, 158, 11, 0.2));
-}
-
-.lp-hero-proof-text {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--ink-secondary);
-}
-
-.lp-hero-proof-text strong {
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.lp-hero-template-tag {
-  display: inline-block;
-  padding: 2px 7px;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--ink-faint);
-  background-color: rgba(241, 245, 249, 0.8);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-/* ── Three Benefit Pills (IMAGE 2) ── */
-.lp-hero-benefits-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
-.lp-hero-benefit-pill {
+/* ── Honest Capstone Platform Note ── */
+.lp-hero-capstone-strip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-radius: var(--r-pill);
-  padding: 9px 20px;
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-size: 0.875rem;
   color: var(--ink-secondary);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-  transition:
-    border-color var(--fast) ease,
-    transform var(--fast) ease,
-    box-shadow var(--fast) ease;
+  font-weight: 500;
+  margin-top: 4px;
+  text-align: center;
 }
 
-.lp-hero-benefit-pill:hover {
-  border-color: var(--blue-border);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.08);
+.lp-hero-capstone-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--mint);
+  flex-shrink: 0;
+}
+
+/* ── Streamlined Benefit Strip (Replaces Bulky Stacked Cards) ── */
+.lp-hero-benefits-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+  font-weight: 600;
+}
+
+.lp-hero-benefit-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .lp-hero-benefit-icon {
   color: var(--blue);
   flex-shrink: 0;
+}
+
+.lp-hero-benefit-sep {
+  color: var(--ink-faint);
+  user-select: none;
 }
 
 /* ── Grand Showcase Stage (Exact AI Studio Console Layout) ───────────────── */
@@ -836,14 +778,37 @@
   z-index: 2;
 }
 
-/* Lazy-demo placeholder: holds the stage height so first paint has no layout jump */
+/* Lazy-demo placeholder: holds the stage height so first paint has no layout
+   jump. Shimmers softly (translate-only) instead of using the atmosphere
+   keyframe, which wobbled the whole box via scaleX/translateY. */
 .lp-hero-stage-skeleton {
   width: 100%;
   min-height: 620px;
   border-radius: var(--r-xl);
   border: 1.5px dashed var(--border-strong);
   background: linear-gradient(180deg, var(--canvas-ice) 0%, #ffffff 100%);
-  animation: lpAtmospherePulse 2.4s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.lp-hero-stage-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    100deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.75) 50%,
+    transparent 75%
+  );
+  animation: lpSkeletonShimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes lpSkeletonShimmer {
+  to {
+    transform: translateX(100%);
+  }
 }
 
 @media (max-width: 860px) {
@@ -893,6 +858,31 @@
   justify-content: center;
   flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.1);
+  overflow: hidden;
+  position: relative;
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s ease;
+}
+
+.lp-exact-avatar-box:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
+}
+
+.lp-exact-avatar-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 5px rgba(29, 78, 216, 0.22));
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lp-exact-avatar-box:hover .lp-exact-avatar-img {
+  transform: scale(1.1) rotate(-3deg);
 }
 
 .lp-exact-avatar-svg {
@@ -956,9 +946,14 @@
 }
 
 .lp-exact-q-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.75rem;
   font-weight: 700;
-  padding: 3px 9px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 4px 10px;
   border-radius: var(--r-pill);
   background: transparent;
   border: none;
@@ -979,13 +974,15 @@
 .lp-exact-q-next {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  gap: 3px;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--ink-muted);
   background: none;
   border: none;
-  padding: 3px 7px;
+  min-height: 32px;
+  padding: 4px 10px;
   border-radius: var(--r-pill);
   cursor: pointer;
   transition: color var(--fast) ease;
@@ -1088,6 +1085,57 @@
   background-color: var(--blue) !important;
   color: #ffffff !important;
   border-color: var(--blue-hover) !important;
+}
+
+/* ── Accidental Loss Confirmation Guard (Stress-Tester Protection) ── */
+.lp-exact-switch-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--amber-light);
+  border: 1.5px solid var(--amber-border);
+  border-radius: var(--r-md);
+  flex-wrap: wrap;
+}
+
+.lp-exact-switch-text {
+  font-size: 0.8125rem;
+  color: #92400e;
+  font-weight: 600;
+}
+
+.lp-exact-switch-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lp-exact-switch-btn {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  border: none;
+  cursor: pointer;
+  transition: all var(--fast) ease;
+}
+
+.lp-exact-switch-btn--confirm {
+  background: var(--amber);
+  color: #ffffff;
+}
+
+.lp-exact-switch-btn--confirm:hover {
+  background: var(--amber-hover);
+}
+
+.lp-exact-switch-btn--cancel {
+  background: transparent;
+  color: #92400e;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 /* ── 3. Context First ── */
@@ -1527,6 +1575,33 @@
   color: var(--blue-hover);
 }
 
+.lp-exact-privacy-strip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-weight: 500;
+  margin-top: 6px;
+  text-align: center;
+}
+
+.lp-exact-privacy-icon {
+  color: var(--mint);
+  flex-shrink: 0;
+}
+
+.lp-exact-privacy-link {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.lp-exact-privacy-link:hover {
+  color: var(--blue-hover);
+}
+
 /* Responsive Workbench Collapse */
 @media (max-width: 860px) {
   .lp-exact-card {
@@ -1580,6 +1655,12 @@
   text-transform: uppercase;
 }
 
+.lp-section-badge--blue {
+  background-color: var(--blue-light);
+  border-color: var(--blue-border);
+  color: var(--blue);
+}
+
 .lp-section-badge--cyan {
   background-color: var(--cyan-light);
   border-color: var(--cyan-border);
@@ -1612,41 +1693,136 @@
   color: var(--ink-secondary);
 }
 
-/* ── 3C Rubric Section (Cards) ───────────────────────────────────────────── */
-.lp-3c-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+/* The mentor shares the title band, then peeks over the answer board. */
+.lp-rubric-head {
+  max-width: none;
+  width: 100%;
+  min-height: 176px;
+  padding-left: 285px;
+  justify-content: center;
 }
 
-.lp-3c-card {
+.lp-rubric-head .lp-section-title {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  text-wrap: balance;
+}
+
+.lp-rubric-head .lp-section-title span {
+  color: var(--blue);
+}
+
+.lp-rubric-head .lp-section-subtitle {
+  font-size: 1rem;
+  color: var(--ink-muted);
+  text-wrap: pretty;
+}
+
+/* One real HTML answer board. Its clipped corners sit between the mascot's
+   back and foreground parts; the outer scene remains free to overflow. */
+.lp-bench {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
   background-color: var(--card-bg);
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--blue-border);
   border-radius: var(--r-xl);
-  padding: 32px 28px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.lp-bench-answer {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  box-shadow: var(--shadow-card);
-  transition:
-    transform var(--fast) var(--ease),
-    box-shadow var(--fast) ease,
-    border-color var(--fast) ease;
+  justify-content: flex-start;
+  min-width: 0;
+  gap: 22px;
+  margin: 16px;
+  padding: 28px;
+  background-color: var(--canvas-ice);
+  border-radius: var(--r-lg);
 }
 
-.lp-3c-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-card-hover);
+.lp-bench-answer-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--ink-muted);
 }
 
-.lp-3c-card--clarity:hover {
-  border-color: var(--blue);
+.lp-bench-answer-meta > svg {
+  box-sizing: content-box;
+  width: 16px;
+  height: 16px;
+  padding: 8px;
+  border-radius: 50%;
+  color: var(--blue);
+  background-color: var(--blue-subtle);
+  flex-shrink: 0;
 }
-.lp-3c-card--correctness:hover {
-  border-color: var(--mint);
+
+/* Deliberately neutral, NOT signal cyan: this answer is already transcribed,
+   and the design system reserves cyan strictly for live mic/audio moments. */
+.lp-bench-answer-tag {
+  color: var(--ink);
 }
-.lp-3c-card--completeness:hover {
-  border-color: var(--amber);
+
+.lp-bench-answer-note {
+  margin-left: auto;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.lp-bench-answer-sep {
+  display: none;
+}
+
+.lp-bench-time {
+  margin-left: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-faint);
+}
+
+/* NOTE: these three are <p> elements, and `.lp-root p` (0,1,1) outranks a bare
+   single class (0,1,0) — it zeroes their margin and forces ink-secondary. Each
+   selector is therefore scoped to `.lp-bench` (0,2,0) so the overrides stick.
+   `.lp-bench-composite` needs no scoping because it is a <div>. */
+.lp-bench .lp-bench-question {
+  font-family: var(--font-display);
+  margin-top: 28px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.lp-bench .lp-bench-transcript {
+  font-size: 1rem;
+  line-height: 1.85;
+  color: var(--ink-secondary);
+}
+
+/* Footnote rule under the transcript. The auto margin that used to push this to
+   the column floor is gone: the slack now falls BELOW the rule as ordinary panel
+   padding, instead of opening a hole between the gap card and a floating line. */
+.lp-bench .lp-bench-hint {
+  margin-top: 0;
+  padding-top: 20px;
+  border-top: 1px dashed var(--blue-border);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-muted);
 }
 
 .lp-3c-icon-badge {
@@ -1675,80 +1851,475 @@
   border: 1.5px solid var(--amber-border);
 }
 
-.lp-3c-info {
+/* ── Annotation marks ──
+   One visual verb: a soft tinted highlight means "this phrase moved a score",
+   and the tint color names WHICH one (the per-dimension RGB triples below).
+   Earned phrases stay SILENT at rest so the transcript reads as plain speech;
+   their trace is only swept on while their score is being explored. The
+   padding / negative-margin pair lets the tint breathe past the words without
+   changing wrapping, `box-decoration-break: clone` gives wrapped lines clean
+   pill edges, and every state change on these marks is paint-only — the
+   transcript never reflows on hover, pin or dim. */
+.lp-bench-mark {
+  background: none;
+  color: inherit;
+  padding: 0.1em 0.22em;
+  margin: 0 -0.22em;
+  border-radius: 0.35em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition:
+    background-color var(--fast) ease,
+    box-shadow var(--fast) ease;
+}
+
+.lp-bench-mark--clarity {
+  --mark: 37, 99, 235;
+}
+.lp-bench-mark--correctness {
+  --mark: 16, 185, 129;
+}
+.lp-bench-mark--completeness {
+  --mark: 245, 158, 11;
+}
+
+/* A phrase that COST points is the only thing the resting transcript marks:
+   one soft tint plus one crisp solid baseline in the dimension color — the
+   link to the ledger — plus the numbered flag. This replaces the old stack of
+   wash band + dashed gradient + halo, which encoded one meaning three ways. */
+.lp-bench-mark--missed {
+  background-color: rgba(var(--mark, 100, 116, 139), 0.13);
+  box-shadow: inset 0 -2px 0 rgba(var(--mark, 100, 116, 139), 0.5);
+}
+
+/* The numbered flag: WHICH of the three scores this phrase moved. At 15px inside
+   a 1.85 line-height the line box cannot grow, so the transcript rhythm holds.
+   The card-colored ring cuts the chip free of the highlight it sits on. */
+.lp-bench-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 3px;
+  border-radius: 50%;
+  background-color: rgba(var(--mark, 100, 116, 139), 0.92);
+  box-shadow: 0 0 0 1.5px var(--card-bg);
+  color: #ffffff;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 0.625rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  vertical-align: 0.08em;
+  transition: opacity var(--fast) ease;
+}
+
+/* While one score is explored, the other dimensions' missed phrases recede to
+   a whisper — still findable, never loud. The text itself never fades, and
+   earned phrases outside the explored score simply stay silent (they carry no
+   resting tint to dim). */
+.lp-bench-mark--missed.is-dimmed {
+  background-color: rgba(var(--mark, 100, 116, 139), 0.05);
+  box-shadow: inset 0 -2px 0 rgba(var(--mark, 100, 116, 139), 0.16);
+}
+
+.lp-bench-mark--missed.is-dimmed .lp-bench-flag {
+  opacity: 0.45;
+}
+
+/* Exploring a score sweeps a bare tint across EVERY phrase that fed it —
+   earned ones included — so the color trace appears on demand instead of
+   shouting in three colors at all times. */
+.lp-bench-scene[data-active-dimension='clarity'] .lp-bench-mark--clarity,
+.lp-bench-scene[data-active-dimension='correctness'] .lp-bench-mark--correctness,
+.lp-bench-scene[data-active-dimension='completeness'] .lp-bench-mark--completeness {
+  background-color: rgba(var(--mark), 0.12);
+}
+
+/* A missed phrase that is CURRENTLY active deepens its tint and keeps its
+   baseline — the underline is what separates "cost a point" from "earned one"
+   while both wear the same trace color. */
+.lp-bench-scene[data-active-dimension='clarity'] .lp-bench-mark--clarity.lp-bench-mark--missed,
+.lp-bench-scene[data-active-dimension='correctness']
+  .lp-bench-mark--correctness.lp-bench-mark--missed,
+.lp-bench-scene[data-active-dimension='completeness']
+  .lp-bench-mark--completeness.lp-bench-mark--missed {
+  background-color: rgba(var(--mark), 0.16);
+  box-shadow: inset 0 -2px 0 rgba(var(--mark), 0.6);
+}
+
+/* ── Score-scale legend ──
+   The plain translation of the difficulty bands, stated before the board. All
+   three steps stay in neutral inks: dimension colours belong to the 3Cs, and a
+   second colour code here would read as a verdict key. */
+.lp-scale-legend {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
-}
-
-.lp-3c-name {
-  font-size: 1.375rem;
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.lp-3c-desc {
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  color: var(--ink-secondary);
-}
-
-.lp-3c-checklist {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  list-style: none;
+  margin-top: 4px;
   padding: 0;
-  margin: 0;
+  list-style: none;
 }
 
-.lp-3c-check-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--ink-secondary);
-}
-
-.lp-3c-metric-box {
-  margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.lp-3c-metric-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.lp-3c-metric-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--ink-muted);
-}
-
-.lp-3c-metric-val {
-  font-size: 1.125rem;
+.lp-scale-legend .lp-bench-caption {
+  color: var(--ink);
   font-weight: 800;
 }
 
-.lp-3c-metric-bar {
-  height: 6px;
-  background-color: var(--canvas-subtle);
+.lp-scale-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
-  overflow: hidden;
+  background-color: var(--canvas-subtle);
 }
 
-.lp-3c-metric-fill {
-  height: 100%;
+.lp-scale-legend-text {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+/* Caption naming what the instrument is showing. Scoped through the head for
+   the same reason as the transcript rules above — it is a <p>. */
+.lp-section-head .lp-bench-caption {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+/* Three rubric rows share one ledger. Hover, focus and selection also drive
+   the transcript emphasis, mentor gesture and criteria below the board. */
+.lp-bench-ledger {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 8px 16px 16px 0;
+  border-left: 1px solid var(--border);
+}
+
+.lp-bench-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 20px 20px 20px 24px;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  font-family: inherit;
+  transition: background-color var(--fast) ease;
+}
+
+.lp-bench-row:hover,
+.lp-bench-row:focus-visible,
+.lp-bench-row.is-active {
+  background-color: var(--blue-light);
+}
+
+.lp-bench-row:nth-child(2).is-active,
+.lp-bench-row:nth-child(2):hover,
+.lp-bench-row:nth-child(2):focus-visible {
+  background-color: var(--mint-light);
+}
+
+.lp-bench-row:nth-child(3).is-active,
+.lp-bench-row:nth-child(3):hover,
+.lp-bench-row:nth-child(3):focus-visible {
+  background-color: var(--amber-light);
+}
+
+.lp-bench-row-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.lp-bench-row-icon,
+.lp-bench-composite-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: var(--blue-light);
+  color: var(--blue);
+}
+
+.lp-bench-row-icon--correctness {
+  background-color: var(--mint-light);
+}
+
+.lp-bench-row-icon--completeness {
+  background-color: var(--amber-light);
+}
+
+.lp-bench-row-head svg {
+  flex-shrink: 0;
+}
+
+.lp-bench-row-name {
+  font-family: var(--font-display);
+  font-size: 1.1875rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+/* Rewarding Score Rule: scores render in Fredoka with negative tracking. */
+.lp-bench-row-score {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lp-bench-row-of {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--ink-muted);
+}
+
+.lp-bench-row-ask {
+  margin-left: 60px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+/* The one-line evidence for the score. This is the line a beginner reads to
+   understand WHY the number is what it is, so it outranks the summary above it
+   in ink weight and is always visible — never hover-gated. */
+.lp-bench-verdict {
+  margin-left: 60px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--ink-secondary);
+}
+
+/* Five whole-point pips — one per point on the real 1–5 scale. */
+.lp-bench-ticks {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+}
+
+.lp-bench-row .lp-bench-ticks {
+  width: auto;
+  margin-left: 60px;
+  gap: 6px;
+}
+
+.lp-bench-tick {
+  flex: 1 1 0;
+  height: 8px;
   border-radius: var(--r-pill);
+  background-color: var(--border);
+  transform-origin: left center;
+}
+
+/* Capped so five pips stay chunky pills instead of stretching into fat bars. */
+.lp-bench-row .lp-bench-tick {
+  max-width: 52px;
+}
+
+.lp-bench-tick--off {
+  background-color: var(--border);
+}
+
+.lp-bench-tick--on {
+  background-color: transparent;
+}
+
+.lp-bench-tick-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  transform-origin: left center;
+}
+
+/* ── The "Not covered" strip ──
+   Completeness loses points to things the answer never said, so there is no
+   phrase to underline. This strip names the absences and is what the mentor
+   points at for that dimension. */
+.lp-bench-gaps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--r-lg);
+  background-color: var(--amber-light);
+  transition: box-shadow var(--fast) ease;
+}
+
+.lp-bench-gaps[data-active='true'] {
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.28);
+}
+
+.lp-bench .lp-bench-gaps-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--amber-hover);
+}
+
+.lp-bench-gaps-head svg {
+  flex-shrink: 0;
+}
+
+.lp-bench-gaps-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Real buttons: selecting a gap pins the dimension it belongs to. */
+.lp-bench-gap-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--r-pill);
+  background-color: var(--card-bg);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition:
+    border-color var(--fast) ease,
+    background-color var(--fast) ease;
+}
+
+.lp-bench-gap-chip:hover,
+.lp-bench-gap-chip:focus-visible {
+  border-color: var(--amber);
+  background-color: var(--amber-light);
+}
+
+.lp-bench-gap-chip[aria-pressed='true'] {
+  border-color: var(--amber);
+  background-color: var(--amber-light);
+}
+
+.lp-bench-gap-chip-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--amber);
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ── Bottom row: the lowest score, which is what the next set targets ── */
+.lp-bench-composite {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 0 16px;
+  padding: 16px 20px;
+  border-radius: var(--r-lg);
+  background-color: var(--blue-light);
+}
+
+/* The icon keeps a white chip so the dimension-coloured glyph stays legible on
+   whichever tint the focus row takes. */
+.lp-bench-composite--focus .lp-bench-composite-icon {
+  background-color: var(--card-bg);
+}
+
+.lp-bench-composite--focus.lp-bench-composite--clarity {
+  background-color: var(--blue-light);
+}
+
+.lp-bench-composite--focus.lp-bench-composite--correctness {
+  background-color: var(--mint-light);
+}
+
+.lp-bench-composite--focus.lp-bench-composite--completeness {
+  background-color: var(--amber-light);
+}
+
+.lp-bench-composite-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lp-bench-composite-label {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.lp-bench-composite-sub {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ink-secondary);
+}
+
+.lp-bench-composite-val {
+  margin-left: auto;
+  font-family: var(--font-display);
+  /* nowrap: "/ 5" must stay welded to the digit, never wrap to its own line. */
+  white-space: nowrap;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--blue);
+}
+
+.lp-bench-coach-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-height: 62px;
+  padding: 20px 20px 0;
+}
+
+.lp-bench-coach-notes > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.lp-bench-scene .lp-bench-coach-notes p {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+
+.lp-bench-coach-notes strong {
+  color: var(--ink-secondary);
 }
 
 /* ── Diagnostic & Growth Pathway Section (Beautiful UI Steps) ────────────── */
@@ -1759,13 +2330,27 @@
   align-items: center;
 }
 
-.lp-pathway-steps {
+.lp-pathway-timeline {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  position: relative;
+}
+
+.lp-pathway-timeline::before {
+  content: '';
+  position: absolute;
+  left: 41px;
+  top: 36px;
+  bottom: 36px;
+  width: 2px;
+  background: var(--blue-border);
+  z-index: 0;
 }
 
 .lp-path-step {
+  position: relative;
+  z-index: 1;
   background-color: var(--card-bg);
   border: 1.5px solid var(--border);
   border-radius: var(--r-xl);
@@ -1774,14 +2359,11 @@
   gap: 16px;
   align-items: flex-start;
   box-shadow: var(--shadow-sm);
-  transition:
-    transform var(--fast) var(--ease),
-    border-color var(--fast) ease;
+  transition: border-color var(--fast) ease;
 }
 
 .lp-path-step:hover {
-  transform: translateX(4px);
-  border-color: var(--blue);
+  border-color: var(--border-strong);
 }
 
 .lp-path-step-num {
@@ -1937,14 +2519,11 @@
   flex-direction: column;
   gap: 20px;
   box-shadow: var(--shadow-card);
-  transition:
-    transform var(--fast) var(--ease),
-    box-shadow var(--fast) ease;
+  transition: border-color var(--fast) ease;
 }
 
 .lp-bento-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-strong);
 }
 
 .lp-bento-card-head {
@@ -2036,94 +2615,92 @@
   color: var(--ink-secondary);
 }
 
-/* ── Wall of Love Template Section (ClassDojo §5 Community Proof) ── */
-.lp-wall-grid {
+/* ── Real Technical Prep Scenarios Section (Replaces Wall of Love) ── */
+.lp-scenarios-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  gap: 24px;
 }
 
-.lp-wall-card {
+.lp-scenario-card {
   background-color: var(--card-bg);
   border: 1.5px solid var(--border);
   border-radius: var(--r-xl);
-  padding: 24px;
+  padding: 30px 26px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: var(--shadow-sm);
+  gap: 14px;
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--fast) ease;
 }
 
-.lp-wall-quote {
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  color: var(--ink-secondary);
-  font-style: italic;
-  margin: 0;
+.lp-scenario-card:hover {
+  border-color: var(--border-strong);
 }
 
-.lp-wall-quote::before {
-  content: '\201C';
-}
-
-.lp-wall-quote::after {
-  content: '\201D';
-}
-
-.lp-wall-person {
-  display: flex;
+.lp-scenario-tag {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-}
-
-.lp-wall-avatar {
-  width: 36px;
-  height: 36px;
+  padding: 4px 10px;
   border-radius: var(--r-pill);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  font-weight: 800;
-  color: #ffffff;
-  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  width: fit-content;
 }
 
-.lp-wall-avatar--blue {
-  background: var(--blue);
-}
-.lp-wall-avatar--cyan {
-  background: var(--cyan);
-}
-.lp-wall-avatar--mint {
-  background: var(--mint);
-}
-.lp-wall-avatar--indigo {
-  background: var(--indigo);
-}
-.lp-wall-avatar--amber {
-  background: var(--amber);
-}
-.lp-wall-avatar--coral {
-  background: var(--coral);
+.lp-scenario-tag--blue {
+  background: var(--blue-light);
+  color: var(--blue);
+  border: 1px solid var(--blue-border);
 }
 
-.lp-wall-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+.lp-scenario-tag--mint {
+  background: var(--mint-light);
+  color: var(--mint-hover);
+  border: 1px solid var(--mint-border);
 }
 
-.lp-wall-name {
-  font-size: 0.875rem;
+.lp-scenario-tag--amber {
+  background: var(--amber-light);
+  color: var(--amber-hover);
+  border: 1px solid var(--amber-border);
+}
+
+.lp-scenario-title {
+  font-size: 1.125rem;
+  font-family: var(--font-display);
   font-weight: 700;
   color: var(--ink);
+  line-height: 1.35;
 }
 
-.lp-wall-handle {
-  font-size: 0.75rem;
+.lp-scenario-desc {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--ink-secondary);
+}
+
+.lp-scenario-focus {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+
+.lp-scenario-focus-label {
+  color: var(--ink-faint);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.725rem;
+}
+
+.lp-scenario-focus-val {
+  color: var(--ink);
   font-weight: 600;
-  color: var(--ink-muted);
 }
 
 /* ── "Your Voice, Your Data" Trust Section (ClassDojo §1 §9) ── */
@@ -2207,14 +2784,6 @@
   font-size: 0.875rem;
   line-height: 1.55;
   color: var(--ink-secondary);
-}
-
-.lp-trustvoice-note {
-  font-size: 0.75rem;
-  color: var(--ink-faint);
-  font-weight: 600;
-  text-align: center;
-  margin-top: 8px;
 }
 /* ── Final Conversion CTA ────────────────────────────────────────────────── */
 .lp-cta-section {
@@ -2331,8 +2900,27 @@
 
 /* ── Responsive Adaptations ──────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .lp-3c-grid {
+  /* The instrument stacks: the answer leads, the ledger follows. DOM order
+     already matches, so focus order keeps agreeing with visual order. */
+  .lp-bench {
     grid-template-columns: 1fr;
+  }
+
+  .lp-bench-answer {
+    margin-bottom: 0;
+  }
+
+  .lp-bench-ledger {
+    padding: 8px 16px 16px;
+    border-left: 0;
+  }
+
+  .lp-bench-composite {
+    margin-left: 0;
+  }
+
+  .lp-rubric-head {
+    padding-left: 255px;
   }
 
   .lp-pathway-layout {
@@ -2343,8 +2931,8 @@
     grid-template-columns: 1fr;
   }
 
-  .lp-wall-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .lp-scenarios-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2374,11 +2962,39 @@
     padding: 56px 16px;
   }
 
+  /* Scoring bench: tighten the frame, keep the ledger rows tappable. The
+     transcript line-height stays generous because it now carries a colored
+     underline wash. */
+  .lp-bench-answer {
+    padding: 24px 20px;
+  }
+
+  .lp-bench .lp-bench-question {
+    font-size: 1rem;
+  }
+
+  .lp-bench .lp-bench-transcript {
+    line-height: 1.8;
+  }
+
+  .lp-bench-row {
+    padding: 20px 14px;
+  }
+
+  .lp-bench-composite {
+    padding: 14px;
+  }
+
+  /* Touch floor for the gap chips on tablets, matching the .lp-exact-* controls. */
+  .lp-bench-gap-chip {
+    min-height: 44px;
+  }
+
   .lp-growth-facts {
     grid-template-columns: 1fr;
   }
 
-  .lp-wall-grid {
+  .lp-scenarios-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2388,6 +3004,125 @@
 
   .lp-footer-top {
     flex-direction: column;
+  }
+
+  /* Mobile touch targets (WCAG >= 44x44px floor) */
+  .lp-exact-q-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 0.8125rem;
+  }
+
+  .lp-exact-q-next {
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 0.8125rem;
+  }
+
+  .lp-exact-track-tab {
+    min-height: 44px;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+
+  .lp-exact-hear-btn {
+    min-height: 44px;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .lp-rubric-section .lp-section-inner {
+    gap: 0;
+  }
+
+  .lp-rubric-head {
+    min-height: 0;
+    padding-left: 0;
+  }
+
+  .lp-rubric-head .lp-section-title {
+    font-size: 2rem;
+  }
+
+  .lp-bench-answer {
+    margin: 10px 10px 0;
+    padding: 24px 18px;
+  }
+
+  .lp-bench-answer-meta {
+    font-size: 0.75rem;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding-left: 110px;
+  }
+
+  .lp-bench-answer-tag {
+    white-space: nowrap;
+  }
+
+  .lp-bench-answer-note {
+    display: none;
+  }
+
+  .lp-bench-time {
+    margin-left: auto;
+  }
+
+  .lp-bench .lp-bench-question {
+    margin-top: 18px;
+  }
+
+  .lp-bench-ledger {
+    padding: 8px 10px 10px;
+  }
+
+  .lp-bench-row-head {
+    gap: 10px;
+  }
+
+  .lp-bench-row-icon,
+  .lp-bench-composite-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .lp-bench-row-name {
+    font-size: 1.0625rem;
+  }
+
+  .lp-bench-row-score,
+  .lp-bench-composite-val {
+    font-size: 1.75rem;
+    white-space: nowrap;
+  }
+
+  .lp-bench-row .lp-bench-ticks,
+  .lp-bench-row-ask,
+  .lp-bench-verdict {
+    margin-left: 46px;
+  }
+
+  /* Touch floor for the gap chips (WCAG >= 44x44px), matching the other
+     mobile control overrides in this file. */
+  .lp-bench-gap-chip {
+    min-height: 44px;
+    padding: 8px 14px;
+  }
+
+  .lp-bench-gaps {
+    padding: 14px;
+  }
+
+  .lp-bench-composite-sub {
+    font-size: 0.75rem;
+  }
+
+  .lp-bench-coach-notes {
+    min-height: 92px;
+    padding: 16px 6px 0;
   }
 }
 

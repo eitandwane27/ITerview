@@ -32,6 +32,10 @@ const isValidEmail = (emailStr) => {
 const getFriendlyErrorMessage = (errorCode, context = 'auth') => {
   switch (errorCode) {
     case 'auth/user-not-found':
+      if (context === 'forgot') {
+        return 'No account was found with this email address.';
+      }
+      return 'No account found with this email address. Try signing up.';
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return 'Invalid email or password. Please verify your credentials.';

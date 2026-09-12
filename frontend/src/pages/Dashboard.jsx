@@ -17,7 +17,6 @@ import {
   RotateCcw,
   AlertCircle,
   Star,
-  Settings,
   Code,
   Users,
   Video,
@@ -33,6 +32,23 @@ import './Dashboard.css';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
+const JOURNEY_STAGE_ROUTES = {
+  'likert-pre': '/likert-pre',
+  'mic-test': '/mic-test',
+  pretest: '/pre-test',
+  posttest: '/post-test',
+  'likert-post': '/likert-post',
+};
+
+const JOURNEY_STAGE_LABELS = {
+  'likert-pre': 'Confidence check next',
+  'mic-test': 'Microphone check next',
+  pretest: 'Pre-test in progress',
+  mainsets: 'MainSets session in progress',
+  posttest: 'Post-test in progress',
+  'likert-post': 'Final confidence check next',
+};
+
 const ROLE_OPTIONS = [
   { value: '', label: 'Select a role...' },
   { value: 'frontend', label: 'Frontend Developer' },
@@ -44,7 +60,7 @@ const FOCUS_OPTIONS = [
   {
     value: 'auto',
     label: 'Auto-Detect (AI-Recommended)',
-    desc: 'AI targets your lowest scoring 3C metric from previous baseline diagnostic',
+    desc: 'Targets your lowest scoring 3C metric once baseline diagnostic is completed',
   },
   {
     value: 'clarity',
@@ -63,8 +79,8 @@ const FOCUS_OPTIONS = [
   },
   {
     value: 'star',
-    label: 'STAR Behavioral',
-    desc: 'Focuses on structured behavioral storytelling',
+    label: 'Behavioral (STAR Method)',
+    desc: 'Focuses on structured behavioral storytelling (Situation, Task, Action, Result)',
   },
 ];
 
@@ -119,10 +135,6 @@ const PRACTICE_CARDS = [
   },
 ];
 
-// Fox Coach sidebar card, XP values are a static template until the XP /
-// leveling system exists; swap them for real user data then.
-const COACH = { level: 3, xp: 340, xpGoal: 600 };
-
 // Session facts, mirror the backend set contract: every practice set is exactly
 // 5 questions (generated upfront in set1/2/3Socket; the resume banner shows
 // "Q{n}/5"). The rolling history cap is enforced server-side with $push + $slice: -20
@@ -133,34 +145,6 @@ const PRACTICE_HISTORY_LIMIT = 20;
 const HISTORY_VISIBLE_COUNT = 5;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function useClock() {
-  const [time, setTime] = useState(() => formatTime(new Date()));
-  useEffect(() => {
-    const id = setInterval(() => setTime(formatTime(new Date())), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
-
-function formatTime(date) {
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
-
-// Live clock, isolated behind memo so its 1s tick never re-renders the
-// Dashboard tree, the interval's state lives in this component only.
-const LiveClock = memo(function LiveClock() {
-  const time = useClock();
-  return (
-    <time className="db-clock" aria-label="Current time">
-      {time}
-    </time>
-  );
-});
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -209,10 +193,10 @@ const BaselineCard = memo(function BaselineCard({
           <div className="db-progression__label">Your journey so far</div>
           <div className="db-progression__scores">
             <div className="db-progression__baseline">
-              {baseline != null ? `${baseline}%` : '—'}
+              {baseline != null ? `${baseline}%` : '--'}
             </div>
             <ArrowRight size={18} className="db-progression__arrow" aria-hidden="true" />
-            <div className="db-progression__mastery">{mastery != null ? `${mastery}%` : '—'}</div>
+            <div className="db-progression__mastery">{mastery != null ? `${mastery}%` : '--'}</div>
           </div>
           {growth != null && (
             <div className="db-delta-pill">
@@ -238,7 +222,7 @@ const BaselineCard = memo(function BaselineCard({
               {lowest === 'clarity' && <span className="db-3c-tag">Lowest · targeted</span>}
             </div>
             <div className="db-3c-cell__score db-3c-cell__score--clarity">
-              {clarity != null ? `${clarity} / 5` : '—'}
+              {clarity != null ? `${clarity} / 5` : '--'}
             </div>
           </div>
 
@@ -253,7 +237,7 @@ const BaselineCard = memo(function BaselineCard({
               {lowest === 'correctness' && <span className="db-3c-tag">Lowest · targeted</span>}
             </div>
             <div className="db-3c-cell__score db-3c-cell__score--correctness">
-              {correctness != null ? `${correctness} / 5` : '—'}
+              {correctness != null ? `${correctness} / 5` : '--'}
             </div>
           </div>
 
@@ -271,7 +255,7 @@ const BaselineCard = memo(function BaselineCard({
               {lowest === 'completeness' && <span className="db-3c-tag">Lowest · targeted</span>}
             </div>
             <div className="db-3c-cell__score db-3c-cell__score--completeness">
-              {completeness != null ? `${completeness} / 5` : '—'}
+              {completeness != null ? `${completeness} / 5` : '--'}
             </div>
           </div>
         </div>
@@ -285,13 +269,7 @@ const BaselineCard = memo(function BaselineCard({
 });
 
 // ─── Empty state for My Progress when baseline is not yet calibrated ─────────
-const ProgressEmptyState = memo(function ProgressEmptyState({
-  selectedRole,
-  onSelectRole,
-  roleOptions,
-  onStartPretest,
-  onSwitchTab,
-}) {
+const ProgressEmptyState = memo(function ProgressEmptyState({ onSwitchTab }) {
   return (
     <div className="db-progress-empty-deck">
       {/* ── Hero Calibration Card ── */}
@@ -299,79 +277,28 @@ const ProgressEmptyState = memo(function ProgressEmptyState({
         <div className="db-progress-empty-hero__content">
           <div className="db-progress-empty-hero__badge">
             <span className="db-pulse-dot" aria-hidden="true" />
-            <span>Baseline Diagnostic Required</span>
+            <span>Baseline diagnostic pending</span>
           </div>
 
           <h2 id="db-progress-empty-title" className="db-progress-empty-hero__title">
-            Establish your diagnostic baseline
+            Your progress unlocks with your baseline
           </h2>
 
           <p className="db-progress-empty-hero__sub">
-            Your 5-minute kickoff pre-test calibrates your starting benchmark across all three
-            core evaluation pillars: <strong>Clarity</strong>, <strong>Correctness</strong>, and{' '}
-            <strong>Completeness</strong>. Once completed, your progress trajectory, difficulty
-            tiers, and AI-targeted practice drills unlock right here.
+            Complete your 5-minute kickoff diagnostic on <strong>Interview Prep</strong> to calibrate
+            your starting benchmark across Clarity, Correctness, and Completeness. Your progress
+            trajectory, difficulty tiers, and session history will appear here.
           </p>
 
-          <div className="db-progress-empty-hero__controls">
-            <div className="db-select-wrap db-progress-empty-hero__select">
-              <Briefcase
-                size={17}
-                className="db-select-wrap__icon db-select-wrap__icon--violet"
-              />
-              <select
-                id="progress-role-select"
-                className="db-select"
-                aria-label="Target role for pre-test"
-                value={selectedRole}
-                onChange={(e) => onSelectRole?.(e.target.value)}
-              >
-                {(roleOptions || ROLE_OPTIONS).map((o) => (
-                  <option key={o.value} value={o.value} disabled={o.value === ''}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={17} className="db-select-wrap__chevron" />
-            </div>
-
+          <div className="db-progress-empty-hero__actions">
             <button
               type="button"
-              className="db-cta-btn db-progress-empty-hero__cta"
-              onClick={onStartPretest}
-              disabled={!selectedRole}
-            >
-              <Play size={16} aria-hidden="true" />
-              Take the pre-test
-            </button>
-
-            <button
-              type="button"
-              className="db-btn-secondary db-progress-empty-hero__tab-link"
+              className="db-cta-btn"
               onClick={() => onSwitchTab?.('Interview Prep')}
             >
               Go to Interview Prep
-              <ArrowRight size={14} aria-hidden="true" />
+              <ArrowRight size={16} aria-hidden="true" />
             </button>
-          </div>
-
-          {!selectedRole && (
-            <p className="db-cta-helper">Select a target role above to begin your diagnostic.</p>
-          )}
-
-          <div className="db-progress-empty-hero__pills">
-            <span className="db-micro-pill">
-              <Sparkles size={12} className="db-micro-pill__icon" />
-              Takes ~5 minutes
-            </span>
-            <span className="db-micro-pill">
-              <Gauge size={12} className="db-micro-pill__icon" />
-              Calibrates adaptive difficulty
-            </span>
-            <span className="db-micro-pill">
-              <TrendingUp size={12} className="db-micro-pill__icon" />
-              Sets your starting line
-            </span>
           </div>
         </div>
 
@@ -399,18 +326,17 @@ const ProgressEmptyState = memo(function ProgressEmptyState({
         </div>
       </section>
 
-      {/* ── 3C Blueprint Preview Grid ── */}
+      {/* ── 3C Evaluation Model Preview ── */}
       <section className="db-progress-3c-preview" aria-labelledby="db-3c-preview-heading">
         <div className="db-progress-section-header">
           <div>
             <h3 id="db-3c-preview-heading" className="db-progress-section-title">
-              The 3C Evaluation Model
+              The 3C evaluation model
             </h3>
             <p className="db-progress-section-sub">
-              Every practice answer is scored out of 5 across three key dimensions.
+              Every practice answer is scored out of 5 across three core communication dimensions.
             </p>
           </div>
-          <span className="db-blueprint-badge">Blueprint Preview</span>
         </div>
 
         <div className="db-3c-grid">
@@ -472,112 +398,17 @@ const ProgressEmptyState = memo(function ProgressEmptyState({
           </div>
         </div>
       </section>
-
-      {/* ── Progression Roadmap ── */}
-      <section className="db-progress-roadmap" aria-labelledby="db-roadmap-heading">
-        <div className="db-progress-section-header">
-          <div>
-            <h3 id="db-roadmap-heading" className="db-progress-section-title">
-              Your Analytics Journey
-            </h3>
-            <p className="db-progress-section-sub">
-              How ITerview tracks and accelerates your interview readiness.
-            </p>
-          </div>
-        </div>
-
-        <div className="db-roadmap-grid">
-          <div className="db-roadmap-step db-roadmap-step--active">
-            <div className="db-roadmap-step__number">01</div>
-            <div className="db-roadmap-step__body">
-              <div className="db-roadmap-step__status-row">
-                <h4 className="db-roadmap-step__title">Kickoff Diagnostic</h4>
-                <span className="db-step-badge db-step-badge--active">Current Step</span>
-              </div>
-              <p className="db-roadmap-step__desc">
-                Take the 5-question pre-test to generate your baseline score and uncover your
-                growth targets.
-              </p>
-            </div>
-          </div>
-
-          <div className="db-roadmap-step">
-            <div className="db-roadmap-step__number">02</div>
-            <div className="db-roadmap-step__body">
-              <div className="db-roadmap-step__status-row">
-                <h4 className="db-roadmap-step__title">AI-Targeted Practice</h4>
-                <span className="db-step-badge">Next Step</span>
-              </div>
-              <p className="db-roadmap-step__desc">
-                Sessions automatically adapt to strengthen your lowest scoring 3C metric and weak
-                topics.
-              </p>
-            </div>
-          </div>
-
-          <div className="db-roadmap-step">
-            <div className="db-roadmap-step__number">03</div>
-            <div className="db-roadmap-step__body">
-              <div className="db-roadmap-step__status-row">
-                <h4 className="db-roadmap-step__title">Mastery Trajectory</h4>
-                <span className="db-step-badge">Outcome</span>
-              </div>
-              <p className="db-roadmap-step__desc">
-                Track score improvements, monitor rolling 20-session history, and unlock higher
-                difficulty tiers.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Blueprint Ghost Stats Strip ── */}
-      <div className="db-stats-row db-stats-row--preview">
-        <div className="db-stat-card db-stat-card--ghost">
-          <div className="db-stat-card__label">
-            <span className="db-stat-dot db-stat-dot--mint" aria-hidden="true" />
-            3C Composite Average
-          </div>
-          <div className="db-stat-card__value-row">
-            <span className="db-stat-card__value db-stat-card__value--ghost">Awaiting Pre-test</span>
-          </div>
-        </div>
-
-        <div className="db-stat-card db-stat-card--ghost">
-          <div className="db-stat-card__label">
-            <span className="db-stat-dot db-stat-dot--violet" aria-hidden="true" />
-            Practice Sessions
-          </div>
-          <div className="db-stat-card__value-row">
-            <span className="db-stat-card__value db-stat-card__value--ghost">0</span>
-            <span className="db-stat-card__meta">completed</span>
-          </div>
-        </div>
-
-        <div className="db-stat-card db-stat-card--ghost">
-          <div className="db-stat-card__label">
-            <span className="db-stat-dot db-stat-dot--amber" aria-hidden="true" />
-            AI Target Area
-          </div>
-          <div className="db-stat-card__value-row">
-            <span className="db-stat-card__value db-stat-card__value--topic db-stat-card__value--ghost">
-              Auto-calibrating
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 });
 
-// ─── Metrics state components (loading / error) ───────────────
-
-const MetricsStates = memo(function MetricsStates({ dataStatus, onRetry }) {
+const MetricsStates = memo(function MetricsStates({ dataStatus, onRetry, onLogin }) {
   if (dataStatus === 'loading') {
     return (
-      <div className="db-baseline-card db-baseline-card--loading" aria-hidden="true">
-        <div className="db-skeleton db-skeleton--baseline-title" />
-        <div className="db-skeleton db-skeleton--baseline-body" />
+      <div className="db-baseline-card db-baseline-card--loading" role="status" aria-label="Loading dashboard metrics...">
+        <span className="sr-only">Loading dashboard metrics...</span>
+        <div className="db-skeleton db-skeleton--baseline-title" aria-hidden="true" />
+        <div className="db-skeleton db-skeleton--baseline-body" aria-hidden="true" />
       </div>
     );
   }
@@ -597,6 +428,25 @@ const MetricsStates = memo(function MetricsStates({ dataStatus, onRetry }) {
         <button type="button" className="db-btn-secondary" onClick={onRetry}>
           <RotateCcw size={14} />
           Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (dataStatus === 'unauthenticated') {
+    return (
+      <div className="db-baseline-card db-metrics-card" role="alert">
+        <div className="db-metrics-card__icon">
+          <AlertCircle size={20} />
+        </div>
+        <div className="db-metrics-card__text">
+          <h2 className="db-metrics-card__title">Sign in required</h2>
+          <p className="db-metrics-card__sub">
+            Please sign in to access your interview practice dashboard.
+          </p>
+        </div>
+        <button type="button" className="db-cta-btn" onClick={onLogin}>
+          Sign in
         </button>
       </div>
     );
@@ -640,13 +490,13 @@ const AttemptCard = memo(function AttemptCard({ attempt }) {
         {attempt.threeCBreakdown && (
           <div className="db-3c-mini">
             <span>
-              Clarity: <strong>{attempt.threeCBreakdown.clarity ?? '—'}</strong>
+              Clarity: <strong>{attempt.threeCBreakdown.clarity ?? '--'}</strong>
             </span>
             <span>
-              Correct: <strong>{attempt.threeCBreakdown.correctness ?? '—'}</strong>
+              Correct: <strong>{attempt.threeCBreakdown.correctness ?? '--'}</strong>
             </span>
             <span>
-              Complete: <strong>{attempt.threeCBreakdown.completeness ?? '—'}</strong>
+              Complete: <strong>{attempt.threeCBreakdown.completeness ?? '--'}</strong>
             </span>
           </div>
         )}
@@ -657,7 +507,7 @@ const AttemptCard = memo(function AttemptCard({ attempt }) {
               ? `${(attempt.threeCBreakdown.averageOutOf5 * 20).toFixed(0)}%`
               : attempt.threeCBreakdown?.averageOutOf10
                 ? `${(attempt.threeCBreakdown.averageOutOf10 * 10).toFixed(0)}%`
-                : '—'}
+                : '--'}
         </span>
       </div>
     </div>
@@ -665,7 +515,12 @@ const AttemptCard = memo(function AttemptCard({ attempt }) {
 });
 
 // Practice history panel, memoized; re-renders only when its data changes.
-const HistoryPanel = memo(function HistoryPanel({ dataStatus, practiceHistory }) {
+const HistoryPanel = memo(function HistoryPanel({
+  dataStatus,
+  practiceHistory,
+  onRetry,
+  onSwitchTab,
+}) {
   const [showAll, setShowAll] = useState(false);
   // Newest first, computed once per data change, not inline on every render.
   const history = useMemo(() => (practiceHistory || []).slice().reverse(), [practiceHistory]);
@@ -678,23 +533,39 @@ const HistoryPanel = memo(function HistoryPanel({ dataStatus, practiceHistory })
         <div className="db-setup-card__text">
           <h2 className="db-setup-card__title">
             <History size={17} className="db-setup-card__title-icon" />
-            Practice History & Session Logs
+            Practice history
           </h2>
           <p className="db-setup-card__sub">
             Your past practice sessions, 3C breakdowns, and rolling history.
           </p>
         </div>
-        <span className="db-history-badge">Max {PRACTICE_HISTORY_LIMIT} Rolling History</span>
+        <span className="db-history-badge">Recent sessions</span>
       </div>
 
       {dataStatus === 'loading' ? (
-        <div className="db-history-skeleton" aria-hidden="true">
-          <div className="db-skeleton db-skeleton--history-row" />
-          <div className="db-skeleton db-skeleton--history-row" />
+        <div
+          className="db-history-skeleton"
+          role="status"
+          aria-label="Loading your practice history..."
+        >
+          <span className="sr-only">Loading your practice history...</span>
+          <div className="db-skeleton db-skeleton--history-row" aria-hidden="true" />
+          <div className="db-skeleton db-skeleton--history-row" aria-hidden="true" />
         </div>
       ) : dataStatus === 'error' ? (
-        <div className="db-empty">
-          Couldn't load your practice history. Check your connection and try again.
+        <div className="db-empty db-empty--error" role="alert">
+          <p>Couldn't load your practice history. Check your connection and try again.</p>
+          {onRetry && (
+            <button
+              type="button"
+              className="db-btn-secondary"
+              onClick={onRetry}
+              style={{ marginTop: 12 }}
+            >
+              <RotateCcw size={14} />
+              Retry
+            </button>
+          )}
         </div>
       ) : history.length > 0 ? (
         <div className="db-history-list">
@@ -715,8 +586,21 @@ const HistoryPanel = memo(function HistoryPanel({ dataStatus, practiceHistory })
         </div>
       ) : (
         <div className="db-empty">
-          No practice attempts logged yet. Launch a practice session above to begin your rolling{' '}
-          {PRACTICE_HISTORY_LIMIT}-session history!
+          <p>
+            No practice attempts logged yet. Head over to Interview Prep to complete your baseline
+            diagnostic and begin your practice history!
+          </p>
+          {onSwitchTab && (
+            <button
+              type="button"
+              className="db-btn-secondary"
+              onClick={() => onSwitchTab('Interview Prep')}
+              style={{ marginTop: 12 }}
+            >
+              Go to Interview Prep
+              <ArrowRight size={14} aria-hidden="true" />
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -741,10 +625,6 @@ const ProgressPanel = memo(function ProgressPanel({
   lowestMetric,
   weakTopic,
   sessionsCount,
-  selectedRole,
-  onSelectRole,
-  roleOptions,
-  onStartPretest,
   onSwitchTab,
 }) {
   if (dataStatus === 'loading' || dataStatus === 'error') {
@@ -752,15 +632,7 @@ const ProgressPanel = memo(function ProgressPanel({
   }
 
   if (dataStatus === 'empty' || baseline == null) {
-    return (
-      <ProgressEmptyState
-        selectedRole={selectedRole}
-        onSelectRole={onSelectRole}
-        roleOptions={roleOptions}
-        onStartPretest={onStartPretest}
-        onSwitchTab={onSwitchTab}
-      />
-    );
+    return <ProgressEmptyState onSwitchTab={onSwitchTab} />;
   }
 
   return (
@@ -785,7 +657,7 @@ const ProgressPanel = memo(function ProgressPanel({
             3C Average
           </div>
           <div className="db-stat-card__value-row">
-            <span className="db-stat-card__value">{average3C != null ? `${average3C}%` : '—'}</span>
+            <span className="db-stat-card__value">{average3C != null ? `${average3C}%` : '--'}</span>
             {/* Growth is shown once, in the BaselineCard delta pill above. */}
           </div>
         </div>
@@ -808,7 +680,7 @@ const ProgressPanel = memo(function ProgressPanel({
           </div>
           <div className="db-stat-card__value-row">
             <span className="db-stat-card__value db-stat-card__value--topic">
-              {weakTopic ? weakTopic.charAt(0).toUpperCase() + weakTopic.slice(1) : '—'}
+              {weakTopic ? weakTopic.charAt(0).toUpperCase() + weakTopic.slice(1) : '--'}
             </span>
             {weakTopic && <span className="db-stat-card__delta">AI targeted</span>}
           </div>
@@ -835,15 +707,21 @@ const CARD_ART_ICONS = {
   mock: Video,
 };
 
-const PracticeCard = memo(function PracticeCard({ card, onLaunch }) {
+const PracticeCard = memo(function PracticeCard({ card, onLaunch, isLocked = false }) {
   const ArtIcon = CARD_ART_ICONS[card.id] || Sparkles;
   return (
     <button
       type="button"
-      className={`db-practice-card db-practice-card--${card.tint}`}
+      className={`db-practice-card db-practice-card--${card.tint} ${isLocked ? 'db-practice-card--locked' : ''}`}
       onClick={() => onLaunch(card)}
     >
       <span className="db-practice-card__media">
+        {isLocked && (
+          <span className="db-practice-card__lock-badge" aria-hidden="true">
+            <Lock size={12} />
+            <span>Locked</span>
+          </span>
+        )}
         {/* ══ CARD ART ══
             Finished in-system emblem: tinted icon tile on a soft disc with
             floating shapes + a dashed ground arc. When the real
@@ -866,8 +744,17 @@ const PracticeCard = memo(function PracticeCard({ card, onLaunch }) {
           <span className="db-practice-card__desc">{card.desc}</span>
         </span>
         <span className="db-practice-card__cta" aria-hidden="true">
-          Start
-          <ArrowRight size={14} />
+          {isLocked ? (
+            <>
+              <Lock size={13} />
+              Unlock
+            </>
+          ) : (
+            <>
+              Start
+              <ArrowRight size={14} />
+            </>
+          )}
         </span>
       </span>
     </button>
@@ -986,10 +873,13 @@ export default function Dashboard() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         fetchUserData(user);
+      } else {
+        setDataStatus('unauthenticated');
+        navigate('/login');
       }
     });
     return () => unsubscribe();
-  }, [fetchUserData]);
+  }, [fetchUserData, navigate]);
 
   const retryLoad = useCallback(() => {
     if (auth.currentUser) fetchUserData(auth.currentUser);
@@ -1082,7 +972,13 @@ export default function Dashboard() {
 
   // Single source of truth for "a practice session is in flight", used by the
   // launch handler, the card guard, the config bar locks, and the banner.
-  const isSessionActive = !!(activeSession?.hasActiveSession && hasCompletedDiagnostic);
+  const isSessionActive = Boolean(activeSession?.hasActiveSession);
+  const pendingJourneyLabel = JOURNEY_STAGE_LABELS[activeSession?.nextStage] || null;
+  const canContinueWithoutRole = Boolean(
+    isSessionActive ||
+      activeSession?.hasResumableSession ||
+      ['posttest', 'likert-post'].includes(activeSession?.nextStage)
+  );
 
   // `overrides` lets the practice cards preset role/focus/difficulty for this
   // launch (e.g. Clarity Drill → focus 'clarity') without racing React's async
@@ -1093,10 +989,6 @@ export default function Dashboard() {
       const difficulty = overrides.difficulty ?? selectedDifficulty;
       const focus = overrides.focus ?? selectedFocus;
 
-      if (!role) {
-        setFormError('Select a target role to continue.');
-        return;
-      }
       const user = auth.currentUser;
       if (!user) {
         setFormError('Please log in first.');
@@ -1108,6 +1000,70 @@ export default function Dashboard() {
       if (overrides.role) setSelectedRole(overrides.role);
       if (overrides.focus) setSelectedFocus(overrides.focus);
       if (overrides.difficulty) setSelectedDifficulty(overrides.difficulty);
+
+      // Ask the backend for the exact unfinished or next required journey stage.
+      // This keeps exits from sending users backward to an already completed step.
+      let journeyState = activeSession;
+      try {
+        const activeCheckRes = await fetch(
+          '/api/users/active-practice-session?uid=' + encodeURIComponent(user.uid)
+        );
+        if (activeCheckRes.ok) {
+          journeyState = await activeCheckRes.json();
+          setActiveSession(journeyState);
+        }
+      } catch (e) {
+        console.error('Journey session check fallback error:', e);
+      }
+
+      const shouldSaveOnboardingProfile = ['likert-pre', 'mic-test'].includes(
+        journeyState?.nextStage
+      );
+      if (shouldSaveOnboardingProfile) {
+        if (!role) {
+          setFormError('Select a target role to continue.');
+          return;
+        }
+        try {
+          await fetch('/api/users/role', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              firebaseUid: user.uid,
+              role,
+              difficulty,
+              focusArea: focus,
+            }),
+          });
+        } catch (err) {
+          console.error('Error saving onboarding profile:', err);
+        }
+      }
+
+      if (journeyState?.nextStage === 'mainsets' && journeyState.activeSet) {
+        const resumeMode = journeyState.mode === 'practice' ? 'practice' : 'diagnostic';
+        navigate(
+          '/interview?set=' +
+            journeyState.activeSet +
+            '&mode=' +
+            resumeMode +
+            '&focusArea=' +
+            encodeURIComponent(focus) +
+            '&resume=true'
+        );
+        return;
+      }
+
+      const journeyRoute = JOURNEY_STAGE_ROUTES[journeyState?.nextStage];
+      if (journeyRoute) {
+        navigate(journeyRoute);
+        return;
+      }
+
+      if (!role) {
+        setFormError('Select a target role to continue.');
+        return;
+      }
 
       if (!hasCompletedDiagnostic) {
         try {
@@ -1128,31 +1084,7 @@ export default function Dashboard() {
         return;
       }
 
-      // Check if there is an in-progress active session
-      let isResume = Boolean(activeSession?.hasActiveSession);
-      let targetSet = isResume ? activeSession.activeSet : 1;
-      try {
-        const activeCheckRes = await fetch(`/api/users/active-practice-session?uid=${user.uid}`);
-        if (activeCheckRes.ok) {
-          const activeCheckData = await activeCheckRes.json();
-          if (activeCheckData.hasActiveSession && activeCheckData.activeSet) {
-            isResume = true;
-            targetSet = activeCheckData.activeSet;
-          } else {
-            isResume = false;
-          }
-        }
-      } catch (e) {
-        console.error('Active session check fallback error:', e);
-      }
-
-      if (isResume) {
-        // Resume directly into in-progress set (Set 1, 2, or 3)
-        navigate(`/interview?set=${targetSet}&mode=practice&focusArea=${focus}&resume=true`);
-        return;
-      }
-
-      // For fresh Set 1 practice kickoff, open the Pre-Flight Mission Calibration Modal
+      // A returning user with no unfinished attempt can configure a new practice run.
       setIsBriefingModalOpen(true);
     },
     [
@@ -1266,13 +1198,43 @@ export default function Dashboard() {
 
   return (
     <div className="db-root">
-      {/* ── Sidebar ── */}
+      {/* ── Sidebar (Left rail on desktop, Top dual-tier header on <= 1024px) ── */}
       <aside className="db-sidebar">
-        <div className="db-sidebar__logo-group">
-          <img src={logoSrc} alt="ITerview" className="db-logo-img" />
-          <span className="db-sidebar__wordmark">ITerview</span>
+        {/* Brand logo & mobile/tablet user actions */}
+        <div className="db-sidebar__top-row">
+          <div className="db-sidebar__logo-group">
+            <img src={logoSrc} alt="ITerview" className="db-logo-img" />
+            <span className="db-sidebar__wordmark">ITerview</span>
+          </div>
+
+          <div className="db-sidebar__user-actions">
+            <button
+              type="button"
+              className="db-user-avatar"
+              onClick={handleOpenProfileModal}
+              title="Profile settings"
+              aria-label="Open profile settings"
+              ref={avatarBtnRef}
+            >
+              {userName}
+            </button>
+            <span className="db-sidebar__user-name" title={fullName}>
+              {fullName}
+            </span>
+            <button
+              type="button"
+              className="db-signout-btn"
+              title="Sign Out"
+              id="btn-logout"
+              onClick={handleLogout}
+              aria-label="Sign Out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
 
+        {/* Navigation tabs */}
         <nav
           className="db-sidebar__nav"
           role="tablist"
@@ -1301,54 +1263,29 @@ export default function Dashboard() {
           })}
         </nav>
 
-        {/* Settings sits outside the tablist, it opens the profile modal and is
-            not a tab, so it must not pollute the tablist semantics. */}
-        <button
-          type="button"
-          className="db-nav-item db-nav-item--settings"
-          onClick={handleOpenProfileModal}
-        >
-          <Settings size={18} />
-          <span>Settings</span>
-        </button>
+        <div className="db-sidebar__spacer db-desktop-only" aria-hidden="true" />
 
-        <div className="db-sidebar__spacer" aria-hidden="true" />
-
-        {/* Fox Coach, ══ MASCOT TEMPLATE ══
-            Drop the coach illustration into the slot below when ready, e.g.
-            <img src={foxCoach} alt="" />, the slot sizes it automatically. */}
-        <section className="db-coach-card" aria-label="Fox Coach">
-          <div className="db-coach-card__mascot">
-            <div className="db-mascot-slot" aria-hidden="true">
-              <span className="db-mascot-slot__hint">Mascot</span>
+        {/* AI Interview Coach (desktop only) */}
+        <section className="db-coach-card db-desktop-only" aria-label="AI Interview Coach">
+          <div className="db-coach-card__mascot" aria-hidden="true">
+            <div className="db-mascot-avatar">
+              <Sparkles size={26} className="db-mascot-avatar__icon" />
             </div>
           </div>
-          <h3 className="db-coach-card__name">Fox Coach</h3>
-          <span className="db-coach-card__level">
-            <Star size={12} aria-hidden="true" />
-            Level {COACH.level}
+          <h3 className="db-coach-card__name">AI Interview Coach</h3>
+          <span className="db-coach-card__level db-coach-card__level--starter">
+            <Sparkles size={12} aria-hidden="true" />
+            Ready to assist
           </span>
-          <p className="db-coach-card__hint">Keep practicing!</p>
-          <div
-            className="db-coach-card__bar"
-            role="progressbar"
-            aria-label="XP progress"
-            aria-valuemin={0}
-            aria-valuemax={COACH.xpGoal}
-            aria-valuenow={COACH.xp}
-          >
-            <div
-              className="db-coach-card__bar-fill"
-              style={{ width: `${Math.min(100, (COACH.xp / COACH.xpGoal) * 100)}%` }}
-            />
-          </div>
-          <span className="db-coach-card__xp">
-            {COACH.xp} / {COACH.xpGoal} XP
-          </span>
+          <p className="db-coach-card__hint">
+            {hasCompletedDiagnostic
+              ? 'Keep practicing to level up your interview readiness!'
+              : 'Complete your kickoff diagnostic to begin coaching.'}
+          </p>
         </section>
 
-        {/* User + sign-out */}
-        <div className="db-sidebar__footer">
+        {/* Desktop Footer (avatar, name, sign out) */}
+        <div className="db-sidebar__footer db-desktop-only">
           <button
             type="button"
             className="db-user-avatar"
@@ -1356,7 +1293,6 @@ export default function Dashboard() {
             title="Edit profile"
             aria-label="Open profile settings"
             id="btn-profile-avatar"
-            ref={avatarBtnRef}
           >
             {userName}
           </button>
@@ -1367,7 +1303,6 @@ export default function Dashboard() {
             type="button"
             className="db-signout-btn"
             title="Sign Out"
-            id="btn-logout"
             onClick={handleLogout}
           >
             <LogOut size={16} />
@@ -1392,7 +1327,12 @@ export default function Dashboard() {
           </div>
           <div className="db-page-header__actions">
             {dataStatus !== 'loading' &&
-              (hasCompletedDiagnostic ? (
+              (pendingJourneyLabel ? (
+                <span className="db-status-chip db-status-chip--pending" role="status">
+                  <span className="db-pulse-dot" aria-hidden="true" />
+                  <span className="db-status-chip__label">{pendingJourneyLabel}</span>
+                </span>
+              ) : hasCompletedDiagnostic ? (
                 <button
                   type="button"
                   className="db-status-chip db-status-chip--active"
@@ -1406,10 +1346,9 @@ export default function Dashboard() {
               ) : (
                 <span className="db-status-chip db-status-chip--pending" role="status">
                   <span className="db-pulse-dot" aria-hidden="true" />
-                  <span className="db-status-chip__label">Kickoff pre-test next</span>
+                  <span className="db-status-chip__label">Kickoff confidence check next</span>
                 </span>
               ))}
-            <LiveClock />
           </div>
         </div>
 
@@ -1423,72 +1362,195 @@ export default function Dashboard() {
         >
           {activeTab === 'Interview Prep' &&
             (dataStatus === 'loading' ? (
-              <div className="db-prep-skeleton" aria-hidden="true">
-                <div className="db-skeleton db-skeleton--history-row" />
-                <div className="db-skeleton db-skeleton--baseline-body" />
+              <div
+                className="db-prep-skeleton"
+                role="status"
+                aria-label="Loading your interview prep details..."
+              >
+                <span className="sr-only">Loading your interview preparation details...</span>
+                <div className="db-skeleton db-skeleton--history-row" aria-hidden="true" />
+                <div className="db-skeleton db-skeleton--baseline-body" aria-hidden="true" />
               </div>
             ) : dataStatus === 'error' ? (
               <MetricsStates dataStatus="error" onRetry={retryLoad} />
             ) : !hasCompletedDiagnostic ? (
-              /* ── Pre-diagnostic pivot: one job, one primary path.
-                 Tools that would silently redirect to the pre-test are
-                 hidden, the page owns a single call to action. ── */
-              <section className="db-onboarding" aria-label="Kickoff pre-test">
-                <div className="db-onboarding__icon">
-                  <Gauge size={22} aria-hidden="true" />
-                </div>
-                <div className="db-onboarding__text">
-                  <h2 className="db-onboarding__title">Start with your kickoff pre-test</h2>
-                  <p className="db-onboarding__sub">
-                    A short diagnostic sets your baseline across the 3C metrics: Clarity,
-                    Correctness, and Completeness. Practice sessions, progress tracking, and
-                    difficulty tiers unlock right after.
-                  </p>
-                </div>
-                <div className="db-onboarding__controls">
-                  <div className="db-select-wrap">
-                    <Briefcase
-                      size={17}
-                      className="db-select-wrap__icon db-select-wrap__icon--violet"
-                    />
-                    <select
-                      id="role-select"
-                      className="db-select"
-                      aria-label="Target role"
-                      value={selectedRole}
-                      onChange={(e) => {
-                        setSelectedRole(e.target.value);
-                        if (formError) setFormError(null);
-                      }}
-                    >
-                      {ROLE_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value} disabled={o.value === ''}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={17} className="db-select-wrap__chevron" />
-                  </div>
-                  <button
-                    type="button"
-                    className="db-cta-btn"
-                    onClick={() => handleStartSession()}
-                    disabled={!selectedRole}
+              <div className="db-kickoff-view">
+                {/* ── Onboarding Diagnostic Hero Card ── */}
+                <section
+                    className="db-onboarding"
+                    aria-label={isSessionActive ? "Resume MainSets session" : "Kickoff pre-test"}
                   >
-                    <Play size={16} aria-hidden="true" />
-                    Take the pre-test
-                  </button>
-                </div>
-                {!selectedRole && !formError && (
-                  <p className="db-cta-helper">Select a target role to continue.</p>
-                )}
-                {formError && (
-                  <p className="db-form-error" role="alert">
-                    <AlertCircle size={15} />
-                    {formError}
-                  </p>
-                )}
-              </section>
+                  <div className="db-onboarding__head">
+                    <div className="db-onboarding__icon">
+                      <Gauge size={22} aria-hidden="true" />
+                    </div>
+                    <div className="db-onboarding__pills">
+                      <span className="db-micro-pill db-micro-pill--amber">
+                        <Sparkles size={12} className="db-micro-pill__icon" />
+                        {isSessionActive ? `Set ${activeSession.activeSet} in progress` : 'Baseline diagnostic required'}
+                      </span>
+                      <span className="db-micro-pill">
+                        {isSessionActive
+                          ? `Question ${activeSession.answersCount + 1} of 5`
+                          : 'Takes ~5 mins'}
+                      </span>
+                      <span className="db-micro-pill">
+                        {isSessionActive ? 'Answers saved' : 'Calibrates adaptive difficulty'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="db-onboarding__text">
+                    <h2 className="db-onboarding__title">
+                      {isSessionActive
+                        ? `Continue MainSets from Set ${activeSession.activeSet}`
+                        : 'Start with your kickoff pre-test'}
+                    </h2>
+                    <p className="db-onboarding__sub">
+                      {isSessionActive ? (
+                        <>
+                          Your unfinished interview is saved. Resume at question{' '}
+                          <strong>{activeSession.answersCount + 1}</strong> without repeating the pre-test.
+                        </>
+                      ) : (
+                        <>
+                          A short diagnostic sets your baseline across the 3C metrics:{' '}
+                          <strong>Clarity</strong>, <strong>Correctness</strong>, and{' '}
+                          <strong>Completeness</strong>. Practice tracks, progress analytics, and difficulty
+                          tiers unlock immediately right after.
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* ── 3-Step Sequence Disclosure ── */}
+                  {!isSessionActive && (
+                    <div className="db-onboarding-sequence" aria-label="Pre-test setup sequence">
+                    <div className="db-sequence-step">
+                      <span className="db-sequence-step__num">1</span>
+                      <div className="db-sequence-step__info">
+                        <strong className="db-sequence-step__title">Confidence survey</strong>
+                        <span className="db-sequence-step__meta">~1 min · self-reflection</span>
+                      </div>
+                    </div>
+                    <div className="db-sequence-step__divider" aria-hidden="true" />
+                    <div className="db-sequence-step">
+                      <span className="db-sequence-step__num">2</span>
+                      <div className="db-sequence-step__info">
+                        <strong className="db-sequence-step__title">Microphone test</strong>
+                        <span className="db-sequence-step__meta">30s · audio check</span>
+                      </div>
+                    </div>
+                    <div className="db-sequence-step__divider" aria-hidden="true" />
+                    <div className="db-sequence-step">
+                      <span className="db-sequence-step__num">3</span>
+                      <div className="db-sequence-step__info">
+                        <strong className="db-sequence-step__title">Spoken diagnostic</strong>
+                        <span className="db-sequence-step__meta">5 questions · ~4 mins</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  )}
+
+                  <div className="db-onboarding__controls">
+                    <div className="db-select-wrap db-onboarding__select">
+                      <Briefcase
+                        size={17}
+                        className="db-select-wrap__icon db-select-wrap__icon--violet"
+                      />
+                      <select
+                        id="role-select"
+                        className="db-select"
+                        aria-label="Target role"
+                        value={selectedRole}
+                        onChange={(e) => {
+                          setSelectedRole(e.target.value);
+                          if (formError) setFormError(null);
+                        }}
+                        disabled={isSessionActive}
+                      >
+                        {ROLE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value} disabled={o.value === ''}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={17} className="db-select-wrap__chevron" />
+                    </div>
+                    <button
+                      type="button"
+                      className="db-cta-btn db-onboarding__cta"
+                      onClick={() => handleStartSession()}
+                      disabled={!selectedRole}
+                      aria-label={
+                        isSessionActive
+                          ? `Resume Set ${activeSession.activeSet} interview`
+                          : 'Begin pre-test setup for your baseline'
+                      }
+                    >
+                      <Play size={16} aria-hidden="true" />
+                      {isSessionActive ? 'Resume MainSets' : 'Begin pre-test setup'}
+                    </button>
+                  </div>
+
+                  {!selectedRole && !formError && (
+                    <p className="db-cta-helper">Select a target role above to continue.</p>
+                  )}
+                  {formError && (
+                    <p className="db-form-error" role="alert">
+                      <AlertCircle size={15} />
+                      {formError}
+                    </p>
+                  )}
+                </section>
+
+                {/* ── Curriculum Preview (Locked until baseline is completed) ── */}
+                <section
+                  className="db-practice-section db-practice-section--preview"
+                  aria-labelledby="curriculum-preview-heading"
+                >
+                  <div className="db-practice-section__head-row">
+                    <div>
+                      <h2 id="curriculum-preview-heading" className="db-practice-section__title">
+                        Practice curriculum
+                      </h2>
+                      <p className="db-practice-section__sub">
+                        Complete your kickoff pre-test above to calibrate your baseline and unlock
+                        these personalized practice tracks.
+                      </p>
+                    </div>
+                    <span className="db-preview-badge">
+                      <Lock size={12} aria-hidden="true" />
+                      Unlocks after baseline diagnostic
+                    </span>
+                  </div>
+
+                  <div className="db-curriculum-preview-grid">
+                    {PRACTICE_CARDS.map((card) => {
+                      const ArtIcon = CARD_ART_ICONS[card.id] || Sparkles;
+                      return (
+                        <div
+                          key={card.id}
+                          className={`db-curriculum-preview-card db-curriculum-preview-card--${card.tint}`}
+                        >
+                          <div className="db-curriculum-preview-card__head">
+                            <span className="db-curriculum-preview-card__icon" aria-hidden="true">
+                              <ArtIcon size={20} strokeWidth={2.2} />
+                            </span>
+                            <span className="db-curriculum-preview-card__badge">
+                              <Lock size={10} aria-hidden="true" />
+                              Locked
+                            </span>
+                          </div>
+                          <h3 className="db-curriculum-preview-card__title">{card.title}</h3>
+                          <p className="db-curriculum-preview-card__desc">{card.desc}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </div>
             ) : (
               <>
                 {/* ── Progress snapshot, the journey stays visible on the launch tab ── */}
@@ -1518,7 +1580,7 @@ export default function Dashboard() {
                     <span className="db-progress-snapshot__checkpoint">
                       <span className="db-progress-snapshot__label">Baseline</span>
                       <strong className="db-progress-snapshot__score">
-                        {baselineScore != null ? `${baselineScore}%` : '—'}
+                        {baselineScore != null ? `${baselineScore}%` : '--'}
                       </strong>
                     </span>
                     <span className="db-progress-snapshot__connector" aria-hidden="true">
@@ -1528,7 +1590,7 @@ export default function Dashboard() {
                     <span className="db-progress-snapshot__checkpoint db-progress-snapshot__checkpoint--current">
                       <span className="db-progress-snapshot__label">Current</span>
                       <strong className="db-progress-snapshot__score">
-                        {masteryScore != null ? `${masteryScore}%` : '—'}
+                        {masteryScore != null ? `${masteryScore}%` : '--'}
                       </strong>
                     </span>
                   </div>
@@ -1665,14 +1727,16 @@ export default function Dashboard() {
                     id="btn-start-pretest"
                     className="db-cta-btn db-config-bar__cta"
                     onClick={() => handleStartSession()}
-                    disabled={!selectedRole || dataStatus === 'loading'}
+                    disabled={dataStatus === 'loading' || (!selectedRole && !canContinueWithoutRole)}
                   >
                     <Play size={16} />
                     {dataStatus === 'loading'
                       ? 'Loading…'
                       : isSessionActive
                         ? 'Resume session'
-                        : 'Start session'}
+                        : pendingJourneyLabel
+                          ? 'Continue diagnostic'
+                          : 'Start session'}
                   </button>
                 </section>
 
@@ -1811,6 +1875,8 @@ export default function Dashboard() {
             <HistoryPanel
               dataStatus={dataStatus}
               practiceHistory={diagnosticData?.practiceHistory}
+              onRetry={retryLoad}
+              onSwitchTab={setActiveTab}
             />
           )}
         </div>
@@ -1837,13 +1903,6 @@ export default function Dashboard() {
               lowestMetric={lowestMetric}
               weakTopic={weakTopic}
               sessionsCount={sessionsCount}
-              selectedRole={selectedRole}
-              onSelectRole={(role) => {
-                setSelectedRole(role);
-                if (formError) setFormError(null);
-              }}
-              roleOptions={ROLE_OPTIONS}
-              onStartPretest={() => handleStartSession()}
               onSwitchTab={setActiveTab}
             />
           )}

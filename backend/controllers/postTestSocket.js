@@ -218,7 +218,7 @@ function handlePostTestSocket(ws, request) {
     // ── Once-only gate: a completed Post-Test can never be retaken ──────────
     // The graduation score is the final anchor of the research pipeline, so it
     // is taken exactly once per account. Dev tooling can bypass `?reset=true`.
-    if (!isResetRequested) {
+    if (!isResetRequested && firebaseUid && firebaseUid !== "anonymous_user") {
       try {
         const completedSession = await PostTestSession.findOne({
           firebaseUid,
@@ -254,10 +254,19 @@ function handlePostTestSocket(ws, request) {
     if (activeSession) {
       console.log(`[WS/Post] 🔄 Active session found for user: ${firebaseUid}. Resuming session ID: ${activeSession.sessionId} as new session ID: ${sessionId}`);
       try {
-        await PostTestSession.findOneAndUpdate(
-          { firebaseUid, completedAt: null },
-          { sessionId }
+        activeSession = await PostTestSession.findOneAndUpdate(
+          {
+            _id: activeSession._id,
+            sessionId: activeSession.sessionId,
+            completedAt: null,
+          },
+          { $set: { sessionId } },
+          { returnDocument: "after" }
         );
+        if (!activeSession) {
+          console.log("[WS/Post] Startup cancelled because a newer socket owns the session.");
+          return;
+        }
 
         currentQuestionIndex = activeSession.answers ? activeSession.answers.length : 0;
         if (activeSession.answers) {
@@ -270,6 +279,29 @@ function handlePostTestSocket(ws, request) {
               primary_weakness: ans.primary_weakness,
             });
           });
+
+          if (currentQuestionIndex >= POST_TEST_QUESTIONS.length) {
+            const { weakness_tag, percentage } = computeFinalScores(sessionScores);
+            const recoveredSession = await PostTestSession.findOneAndUpdate(
+              { _id: activeSession._id, sessionId, completedAt: null },
+              {
+                $set: {
+                  final_weakness_tag: weakness_tag,
+                  final_score_percentage: percentage,
+                  completedAt: new Date(),
+                },
+              },
+              { returnDocument: "after" }
+            );
+            if (recoveredSession) {
+              send({
+                type: "session_complete",
+                weakness_tag,
+                final_score: percentage,
+              });
+            }
+            return;
+          }
         }
 
         console.log(`[WS/Post] Resumed post-test session at question index: ${currentQuestionIndex}`);
@@ -387,19 +419,20 @@ function handlePostTestSocket(ws, request) {
         const capturedIndex = currentQuestionIndex;
         const evalPromise = (async () => {
           try {
-            console.log(`[AI/Post] 🔄 Background 3C evaluation started for Q${questionNumber}...`);
+            console.log("[AI/Post] Evaluating post-test answer Q" + questionNumber + "...");
             const tEval0 = Date.now();
-            const scores = await evaluate3CScores(answeredQuestion, confirmedText, sessionDifficulty);
-            const evalDuration = Date.now() - tEval0;
-            metrics.evaluationLatencies.push(evalDuration);
-
-            sessionScores.push({ questionIndex: capturedIndex, ...scores });
-            console.log(
-              `[AI/Post] ✅ Q${questionNumber} (${(evalDuration / 1000).toFixed(2)}s) — Clarity: ${scores.clarity_score} | Correctness: ${scores.correctness_score} | Completeness: ${scores.completeness_score}`
+            const scores = await evaluate3CScores(
+              answeredQuestion,
+              confirmedText,
+              sessionDifficulty
             );
+            metrics.evaluationLatencies.push(Date.now() - tEval0);
 
-            await PostTestSession.findOneAndUpdate(
-              { sessionId },
+            const savedSession = await PostTestSession.findOneAndUpdate(
+              {
+                sessionId,
+                "answers.questionIndex": { $ne: capturedIndex },
+              },
               {
                 $push: {
                   answers: {
@@ -410,20 +443,35 @@ function handlePostTestSocket(ws, request) {
                     evaluatedAt: new Date(),
                   },
                 },
-              }
+              },
+              { returnDocument: "after" }
             );
-            console.log(`[DB/Post] ✅ Scores persisted for Q${questionNumber}`);
+            if (!savedSession) return false;
+
+            sessionScores.push({ questionIndex: capturedIndex, ...scores });
+            console.log("[DB/Post] Post-test score saved for Q" + questionNumber);
+            return true;
           } catch (err) {
-            console.error(`[AI/Post] ❌ Background evaluation failed for Q${questionNumber}:`, err.message);
-            sessionScores.push({
-              questionIndex: capturedIndex,
-              clarity_score: 3, correctness_score: 3, completeness_score: 3,
-              primary_weakness: "focus_completeness",
-            });
+            console.error(
+              "[AI/Post] Evaluation failed for Q" + questionNumber + ":",
+              err.message
+            );
             metrics.evaluationLatencies.push(0);
+            return false;
           }
         })();
         evaluationPromises.push(evalPromise);
+        evalPromise.then((saved) => {
+          if (saved && ws.readyState === ws.OPEN) {
+            send({ type: "feedback_complete" });
+          } else if (!saved && ws.readyState === ws.OPEN) {
+            send({
+              type: "answer_save_failed",
+              transcript: confirmedText,
+              message: "Your answer could not be scored or saved. Please submit it again.",
+            });
+          }
+        });
 
         // Pre-generate next question TTS
         const nextIndex = currentQuestionIndex + 1;
@@ -451,7 +499,6 @@ function handlePostTestSocket(ws, request) {
           preGeneratedNextQuestionIndex = -1;
         }
 
-        send({ type: "feedback_complete" });
         break;
       }
 
@@ -496,14 +543,21 @@ function handlePostTestSocket(ws, request) {
               `[Session/Post] 🎓 Post-test complete. Weakness: ${weakness_tag} | Score: ${percentage}%`
             );
             try {
-              await PostTestSession.findOneAndUpdate(
-                { sessionId },
+              const finalisedSession = await PostTestSession.findOneAndUpdate(
+                { sessionId, completedAt: null },
                 {
-                  final_weakness_tag: weakness_tag,
-                  final_score_percentage: percentage,
-                  completedAt: new Date(),
-                }
+                  $set: {
+                    final_weakness_tag: weakness_tag,
+                    final_score_percentage: percentage,
+                    completedAt: new Date(),
+                  },
+                },
+                { returnDocument: "after" }
               );
+              if (!finalisedSession) {
+                console.log("[WS/Post] Finalisation skipped because session ownership changed.");
+                return;
+              }
               console.log(`[DB/Post] ✅ Post-test session finalised — ${sessionId}`);
 
               // Fetch Pre-Test Baseline to calculate & print comparison logs

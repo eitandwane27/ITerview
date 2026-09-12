@@ -1,0 +1,3216 @@
+{
+  "database": "iterview_official",
+  "createdAt": {
+    "$date": {
+      "$numberLong": "1789193300297"
+    }
+  },
+  "scope": "Dummy user and interview/session documents only",
+  "collections": {
+    "users": [
+      {
+        "_id": {
+          "$oid": "6a22a83170b8ea676d17d831"
+        },
+        "firebaseUid": "kW8XJVJxVnM8RtrLvDXomegMyFw1",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1780656176032"
+          }
+        },
+        "email": "test@gmail.com",
+        "preTestScores": {
+          "communication": null,
+          "confidence": null,
+          "technical": null
+        },
+        "preConfidenceAnswers": [
+          {
+            "questionId": "q1",
+            "score": {
+              "$numberInt": "1"
+            },
+            "_id": {
+              "$oid": "6aa2713f2d6de8f9976c1339"
+            }
+          },
+          {
+            "questionId": "q2",
+            "score": {
+              "$numberInt": "1"
+            },
+            "_id": {
+              "$oid": "6aa2713f2d6de8f9976c133a"
+            }
+          },
+          {
+            "questionId": "q3",
+            "score": {
+              "$numberInt": "1"
+            },
+            "_id": {
+              "$oid": "6aa2713f2d6de8f9976c133b"
+            }
+          },
+          {
+            "questionId": "q4",
+            "score": {
+              "$numberInt": "1"
+            },
+            "_id": {
+              "$oid": "6aa2713f2d6de8f9976c133c"
+            }
+          },
+          {
+            "questionId": "q5",
+            "score": {
+              "$numberInt": "1"
+            },
+            "_id": {
+              "$oid": "6aa2713f2d6de8f9976c133d"
+            }
+          }
+        ],
+        "preConfidenceScore": {
+          "$numberInt": "13"
+        },
+        "confidenceScore": {
+          "$numberInt": "5"
+        },
+        "role": "frontend",
+        "difficulty": "easy",
+        "postConfidenceAnswers": [
+          {
+            "questionId": "q1",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6a562164ae06f17aae9a649d"
+            }
+          },
+          {
+            "questionId": "q2",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6a562164ae06f17aae9a649e"
+            }
+          },
+          {
+            "questionId": "q3",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6a562164ae06f17aae9a649f"
+            }
+          },
+          {
+            "questionId": "q4",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6a562164ae06f17aae9a64a0"
+            }
+          },
+          {
+            "questionId": "q5",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6a562164ae06f17aae9a64a1"
+            }
+          }
+        ],
+        "postConfidenceScore": {
+          "$numberInt": "25"
+        },
+        "displayName": "",
+        "focusArea": "auto"
+      },
+      {
+        "_id": {
+          "$oid": "6a65cceda80c017d9f5c29e6"
+        },
+        "firebaseUid": "nnhKN8rULnaCoqh7FDl4ztJvjP13",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "confidenceScore": {
+          "$numberInt": "18"
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785056493421"
+          }
+        },
+        "difficulty": "easy",
+        "email": "eitan@example.com",
+        "postConfidenceAnswers": [
+          {
+            "questionId": "q1",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6a65eca382fe63b1a15bdff0"
+            }
+          },
+          {
+            "questionId": "q2",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6a65eca382fe63b1a15bdff1"
+            }
+          },
+          {
+            "questionId": "q3",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6a65eca382fe63b1a15bdff2"
+            }
+          },
+          {
+            "questionId": "q4",
+            "score": {
+              "$numberInt": "4"
+            },
+            "_id": {
+              "$oid": "6a65eca382fe63b1a15bdff3"
+            }
+          },
+          {
+            "questionId": "q5",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6a65eca382fe63b1a15bdff4"
+            }
+          }
+        ],
+        "postConfidenceScore": {
+          "$numberInt": "24"
+        },
+        "preConfidenceAnswers": [
+          {
+            "questionId": "q1",
+            "score": {
+              "$numberInt": "3"
+            },
+            "_id": {
+              "$oid": "6aa0dd269edcbdec2d482129"
+            }
+          },
+          {
+            "questionId": "q2",
+            "score": {
+              "$numberInt": "4"
+            },
+            "_id": {
+              "$oid": "6aa0dd269edcbdec2d48212a"
+            }
+          },
+          {
+            "questionId": "q3",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6aa0dd269edcbdec2d48212b"
+            }
+          },
+          {
+            "questionId": "q4",
+            "score": {
+              "$numberInt": "5"
+            },
+            "_id": {
+              "$oid": "6aa0dd269edcbdec2d48212c"
+            }
+          },
+          {
+            "questionId": "q5",
+            "score": {
+              "$numberInt": "1"
+            },
+            "_id": {
+              "$oid": "6aa0dd269edcbdec2d48212d"
+            }
+          }
+        ],
+        "role": "backend",
+        "unlockedDifficulty": "hard",
+        "practiceHistory": [
+          {
+            "attemptNumber": {
+              "$numberInt": "15"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785143591213"
+              }
+            },
+            "role": "backend",
+            "difficulty": "easy",
+            "focusArea": "star",
+            "overallScorePercentage": {
+              "$numberInt": "39"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberInt": "6"
+              },
+              "correctness": {
+                "$numberInt": "3"
+              },
+              "completeness": {
+                "$numberInt": "2"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "3.7"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a6721276855fb965b349707"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "16"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785144068659"
+              }
+            },
+            "role": "backend",
+            "difficulty": "easy",
+            "focusArea": "star",
+            "overallScorePercentage": {
+              "$numberInt": "95"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberInt": "9"
+              },
+              "correctness": {
+                "$numberInt": "10"
+              },
+              "completeness": {
+                "$numberDouble": "9.4"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "9.5"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a6723049e3e9fab3c322472"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "17"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785144141237"
+              }
+            },
+            "role": "fullstack",
+            "difficulty": "easy",
+            "focusArea": "auto",
+            "overallScorePercentage": {
+              "$numberInt": "87"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberInt": "6"
+              },
+              "correctness": {
+                "$numberInt": "3"
+              },
+              "completeness": {
+                "$numberInt": "2"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "3.7"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a67234d9e3e9fab3c3224b4"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "18"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785353461777"
+              }
+            },
+            "role": "frontend",
+            "difficulty": "easy",
+            "focusArea": "clarity",
+            "overallScorePercentage": {
+              "$numberInt": "85"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberDouble": "8.6"
+              },
+              "correctness": {
+                "$numberDouble": "9.6"
+              },
+              "completeness": {
+                "$numberDouble": "8.6"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "8.9"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a6a54f5f3a739d501cabe07"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "19"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785353725451"
+              }
+            },
+            "role": "frontend",
+            "difficulty": "medium",
+            "focusArea": "clarity",
+            "overallScorePercentage": {
+              "$numberInt": "87"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberDouble": "8.8"
+              },
+              "correctness": {
+                "$numberDouble": "9.8"
+              },
+              "completeness": {
+                "$numberDouble": "8.6"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "9.1"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a6a55fdf3a739d501cabf11"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "20"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785752171404"
+              }
+            },
+            "role": "fullstack",
+            "difficulty": "medium",
+            "focusArea": "completeness",
+            "overallScorePercentage": {
+              "$numberInt": "86"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberDouble": "8.8"
+              },
+              "correctness": {
+                "$numberDouble": "9.8"
+              },
+              "completeness": {
+                "$numberDouble": "8.8"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "9.1"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a706a6ba9dd27ac0185e39e"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "21"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785752176167"
+              }
+            },
+            "role": "fullstack",
+            "difficulty": "medium",
+            "focusArea": "auto",
+            "overallScorePercentage": {
+              "$numberInt": "86"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberInt": "6"
+              },
+              "correctness": {
+                "$numberInt": "3"
+              },
+              "completeness": {
+                "$numberInt": "2"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "3.7"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a706a70a9dd27ac0185e3c4"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "22"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1787300160784"
+              }
+            },
+            "role": "frontend",
+            "difficulty": "easy",
+            "focusArea": "auto",
+            "overallScorePercentage": {
+              "$numberInt": "82"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberDouble": "8.4"
+              },
+              "correctness": {
+                "$numberDouble": "9.8"
+              },
+              "completeness": {
+                "$numberDouble": "8.6"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "8.9"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a880940cab003f0d7659e39"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "23"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1787300163469"
+              }
+            },
+            "role": "fullstack",
+            "difficulty": "easy",
+            "focusArea": "auto",
+            "overallScorePercentage": {
+              "$numberInt": "82"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberInt": "6"
+              },
+              "correctness": {
+                "$numberInt": "3"
+              },
+              "completeness": {
+                "$numberInt": "2"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "3.7"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a880943cab003f0d7659e65"
+            }
+          }
+        ],
+        "focusArea": "completeness",
+        "displayName": "eitan Dwane"
+      },
+      {
+        "_id": {
+          "$oid": "6a671df4a80c017d9f5c32d0"
+        },
+        "firebaseUid": "uKnQcKe10iWjdBldgkdsyT8kJtv1",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "confidenceScore": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785142771793"
+          }
+        },
+        "difficulty": "easy",
+        "email": "eitan_practice_test@example.com",
+        "focusArea": "auto",
+        "postConfidenceAnswers": [],
+        "postConfidenceScore": null,
+        "practiceHistory": [
+          {
+            "attemptNumber": {
+              "$numberInt": "1"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785142791494"
+              }
+            },
+            "role": "fullstack",
+            "difficulty": "easy",
+            "focusArea": "auto",
+            "overallScorePercentage": {
+              "$numberInt": "34"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberDouble": "8.2"
+              },
+              "correctness": {
+                "$numberInt": "1"
+              },
+              "completeness": {
+                "$numberInt": "1"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "3.4"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a671e07df7d509133cad110"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "2"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785142844743"
+              }
+            },
+            "role": "fullstack",
+            "difficulty": "easy",
+            "focusArea": "auto",
+            "overallScorePercentage": {
+              "$numberInt": "43"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberDouble": "8.2"
+              },
+              "correctness": {
+                "$numberInt": "1"
+              },
+              "completeness": {
+                "$numberInt": "1"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "3.4"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a671e3cdf7d509133cad115"
+            }
+          },
+          {
+            "attemptNumber": {
+              "$numberInt": "3"
+            },
+            "completedAt": {
+              "$date": {
+                "$numberLong": "1785143067466"
+              }
+            },
+            "role": "fullstack",
+            "difficulty": "easy",
+            "focusArea": "auto",
+            "overallScorePercentage": {
+              "$numberInt": "25"
+            },
+            "threeCBreakdown": {
+              "clarity": {
+                "$numberDouble": "5.6"
+              },
+              "correctness": {
+                "$numberInt": "1"
+              },
+              "completeness": {
+                "$numberInt": "1"
+              },
+              "averageOutOf10": {
+                "$numberDouble": "2.5"
+              }
+            },
+            "weaknessTag": "focus_completeness",
+            "_id": {
+              "$oid": "6a671f1b85a8915851a951e3"
+            }
+          }
+        ],
+        "preConfidenceAnswers": [],
+        "role": null,
+        "unlockedDifficulty": "easy"
+      },
+      {
+        "_id": {
+          "$oid": "6a67365aa80c017d9f5c33dc"
+        },
+        "firebaseUid": "fwY9ljueV7WbOuK1AJdb1Xb33bW2",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "confidenceScore": {
+          "$numberInt": "12"
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785149017531"
+          }
+        },
+        "difficulty": "easy",
+        "email": "user@gmail.com",
+        "focusArea": "auto",
+        "postConfidenceAnswers": [],
+        "postConfidenceScore": null,
+        "practiceHistory": [],
+        "preConfidenceAnswers": [
+          {
+            "questionId": "q1",
+            "score": {
+              "$numberInt": "2"
+            },
+            "_id": {
+              "$oid": "6a676435e58475a9fc866027"
+            }
+          },
+          {
+            "questionId": "q2",
+            "score": {
+              "$numberInt": "3"
+            },
+            "_id": {
+              "$oid": "6a676435e58475a9fc866028"
+            }
+          },
+          {
+            "questionId": "q3",
+            "score": {
+              "$numberInt": "2"
+            },
+            "_id": {
+              "$oid": "6a676435e58475a9fc866029"
+            }
+          },
+          {
+            "questionId": "q4",
+            "score": {
+              "$numberInt": "1"
+            },
+            "_id": {
+              "$oid": "6a676435e58475a9fc86602a"
+            }
+          },
+          {
+            "questionId": "q5",
+            "score": {
+              "$numberInt": "4"
+            },
+            "_id": {
+              "$oid": "6a676435e58475a9fc86602b"
+            }
+          }
+        ],
+        "role": "backend",
+        "unlockedDifficulty": "easy",
+        "displayName": ""
+      },
+      {
+        "_id": {
+          "$oid": "6a6f5927fd5b8691a770f35a"
+        },
+        "firebaseUid": "JDJBujfPPqTf0LZG5vX6ys9tt4C2",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "confidenceScore": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785682215865"
+          }
+        },
+        "difficulty": "easy",
+        "email": "eitan1@example.com",
+        "focusArea": "auto",
+        "postConfidenceAnswers": [],
+        "postConfidenceScore": null,
+        "practiceHistory": [],
+        "preConfidenceAnswers": [],
+        "role": null,
+        "unlockedDifficulty": "easy",
+        "displayName": ""
+      },
+      {
+        "_id": {
+          "$oid": "6a7e94ffecc8972fa5c51673"
+        },
+        "firebaseUid": "6fgxrmX5lgNJJwlzLp0QqAWUEzr2",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "confidenceScore": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1786680575638"
+          }
+        },
+        "difficulty": "easy",
+        "displayName": "Hi Na Ta",
+        "email": "yuukimichi27@gmail.com",
+        "focusArea": "auto",
+        "postConfidenceAnswers": [],
+        "postConfidenceScore": null,
+        "practiceHistory": [],
+        "preConfidenceAnswers": [],
+        "role": "backend",
+        "unlockedDifficulty": "easy"
+      },
+      {
+        "_id": {
+          "$oid": "6a9b88f7240cddbde7a67b29"
+        },
+        "firebaseUid": "gh4EmT3cSIMT3nNd7QMdRcNY9gd2",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "confidenceScore": {
+          "$numberInt": "9"
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1788578040280"
+          }
+        },
+        "difficulty": "easy",
+        "displayName": "Eitan Maceda",
+        "email": "macedaeitan04@gmail.com",
+        "focusArea": "auto",
+        "postConfidenceAnswers": [],
+        "postConfidenceScore": null,
+        "practiceHistory": [],
+        "preConfidenceAnswers": [
+          {
+            "questionId": "q1",
+            "score": {
+              "$numberInt": "2"
+            },
+            "_id": {
+              "$oid": "6a9d33f8e42739b35b6a1eb9"
+            }
+          },
+          {
+            "questionId": "q2",
+            "score": {
+              "$numberInt": "2"
+            },
+            "_id": {
+              "$oid": "6a9d33f8e42739b35b6a1eba"
+            }
+          },
+          {
+            "questionId": "q3",
+            "score": {
+              "$numberInt": "2"
+            },
+            "_id": {
+              "$oid": "6a9d33f8e42739b35b6a1ebb"
+            }
+          },
+          {
+            "questionId": "q4",
+            "score": {
+              "$numberInt": "1"
+            },
+            "_id": {
+              "$oid": "6a9d33f8e42739b35b6a1ebc"
+            }
+          },
+          {
+            "questionId": "q5",
+            "score": {
+              "$numberInt": "2"
+            },
+            "_id": {
+              "$oid": "6a9d33f8e42739b35b6a1ebd"
+            }
+          }
+        ],
+        "role": "frontend",
+        "unlockedDifficulty": "easy"
+      }
+    ],
+    "pretestsessions": [
+      {
+        "_id": {
+          "$oid": "6a31750cead60ad872806009"
+        },
+        "firebaseUid": "kW8XJVJxVnM8RtrLvDXomegMyFw1",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Tell me about yourself and your journey in the field of Information Technology so far.",
+            "transcript": "good",
+            "clarity_score": {
+              "$numberInt": "3"
+            },
+            "correctness_score": {
+              "$numberInt": "3"
+            },
+            "completeness_score": {
+              "$numberInt": "3"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1789030773117"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "How do you stay updated with the latest trends and rapidly changing technologies in the IT industry?",
+            "transcript": "Good.",
+            "clarity_score": {
+              "$numberInt": "3"
+            },
+            "correctness_score": {
+              "$numberInt": "3"
+            },
+            "completeness_score": {
+              "$numberInt": "3"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1789030785435"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "Describe a time you encountered a difficult technical bug or project hurdle. How did you troubleshoot it?",
+            "transcript": "Good.",
+            "clarity_score": {
+              "$numberInt": "3"
+            },
+            "correctness_score": {
+              "$numberInt": "3"
+            },
+            "completeness_score": {
+              "$numberInt": "3"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1789030797544"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "A team member disagrees with your technical approach to a project. How do you handle this conflict?",
+            "transcript": "I do not know.",
+            "clarity_score": {
+              "$numberInt": "3"
+            },
+            "correctness_score": {
+              "$numberInt": "3"
+            },
+            "completeness_score": {
+              "$numberInt": "3"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1789030810557"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "Why do you believe you are a strong candidate for a role in this industry, and what is your greatest technical strength?",
+            "transcript": "I love eating.",
+            "clarity_score": {
+              "$numberInt": "3"
+            },
+            "correctness_score": {
+              "$numberInt": "3"
+            },
+            "completeness_score": {
+              "$numberInt": "3"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1789030823117"
+              }
+            }
+          }
+        ],
+        "baseline_score_percentage": {
+          "$numberInt": "60"
+        },
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1789030823465"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784896546708"
+          }
+        },
+        "final_weakness_tag": "focus_clarity",
+        "sessionId": "pts_1789030757952_3b9hv6"
+      },
+      {
+        "_id": {
+          "$oid": "6a4e7646fee15e8e2c86eb1a"
+        },
+        "firebaseUid": "eitan_debug_test",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Tell me about yourself and your journey in the field of Information Technology so far.",
+            "transcript": "I like using computers and playing video games so I entered IT.",
+            "clarity_score": {
+              "$numberInt": "6"
+            },
+            "correctness_score": {
+              "$numberInt": "5"
+            },
+            "completeness_score": {
+              "$numberInt": "4"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784997928562"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "How do you stay updated with the latest trends and rapidly changing technologies in the IT industry?",
+            "transcript": "I don't really follow tech trends or read tech blogs.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784997939903"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "Describe a time you encountered a difficult technical bug or project hurdle. How did you troubleshoot it?",
+            "transcript": "I had a bug once and restarted my computer to try to fix it.",
+            "clarity_score": {
+              "$numberInt": "5"
+            },
+            "correctness_score": {
+              "$numberInt": "4"
+            },
+            "completeness_score": {
+              "$numberInt": "3"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784997953222"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "A team member disagrees with your technical approach to a project. How do you handle this conflict?",
+            "transcript": "I just ignore team members when we disagree.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "2"
+            },
+            "completeness_score": {
+              "$numberInt": "2"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784997964783"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "Why do you believe you are a strong candidate for a role in this industry, and what is your greatest technical strength?",
+            "transcript": "I am okay at coding I guess.",
+            "clarity_score": {
+              "$numberInt": "3"
+            },
+            "correctness_score": {
+              "$numberInt": "2"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784997977641"
+              }
+            }
+          }
+        ],
+        "baseline_score_percentage": {
+          "$numberInt": "37"
+        },
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1784997978474"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784997913048"
+          }
+        },
+        "final_weakness_tag": "focus_completeness",
+        "sessionId": "pts_1784997912988_mokpbt"
+      },
+      {
+        "_id": {
+          "$oid": "6a551294cce351bc48170d4f"
+        },
+        "firebaseUid": "dev_stt_test",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [],
+        "baseline_score_percentage": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1783960768970"
+          }
+        },
+        "final_weakness_tag": null,
+        "sessionId": "pts_1783960768969_i8akju"
+      },
+      {
+        "_id": {
+          "$oid": "6a65cceda80c017d9f5c29e7"
+        },
+        "firebaseUid": "nnhKN8rULnaCoqh7FDl4ztJvjP13",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Tell me about yourself and your journey in the field of Information Technology so far.",
+            "transcript": "",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1788455362699"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "How do you stay updated with the latest trends and rapidly changing technologies in the IT industry?",
+            "transcript": "I stay updated with the real strengths and the idea industry by surfing on the web, especially on Reddit or on Twitter because that is where, uh, developers and founders of such LLMs tend to post more about their models.",
+            "clarity_score": {
+              "$numberInt": "3"
+            },
+            "correctness_score": {
+              "$numberInt": "3"
+            },
+            "completeness_score": {
+              "$numberInt": "3"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1788490131469"
+              }
+            }
+          }
+        ],
+        "baseline_score_percentage": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1788454089977"
+          }
+        },
+        "final_weakness_tag": null,
+        "sessionId": "pts_1788927303284_8o4kou"
+      },
+      {
+        "_id": {
+          "$oid": "6a67378ca80c017d9f5c33e7"
+        },
+        "firebaseUid": "fwY9ljueV7WbOuK1AJdb1Xb33bW2",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [],
+        "baseline_score_percentage": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785149324014"
+          }
+        },
+        "final_weakness_tag": null,
+        "sessionId": "pts_1785157882881_pdqbjy"
+      },
+      {
+        "_id": {
+          "$oid": "6a9d3415240cddbde7a68957"
+        },
+        "firebaseUid": "gh4EmT3cSIMT3nNd7QMdRcNY9gd2",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Tell me about yourself and your journey in the field of Information Technology so far.",
+            "transcript": "So I am a fresh graduate. in the field of information technology, and, uh, what I want to do is to be a full stack developer, but I kinda want to test the system first. So I picked front end.",
+            "clarity_score": {
+              "$numberInt": "3"
+            },
+            "correctness_score": {
+              "$numberInt": "3"
+            },
+            "completeness_score": {
+              "$numberInt": "3"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1788687448243"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "How do you stay updated with the latest trends and rapidly changing technologies in the IT industry?",
+            "transcript": "I stay updated in the field of information technology when it comes to trends by always browsing and always checking up those senior developers or those CEOs of LLMs. Because right now, we are in the AI era right now, so having knowledge with AI is a boost when it comes to the career that you are trying to make.",
+            "clarity_score": {
+              "$numberInt": "3"
+            },
+            "correctness_score": {
+              "$numberInt": "3"
+            },
+            "completeness_score": {
+              "$numberInt": "3"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1788687505481"
+              }
+            }
+          }
+        ],
+        "baseline_score_percentage": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1788687380303"
+          }
+        },
+        "final_weakness_tag": null,
+        "sessionId": "pts_1788690374408_t6hxc3"
+      }
+    ],
+    "set1sessions": [
+      {
+        "_id": {
+          "$oid": "6a37d1056a54909cffb62603"
+        },
+        "firebaseUid": "kW8XJVJxVnM8RtrLvDXomegMyFw1",
+        "__v": {
+          "$numberInt": "74"
+        },
+        "answers": [],
+        "avg_clarity": null,
+        "avg_completeness": null,
+        "avg_correctness": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784561109155"
+          }
+        },
+        "difficulty": "easy",
+        "improvement_score": null,
+        "isCompleted": false,
+        "role": "backend",
+        "sessionId": "s1_1789030844777_rqwofx",
+        "weakness_tag": "focus_completeness",
+        "questions": []
+      },
+      {
+        "_id": {
+          "$oid": "6a4929b9202082c9491a96d3"
+        },
+        "firebaseUid": "eitan_debug_test",
+        "__v": {
+          "$numberInt": "141"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "What are three steps that happen when a client and server communicate after you type a URL into a browser?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "Let is block-scoped and allows variable reassignment, whereas const is also block-scoped but creates an immutable binding that cannot be reassigned after declaration. In modern JavaScript, we prefer const by default and use let only when reassigning variables.",
+            "clarity_score": {
+              "$numberInt": "9"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on answering the specific question about client-server communication steps, not JavaScript variable declarations.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784997999523"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "What are three ways that a web application can remember information about a user across different pages or visits?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "Inline elements like span or strong do not start on a new line and only consume as much width as their content requires, whereas block elements like div or header start on a new line and expand to fill the full width of their container.",
+            "clarity_score": {
+              "$numberInt": "9"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "The answer describes HTML elements instead of addressing the question about user state persistence.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998016882"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "What are three key differences between HTTP and HTTPS when a website handles user data?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "CSS specificity is a clear hierarchy algorithm used by browsers to resolve conflicting style rules based on selector types, ranging from inline styles and IDs down to classes, attributes, and element tags.",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "The answer is completely off-topic; please ensure you address the question about HTTP vs HTTPS.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998034599"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "What are three basic Git commands that help you save and share your work with others?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "The Virtual DOM is an in-memory lightweight representation of the real DOM tree. React uses it to calculate minimal DOM manipulation diffs via reconciliation, optimizing rendering performance drastically.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on answering the specific question asked; here, the question was about Git commands, not React.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998054138"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "What are three key differences between SQL and NoSQL databases?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "State represents internal dynamic data managed within a component that triggers re-renders upon update, while props are immutable parameters passed down from parent to child components.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on answering the specific question asked, which was about SQL vs NoSQL databases, not React state and props.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998071853"
+              }
+            }
+          }
+        ],
+        "avg_clarity": {
+          "$numberInt": "7"
+        },
+        "avg_completeness": {
+          "$numberInt": "1"
+        },
+        "avg_correctness": {
+          "$numberInt": "1"
+        },
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1784998071888"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784997978573"
+          }
+        },
+        "difficulty": "easy",
+        "improvement_score": {
+          "$numberInt": "-7"
+        },
+        "isCompleted": true,
+        "role": "fullstack",
+        "sessionId": "s1_1784997978516_g8224g",
+        "weakness_tag": "focus_completeness"
+      },
+      {
+        "_id": {
+          "$oid": "6a671f05a80c017d9f5c32d6"
+        },
+        "firebaseUid": "uKnQcKe10iWjdBldgkdsyT8kJtv1",
+        "__v": {
+          "$numberInt": "6"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "What are three main benefits of using Git for version control in a software project?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "Let is block-scoped and reassignable, whereas const is block-scoped and immutable to re-assignment. Both prevent hoisting issues caused by var.",
+            "clarity_score": {
+              "$numberInt": "2"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on answering the specific question asked; your response was about JavaScript variables, not Git benefits.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785143052990"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "What are the four main HTTP methods used in a REST API?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "The Virtual DOM is a lightweight memory representation of the actual DOM. React uses a diffing algorithm to calculate minimum state changes before updating the real DOM.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on answering the specific question asked; here, the question was about HTTP methods, not the Virtual DOM.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785143056774"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "What are three key steps that happen on the client side after you type a URL into a browser and press enter?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "CSS specificity determines which styling rule applies based on selector weight: inline styles carry highest weight, followed by IDs, classes, and tag selectors.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the client-side steps after typing a URL, such as DNS resolution, HTTP request, and rendering.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785143060463"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "What are the three main differences between a cookie and a session in a web application?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "A closure is a function bundled with references to its surrounding lexical environment, allowing inner functions to access outer scope variables even after execution.",
+            "clarity_score": {
+              "$numberInt": "2"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Your answer described a closure, not cookies and sessions; please ensure you address the specific question asked.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785143063448"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "What are three key differences between HTTP and HTTPS?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "REST relies on standard HTTP verbs and stateless endpoints, whereas GraphQL uses a single endpoint allowing clients to query exact field structures.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the actual question: compare HTTP and HTTPS, not REST and GraphQL.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785143067385"
+              }
+            }
+          }
+        ],
+        "avg_clarity": {
+          "$numberDouble": "5.6"
+        },
+        "avg_completeness": {
+          "$numberInt": "1"
+        },
+        "avg_correctness": {
+          "$numberInt": "1"
+        },
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1785143067416"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785143045300"
+          }
+        },
+        "difficulty": "easy",
+        "improvement_score": null,
+        "isCompleted": true,
+        "questions": [
+          "What are three main benefits of using Git for version control in a software project?",
+          "What are the four main HTTP methods used in a REST API?",
+          "What are three key steps that happen on the client side after you type a URL into a browser and press enter?",
+          "What are the three main differences between a cookie and a session in a web application?",
+          "What are three key differences between HTTP and HTTPS?"
+        ],
+        "role": "fullstack",
+        "sessionId": "s1_1785143045226_40x8m0",
+        "weakness_tag": "focus_completeness"
+      },
+      {
+        "_id": {
+          "$oid": "6a673968a80c017d9f5c33ff"
+        },
+        "firebaseUid": "fwY9ljueV7WbOuK1AJdb1Xb33bW2",
+        "__v": {
+          "$numberInt": "6"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "What are three different parts of a web page that a browser handles separately when it renders the page?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "The different parts of a web page that a browser handles handles separately when it renders the page is one, the HTML parsing. This is the one that browse the HTML code to create a document object object model. Number two is DCSS parsing. This browser process CSS files to create the CSS object. And the number three is the rendering. The browser combines the DOM and the CSS OM to create a render tree.",
+            "clarity_score": {
+              "$numberInt": "6"
+            },
+            "correctness_score": {
+              "$numberInt": "7"
+            },
+            "completeness_score": {
+              "$numberInt": "6"
+            },
+            "tip": "Try to mention JavaScript as a third part and clarify the terms like CSSOM.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785149972090"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "What are the different values you can use for the CSS position property?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "R seven CSS position properties. There are seven CSS position properties, which is static. So this is the default for all elements. So elements follow the normal document flow. Top right, bottom, and left. Priorities, The next one is the relative. Number three is the app means it removes the element from the normal document flow. The next one is the fixed, which is or removes the element from the document flow. So this is positioned relative to the viewport, so it stays in place even when scrolling. And the next three is the sticky initial, and inherit.",
+            "clarity_score": {
+              "$numberInt": "5"
+            },
+            "correctness_score": {
+              "$numberInt": "6"
+            },
+            "completeness_score": {
+              "$numberInt": "5"
+            },
+            "tip": "Focus on listing the five standard values (static, relative, absolute, fixed, sticky) and briefly explain each.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785150231726"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "What are the different data types you can use when declaring variables in JavaScript?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "Only data types that I know when declaring variables are the number the and strings. Can also add the undefined the null, which means no value.",
+            "clarity_score": {
+              "$numberInt": "5"
+            },
+            "correctness_score": {
+              "$numberInt": "6"
+            },
+            "completeness_score": {
+              "$numberInt": "4"
+            },
+            "tip": "Try to list all primitive data types and mention that JavaScript is dynamically typed.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785150391287"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "What are three different ways you can select an HTML element from the page using JavaScript?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "The three common ways you can select. An HTML element from the page using JavaScript is one, which is by ID. Number two is by class name, and three is by CSS selector.",
+            "clarity_score": {
+              "$numberInt": "7"
+            },
+            "correctness_score": {
+              "$numberInt": "8"
+            },
+            "completeness_score": {
+              "$numberInt": "6"
+            },
+            "tip": "Try to mention the specific methods like getElementById, getElementsByClassName, and querySelector for clarity.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785150645379"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "What are three different properties you can change on an HTML element using JavaScript after you have selected it?",
+            "weakness_tag": "focus_completeness",
+            "transcript": "The three different properties you can change on an HL element using JavaScript is one by inner HTML So this changes the HTML content inside the element. Number two is by style. This is or this modifies the elements CSS style. And number three is by s r c. This is for the images, videos, etcetera. So this updates a source file of media elements.",
+            "clarity_score": {
+              "$numberInt": "6"
+            },
+            "correctness_score": {
+              "$numberInt": "7"
+            },
+            "completeness_score": {
+              "$numberInt": "6"
+            },
+            "tip": "Try to speak more clearly and avoid filler words like 'um' and 'like'.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785150730252"
+              }
+            }
+          }
+        ],
+        "avg_clarity": {
+          "$numberDouble": "5.8"
+        },
+        "avg_completeness": {
+          "$numberDouble": "5.4"
+        },
+        "avg_correctness": {
+          "$numberDouble": "6.8"
+        },
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1785150730317"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785149800280"
+          }
+        },
+        "difficulty": "easy",
+        "improvement_score": null,
+        "isCompleted": true,
+        "questions": [
+          "What are three different parts of a web page that a browser handles separately when it renders the page?",
+          "What are the different values you can use for the CSS position property?",
+          "What are the different data types you can use when declaring variables in JavaScript?",
+          "What are three different ways you can select an HTML element from the page using JavaScript?",
+          "What are three different properties you can change on an HTML element using JavaScript after you have selected it?"
+        ],
+        "role": "frontend",
+        "sessionId": "s1_1785149800083_gd7mps",
+        "weakness_tag": "focus_completeness"
+      },
+      {
+        "_id": {
+          "$oid": "6a881f57ecc8972fa5c59e4e"
+        },
+        "firebaseUid": "anonymous_user",
+        "__v": {
+          "$numberInt": "2"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "What are the four main commands used to add, retrieve, update, and delete data in a SQL database?",
+            "weakness_tag": "focus_clarity",
+            "transcript": "Pick up that old logo, I said, can't worry about it.",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the core SQL commands: INSERT, SELECT, UPDATE, and DELETE.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1787802725671"
+              }
+            }
+          }
+        ],
+        "avg_clarity": null,
+        "avg_completeness": null,
+        "avg_correctness": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1787305815381"
+          }
+        },
+        "difficulty": "easy",
+        "improvement_score": null,
+        "isCompleted": false,
+        "questions": [
+          "What are the four main commands used to add, retrieve, update, and delete data in a SQL database?",
+          "What are three differences between a cookie and a session in web development?",
+          "What are the three stages in the basic Git workflow that you go through when saving your changes locally, uploading them to a shared repository, and getting the latest changes from that repository?",
+          "What are the three main steps that happen after you type a web address into your browser and press enter?",
+          "What are three key differences between HTTP and HTTPS that show why HTTPS is important for secure communication?"
+        ],
+        "role": "fullstack",
+        "sessionId": "s1_1788379469711_o9v5n9",
+        "weakness_tag": "focus_completeness"
+      },
+      {
+        "_id": {
+          "$oid": "6a9b808b240cddbde7a67aec"
+        },
+        "firebaseUid": "nnhKN8rULnaCoqh7FDl4ztJvjP13",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [],
+        "avg_clarity": null,
+        "avg_completeness": null,
+        "avg_correctness": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1788575884504"
+          }
+        },
+        "difficulty": "easy",
+        "improvement_score": null,
+        "isCompleted": false,
+        "questions": [],
+        "role": "Frontend Developer",
+        "sessionId": "s1_1788575883907_uxweyu",
+        "weakness_tag": "focus_completeness"
+      }
+    ],
+    "set2sessions": [
+      {
+        "_id": {
+          "$oid": "6a4287335d46f8ac63727954"
+        },
+        "firebaseUid": "kW8XJVJxVnM8RtrLvDXomegMyFw1",
+        "__v": {
+          "$numberInt": "32"
+        },
+        "answers": [],
+        "avg_accuracy": null,
+        "avg_depth": null,
+        "avg_problem_solving": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784033931634"
+          }
+        },
+        "difficulty": "easy",
+        "isCompleted": false,
+        "overall_score_percentage": null,
+        "role": "frontend",
+        "sessionId": "s2_1784033931580_sy497p"
+      },
+      {
+        "_id": {
+          "$oid": "6a44b3c35d46f8ac63728e1b"
+        },
+        "firebaseUid": "eitan_debug_test",
+        "__v": {
+          "$numberInt": "90"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "What does the JSON dot stringify method do, and what happens if you forget to use it when sending data from a frontend form to a backend server?",
+            "transcript": "Relational SQL databases use structured schema tables with strict foreign key constraints and ACID guarantees, making them ideal for financial transactions, whereas NoSQL document databases offer flexible schema-less JSON storage optimized for high write throughput and horizontal scaling.",
+            "problem_solving_score": {
+              "$numberInt": "1"
+            },
+            "accuracy_score": {
+              "$numberInt": "1"
+            },
+            "depth_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the specific question asked: explain JSON.stringify and its role in data serialization for HTTP requests.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998096273"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "What is a JSON Web Token, or JWT, and how is it commonly used to keep a user logged in after they log into a web application?",
+            "transcript": "Promises represent asynchronous operation outcomes using then-catch chains, while async-await offers cleaner synchronous-style syntax built on top of native promises for readable asynchronous control flow.",
+            "problem_solving_score": {
+              "$numberInt": "1"
+            },
+            "accuracy_score": {
+              "$numberInt": "1"
+            },
+            "depth_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the question asked: explain what a JWT is and how it maintains user sessions, not on JavaScript promises.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998112919"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "What is a Promise in JavaScript, and why does the fetch method return one?",
+            "transcript": "A closure is a function combined with lexical scope reference environment created upon definition, allowing inner functions to access outer variables even after the outer function execution context finishes.",
+            "problem_solving_score": {
+              "$numberInt": "1"
+            },
+            "accuracy_score": {
+              "$numberInt": "1"
+            },
+            "depth_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the actual question: define a Promise and explain why fetch returns one, not closures.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998130342"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "What is CORS, and why does a browser block a request from a frontend running on one domain to a backend running on a different domain?",
+            "transcript": "Database indexes build balanced B-tree lookup structures on column values, enabling O(log N) lookup time complexity instead of expensive full table scans during database queries.",
+            "problem_solving_score": {
+              "$numberInt": "1"
+            },
+            "accuracy_score": {
+              "$numberInt": "1"
+            },
+            "depth_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the question asked: explain CORS and browser same-origin policy, not database indexes.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998147375"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "What is the difference between storing a user's login token in localStorage versus storing it in a session cookie?",
+            "transcript": "MVC architecture separates application logic into Model data state, View UI representation, and Controller business logic to improve maintainability, separation of concerns, and modular unit testing.",
+            "problem_solving_score": {
+              "$numberInt": "1"
+            },
+            "accuracy_score": {
+              "$numberInt": "1"
+            },
+            "depth_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the specific question asked; your answer should directly address the difference between localStorage and session cookies for token storage.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998164983"
+              }
+            }
+          }
+        ],
+        "avg_accuracy": {
+          "$numberInt": "1"
+        },
+        "avg_depth": {
+          "$numberInt": "1"
+        },
+        "avg_problem_solving": {
+          "$numberInt": "1"
+        },
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1784998165020"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784998075290"
+          }
+        },
+        "difficulty": "easy",
+        "isCompleted": true,
+        "overall_score_percentage": {
+          "$numberInt": "10"
+        },
+        "role": "fullstack",
+        "sessionId": "s2_1784998075260_lg74ht"
+      },
+      {
+        "_id": {
+          "$oid": "6a671f20a80c017d9f5c32d7"
+        },
+        "firebaseUid": "uKnQcKe10iWjdBldgkdsyT8kJtv1",
+        "__v": {
+          "$numberInt": "4"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "What is a JSON Web Token, or JWT, and how is it commonly used to keep a user logged in after they authenticate?",
+            "transcript": "I resolve race conditions by using abort controllers to cancel stale async requests and applying pessimistic optimistic UI locking patterns.",
+            "problem_solving_score": {
+              "$numberInt": "1"
+            },
+            "accuracy_score": {
+              "$numberInt": "1"
+            },
+            "depth_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the question asked: explain what a JWT is and how it maintains user sessions after login, not about race conditions.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785143079668"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "What is the typical sequence of steps that happens when a user submits a form on a web page, from the frontend sending the data to the backend saving it in a database?",
+            "transcript": "Database indexes construct balanced B-tree structures on indexed columns, reducing query lookup complexity from O(N) full table scans to O(log N).",
+            "problem_solving_score": {
+              "$numberInt": "1"
+            },
+            "accuracy_score": {
+              "$numberInt": "1"
+            },
+            "depth_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the actual steps of form submission, such as capturing form data, sending an HTTP request, server-side processing, and database insertion.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785143083421"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "What is the difference between localStorage and sessionStorage in a web browser?",
+            "transcript": "Event bubbling propagates events upwards from target element to root document, while capturing propagates down from root to target.",
+            "problem_solving_score": {
+              "$numberInt": "1"
+            },
+            "accuracy_score": {
+              "$numberInt": "1"
+            },
+            "depth_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Focus on the actual question asked; describe the differences between localStorage and sessionStorage, such as persistence and scope.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785143087052"
+              }
+            }
+          }
+        ],
+        "avg_accuracy": null,
+        "avg_depth": null,
+        "avg_problem_solving": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785143071898"
+          }
+        },
+        "difficulty": "easy",
+        "isCompleted": false,
+        "overall_score_percentage": null,
+        "questions": [
+          "What is a JSON Web Token, or JWT, and how is it commonly used to keep a user logged in after they authenticate?",
+          "What is the typical sequence of steps that happens when a user submits a form on a web page, from the frontend sending the data to the backend saving it in a database?",
+          "What is the difference between localStorage and sessionStorage in a web browser?",
+          "What does it mean when we say that the fetch method in JavaScript is asynchronous, and how is that different from synchronous code?",
+          "What is CORS, and why does a web browser block a request from your frontend to a backend running on a different domain?"
+        ],
+        "role": "fullstack",
+        "sessionId": "s2_1785143071847_7ic3iw"
+      },
+      {
+        "_id": {
+          "$oid": "6a673d1fa80c017d9f5c3416"
+        },
+        "firebaseUid": "fwY9ljueV7WbOuK1AJdb1Xb33bW2",
+        "__v": {
+          "$numberInt": "2"
+        },
+        "answers": [],
+        "avg_accuracy": null,
+        "avg_depth": null,
+        "avg_problem_solving": null,
+        "completedAt": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785150765330"
+          }
+        },
+        "difficulty": "easy",
+        "isCompleted": false,
+        "overall_score_percentage": null,
+        "questions": [
+          "What does the prevent default method do when called inside a form submission event handler in JavaScript?",
+          "What is the purpose of the add event listener method in JavaScript?",
+          "What is the purpose of the get element by ID method in JavaScript?",
+          "What does the value property do when used on an input field in JavaScript?",
+          "What is the simplest way to hide a div element using JavaScript when a button is clicked?"
+        ],
+        "role": "frontend",
+        "sessionId": "s2_1785150765224_1bk5so"
+      }
+    ],
+    "set3sessions": [
+      {
+        "_id": {
+          "$oid": "6a428a7c5d46f8ac63727985"
+        },
+        "firebaseUid": "kW8XJVJxVnM8RtrLvDXomegMyFw1",
+        "__v": {
+          "$numberInt": "15"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Tell me about a time when a teammate had a different approach than you and how you worked together to move forward?",
+            "competency_topic": "Teamwork & Collaboration",
+            "transcript": "I do not know.",
+            "situation_score": {
+              "$numberInt": "1"
+            },
+            "action_score": {
+              "$numberInt": "1"
+            },
+            "result_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Next time, try to recall a specific example from your experience, even if it's a small one, and describe the situation, your actions, and the outcome.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029234859"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "Tell me about a time you had to quickly pick up a new software or framework for a group project you were working on?",
+            "competency_topic": "Adaptability & Learning Speed",
+            "transcript": "Yes.",
+            "situation_score": {
+              "$numberInt": "1"
+            },
+            "action_score": {
+              "$numberInt": "1"
+            },
+            "result_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Next time, provide a specific example with context, your actions, and the outcome.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029263325"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "Tell me about a time you and a study partner had a different idea on how to finish a school assignment?",
+            "competency_topic": "Conflict Resolution",
+            "transcript": "No.",
+            "situation_score": {
+              "$numberInt": "1"
+            },
+            "action_score": {
+              "$numberInt": "1"
+            },
+            "result_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Next time, try to describe a specific situation where you disagreed with a study partner and explain the steps you took to resolve it.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029291725"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "Tell me about a time you had to redo a large part of a school project because your first approach was not working?",
+            "competency_topic": "Resilience & Handling Failure",
+            "transcript": "I do not know.",
+            "situation_score": {
+              "$numberInt": "1"
+            },
+            "action_score": {
+              "$numberInt": "1"
+            },
+            "result_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Next time, try to recall a specific example from your experience, even if it's small, and describe the situation, your actions, and the outcome.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029361101"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "Tell me about a time you found a way to make a group project work better than the original plan required?",
+            "competency_topic": "Problem Solving & Initiative",
+            "transcript": "Yes.",
+            "situation_score": {
+              "$numberInt": "1"
+            },
+            "action_score": {
+              "$numberInt": "1"
+            },
+            "result_score": {
+              "$numberInt": "1"
+            },
+            "tip": "Next time, describe a specific situation, the actions you took, and the outcome to fully answer the question.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029387190"
+              }
+            }
+          }
+        ],
+        "avg_action": {
+          "$numberInt": "1"
+        },
+        "avg_result": {
+          "$numberInt": "1"
+        },
+        "avg_situation": {
+          "$numberInt": "1"
+        },
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1784029387246"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784029200596"
+          }
+        },
+        "difficulty": "easy",
+        "isCompleted": true,
+        "overall_score_percentage": {
+          "$numberInt": "10"
+        },
+        "role": "frontend",
+        "sessionId": "s3_1784029200550_q42ahb"
+      },
+      {
+        "_id": {
+          "$oid": "6a44bba65d46f8ac63728e57"
+        },
+        "firebaseUid": "eitan_debug_test",
+        "__v": {
+          "$numberInt": "73"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Describe a situation where you helped a teammate who was struggling to keep up with the rest of the group during a school project?",
+            "competency_topic": "Teamwork & Collaboration",
+            "transcript": "During our senior capstone project building a React dashboard, our team faced a tight 2-week deadline with conflicting database schema ideas. I initiated an architecture review, presented a normalized relational model, and guided consensus, allowing us to deploy 2 days ahead of schedule with zero data redundancy.",
+            "situation_score": {
+              "$numberInt": "8"
+            },
+            "action_score": {
+              "$numberInt": "9"
+            },
+            "result_score": {
+              "$numberInt": "9"
+            },
+            "tip": "Next time, explicitly mention the teammate who was struggling and how you helped them personally.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998189835"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "Can you walk me through a time when you had to pick up a new software tool on your own to complete a class assignment?",
+            "competency_topic": "Adaptability & Learning Speed",
+            "transcript": "A critical production bug triggered null pointer crashes in our checkout API under peak traffic. I immediately analyzed server logs using Node.js profiling, isolated the missing null check in our payment handler, and pushed a verified hotfix within 45 minutes, restoring 100% uptime.",
+            "situation_score": {
+              "$numberInt": "8"
+            },
+            "action_score": {
+              "$numberInt": "9"
+            },
+            "result_score": {
+              "$numberInt": "9"
+            },
+            "tip": "Next time, explicitly state that you learned the tool on your own to align with the question.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998208298"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "Tell me about a time you had a different opinion from a teammate on how to finish a task and how you worked through it together?",
+            "competency_topic": "Conflict Resolution",
+            "transcript": "My project partner wanted to adopt an untested heavy state management library right before submission. I conducted a comparative benchmark showing our native Context API was 4x lighter in bundle size, convincing the team to stay with native React state and avoiding regression risk.",
+            "situation_score": {
+              "$numberInt": "8"
+            },
+            "action_score": {
+              "$numberInt": "9"
+            },
+            "result_score": {
+              "$numberInt": "8"
+            },
+            "tip": "Next time, explicitly state the outcome of your actions, such as how the project benefited from your decision.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998225069"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "Tell me about a time you had to redo a significant part of a group project because your first approach did not work?",
+            "competency_topic": "Resilience & Handling Failure",
+            "transcript": "When a project member fell behind due to unfamiliarity with REST APIs, I scheduled daily 30-minute pair programming sessions to guide them through endpoint integration. As a result, they completed all assigned modules on time with high code quality.",
+            "situation_score": {
+              "$numberInt": "5"
+            },
+            "action_score": {
+              "$numberInt": "8"
+            },
+            "result_score": {
+              "$numberInt": "7"
+            },
+            "tip": "Next time, describe the initial approach that failed and why it needed to be redone to fully establish the situation.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998242568"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "Tell me about a time you took the lead to find a better way to organize your team's work when the original plan was not working?",
+            "competency_topic": "Problem Solving & Initiative",
+            "transcript": "Our team realized 24 hours before product demo that mobile responsiveness was breaking on small viewports. I took full ownership, refactored the layout using CSS Flexbox and container media queries overnight, and successfully delivered a flawless multi-device presentation.",
+            "situation_score": {
+              "$numberInt": "8"
+            },
+            "action_score": {
+              "$numberInt": "9"
+            },
+            "result_score": {
+              "$numberInt": "8"
+            },
+            "tip": "Next time, briefly mention the original plan that wasn't working to fully set up the situation.",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998259390"
+              }
+            }
+          }
+        ],
+        "avg_action": {
+          "$numberDouble": "8.8"
+        },
+        "avg_result": {
+          "$numberDouble": "8.2"
+        },
+        "avg_situation": {
+          "$numberDouble": "7.4"
+        },
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1784998259425"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784998169073"
+          }
+        },
+        "difficulty": "easy",
+        "isCompleted": true,
+        "overall_score_percentage": {
+          "$numberDouble": "81.33"
+        },
+        "role": "fullstack",
+        "sessionId": "s3_1784998169046_6rm3zo"
+      }
+    ],
+    "posttestsessions": [
+      {
+        "_id": {
+          "$oid": "6a4e6ce4fee15e8e2c86eae5"
+        },
+        "firebaseUid": "anonymous_user",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Tell me about yourself and your journey in the field of Information Technology so far.",
+            "transcript": "Secure and secure what people",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1783524611681"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "How do you stay updated with the latest trends and rapidly changing technologies in the IT industry?",
+            "transcript": "asfasd",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1783524631010"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "Describe a time you encountered a difficult technical bug or project hurdle. How did you troubleshoot it?",
+            "transcript": "asdasdas",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1783524642992"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "A team member disagrees with your technical approach to a project. How do you handle this conflict?",
+            "transcript": "cxzczczx",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1783524656914"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "Why do you believe you are a strong candidate for a role in this industry, and what is your greatest technical strength?",
+            "transcript": "Three two",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1783524711371"
+              }
+            }
+          }
+        ],
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1783524711433"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1783524578799"
+          }
+        },
+        "final_score_percentage": {
+          "$numberInt": "10"
+        },
+        "final_weakness_tag": "focus_clarity",
+        "sessionId": "post_1783524578797_02f5m4"
+      },
+      {
+        "_id": {
+          "$oid": "6a4e7abdfee15e8e2c86eb30"
+        },
+        "firebaseUid": "eitan_debug_test",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Tell me about yourself and your journey in the field of Information Technology so far.",
+            "transcript": "I am a passionate software engineer specializing in full-stack web development with expertise in JavaScript, React, Node.js, and database performance tuning. I have built scalable microservices and user interfaces.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "8"
+            },
+            "completeness_score": {
+              "$numberInt": "6"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998276544"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "How do you stay updated with the latest trends and rapidly changing technologies in the IT industry?",
+            "transcript": "I systematically follow tech evolution by studying GitHub trending repositories, reading architecture publications such as Martin Fowler and ByteByteGo, taking advanced courses, and contributing to open-source software.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "9"
+            },
+            "completeness_score": {
+              "$numberInt": "8"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998290225"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "Describe a time you encountered a difficult technical bug or project hurdle. How did you troubleshoot it?",
+            "transcript": "During a production deployment, I identified a critical memory leak causing backend server crashes under high concurrency. Using Node.js memory profiling and Chrome DevTools heap snapshots, I isolated an unhandled listener leak and refactored the event handling to restore 100% stability.",
+            "clarity_score": {
+              "$numberInt": "9"
+            },
+            "correctness_score": {
+              "$numberInt": "9"
+            },
+            "completeness_score": {
+              "$numberInt": "8"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998301690"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "A team member disagrees with your technical approach to a project. How do you handle this conflict?",
+            "transcript": "When a technical disagreement arises regarding system architecture, I schedule a collaborative design review. I present benchmark data, listen carefully to counterarguments, objectively evaluate trade-offs, and reach consensus based on system performance and maintainability.",
+            "clarity_score": {
+              "$numberInt": "9"
+            },
+            "correctness_score": {
+              "$numberInt": "9"
+            },
+            "completeness_score": {
+              "$numberInt": "8"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998314215"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "Why do you believe you are a strong candidate for a role in this industry, and what is your greatest technical strength?",
+            "transcript": "I am an ideal candidate because I combine strong full-stack technical competencies with analytical problem-solving skills, and my greatest strength is designing resilient, performant software systems.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "9"
+            },
+            "completeness_score": {
+              "$numberInt": "8"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784998326564"
+              }
+            }
+          }
+        ],
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1784998327714"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784998262707"
+          }
+        },
+        "final_score_percentage": {
+          "$numberInt": "83"
+        },
+        "final_weakness_tag": "focus_completeness",
+        "sessionId": "post_1784998262673_ot7vn0"
+      },
+      {
+        "_id": {
+          "$oid": "6a5620e6cce351bc4817171f"
+        },
+        "firebaseUid": "kW8XJVJxVnM8RtrLvDXomegMyFw1",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Tell me about yourself and your journey in the field of Information Technology so far.",
+            "transcript": "No.",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029436071"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "How do you stay updated with the latest trends and rapidly changing technologies in the IT industry?",
+            "transcript": "No.",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029450875"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "Describe a time you encountered a difficult technical bug or project hurdle. How did you troubleshoot it?",
+            "transcript": "Answer the same five questions you faced at the start. I don't think so.",
+            "clarity_score": {
+              "$numberInt": "2"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029475196"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "A team member disagrees with your technical approach to a project. How do you handle this conflict?",
+            "transcript": "Yes.",
+            "clarity_score": {
+              "$numberInt": "1"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029490687"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "Why do you believe you are a strong candidate for a role in this industry, and what is your greatest technical strength?",
+            "transcript": "The same five questions you faced at the start. Answer the same five questions. You faced at the start. Today, I will measure your growth The AI will measure your growth. Across clarity, correctness, and completeness.",
+            "clarity_score": {
+              "$numberInt": "2"
+            },
+            "correctness_score": {
+              "$numberInt": "1"
+            },
+            "completeness_score": {
+              "$numberInt": "1"
+            },
+            "primary_weakness": "focus_correctness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1784029527743"
+              }
+            }
+          }
+        ],
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1784029527799"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1784029413152"
+          }
+        },
+        "final_score_percentage": {
+          "$numberInt": "11"
+        },
+        "final_weakness_tag": "focus_completeness",
+        "sessionId": "post_1784029413151_6tonyx"
+      },
+      {
+        "_id": {
+          "$oid": "6a65ce4ea80c017d9f5c29ef"
+        },
+        "firebaseUid": "nnhKN8rULnaCoqh7FDl4ztJvjP13",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "answers": [
+          {
+            "questionIndex": {
+              "$numberInt": "0"
+            },
+            "question": "Tell me about yourself and your journey in the field of Information Technology so far.",
+            "transcript": "I am a passionate software engineer specializing in full-stack web development with expertise in JavaScript, React, Node.js, and database performance tuning. I have built scalable microservices and user interfaces.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "8"
+            },
+            "completeness_score": {
+              "$numberInt": "6"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785064560658"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "1"
+            },
+            "question": "How do you stay updated with the latest trends and rapidly changing technologies in the IT industry?",
+            "transcript": "I systematically follow tech evolution by studying GitHub trending repositories, reading architecture publications such as Martin Fowler and ByteByteGo, taking advanced courses, and contributing to open-source software.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "9"
+            },
+            "completeness_score": {
+              "$numberInt": "8"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785064573045"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "2"
+            },
+            "question": "Describe a time you encountered a difficult technical bug or project hurdle. How did you troubleshoot it?",
+            "transcript": "During a production deployment, I identified a critical memory leak causing backend server crashes under high concurrency. Using Node.js memory profiling and Chrome DevTools heap snapshots, I isolated an unhandled listener leak and refactored the event handling to restore 100% stability.",
+            "clarity_score": {
+              "$numberInt": "9"
+            },
+            "correctness_score": {
+              "$numberInt": "9"
+            },
+            "completeness_score": {
+              "$numberInt": "8"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785064585532"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "3"
+            },
+            "question": "A team member disagrees with your technical approach to a project. How do you handle this conflict?",
+            "transcript": "When a technical disagreement arises regarding system architecture, I schedule a collaborative design review. I present benchmark data, listen carefully to counterarguments, objectively evaluate trade-offs, and reach consensus based on system performance and maintainability.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "9"
+            },
+            "completeness_score": {
+              "$numberInt": "8"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785064599103"
+              }
+            }
+          },
+          {
+            "questionIndex": {
+              "$numberInt": "4"
+            },
+            "question": "Why do you believe you are a strong candidate for a role in this industry, and what is your greatest technical strength?",
+            "transcript": "I am an ideal candidate because I combine strong full-stack technical competencies with analytical problem-solving skills, and my greatest strength is designing resilient, performant software systems.",
+            "clarity_score": {
+              "$numberInt": "8"
+            },
+            "correctness_score": {
+              "$numberInt": "9"
+            },
+            "completeness_score": {
+              "$numberInt": "8"
+            },
+            "primary_weakness": "focus_completeness",
+            "evaluatedAt": {
+              "$date": {
+                "$numberLong": "1785064610607"
+              }
+            }
+          }
+        ],
+        "completedAt": {
+          "$date": {
+            "$numberLong": "1785064611642"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1785064546243"
+          }
+        },
+        "final_score_percentage": {
+          "$numberInt": "82"
+        },
+        "final_weakness_tag": "focus_completeness",
+        "sessionId": "post_1785064546166_h1k74r"
+      }
+    ]
+  },
+  "indexes": {
+    "users": [
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "_id": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "_id_"
+      },
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "firebaseUid": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "firebaseUid_1",
+        "unique": true
+      }
+    ],
+    "pretestsessions": [
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "_id": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "_id_"
+      },
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "firebaseUid": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "firebaseUid_1",
+        "unique": true
+      }
+    ],
+    "set1sessions": [
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "_id": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "_id_"
+      },
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "firebaseUid": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "firebaseUid_1",
+        "unique": true
+      }
+    ],
+    "set2sessions": [
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "_id": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "_id_"
+      },
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "firebaseUid": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "firebaseUid_1",
+        "unique": true
+      }
+    ],
+    "set3sessions": [
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "_id": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "_id_"
+      },
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "firebaseUid": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "firebaseUid_1",
+        "unique": true
+      }
+    ],
+    "posttestsessions": [
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "_id": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "_id_"
+      },
+      {
+        "v": {
+          "$numberInt": "2"
+        },
+        "key": {
+          "firebaseUid": {
+            "$numberInt": "1"
+          }
+        },
+        "name": "firebaseUid_1",
+        "unique": true
+      }
+    ]
+  }
+}

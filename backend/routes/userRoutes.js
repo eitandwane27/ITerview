@@ -448,7 +448,7 @@ router.get("/results-summary", async (req, res) => {
 });
 
 // GET /api/users/active-practice-session?uid=...
-// Checks if the user has an in-progress practice session (Set 1, Set 2, or Set 3)
+// Returns the exact unfinished or next required journey step after a user leaves.
 router.get("/active-practice-session", async (req, res) => {
   try {
     const { uid } = req.query;
@@ -456,47 +456,153 @@ router.get("/active-practice-session", async (req, res) => {
       return res.status(400).json({ message: "UID is required" });
     }
 
-    const [set1, set2, set3] = await Promise.all([
-      Set1Session.findOne({ firebaseUid: uid }).select("isCompleted answers sessionId"),
-      Set2Session.findOne({ firebaseUid: uid }).select("isCompleted answers sessionId"),
-      Set3Session.findOne({ firebaseUid: uid }).select("isCompleted answers sessionId"),
+    const [user, preTest, set1, set2, set3, postTest] = await Promise.all([
+      User.findOne({ firebaseUid: uid }).select("confidenceScore postConfidenceScore"),
+      PreTestSession.findOne({ firebaseUid: uid }).select(
+        "completedAt answers sessionId baseline_score_percentage",
+      ),
+      Set1Session.findOne({ firebaseUid: uid }).select(
+        "isCompleted answers sessionId mode",
+      ),
+      Set2Session.findOne({ firebaseUid: uid }).select(
+        "isCompleted answers sessionId mode",
+      ),
+      Set3Session.findOne({ firebaseUid: uid }).select(
+        "isCompleted answers sessionId mode",
+      ),
+      PostTestSession.findOne({ firebaseUid: uid }).select(
+        "completedAt answers sessionId final_score_percentage",
+      ),
     ]);
 
-    let activeDoc = null;
-    let activeSet = null;
-
-    if (set3 && !set3.isCompleted) {
-      activeDoc = set3;
-      activeSet = 3;
-    } else if (set2 && !set2.isCompleted) {
-      activeDoc = set2;
-      activeSet = 2;
-    } else if (set1 && !set1.isCompleted) {
-      activeDoc = set1;
-      activeSet = 1;
-    } else if (set1 && set1.isCompleted) {
-      if (!set2 || !set2.isCompleted) {
-        activeDoc = set2;
-        activeSet = 2;
-      } else if (!set3 || !set3.isCompleted) {
-        activeDoc = set3;
-        activeSet = 3;
-      }
-    }
-
-    if (activeSet) {
-      return res.status(200).json({
+    const mainSetDocs = { 1: set1, 2: set2, 3: set3 };
+    const mainSetPayload = (activeSet, fallbackMode = "diagnostic") => {
+      const activeDoc = mainSetDocs[activeSet];
+      const previousDoc = activeSet > 1 ? mainSetDocs[activeSet - 1] : null;
+      const modeSource = activeDoc || previousDoc;
+      return {
         hasActiveSession: true,
+        hasResumableSession: Boolean(activeDoc && !activeDoc.isCompleted),
+        nextStage: "mainsets",
         activeSet,
-        answersCount: activeDoc?.answers ? activeDoc.answers.length : 0,
+        answersCount:
+          activeDoc && !activeDoc.isCompleted && activeDoc.answers
+            ? activeDoc.answers.length
+            : 0,
         totalQuestions: 5,
-        sessionId: activeDoc?.sessionId || null,
+        sessionId:
+          activeDoc && !activeDoc.isCompleted ? activeDoc.sessionId || null : null,
+        mode: modeSource?.mode === "practice" ? "practice" : fallbackMode,
+      };
+    };
+
+    // An explicitly unfinished interview takes priority, even if someone entered
+    // it manually before completing an earlier onboarding step.
+    if (set3 && !set3.isCompleted) return res.status(200).json(mainSetPayload(3));
+    if (set2 && !set2.isCompleted) return res.status(200).json(mainSetPayload(2));
+    if (set1 && !set1.isCompleted) return res.status(200).json(mainSetPayload(1));
+
+    if (preTest && !preTest.completedAt) {
+      return res.status(200).json({
+        hasActiveSession: false,
+        hasResumableSession: true,
+        nextStage: "pretest",
+        answersCount: preTest.answers?.length || 0,
+        totalQuestions: 5,
+        sessionId: preTest.sessionId || null,
       });
     }
 
-    return res.status(200).json({ hasActiveSession: false });
+    if (postTest && !postTest.completedAt) {
+      return res.status(200).json({
+        hasActiveSession: false,
+        hasResumableSession: true,
+        nextStage: "posttest",
+        answersCount: postTest.answers?.length || 0,
+        totalQuestions: 5,
+        sessionId: postTest.sessionId || null,
+      });
+    }
+
+    const preTestComplete = Boolean(
+      preTest?.completedAt || preTest?.baseline_score_percentage !== null,
+    );
+    if (!preTestComplete) {
+      return res.status(200).json({
+        hasActiveSession: false,
+        hasResumableSession: false,
+        nextStage:
+          user?.confidenceScore === null || user?.confidenceScore === undefined
+            ? "likert-pre"
+            : "mic-test",
+      });
+    }
+
+    const researchComplete = Boolean(
+      postTest?.completedAt && user?.postConfidenceScore !== null,
+    );
+    const hasPracticeSet = [set1, set2, set3].some(
+      (session) => session?.mode === "practice",
+    );
+
+    // Once the research journey is complete, only an already-started practice
+    // sequence should be inferred. A user with no practice run stays on Dashboard.
+    if (researchComplete) {
+      if (hasPracticeSet) {
+        if (!set1 || !set1.isCompleted) {
+          return res.status(200).json(mainSetPayload(1, "practice"));
+        }
+        if (!set2 || !set2.isCompleted) {
+          return res.status(200).json(mainSetPayload(2, "practice"));
+        }
+        if (!set3 || !set3.isCompleted) {
+          return res.status(200).json(mainSetPayload(3, "practice"));
+        }
+      }
+      return res.status(200).json({
+        hasActiveSession: false,
+        hasResumableSession: false,
+        nextStage: "complete",
+      });
+    }
+
+    if (!set1 || !set1.isCompleted) {
+      return res.status(200).json(mainSetPayload(1));
+    }
+    if (!set2 || !set2.isCompleted) {
+      return res.status(200).json(mainSetPayload(2));
+    }
+    if (!set3 || !set3.isCompleted) {
+      return res.status(200).json(mainSetPayload(3));
+    }
+    if (!postTest?.completedAt) {
+      return res.status(200).json({
+        hasActiveSession: false,
+        hasResumableSession: false,
+        nextStage: "posttest",
+        answersCount: 0,
+        totalQuestions: 5,
+        sessionId: null,
+      });
+    }
+    if (
+      user?.postConfidenceScore === null ||
+      user?.postConfidenceScore === undefined
+    ) {
+      return res.status(200).json({
+        hasActiveSession: false,
+        hasResumableSession: false,
+        nextStage: "likert-post",
+      });
+    }
+
+    return res.status(200).json({
+      hasActiveSession: false,
+      hasResumableSession: false,
+      nextStage: "complete",
+    });
   } catch (error) {
-    console.error("❌ Error fetching active practice session:", error);
+    console.error("Error fetching active journey session:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 });

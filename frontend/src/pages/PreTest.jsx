@@ -33,10 +33,11 @@ import {
   Volume2,
   X,
 } from 'lucide-react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import { AnimatePresence } from 'framer-motion';
 import AiAnalysisLoader from '../components/AiAnalysisLoader';
-import { AIOrb } from './MainSets';
+import { AIOrb } from '../components/AIOrb';
 import logoSrc from '../assets/logo';
 import './PreTest.css';
 
@@ -61,6 +62,10 @@ export default function PreTest() {
   const navigate = useNavigate();
   const location = useLocation();
   const voice = location.state?.voice || 'aura-2-luna-en';
+
+  // ── Auth State ─────────────────────────────────────────────────────────────
+  const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
+  const [authLoading, setAuthLoading] = useState(() => !auth.currentUser);
 
   // ── UI State ───────────────────────────────────────────────────────────────
   const [status, setStatus] = useState('Connecting to session…');
@@ -120,6 +125,21 @@ export default function PreTest() {
       isMountedRef.current = false;
     };
   }, []);
+
+  // ── Sync Auth state so refreshing never defaults to anonymous_user ─────────
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser(user);
+        setAuthLoading(false);
+      } else {
+        setCurrentUser(null);
+        setAuthLoading(false);
+        navigate('/login');
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
   // ── Playback Functions ─────────────────────────────────────────────────────
 
@@ -334,6 +354,12 @@ export default function PreTest() {
           setError(msg.message);
           break;
 
+        case 'answer_save_failed':
+          setSubmissionPhase('idle');
+          setVerifyError(msg.message);
+          setStatus('Your answer is still here. Confirm it again to retry.');
+          break;
+
         case 'feedback_complete':
           setSubmissionPhase('ready');
           setStatus("Answer recorded. Continue when you're ready.");
@@ -364,55 +390,80 @@ export default function PreTest() {
   );
 
   // ── WebSocket connection (reconnectable) ───────────────────────────────────
-  const connect = useCallback(() => {
-    if (
-      wsRef.current &&
-      (wsRef.current.readyState === WebSocket.OPEN ||
-        wsRef.current.readyState === WebSocket.CONNECTING)
-    ) {
-      return;
-    }
-    // The socket connects in the effect below; the initial status text already
-    // says "Connecting to session…" so no synchronous setState is needed here.
-    intentionalCloseRef.current = false;
-    const user = auth.currentUser;
-    const uid = user ? user.uid : 'anonymous_user';
-    const ws = new WebSocket(
-      `${WS_BASE}/ws/interview?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}`
-    );
-    ws.binaryType = 'arraybuffer'; // receive binary chunks as ArrayBuffers
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      wasOpenRef.current = true;
-      setIsConnected(true);
-      setConnectionLost(false);
-      setError('');
-    };
-
-    ws.onmessage = handleWsMessage;
-
-    ws.onerror = () => {
-      setError('Connection problem — check that the backend is running.');
-    };
-
-    ws.onclose = () => {
-      setIsConnected(false);
-      if (!intentionalCloseRef.current && wasOpenRef.current && isMountedRef.current) {
-        setConnectionLost(true);
-        setStatus('Connection lost.');
+  const connect = useCallback(
+    (explicitUid) => {
+      if (
+        wsRef.current &&
+        (wsRef.current.readyState === WebSocket.OPEN ||
+          wsRef.current.readyState === WebSocket.CONNECTING)
+      ) {
+        return;
       }
-    };
-  }, [handleWsMessage, voice]);
+
+      const uid = explicitUid || auth.currentUser?.uid;
+      if (!uid) {
+        // Defer connecting until Firebase Auth has verified the user token
+        return;
+      }
+
+      // The socket connects in the effect below; the initial status text already
+      // says "Connecting to session…" so no synchronous setState is needed here.
+      intentionalCloseRef.current = false;
+      const searchParams = new URLSearchParams(location.search);
+      const resetParam = searchParams.get('reset') === 'true' ? '&reset=true' : '';
+
+      const ws = new WebSocket(
+        `${WS_BASE}/ws/interview?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}${resetParam}`
+      );
+      ws.binaryType = 'arraybuffer'; // receive binary chunks as ArrayBuffers
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (wsRef.current === ws) {
+          wasOpenRef.current = true;
+          setIsConnected(true);
+          setConnectionLost(false);
+          setError('');
+        }
+      };
+
+      ws.onmessage = (event) => {
+        if (wsRef.current === ws) {
+          handleWsMessage(event);
+        }
+      };
+
+      ws.onerror = () => {
+        if (wsRef.current === ws) {
+          setError('Connection problem — check that the backend is running.');
+        }
+      };
+
+      ws.onclose = () => {
+        if (wsRef.current === ws) {
+          setIsConnected(false);
+          if (!intentionalCloseRef.current && wasOpenRef.current && isMountedRef.current) {
+            setConnectionLost(true);
+            setStatus('Connection lost.');
+          }
+        }
+      };
+    },
+    [handleWsMessage, voice, location.search]
+  );
 
   useEffect(() => {
-    connect();
+    if (authLoading || !currentUser) return undefined;
+
+    const connectTimer = window.setTimeout(() => connect(currentUser.uid), 0);
+
     return () => {
+      window.clearTimeout(connectTimer);
       intentionalCloseRef.current = true;
       wsRef.current?.close();
       cleanupAudio();
     };
-  }, [connect]);
+  }, [connect, authLoading, currentUser]);
 
   // ── Error toast auto-expiry (manual dismiss also available) ────────────────
   useEffect(() => {
@@ -662,7 +713,7 @@ export default function PreTest() {
             className="pt-btn pt-btn-ghost pt-btn--sm"
             onClick={() => {
               setStatus('Connecting to session…');
-              connect();
+              connect(currentUser?.uid);
             }}
           >
             Reconnect
@@ -720,9 +771,18 @@ export default function PreTest() {
           ) : (
             <>
               {/* Shared AIOrb from MainSets — it speaks the question and
-                  listens while you answer, exactly like the live arena */}
+                  listens while you answer, exactly like the live arena.
+                  The full pipeline state drives its liquid body + iris. */}
               <div className="pt-orb-wrap">
-                <AIOrb isSpeaking={isPlayingAudio} isListening={isRecording} />
+                <AIOrb
+                  isSpeaking={isPlayingAudio}
+                  isListening={isRecording}
+                  isComplete={isSessionComplete}
+                  isEvaluating={isAnalyzing}
+                  isOffline={!isConnected || connectionLost}
+                  hasError={Boolean(error)}
+                  volume={isRecording ? volume : null}
+                />
               </div>
 
               <div className="pt-stage-head">
