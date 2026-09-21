@@ -7,6 +7,7 @@ import LikertScale from './pages/LikertScale';
 import MicTest from './components/MicTest';
 import PreTest from './pages/PreTest';
 import PostTest from './pages/PostTest';
+import DevPostTestPreview from './pages/DevPostTestPreview';
 
 import MainSets from './pages/MainSets';
 import Results from './pages/Results';
@@ -16,6 +17,7 @@ import Set3TransitionOverlay from './components/Set3TransitionOverlay';
 import SetBriefingOverlay from './components/SetBriefingOverlay';
 import FluxDebugger from './components/FluxDebugger';
 import LandingPage from './pages/LandingPage';
+import VoiceAgentPlayground from './features/voice-agent';
 import './App.css';
 
 function App() {
@@ -67,6 +69,7 @@ function App() {
           <Route path="/interview" element={<MainSets />} />
           <Route path="/dev/interview" element={<MainSets />} />
           <Route path="/results" element={<Results />} />
+          <Route path="/voice-agent" element={<VoiceAgentPlayground />} />
 
           {/* Dev only route to preview Set 1 Mission Calibration Modal */}
           <Route
@@ -120,6 +123,14 @@ function App() {
               </div>
             }
           />
+
+          {/* Dev only — Post-Test graduation arena design board. The real
+              /post-test is Firebase-auth + WebSocket gated, so this mirrors its
+              render tree against scripted state (no backend or account needed). */}
+          <Route path="/dev/post-test" element={<DevPostTestPreview />} />
+
+          {/* Legacy preview URL retained for existing bookmarks. */}
+          <Route path="/dev/voice-agent" element={<VoiceAgentPlayground />} />
 
           {/* Dev only — STT latency & accuracy testbench */}
           <Route path="/dev/stt-test" element={<FluxDebugger />} />

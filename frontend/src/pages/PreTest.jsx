@@ -3,7 +3,7 @@
 // Phase 1: STT & TTS Core Integration — Pre-Test Diagnostic Arena
 //
 // Blueprint flow implemented:
-//   1. On mount → connect WebSocket → server sends TTS question audio (+ text)
+//   1. Start the baseline → connect WebSocket → server sends question audio (+ text)
 //   2. User presses mic → PCM audio streamed to server → Deepgram STT
 //   3. Transcripts echo back in real-time for display
 //   4. User presses stop → reviews transcript → confirms OR re-records
@@ -21,42 +21,16 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  Mic,
-  Square,
-  ArrowRight,
-  ArrowLeft,
-  RotateCcw,
-  AlertCircle,
-  Check,
-  AudioLines,
-  Volume2,
-  X,
-} from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import { AnimatePresence } from 'framer-motion';
 import AiAnalysisLoader from '../components/AiAnalysisLoader';
-import { AIOrb } from '../components/AIOrb';
-import logoSrc from '../assets/logo';
-import './PreTest.css';
+import TestWorkspace from '../components/TestWorkspace';
 
 // Env-driven backend URL — same derivation as MicTest/TryItLiveDemo, so this
 // page works in staging/prod instead of only on localhost.
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const WS_BASE = BACKEND_URL.replace(/^http/, 'ws');
-
-// Weakness tag → coach copy (mirrors AiAnalysisLoader's registry)
-const WEAKNESS_LABELS = {
-  focus_clarity: 'Clarity',
-  focus_correctness: 'Correctness',
-  focus_completeness: 'Completeness',
-};
-const weaknessLabel = (tag) =>
-  WEAKNESS_LABELS[tag] ||
-  (tag
-    ? tag.replace(/^focus_/, '').charAt(0).toUpperCase() + tag.replace(/^focus_/, '').slice(1)
-    : '');
 
 export default function PreTest() {
   const navigate = useNavigate();
@@ -66,6 +40,9 @@ export default function PreTest() {
   // ── Auth State ─────────────────────────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
   const [authLoading, setAuthLoading] = useState(() => !auth.currentUser);
+
+  // The introduction gates the once-only baseline before audio connects.
+  const [showBriefing, setShowBriefing] = useState(true);
 
   // ── UI State ───────────────────────────────────────────────────────────────
   const [status, setStatus] = useState('Connecting to session…');
@@ -236,7 +213,7 @@ export default function PreTest() {
 
   // ── Audio cleanup — stops playback, drains the queue, tears down the
   // recording pipeline (refs only, declared before its first caller) ──────────
-  const cleanupAudio = () => {
+  const cleanupAudio = useCallback(() => {
     if (currentAudioRef.current) {
       try {
         currentAudioRef.current.pause();
@@ -279,7 +256,7 @@ export default function PreTest() {
     }
     setVolume(0);
     if (volumeFillRef.current) volumeFillRef.current.style.width = '0%';
-  };
+  }, []);
 
   // ── Volume meter (RAF loop, throttled state for the % readout) ────────────
   // The fill bar is painted via ref every frame; the numeric readout only
@@ -368,7 +345,7 @@ export default function PreTest() {
         case 'session_complete':
           setBaseline({ score: msg.baseline_score ?? null, weakness: msg.weakness_tag ?? null });
           setIsSessionComplete(true);
-          setStatus('Pre-test complete — your baseline is ready.');
+          setStatus('Starting check complete. Your starting point is saved.');
           break;
 
         case 'pretest_completed':
@@ -435,7 +412,7 @@ export default function PreTest() {
 
       ws.onerror = () => {
         if (wsRef.current === ws) {
-          setError('Connection problem — check that the backend is running.');
+          setError('We couldn’t connect to your session. Check your connection and try again.');
         }
       };
 
@@ -453,7 +430,7 @@ export default function PreTest() {
   );
 
   useEffect(() => {
-    if (authLoading || !currentUser) return undefined;
+    if (authLoading || !currentUser || showBriefing) return undefined;
 
     const connectTimer = window.setTimeout(() => connect(currentUser.uid), 0);
 
@@ -463,7 +440,7 @@ export default function PreTest() {
       wsRef.current?.close();
       cleanupAudio();
     };
-  }, [connect, authLoading, currentUser]);
+  }, [connect, authLoading, currentUser, showBriefing, cleanupAudio]);
 
   // ── Error toast auto-expiry (manual dismiss also available) ────────────────
   useEffect(() => {
@@ -574,7 +551,7 @@ export default function PreTest() {
       setStatus('The new take came through quiet, so we kept your previous answer.');
     } else {
       backupRef.current = '';
-      setStatus('Review your answer — you can edit it before confirming.');
+      setStatus('Review your answer. You can edit it before confirming.');
     }
 
     setFinalTranscript(combined);
@@ -589,7 +566,7 @@ export default function PreTest() {
       return;
     }
     if (!confirmedTranscript.trim()) {
-      setVerifyError('Your answer is empty — record it first, or press Re-record to try again.');
+      setVerifyError('Your answer is empty. Record again or add your answer before confirming.');
       return;
     }
     setVerifyError('');
@@ -621,6 +598,7 @@ export default function PreTest() {
     setVerifyError('');
     finalTranscriptRef.current = '';
     setCurrentQuestion((prev) => Math.min(prev + 1, 5)); // server corrects via questionIndex
+    setCurrentQuestionText('');
     setStatus('Loading the next question…');
   };
 
@@ -646,38 +624,48 @@ export default function PreTest() {
     startRecording();
   };
 
-  // ── Derived UI ─────────────────────────────────────────────────────────────
-  // Progress counts confirmed answers, so the bar reflects real work done —
-  // it starts empty and hits 100% exactly when the session completes.
-  const answeredCount = isSessionComplete ? 5 : currentQuestion - 1;
-
-  // Status strip tone: neutral (idle/offline) · cobalt (AI speaking) · cyan
-  // (listening) · indigo (review) — same spectrum as the MicTest status chip.
-  const stripTone = !isConnected
-    ? 'idle'
-    : isPlayingAudio
-      ? 'speaking'
-      : isRecording
-        ? 'listening'
-        : awaitingConfirmation
-          ? 'verify'
-          : 'idle';
-
-  const volumeValClass =
-    volume > 70 ? 'pt-volume-val--loud' : volume > 20 ? 'pt-volume-val--good' : '';
-
-  const canShowReplay =
-    isConnected &&
-    !!currentQuestionText &&
-    !isRecording &&
-    !isPlayingAudio &&
-    !awaitingConfirmation &&
-    !isSessionComplete &&
-    !alreadyCompleted;
-
   return (
-    <div className="pt-root">
-      {/* AI Analysis Loader — only launched by an explicit user action */}
+    <TestWorkspace
+      variant="pre"
+      showBriefing={showBriefing}
+      authLoading={authLoading}
+      isConnected={isConnected}
+      isRecording={isRecording}
+      isPlayingAudio={isPlayingAudio}
+      isSessionComplete={isSessionComplete}
+      connectionLost={connectionLost}
+      alreadyCompleted={alreadyCompleted}
+      result={baseline}
+      currentQuestion={currentQuestion}
+      currentQuestionText={currentQuestionText}
+      status={status}
+      finalTranscript={finalTranscript}
+      partialTranscript={partialTranscript}
+      confirmedTranscript={confirmedTranscript}
+      awaitingConfirmation={awaitingConfirmation}
+      submissionPhase={submissionPhase}
+      verifyError={verifyError}
+      error={error}
+      volume={volume}
+      volumeFillRef={volumeFillRef}
+      verifyTextareaRef={verifyTextareaRef}
+      onStart={() => setShowBriefing(false)}
+      onExit={() => navigate('/dashboard')}
+      onReconnect={() => {
+        setStatus('Connecting to session…');
+        connect(currentUser?.uid);
+      }}
+      onReplay={handleReplay}
+      onRecord={startRecording}
+      onStop={stopRecording}
+      onAnswerChange={setConfirmedTranscript}
+      onConfirm={submitAnswer}
+      onNext={handleNextQuestion}
+      onReRecord={reRecord}
+      onContinue={() => setIsAnalyzing(true)}
+      onViewResults={() => navigate('/results')}
+      onDismissError={() => setError('')}
+    >
       <AnimatePresence>
         {isAnalyzing && (
           <AiAnalysisLoader
@@ -689,349 +677,6 @@ export default function PreTest() {
           />
         )}
       </AnimatePresence>
-
-      {/* ── Top Bar — db-topnav pattern: logo + wordmark, phase chip ── */}
-      <header className="pt-topbar">
-        <div className="pt-topbar__brand">
-          <img src={logoSrc} alt="ITerview" className="pt-logo-img" />
-          <span className="pt-topbar__wordmark">ITerview</span>
-        </div>
-        <div className="pt-topbar__meta">
-          <span className="pt-phase-badge">Pre-test</span>
-        </div>
-      </header>
-
-      {/* ── Reconnect banner — no more zombie state after a dropped socket ── */}
-      {connectionLost && !alreadyCompleted && (
-        <div className="pt-reconnect-banner" role="alert">
-          <AlertCircle size={16} aria-hidden="true" />
-          <span>
-            Connection lost — your progress is saved. Reconnect to pick up where you left off.
-          </span>
-          <button
-            type="button"
-            className="pt-btn pt-btn-ghost pt-btn--sm"
-            onClick={() => {
-              setStatus('Connecting to session…');
-              connect(currentUser?.uid);
-            }}
-          >
-            Reconnect
-          </button>
-        </div>
-      )}
-
-      {/* ── Progress bar — fills with confirmed answers, not questions seen ── */}
-      <div
-        className="pt-progress-track"
-        role="progressbar"
-        aria-valuenow={answeredCount}
-        aria-valuemin={0}
-        aria-valuemax={5}
-        aria-valuetext={`${answeredCount} of 5 questions answered`}
-        aria-label="Pre-test progress"
-      >
-        <div className="pt-progress-fill" style={{ width: `${(answeredCount / 5) * 100}%` }} />
-      </div>
-
-      <main className="pt-main">
-        {/* ── Stage (left column) — the session centerpiece ── */}
-        <section className="pt-stage-card" aria-label="Pre-test session stage">
-          {alreadyCompleted ? (
-            /* ── Once-only gate: retake rejected, baseline already saved ── */
-            <div className="pt-complete-panel pt-complete-panel--saved">
-              <span className="pt-complete-kicker">Pre-test already completed</span>
-              <p className="pt-complete-score">
-                <span className="pt-complete-num">{alreadyCompleted.score ?? '—'}%</span>
-                <span className="pt-complete-num-label">saved baseline</span>
-              </p>
-              <p className="pt-complete-note">
-                Your baseline is taken once so we can measure how far you grow. Head back to
-                your dashboard to keep practicing, or proceed to MainSets.
-              </p>
-              <div className="pt-complete-actions">
-                <button
-                  type="button"
-                  className="pt-btn pt-btn-cta"
-                  onClick={() => setIsAnalyzing(true)}
-                >
-                  Proceed to MainSets
-                  <ArrowRight size={16} strokeWidth={2.5} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="pt-btn pt-btn-ghost"
-                  onClick={() => navigate('/dashboard')}
-                >
-                  <ArrowLeft size={15} aria-hidden="true" />
-                  Return to dashboard
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Shared AIOrb from MainSets — it speaks the question and
-                  listens while you answer, exactly like the live arena.
-                  The full pipeline state drives its liquid body + iris. */}
-              <div className="pt-orb-wrap">
-                <AIOrb
-                  isSpeaking={isPlayingAudio}
-                  isListening={isRecording}
-                  isComplete={isSessionComplete}
-                  isEvaluating={isAnalyzing}
-                  isOffline={!isConnected || connectionLost}
-                  hasError={Boolean(error)}
-                  volume={isRecording ? volume : null}
-                />
-              </div>
-
-              <div className="pt-stage-head">
-                <span className="pt-question-chip">
-                  Question {Math.min(currentQuestion, 5)} of 5
-                </span>
-                {/* The question itself is the headline — recognition, not recall */}
-                <h1 className="pt-stage-title">
-                  {currentQuestionText || 'Listen to the question, then answer out loud.'}
-                </h1>
-                {canShowReplay && (
-                  <button type="button" className="pt-replay-btn" onClick={handleReplay}>
-                    <Volume2 size={14} aria-hidden="true" />
-                    Hear it again
-                  </button>
-                )}
-              </div>
-
-              {/* Status strip — one tone per pipeline state */}
-              <div className={`pt-status-strip pt-status-strip--${stripTone}`} role="status">
-                <span className="pt-status-dot" aria-hidden="true" />
-                <span>{status}</span>
-              </div>
-
-              {/* ── Baseline reveal — the payoff the old flow never showed ── */}
-              {isSessionComplete && baseline ? (
-                <div className="pt-complete-panel">
-                  <span className="pt-complete-kicker">Pre-test complete</span>
-                  <p className="pt-complete-score">
-                    <span className="pt-complete-num">{baseline.score ?? '—'}%</span>
-                    <span className="pt-complete-num-label">baseline score</span>
-                  </p>
-                  <p className="pt-complete-note">
-                    Across Clarity, Correctness and Completeness
-                    {baseline.weakness ? (
-                      <>
-                        {' '}— we'll focus your practice on{' '}
-                        <strong>{weaknessLabel(baseline.weakness)}</strong>, where a little
-                        coaching will move the needle most.
-                      </>
-                    ) : (
-                      '. Every practice set from here targets where you can grow most.'
-                    )}
-                  </p>
-                  <div className="pt-complete-actions">
-                    <button
-                      type="button"
-                      className="pt-btn pt-btn-cta pt-btn-cta--lg"
-                      onClick={() => setIsAnalyzing(true)}
-                    >
-                      Proceed to MainSets
-                      <ArrowRight size={17} strokeWidth={2.5} aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className="pt-btn pt-btn-ghost"
-                      onClick={() => navigate('/dashboard')}
-                    >
-                      <ArrowLeft size={15} aria-hidden="true" />
-                      Return to dashboard
-                    </button>
-                  </div>
-                </div>
-              ) : awaitingConfirmation ? (
-                /* ── Verify Panel (Phase 2) — indigo review surface ── */
-                <div className="pt-verify-panel">
-                  <span className="pt-verify-label">Review your answer</span>
-                  <textarea
-                    ref={verifyTextareaRef}
-                    className="pt-verify-textarea"
-                    value={confirmedTranscript}
-                    onChange={(e) => setConfirmedTranscript(e.target.value)}
-                    placeholder="Your transcribed answer will appear here…"
-                    aria-label="Edit your transcribed answer"
-                    rows={4}
-                  />
-                  <span className="pt-verify-hint">
-                    Editing is optional — just fix any words the transcription missed.
-                  </span>
-                  {verifyError && (
-                    <span className="pt-verify-error" role="alert">
-                      {verifyError}
-                    </span>
-                  )}
-                  <div className="pt-verify-actions">
-                    {submissionPhase === 'ready' ? (
-                      /* The CTA morphs in place — one button, one promise */
-                      <button
-                        type="button"
-                        className="pt-btn pt-btn-cta"
-                        onClick={handleNextQuestion}
-                      >
-                        {currentQuestion >= 5 ? 'Finish & see my baseline' : 'Next question'}
-                        <ArrowRight size={16} strokeWidth={2.5} aria-hidden="true" />
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="pt-btn pt-btn-cta"
-                          onClick={submitAnswer}
-                          disabled={submissionPhase === 'saving'}
-                        >
-                          <Check size={16} strokeWidth={2.5} aria-hidden="true" />
-                          {submissionPhase === 'saving' ? 'Saving…' : 'Confirm answer'}
-                        </button>
-                        <button
-                          type="button"
-                          className="pt-btn pt-btn-ghost"
-                          onClick={reRecord}
-                          disabled={submissionPhase === 'saving'}
-                        >
-                          <RotateCcw size={15} aria-hidden="true" />
-                          Re-record
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                /* ── Mic Area ── */
-                <div className="pt-mic-zone">
-                  {!isRecording ? (
-                    <button
-                      type="button"
-                      className="pt-mic-btn"
-                      onClick={startRecording}
-                      disabled={!isConnected || isPlayingAudio}
-                      aria-label={
-                        isPlayingAudio
-                          ? 'Waiting for the question to finish'
-                          : 'Start recording your answer'
-                      }
-                    >
-                      <Mic size={30} strokeWidth={2} aria-hidden="true" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="pt-mic-btn pt-mic-btn--active"
-                      onClick={stopRecording}
-                      aria-label="Stop recording"
-                    >
-                      <Square size={26} fill="currentColor" strokeWidth={0} aria-hidden="true" />
-                    </button>
-                  )}
-                  <span className={`pt-mic-label ${isRecording ? 'pt-mic-label--active' : ''}`}>
-                    {isRecording
-                      ? 'Recording — speak your answer'
-                      : isPlayingAudio
-                        ? 'Luna is speaking…'
-                        : 'Press to speak'}
-                  </span>
-
-                  {/* Volume Meter */}
-                  {isRecording && (
-                    <div className="pt-volume">
-                      <div className="pt-volume__labels">
-                        <span className="pt-volume__label">Microphone level</span>
-                        <span className={`pt-volume__val ${volumeValClass}`}>{volume}%</span>
-                      </div>
-                      <div
-                        className="pt-volume__track"
-                        role="meter"
-                        aria-valuenow={volume}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-label="Microphone input level"
-                      >
-                        {/* Fill painted via ref — no per-frame React re-render */}
-                        <div ref={volumeFillRef} className="pt-volume__fill" style={{ width: '0%' }} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Coach note — reassurance at the moment of highest stakes */}
-                  {!isRecording && !isPlayingAudio && (
-                    <p className="pt-coach-note">
-                      Take your time — there are no wrong answers, and you can re-record anytime.
-                    </p>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </section>
-        {/* ── Sidebar: live transcript ── */}
-        <aside className="pt-sidebar">
-          <div className="pt-transcript-card">
-            <div className="pt-transcript-card__head">
-              <span className="pt-icon-badge pt-icon-badge--cyan" aria-hidden="true">
-                <AudioLines size={20} strokeWidth={2.2} />
-              </span>
-              <span className="pt-transcript-card__title">
-                {awaitingConfirmation ? 'Answer in review' : 'Live transcript'}
-              </span>
-              {isRecording && (
-                <span className="pt-live-chip">
-                  <span className="pt-pulse-dot" aria-hidden="true" />
-                  Live
-                </span>
-              )}
-            </div>
-            <div
-              className={`pt-transcript-body ${isRecording ? 'pt-transcript-body--live' : ''}`}
-            >
-              {/* SR announcement throttled to finals only — partials stay silent */}
-              <span className="pt-sr-only" aria-live="polite">
-                {finalTranscript}
-              </span>
-              {awaitingConfirmation ? (
-                <span className="pt-transcript-empty">
-                  Saved for review — edit your answer in the panel. We'll fold in any last words
-                  the transcriber catches.
-                </span>
-              ) : !finalTranscript && !partialTranscript ? (
-                <span className="pt-transcript-empty">
-                  {isRecording
-                    ? 'Listening… your words will appear here'
-                    : 'Your voice transcript will appear here…'}
-                </span>
-              ) : (
-                <>
-                  <span className="pt-transcript-final">{finalTranscript}</span>
-                  {partialTranscript && (
-                    <span className="pt-transcript-partial"> {partialTranscript}</span>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </aside>
-      </main>
-
-      {/* ── Error toast (coral, db-form-error pattern, fixed bottom) ── */}
-      {error && (
-        <div className="pt-error-toast" role="alert">
-          <AlertCircle size={16} aria-hidden="true" />
-          <span>{error}</span>
-          <button
-            type="button"
-            className="pt-toast-close"
-            onClick={() => setError('')}
-            aria-label="Dismiss error"
-          >
-            <X size={15} aria-hidden="true" />
-          </button>
-        </div>
-      )}
-    </div>
+    </TestWorkspace>
   );
 }

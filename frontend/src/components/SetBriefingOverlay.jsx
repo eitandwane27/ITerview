@@ -101,6 +101,7 @@ export default function SetBriefingOverlay({
   role = '',
   focusArea = 'auto',
   diagnosticData = null,
+  sessionMode = 'practice',
   onConfirm,
   onClose,
   onReady, // legacy alias
@@ -108,6 +109,8 @@ export default function SetBriefingOverlay({
   const [profile, setProfile] = useState(null);
   const [isSampleBaseline, setIsSampleBaseline] = useState(false);
   const [loading, setLoading] = useState(!role && !diagnosticData);
+  const isDrill = sessionMode === 'drill';
+  const questionCount = isDrill ? 3 : 5;
   const prefersReducedMotion = useReducedMotion();
   const isTriggeredRef = useRef(false);
   const modalCardRef = useRef(null);
@@ -288,6 +291,19 @@ export default function SetBriefingOverlay({
   const handleLaunch = useCallback(async () => {
     if (isTriggeredRef.current || isPreparing) return;
 
+    // A drill has no persistent session to prepare or reserve. Its questions
+    // are generated in the interview socket after navigation and discarded
+    // when the socket closes.
+    if (isDrill) {
+      isTriggeredRef.current = true;
+      if (typeof onConfirm === 'function') {
+        onConfirm(selectedFocus);
+      } else if (typeof onReady === 'function') {
+        onReady(selectedFocus);
+      }
+      return;
+    }
+
     if (isSessionReady) {
       isTriggeredRef.current = true;
       if (wsRef.current) {
@@ -444,6 +460,7 @@ export default function SetBriefingOverlay({
     formattedRole,
     effectiveRole,
     selectedFocus,
+    isDrill,
     onConfirm,
     onReady,
   ]);
@@ -480,7 +497,8 @@ export default function SetBriefingOverlay({
         label: 'Clarity',
         shortLabel: 'Clarity',
         score: clarityScore,
-        description: 'Structured reasoning, clear signposting, and logical flow from premise to conclusion.',
+        description:
+          'Structured reasoning, clear signposting, and logical flow from premise to conclusion.',
         coachTip:
           "I'll focus on how logically your answers unfold. Structure your thoughts clearly before diving into code!",
       },
@@ -489,7 +507,8 @@ export default function SetBriefingOverlay({
         label: 'Correctness',
         shortLabel: 'Correctness',
         score: correctnessScore,
-        description: 'Precise engineering terminology, sound architectural concepts, and correct trade-offs.',
+        description:
+          'Precise engineering terminology, sound architectural concepts, and correct trade-offs.',
         coachTip:
           "I'll listen closely for precise concepts, accurate API usage, and technically sound reasoning!",
       },
@@ -498,7 +517,8 @@ export default function SetBriefingOverlay({
         label: 'Completeness',
         shortLabel: 'Completeness',
         score: completenessScore,
-        description: 'Edge cases, performance trade-offs, scalability, and holistic implementation details.',
+        description:
+          'Edge cases, performance trade-offs, scalability, and holistic implementation details.',
         coachTip:
           "I'll challenge you on edge cases, scaling limits, and realistic production trade-offs!",
       },
@@ -534,7 +554,9 @@ export default function SetBriefingOverlay({
         aria-modal="true"
         aria-labelledby={loading ? undefined : 'sb-title'}
         aria-describedby={loading ? undefined : 'sb-description'}
-        aria-label={loading ? 'Loading practice studio briefing' : undefined}
+        aria-label={
+          loading ? `Loading ${isDrill ? 'focus drill' : 'practice studio'} briefing` : undefined
+        }
         aria-busy={loading || isPreparing}
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
@@ -542,7 +564,7 @@ export default function SetBriefingOverlay({
         {/* Topbar: Clean, honest metadata without faux buttons */}
         <div className="sb-topbar">
           <div className="sb-topbar-meta">
-            <span className="sb-studio-tag">Practice Studio</span>
+            <span className="sb-studio-tag">{isDrill ? 'Focus Drill' : 'Practice Studio'}</span>
             <span className="sb-meta-divider" aria-hidden="true">
               /
             </span>
@@ -583,11 +605,14 @@ export default function SetBriefingOverlay({
             {/* Header: Direct & Authoritative */}
             <header className="sb-header">
               <h2 id="sb-title" className="sb-title">
-                {formattedRole} Practice Briefing
+                {isDrill
+                  ? `${activeMetricObj.label} Focus Drill`
+                  : `${formattedRole} Practice Briefing`}
               </h2>
               <p id="sb-description" className="sb-subtitle">
-                Calibrated to your diagnostic baseline. Select your coaching focus to customize the
-                adaptive AI questions.
+                {isDrill
+                  ? 'A short, disposable exercise with immediate coaching. It will not change your main-set progress or appear in history.'
+                  : 'Calibrated to your diagnostic baseline. Select your coaching focus to customize the adaptive AI questions.'}
               </p>
             </header>
 
@@ -619,15 +644,15 @@ export default function SetBriefingOverlay({
                   <div className="sb-param-item">
                     <Radio size={16} className="sb-param-icon" aria-hidden="true" />
                     <div>
-                      <strong>5 Spoken Questions</strong>
-                      <span>Adaptive difficulty</span>
+                      <strong>{questionCount} Spoken Questions</strong>
+                      <span>{isDrill ? 'One focused 3C skill' : 'Adaptive difficulty'}</span>
                     </div>
                   </div>
 
                   <div className="sb-param-item">
                     <Clock size={16} className="sb-param-icon" aria-hidden="true" />
                     <div>
-                      <strong>~10 Minutes</strong>
+                      <strong>{isDrill ? '~5 Minutes' : '~10 Minutes'}</strong>
                       <span>Self-paced answers</span>
                     </div>
                   </div>
@@ -651,8 +676,10 @@ export default function SetBriefingOverlay({
                   <div>
                     <h3 className="sb-matrix-title">Diagnostic Baseline</h3>
                     <p className="sb-matrix-subtitle">
-                      {isSampleBaseline ? 'Sample diagnostic profile' : 'Your recent diagnostic scores'}.{' '}
-                      <strong>Click to set your practice focus.</strong>
+                      {isSampleBaseline
+                        ? 'Sample diagnostic profile'
+                        : 'Your recent diagnostic scores'}
+                      . <strong>Click to set your practice focus.</strong>
                     </p>
                   </div>
                   <span className="sb-scale-hint">Scale /5</span>
@@ -714,8 +741,13 @@ export default function SetBriefingOverlay({
                           </div>
                         </div>
 
-                        <div className="sb-metric-score" aria-label={`Score: ${item.score ?? 'N/A'} out of 5`}>
-                          <span className="sb-score-num">{item.score != null ? item.score : '—'}</span>
+                        <div
+                          className="sb-metric-score"
+                          aria-label={`Score: ${item.score ?? 'N/A'} out of 5`}
+                        >
+                          <span className="sb-score-num">
+                            {item.score != null ? item.score : '—'}
+                          </span>
                           {item.score != null && <span className="sb-score-denom">/5</span>}
                         </div>
                       </button>
@@ -744,10 +776,7 @@ export default function SetBriefingOverlay({
                   <span className="sb-progress-pct">{prepProgress}%</span>
                 </div>
                 <div className="sb-progress-track">
-                  <div
-                    className="sb-progress-fill"
-                    style={{ width: `${prepProgress}%` }}
-                  />
+                  <div className="sb-progress-fill" style={{ width: `${prepProgress}%` }} />
                 </div>
               </div>
             ) : isSessionReady ? (
@@ -755,13 +784,17 @@ export default function SetBriefingOverlay({
                 <span className="sb-ready-dot" aria-hidden="true" />
                 <div>
                   <strong>Studio Ready</strong>
-                  <span>5 calibrated questions prepared. Click enter to begin.</span>
+                  <span>{questionCount} calibrated questions prepared. Click enter to begin.</span>
                 </div>
               </div>
             ) : (
               <div className="sb-status-idle">
                 <strong>Focusing on {activeMetricObj.label}</strong>
-                <span>Instant voice coaching begins upon entering the studio.</span>
+                <span>
+                  {isDrill
+                    ? 'This drill is not saved and can be left at any time.'
+                    : 'Instant voice coaching begins upon entering the studio.'}
+                </span>
               </div>
             )}
           </div>
@@ -792,7 +825,9 @@ export default function SetBriefingOverlay({
                     ? 'Preparing session...'
                     : isSessionReady
                       ? 'Enter Studio'
-                      : 'Start Practice Studio'}
+                      : isDrill
+                        ? 'Start Drill'
+                        : 'Start Practice Studio'}
               </span>
               {isPreparing ? (
                 <span className="sb-btn-spinner" aria-hidden="true" />

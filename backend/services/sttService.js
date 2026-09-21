@@ -13,7 +13,7 @@
 //   });
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { DeepgramClient } = require("@deepgram/sdk");
+const { DeepgramClient } = require('@deepgram/sdk');
 
 /**
  * createDeepgramLiveSession
@@ -37,7 +37,7 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
   const apiKey = process.env.DEEPGRAM_API_KEY;
 
   if (!apiKey) {
-    onError(new Error("DEEPGRAM_API_KEY is not set in environment"));
+    onError(new Error('DEEPGRAM_API_KEY is not set in environment'));
     return null;
   }
 
@@ -50,71 +50,71 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
   // Guard: set to true by finish() so a connection resolved after finish() is immediately closed
   let isCancelled = false;
   let audioQueue = [];
-  let currentTurnInterimText = "";
+  let currentTurnInterimText = '';
 
   deepgram.listen.v2
     .createConnection({
-      model: "flux-general-en",
+      model: 'flux-general-en',
       eot_threshold: 0.7,
       eot_timeout_ms: 5000,
-      encoding: "linear16",
+      encoding: 'linear16',
       sample_rate: 16000,
     })
     .then((conn) => {
       // If finish() was called before the connection resolved, close the orphaned conn immediately
       if (isCancelled) {
-        console.log("[STT] 🛑 Connection resolved after finish() was called; closing immediately.");
-        try { conn.close(); } catch (_) { /* ignore */ }
+        console.log('[STT] 🛑 Connection resolved after finish() was called; closing immediately.');
+        try {
+          conn.close();
+        } catch (_) {
+          /* ignore */
+        }
         return;
       }
       socket = conn;
 
-      socket.on("open", () => {
+      socket.on('open', () => {
         isOpen = true;
-        console.log("[STT] ✅ Deepgram Flux WS opened via DeepgramClient SDK");
+        console.log('[STT] ✅ Deepgram Flux WS opened via DeepgramClient SDK');
         // Flush any audio chunks buffered while connection was opening
         while (audioQueue.length > 0) {
           const chunk = audioQueue.shift();
           try {
             socket.sendMedia(chunk);
           } catch (e) {
-            console.error("[STT] Error sending buffered chunk:", e.message);
+            console.error('[STT] Error sending buffered chunk:', e.message);
           }
         }
       });
 
-      socket.on("message", (data) => {
-        if (typeof onEvent === "function") {
+      socket.on('message', (data) => {
+        if (typeof onEvent === 'function') {
           onEvent(data);
         }
 
-        if (data.event === "StartOfTurn") {
+        if (data.event === 'StartOfTurn') {
           console.log(`[STT] 🎙️ StartOfTurn (Turn ${data.turn_index})`);
-          currentTurnInterimText = "";
+          currentTurnInterimText = '';
           return;
         }
 
-        if (data.event === "EndOfTurn") {
+        if (data.event === 'EndOfTurn') {
           console.log(
             `[STT] 🔇 EndOfTurn (Turn ${data.turn_index}, Confidence: ${data.end_of_turn_confidence})`
           );
           const finalTurnText =
-            (data.transcript ? data.transcript.trim() : "") ||
-            currentTurnInterimText.trim();
+            (data.transcript ? data.transcript.trim() : '') || currentTurnInterimText.trim();
           if (finalTurnText) {
             onTranscript(finalTurnText, true);
           } else {
-            onTranscript("", true);
+            onTranscript('', true);
           }
-          currentTurnInterimText = "";
+          currentTurnInterimText = '';
           return;
         }
 
         // Extract transcript from Flux payload or fallback channel alternative
-        const transcript =
-          data.transcript ??
-          data?.channel?.alternatives?.[0]?.transcript ??
-          "";
+        const transcript = data.transcript ?? data?.channel?.alternatives?.[0]?.transcript ?? '';
 
         if (!transcript) return;
 
@@ -122,33 +122,33 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
         const isFinal = data.is_final === true;
 
         if (!isFinal) {
-          if (process.env.STT_DEBUG === "true") {
+          if (process.env.STT_DEBUG === 'true') {
             console.log(`[STT] interim: "${transcript}"`);
           }
           onTranscript(transcript, false);
         } else {
           console.log(`[STT] ✅ FINAL: "${transcript}"`);
           onTranscript(transcript, true);
-          currentTurnInterimText = "";
+          currentTurnInterimText = '';
         }
       });
 
-      socket.on("error", (err) => {
-        console.error("[STT] ❌ Deepgram error:", err);
+      socket.on('error', (err) => {
+        console.error('[STT] ❌ Deepgram error:', err);
         isOpen = false;
         onError(err);
       });
 
-      socket.on("close", () => {
+      socket.on('close', () => {
         isOpen = false;
-        console.log("[STT] 🔌 Deepgram WS closed");
+        console.log('[STT] 🔌 Deepgram WS closed');
       });
 
       socket.connect();
     })
     .catch((err) => {
       isOpen = false;
-      console.error("[STT] ❌ Failed to create Deepgram connection:", err.message);
+      console.error('[STT] ❌ Failed to create Deepgram connection:', err.message);
       onError(err);
     });
 
@@ -165,7 +165,7 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
         try {
           socket.sendMedia(chunk);
         } catch (e) {
-          console.error("[STT] Error sending media chunk:", e.message);
+          console.error('[STT] Error sending media chunk:', e.message);
         }
       } else {
         // Enforce cap: evict oldest chunk if queue is full to prevent unbounded growth

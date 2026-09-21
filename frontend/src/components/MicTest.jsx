@@ -37,6 +37,11 @@ import {
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import logoSrc from '../assets/logo';
+import {
+  buildAudioInputConstraints,
+  readPreferredAudioInput,
+  rememberPreferredAudioInput,
+} from '../utils/audioInputDevices';
 import './MicTest.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -58,7 +63,7 @@ export default function MicTest() {
 
   // ── Device list ──────────────────────────────────────────────────────────
   const [devices, setDevices] = useState([]);
-  const [selectedMic, setSelectedMic] = useState('');
+  const [selectedMic, setSelectedMic] = useState(readPreferredAudioInput);
 
   // ── Voice selection ──────────────────────────────────────────────────────
   const [selectedVoice, setSelectedVoice] = useState('aura-2-luna-en');
@@ -97,9 +102,13 @@ export default function MicTest() {
     navigator.mediaDevices.enumerateDevices().then((list) => {
       const mics = list.filter((d) => d.kind === 'audioinput');
       setDevices(mics);
-      if (mics.length > 0 && !selectedMic) {
-        setSelectedMic(mics[0].deviceId);
-      }
+      setSelectedMic((currentMic) => {
+        const nextMic = mics.some((device) => device.deviceId === currentMic)
+          ? currentMic
+          : mics[0]?.deviceId || '';
+        rememberPreferredAudioInput(nextMic);
+        return nextMic;
+      });
     });
   };
 
@@ -159,20 +168,7 @@ export default function MicTest() {
     // 1. Request mic permission
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: selectedMic
-          ? {
-              deviceId: { exact: selectedMic },
-              channelCount: 1,
-              sampleRate: 16000,
-              echoCancellation: true,
-              noiseSuppression: true,
-            }
-          : {
-              channelCount: 1,
-              sampleRate: 16000,
-              echoCancellation: true,
-              noiseSuppression: true,
-            },
+        audio: buildAudioInputConstraints(selectedMic, { sampleRate: 16000 }),
       });
     } catch (err) {
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -480,7 +476,10 @@ export default function MicTest() {
                 id="mic-select"
                 className="mictest-select"
                 value={selectedMic}
-                onChange={(e) => setSelectedMic(e.target.value)}
+                onChange={(e) => {
+                  setSelectedMic(e.target.value);
+                  rememberPreferredAudioInput(e.target.value);
+                }}
                 disabled={isTesting}
               >
                 {devices.length === 0 && <option value="">No microphones found</option>}

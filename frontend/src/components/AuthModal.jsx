@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Mail,
   Lock,
@@ -77,7 +77,7 @@ const isPopupClosed = (win) => {
   if (!win) return true;
   try {
     return win.closed;
-  } catch (_) {
+  } catch {
     return false;
   }
 };
@@ -125,14 +125,16 @@ export default function AuthModal({
       if (activePopupRef.current && !isPopupClosed(activePopupRef.current)) {
         try {
           activePopupRef.current.close();
-        } catch (_) {}
+        } catch {
+          // Cross-origin popup access can fail during teardown; it is safe to ignore.
+        }
         activePopupRef.current = null;
       }
     };
   }, []);
 
   // Safe dismiss handler that closes any active SSO popup window and resets loading
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (popupCheckIntervalRef.current) {
       clearInterval(popupCheckIntervalRef.current);
       popupCheckIntervalRef.current = null;
@@ -140,7 +142,9 @@ export default function AuthModal({
     if (activePopupRef.current && !isPopupClosed(activePopupRef.current)) {
       try {
         activePopupRef.current.close();
-      } catch (_) {}
+      } catch {
+        // Cross-origin popup access can fail during teardown; it is safe to ignore.
+      }
       activePopupRef.current = null;
     }
     if (isMountedRef.current) {
@@ -148,7 +152,7 @@ export default function AuthModal({
       setLoading(false);
     }
     if (onClose) onClose();
-  };
+  }, [onClose]);
 
   // Focus the email field when modal opens or mode changes
   useEffect(() => {
@@ -198,7 +202,7 @@ export default function AuthModal({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isPage, onClose]);
+  }, [isOpen, isPage, handleClose]);
 
   // Disable body scroll when modal is active
   useEffect(() => {
@@ -223,7 +227,9 @@ export default function AuthModal({
     if (activePopupRef.current && !isPopupClosed(activePopupRef.current)) {
       try {
         activePopupRef.current.close();
-      } catch (_) {}
+      } catch {
+        // Cross-origin popup access can fail during teardown; it is safe to ignore.
+      }
       activePopupRef.current = null;
     }
     setSsoLoading(null);

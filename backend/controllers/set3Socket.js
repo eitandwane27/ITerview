@@ -209,6 +209,12 @@ function handleSet3Socket(ws, request) {
         sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
       }
 
+      send({
+        type: "session_meta",
+        role: sessionRole,
+        difficulty: sessionDifficulty,
+      });
+
       // Check if user requested a reset via URL
       const isResetRequested = url.searchParams.get("reset") === "true";
 
@@ -677,7 +683,17 @@ function handleSet3Socket(ws, request) {
                             difficulty: sessionDifficulty,
                             focusArea: userDoc.focusArea || "auto",
                             overallScorePercentage,
+                            setScores: {
+                              set1: set1Score,
+                              set2: set2Score,
+                              set3: set3Score,
+                            },
                             threeCBreakdown,
+                            starBreakdown: {
+                              situation: sessionDoc.avg_situation,
+                              action: sessionDoc.avg_action,
+                              result: sessionDoc.avg_result,
+                            },
                             weaknessTag: sessionDoc.final_weakness_tag || "focus_completeness",
                           },
                         ],

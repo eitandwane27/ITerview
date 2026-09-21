@@ -44,11 +44,15 @@
   /* Cool Mint — good levels */
   --pt-mint: #10b981;
   --pt-mint-hover: #059669;
+  --pt-mint-light: #ecfdf5;
+  --pt-mint-border: #a7f3d0;
 
-  /* Warm Amber — too-loud caution */
+  /* Warm Amber — too-loud caution · graduation accent (PostTest) */
   --pt-amber: #f59e0b;
   --pt-amber-hover: #d97706;
   --pt-amber-deep: #b45309;
+  --pt-amber-light: #fffbeb;
+  --pt-amber-border: #fde68a;
 
   /* Coral Rose — errors & destructive (stop recording) */
   --pt-coral: #ef4444;

@@ -2,6 +2,23 @@
   --ix-orb-fallback-primary: 41 99 250;
   --ix-orb-fallback-secondary: 139 87 249;
   --ix-orb-fallback-accent: 51 204 255;
+  --ix-orb-state-scale: 1;
+  --ix-orb-left-eye-width: 8%;
+  --ix-orb-right-eye-width: 8%;
+  --ix-orb-left-eye-height: 28%;
+  --ix-orb-right-eye-height: 28%;
+  --ix-orb-eye-gap: 9%;
+  --ix-orb-left-eye-x: 0%;
+  --ix-orb-right-eye-x: 0%;
+  --ix-orb-left-eye-y: 0%;
+  --ix-orb-right-eye-y: 0%;
+  --ix-orb-left-eye-rotation: 0deg;
+  --ix-orb-right-eye-rotation: 0deg;
+  --ix-orb-eye-opacity: 1;
+  --ix-orb-gaze-x: 0%;
+  --ix-orb-gaze-y: 0%;
+  --ix-orb-left-gaze-scale: 1;
+  --ix-orb-right-gaze-scale: 1;
   position: relative;
   width: clamp(250px, 34vh, 326px);
   height: clamp(250px, 34vh, 326px);
@@ -17,19 +34,63 @@
   --ix-orb-fallback-primary: 30 100 255;
   --ix-orb-fallback-secondary: 128 79 255;
   --ix-orb-fallback-accent: 40 220 255;
+  --ix-orb-left-eye-width: 8.2%;
+  --ix-orb-right-eye-width: 8.2%;
+  --ix-orb-left-eye-height: 31%;
+  --ix-orb-right-eye-height: 31%;
+  --ix-orb-eye-gap: 7%;
 }
 
 .ix-orb-container[data-state='speaking'] {
   --ix-orb-fallback-primary: 31 107 255;
   --ix-orb-fallback-secondary: 151 69 255;
   --ix-orb-fallback-accent: 61 214 255;
+  --ix-orb-left-eye-width: 8.4%;
+  --ix-orb-right-eye-width: 8.4%;
+  --ix-orb-left-eye-height: 23%;
+  --ix-orb-right-eye-height: 24.5%;
+  --ix-orb-left-eye-y: -1%;
+  --ix-orb-right-eye-y: 1%;
+  --ix-orb-left-eye-rotation: -2deg;
+  --ix-orb-right-eye-rotation: 2deg;
 }
 
+.ix-orb-container[data-expressive='true'][data-state='speaking'] {
+  --ix-orb-state-scale: 1.06;
+}
+
+.ix-orb-container[data-state='thinking'],
 .ix-orb-container[data-state='evaluating'],
 .ix-orb-container[data-state='booting'] {
   --ix-orb-fallback-primary: 70 76 238;
   --ix-orb-fallback-secondary: 153 82 255;
   --ix-orb-fallback-accent: 100 178 255;
+}
+
+.ix-orb-container[data-state='thinking'],
+.ix-orb-container[data-state='evaluating'] {
+  --ix-orb-left-eye-width: 8.4%;
+  --ix-orb-right-eye-width: 8%;
+  --ix-orb-left-eye-height: 18%;
+  --ix-orb-right-eye-height: 26%;
+  --ix-orb-eye-gap: 7%;
+  --ix-orb-left-eye-x: 10%;
+  --ix-orb-right-eye-x: 18%;
+  --ix-orb-left-eye-y: -11%;
+  --ix-orb-right-eye-y: -18%;
+  --ix-orb-left-eye-rotation: 9deg;
+  --ix-orb-right-eye-rotation: 7deg;
+}
+
+.ix-orb-container[data-state='interrupted'] {
+  --ix-orb-fallback-primary: 30 100 255;
+  --ix-orb-fallback-secondary: 128 79 255;
+  --ix-orb-fallback-accent: 40 220 255;
+  --ix-orb-left-eye-width: 9%;
+  --ix-orb-right-eye-width: 9%;
+  --ix-orb-left-eye-height: 34%;
+  --ix-orb-right-eye-height: 34%;
+  --ix-orb-eye-gap: 13%;
 }
 
 .ix-orb-container[data-state='complete'] {
@@ -48,6 +109,15 @@
   --ix-orb-fallback-primary: 219 46 89;
   --ix-orb-fallback-secondary: 120 64 230;
   --ix-orb-fallback-accent: 255 115 148;
+  --ix-orb-left-eye-width: 9%;
+  --ix-orb-right-eye-width: 9%;
+  --ix-orb-left-eye-height: 16%;
+  --ix-orb-right-eye-height: 16%;
+  --ix-orb-left-eye-y: 8%;
+  --ix-orb-right-eye-y: 8%;
+  --ix-orb-left-eye-rotation: -10deg;
+  --ix-orb-right-eye-rotation: 10deg;
+  --ix-orb-eye-opacity: 0.72;
 }
 
 .ix-orb-canvas {
@@ -89,6 +159,58 @@
   opacity: 0;
 }
 
+.ix-orb-fallback__orbit {
+  position: absolute;
+  z-index: 0;
+  inset: 2%;
+  display: block;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ix-orb-container[data-expressive='true'] .ix-orb-fallback__orbit {
+  opacity: 1;
+}
+
+.ix-orb-fallback__orbit i {
+  position: absolute;
+  display: block;
+  border: 1px solid rgb(255 255 255 / 0.82);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 24%, #ffffff 0 8%, transparent 28%),
+    linear-gradient(
+      145deg,
+      rgb(var(--ix-orb-fallback-secondary)),
+      rgb(var(--ix-orb-fallback-accent))
+    );
+  box-shadow:
+    0 7px 15px -8px rgb(var(--ix-orb-fallback-primary) / 0.7),
+    inset 2px 2px 4px rgb(255 255 255 / 0.28);
+}
+
+.ix-orb-fallback__orbit i:nth-child(1) {
+  top: 9%;
+  left: 15%;
+  width: 12%;
+  aspect-ratio: 1;
+}
+
+.ix-orb-fallback__orbit i:nth-child(2) {
+  bottom: 18%;
+  left: 3%;
+  width: 8.5%;
+  aspect-ratio: 1;
+}
+
+.ix-orb-fallback__orbit i:nth-child(3) {
+  right: 1%;
+  bottom: 18%;
+  width: 13%;
+  aspect-ratio: 1;
+}
+
 .ix-orb-fallback::before,
 .ix-orb-fallback::after {
   content: '';
@@ -120,7 +242,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9%;
+  gap: var(--ix-orb-eye-gap);
   border-radius: 50%;
   background:
     radial-gradient(ellipse at 29% 22%, rgb(255 255 255 / 0.94) 0 2%, transparent 22%),
@@ -141,8 +263,8 @@
     inset -16px -18px 28px rgb(44 37 154 / 0.2),
     0 0 8px 2px rgb(255 255 255 / 0.74),
     0 0 28px 10px rgb(var(--ix-orb-fallback-accent) / 0.13);
-  transform: scale(calc(1 + var(--ix-orb-fallback-level, 0) * 0.025));
-  transition: transform 100ms linear;
+  transform: scale(calc(var(--ix-orb-state-scale) + var(--ix-orb-fallback-level, 0) * 0.025));
+  transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .ix-orb-fallback__shell::before {
@@ -156,11 +278,35 @@
 
 .ix-orb-fallback__eye {
   z-index: 1;
-  width: 8%;
-  height: 28%;
   border-radius: 999px;
   background: #fff;
   box-shadow: 0 0 13px rgb(255 255 255 / 0.85);
+  opacity: var(--ix-orb-eye-opacity);
+  transition:
+    width 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease-out,
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ix-orb-fallback__eye:first-child {
+  width: var(--ix-orb-left-eye-width);
+  height: var(--ix-orb-left-eye-height);
+  transform: translate(
+      calc(var(--ix-orb-left-eye-x) + var(--ix-orb-gaze-x)),
+      calc(var(--ix-orb-left-eye-y) + var(--ix-orb-gaze-y))
+    )
+    rotate(var(--ix-orb-left-eye-rotation)) scale(var(--ix-orb-left-gaze-scale));
+}
+
+.ix-orb-fallback__eye:last-child {
+  width: var(--ix-orb-right-eye-width);
+  height: var(--ix-orb-right-eye-height);
+  transform: translate(
+      calc(var(--ix-orb-right-eye-x) + var(--ix-orb-gaze-x)),
+      calc(var(--ix-orb-right-eye-y) + var(--ix-orb-gaze-y))
+    )
+    rotate(var(--ix-orb-right-eye-rotation)) scale(var(--ix-orb-right-gaze-scale));
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -171,16 +317,28 @@
   .ix-orb-container[data-renderer='fallback'] .ix-orb-fallback {
     animation: ixOrbFallbackAura 5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
+
+  .ix-orb-container[data-renderer='fallback'][data-expressive='true'] .ix-orb-fallback__orbit {
+    animation: ixOrbFallbackOrbit 12s linear infinite;
+  }
 }
 
 @keyframes ixOrbFallbackFloat {
   0%,
   100% {
-    transform: translateY(2px) scale(calc(1 + var(--ix-orb-fallback-level, 0) * 0.025));
+    transform: translateY(2px)
+      scale(calc(var(--ix-orb-state-scale) + var(--ix-orb-fallback-level, 0) * 0.025));
   }
 
   50% {
-    transform: translateY(-3px) scale(calc(1.012 + var(--ix-orb-fallback-level, 0) * 0.025));
+    transform: translateY(-3px)
+      scale(calc(var(--ix-orb-state-scale) + 0.012 + var(--ix-orb-fallback-level, 0) * 0.025));
+  }
+}
+
+@keyframes ixOrbFallbackOrbit {
+  to {
+    transform: rotate(1turn);
   }
 }
 

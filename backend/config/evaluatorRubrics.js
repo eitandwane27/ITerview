@@ -39,7 +39,7 @@ const EVALUATOR_RUBRICS = {
   * **5 (High)**: Comprehensive, highly precise answer demonstrating senior-level depth, failure modes, or optimization trade-offs, delivered professionally without filler words.
   * **3 - 4 (Average)**: Correct answer but lacks deep technical precision, edge cases, or performance considerations.
   * **1 - 2 (Low)**: Heavy filler words (um, like, basically), informal/vague explanations, or incomplete answers are penalized strictly (1-2 range).
-`
+`,
 };
 
 /**
@@ -47,12 +47,12 @@ const EVALUATOR_RUBRICS = {
  * @param {string} difficulty - "easy" | "medium" | "hard"
  * @returns {string} The formatted system prompt section
  */
-function getEvaluatorRubric(difficulty = "easy") {
-  const norm = (difficulty || "easy").toLowerCase();
+function getEvaluatorRubric(difficulty = 'easy') {
+  const norm = (difficulty || 'easy').toLowerCase();
   return EVALUATOR_RUBRICS[norm] || EVALUATOR_RUBRICS.easy;
 }
 
 module.exports = {
   EVALUATOR_RUBRICS,
-  getEvaluatorRubric
+  getEvaluatorRubric,
 };

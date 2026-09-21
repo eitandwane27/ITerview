@@ -151,6 +151,12 @@ function handleSet2Socket(ws, request) {
         sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
       }
 
+      send({
+        type: "session_meta",
+        role: sessionRole,
+        difficulty: sessionDifficulty,
+      });
+
       // Check if user requested a reset via URL
       const isResetRequested = url.searchParams.get("reset") === "true";
 

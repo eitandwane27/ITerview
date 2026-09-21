@@ -79,12 +79,22 @@ const userSchema = new mongoose.Schema({
         difficulty: { type: String },
         focusArea: { type: String },
         overallScorePercentage: { type: Number },
+        setScores: {
+          set1: Number,
+          set2: Number,
+          set3: Number,
+        },
         threeCBreakdown: {
           clarity: Number,
           correctness: Number,
           completeness: Number,
           averageOutOf5: Number,
           averageOutOf10: Number,
+        },
+        starBreakdown: {
+          situation: Number,
+          action: Number,
+          result: Number,
         },
         weaknessTag: { type: String },
       },

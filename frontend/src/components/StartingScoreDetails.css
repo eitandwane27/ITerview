@@ -1,0 +1,44 @@
+.starting-score-details {
+  color: var(--test-ink-secondary, var(--db-ink, #334155));
+  font-size: 13px;
+  line-height: 1.6;
+}
+.starting-score-details summary {
+  width: fit-content;
+  min-height: 44px;
+  margin-inline: auto;
+  padding: 12px 8px;
+  color: var(--test-blue-hover, var(--db-blue, #1d4ed8));
+  font-weight: 600;
+  cursor: pointer;
+}
+.starting-score-details summary:focus-visible {
+  outline: 2px solid var(--test-blue, var(--db-blue, #2563eb));
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+.starting-score-details-content {
+  max-width: 440px;
+  margin: 8px auto 0;
+  padding: 16px;
+  border: 1px solid var(--test-border, var(--db-border, #e2e8f0));
+  border-radius: 12px;
+  background: var(--test-surface, var(--db-card-bg, #ffffff));
+}
+.starting-score-details-content p {
+  margin: 0;
+}
+.starting-score-details-value {
+  margin: 8px 0 !important;
+  font-family: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.starting-score-details-value small {
+  font-size: 13px;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+.starting-score-details-secondary {
+  color: var(--test-ink-muted, var(--db-ink-muted, #64748b));
+}

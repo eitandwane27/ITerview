@@ -1,6 +1,6 @@
 // frontend/src/pages/Results.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import {
@@ -23,7 +23,56 @@ import {
   Users,
 } from 'lucide-react';
 import logoSrc from '../assets/logo';
+import TestWorkspace from '../components/TestWorkspace';
+import {
+  averageThreeCs,
+  getPracticeFocus,
+  getScoreComparison,
+  isValidScore,
+  lowestThreeC,
+  PRACTICE_FOCUS,
+} from '../utils/assessmentGuidance';
 import './Results.css';
+
+const SCORE_MAX = 5;
+const PERCENT_MAX = 100;
+const CONFIDENCE_ITEM_COUNT = 5;
+
+function isScoreOutOfFive(value) {
+  return isValidScore(value) && value >= 1 && value <= SCORE_MAX;
+}
+
+function percentageToScoreOutOfFive(value) {
+  if (!isValidScore(value) || value < 0 || value > PERCENT_MAX) return null;
+  return Math.round((value / 20) * 10) / 10;
+}
+
+function confidenceTotalToMean(value) {
+  const minimumTotal = CONFIDENCE_ITEM_COUNT;
+  const maximumTotal = CONFIDENCE_ITEM_COUNT * SCORE_MAX;
+  if (!isValidScore(value) || value < minimumTotal || value > maximumTotal) return null;
+  return Math.round((value / CONFIDENCE_ITEM_COUNT) * 10) / 10;
+}
+
+function scoreWidth(value) {
+  return isScoreOutOfFive(value) ? `${(value / SCORE_MAX) * 100}%` : '0%';
+}
+
+function isPercentage(value) {
+  return isValidScore(value) && value >= 0 && value <= PERCENT_MAX;
+}
+
+function formatScore(value) {
+  if (!isValidScore(value)) return '—';
+  const rounded = Math.round(value * 100) / 100;
+  return rounded.toFixed(Number.isInteger(rounded * 10) ? 1 : 2);
+}
+
+function formatDifficulty(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const normalized = value.trim().toLowerCase();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
 
 // ── Motion-safe count-up hook ─────────────────────────────────────────────
 function useCountUp(target, duration = 1200, decimals = 0) {
@@ -35,7 +84,10 @@ function useCountUp(target, duration = 1200, decimals = 0) {
 
     let start = null;
     const step = (ts) => {
-      if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ) {
         setValue(decimals ? +target.toFixed(decimals) : Math.round(target));
         return;
       }
@@ -61,6 +113,7 @@ const MOCK_RESULTS_DATA = {
   preTestScore: 62,
   improvementDelta: 22,
   unlocked: true,
+  targetDifficulty: 'medium',
   nextDifficulty: 'hard',
   unlockThreshold: 70,
   threeCBreakdown: {
@@ -86,9 +139,9 @@ const MOCK_RESULTS_DATA = {
     set3: { label: 'Set 3: Behavioral STAR Storytelling', score: 4.1, outOf: 5, completed: true },
   },
   starBreakdown: {
-    situation: 8.5,
-    action: 9.0,
-    result: 7.8,
+    situation: 4.3,
+    action: 4.5,
+    result: 3.9,
   },
   questionBreakdowns: {
     preTest: {
@@ -97,8 +150,10 @@ const MOCK_RESULTS_DATA = {
       questions: [
         {
           questionNumber: 1,
-          question: 'Can you explain the difference between synchronous and asynchronous execution in Node.js?',
-          transcript: 'Synchronous execution blocks the event loop while asynchronous operations run non-blockingly using callbacks or promises.',
+          question:
+            'Can you explain the difference between synchronous and asynchronous execution in Node.js?',
+          transcript:
+            'Synchronous execution blocks the event loop while asynchronous operations run non-blockingly using callbacks or promises.',
           metrics: { clarity: 3.5, correctness: 4.0, completeness: 3.0 },
           questionAverage: 3.5,
           questionPercentage: 70.0,
@@ -112,8 +167,10 @@ const MOCK_RESULTS_DATA = {
       questions: [
         {
           questionNumber: 1,
-          question: 'How do you structure database schemas in MongoDB to avoid performance bottlenecks with large collections?',
-          transcript: 'I usually design schemas around query access patterns. I index high-frequency search fields and embed related data when documents stay under 16MB.',
+          question:
+            'How do you structure database schemas in MongoDB to avoid performance bottlenecks with large collections?',
+          transcript:
+            'I usually design schemas around query access patterns. I index high-frequency search fields and embed related data when documents stay under 16MB.',
           metrics: { clarity: 4.0, correctness: 4.2, completeness: 3.8 },
           questionAverage: 4.0,
           questionPercentage: 80.0,
@@ -127,8 +184,10 @@ const MOCK_RESULTS_DATA = {
       questions: [
         {
           questionNumber: 1,
-          question: 'Walk me through how React virtual DOM diffing algorithm reconciles state updates in a high-traffic dashboard.',
-          transcript: 'React creates a tree of elements in memory. When state updates, it compares previous and new virtual DOM trees using heuristic O(n) diffing, batching DOM operations.',
+          question:
+            'Walk me through how React virtual DOM diffing algorithm reconciles state updates in a high-traffic dashboard.',
+          transcript:
+            'React creates a tree of elements in memory. When state updates, it compares previous and new virtual DOM trees using heuristic O(n) diffing, batching DOM operations.',
           metrics: { problemSolving: 4.5, accuracy: 4.4, depth: 4.0 },
           questionAverage: 4.3,
           questionPercentage: 86.0,
@@ -142,8 +201,10 @@ const MOCK_RESULTS_DATA = {
       questions: [
         {
           questionNumber: 1,
-          question: 'Describe a situation where you encountered an unexpected API failure right before a sprint demo.',
-          transcript: 'Our authentication gateway began returning 504 gateway timeouts. I isolated the connection pool bottleneck, implemented exponential retry, and restored stability 15 minutes before the demo.',
+          question:
+            'Describe a situation where you encountered an unexpected API failure right before a sprint demo.',
+          transcript:
+            'Our authentication gateway began returning 504 gateway timeouts. I isolated the connection pool bottleneck, implemented exponential retry, and restored stability 15 minutes before the demo.',
           metrics: { situation: 4.2, action: 4.5, result: 3.9 },
           questionAverage: 4.2,
           questionPercentage: 84.0,
@@ -157,8 +218,10 @@ const MOCK_RESULTS_DATA = {
       questions: [
         {
           questionNumber: 1,
-          question: 'How would you architect a distributed caching layer using Redis for a microservices cluster?',
-          transcript: 'I implement a Cache-Aside pattern with TTL expiration. Reads check Redis first; on miss, the service queries MongoDB and populates Redis. For writes, we invalidate cache keys to prevent stale reads.',
+          question:
+            'How would you architect a distributed caching layer using Redis for a microservices cluster?',
+          transcript:
+            'I implement a Cache-Aside pattern with TTL expiration. Reads check Redis first; on miss, the service queries MongoDB and populates Redis. For writes, we invalidate cache keys to prevent stale reads.',
           metrics: { clarity: 4.5, correctness: 4.6, completeness: 4.1 },
           questionAverage: 4.4,
           questionPercentage: 88.0,
@@ -195,7 +258,9 @@ export default function Results() {
       if (!user) {
         // Fallback for development if no session is active
         if (import.meta.env.DEV) {
-          console.info('Development environment detected without active user. Serving mock result data for visual review.');
+          console.info(
+            'Development environment detected without active user. Serving mock result data for visual review.'
+          );
           setData(MOCK_RESULTS_DATA);
           setLoading(false);
           return;
@@ -214,7 +279,9 @@ export default function Results() {
         setData(json);
       } catch (err) {
         console.error('Error loading results:', err);
-        setError('Unable to retrieve interview results. Please ensure you have completed the prerequisite sessions.');
+        setError(
+          'Unable to retrieve interview results. Please ensure you have completed the prerequisite sessions.'
+        );
       } finally {
         setLoading(false);
       }
@@ -224,29 +291,89 @@ export default function Results() {
   }, [navigate, isPracticeMode, isMockMode]);
 
   // Derived telemetry calculations
-  const preConf = data?.preConfidenceScore ?? 0;
-  const postConf = data?.postConfidenceScore ?? 0;
-  const deltaRaw = postConf - preConf;
-  const deltaPct = data ? Math.round((deltaRaw / 25) * 100) : 0;
-  const prePct = data ? Math.round((preConf / 25) * 100) : 0;
-  const postPct = data ? Math.round((postConf / 25) * 100) : 0;
+  const preConf = confidenceTotalToMean(data?.preConfidenceScore);
+  const postConf = confidenceTotalToMean(data?.postConfidenceScore);
+  const preTestScore = percentageToScoreOutOfFive(data?.preTestScore);
+  const postTestScore = percentageToScoreOutOfFive(data?.masteryScore);
+  const confidenceComparison = getScoreComparison(preConf, postConf);
+  const comparison = getScoreComparison(preTestScore, postTestScore);
 
-  const animDelta = useCountUp(deltaPct, 1500);
-  const animPre = useCountUp(prePct, 1200);
-  const animPost = useCountUp(postPct, 1200);
+  const animDelta = useCountUp(confidenceComparison?.delta, 1500, 1);
+  const animPre = useCountUp(preConf, 1200, 1);
+  const animPost = useCountUp(postConf, 1200, 1);
 
-  const displayScore = isPracticeMode
-    ? (data?.sessionAverages?.practiceSetsAverage?.scorePercentage ?? null)
-    : (data?.masteryScore ?? null);
-  const animMastery = useCountUp(displayScore, 1400);
+  const practiceAverageScore = isScoreOutOfFive(
+    data?.sessionAverages?.practiceSetsAverage?.scoreOutOf5
+  )
+    ? data.sessionAverages.practiceSetsAverage.scoreOutOf5
+    : percentageToScoreOutOfFive(data?.sessionAverages?.practiceSetsAverage?.scorePercentage);
+  const displayScore = isPracticeMode ? practiceAverageScore : postTestScore;
+  const animMastery = useCountUp(displayScore, 1400, 1);
 
-  const clarityScore = data?.threeCBreakdown?.clarity ?? null;
-  const correctnessScore = data?.threeCBreakdown?.correctness ?? null;
-  const completenessScore = data?.threeCBreakdown?.completeness ?? null;
+  const unlockTargetScore = isPercentage(data?.unlockThreshold) ? data.unlockThreshold / 20 : null;
+  const currentDifficulty = formatDifficulty(data?.targetDifficulty);
+  const nextDifficulty = formatDifficulty(data?.nextDifficulty);
+  const hasNextDifficulty = Boolean(
+    currentDifficulty &&
+    nextDifficulty &&
+    currentDifficulty.toLowerCase() !== nextDifficulty.toLowerCase()
+  );
+  const currentCompletedPracticeSetCount = ['set1', 'set2', 'set3'].filter(
+    (setKey) => data?.setScores?.[setKey]?.completed === true
+  ).length;
+  const savedCompletedPracticeSetCount = data?.practiceProgress?.completedSetCount;
+  const completedPracticeSetCount = Number.isInteger(savedCompletedPracticeSetCount)
+    ? Math.min(3, Math.max(0, savedCompletedPracticeSetCount))
+    : currentCompletedPracticeSetCount;
+  const hasCompletedAllPracticeSets =
+    data?.practiceProgress?.completedAllSets === true || completedPracticeSetCount === 3;
+  const isShowingSavedPracticeAttempt =
+    data?.practiceProgress?.source === 'latest-completed-attempt';
+  const practiceProgressDescription = isShowingSavedPracticeAttempt
+    ? `Latest saved completed session${data?.practiceProgress?.attemptNumber ? ` · Attempt ${data.practiceProgress.attemptNumber}` : ''}`
+    : hasCompletedAllPracticeSets
+      ? 'Final average across all three practice sets'
+      : `Current average across ${completedPracticeSetCount} of 3 completed sets`;
+  const hasPracticeAverage = isScoreOutOfFive(practiceAverageScore);
+  const practiceAverageMet =
+    hasCompletedAllPracticeSets &&
+    hasPracticeAverage &&
+    unlockTargetScore &&
+    practiceAverageScore >= unlockTargetScore;
+  const practicePointsNeeded =
+    hasPracticeAverage && unlockTargetScore
+      ? Math.max(0, unlockTargetScore - practiceAverageScore)
+      : null;
+  const isNextDifficultyUnlocked = hasNextDifficulty && data?.unlocked === true;
 
-  const animClarity = useCountUp(clarityScore ? (clarityScore / 5) * 100 : 0, 1100);
-  const animCorrectness = useCountUp(correctnessScore ? (correctnessScore / 5) * 100 : 0, 1100);
-  const animCompleteness = useCountUp(completenessScore ? (completenessScore / 5) * 100 : 0, 1100);
+  const startingThreeCs = averageThreeCs(data?.questionBreakdowns?.preTest?.questions);
+  const progressThreeCs = averageThreeCs(data?.questionBreakdowns?.postTest?.questions);
+  const displayedThreeCs = isPracticeMode ? data?.threeCBreakdown || {} : progressThreeCs;
+  const clarityScore = displayedThreeCs.clarity ?? null;
+  const correctnessScore = displayedThreeCs.correctness ?? null;
+  const completenessScore = displayedThreeCs.completeness ?? null;
+  const focusKey = lowestThreeC(displayedThreeCs);
+  const nextFocus = getPracticeFocus(focusKey || data?.postWeaknessTag);
+  const dimensionChanges = Object.keys(PRACTICE_FOCUS)
+    .filter((key) => isValidScore(startingThreeCs[key]) && isValidScore(progressThreeCs[key]))
+    .map((key) => ({
+      key,
+      delta: Math.round((progressThreeCs[key] - startingThreeCs[key]) * 10) / 10,
+    }))
+    .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta));
+
+  const animClarity = useCountUp(
+    isScoreOutOfFive(clarityScore) ? (clarityScore / 5) * 100 : 0,
+    1100
+  );
+  const animCorrectness = useCountUp(
+    isScoreOutOfFive(correctnessScore) ? (correctnessScore / 5) * 100 : 0,
+    1100
+  );
+  const animCompleteness = useCountUp(
+    isScoreOutOfFive(completenessScore) ? (completenessScore / 5) * 100 : 0,
+    1100
+  );
 
   const toggleQuestion = (idx) => {
     setOpenQuestions((prev) => ({
@@ -279,12 +406,18 @@ export default function Results() {
           <div className="rs-hero-grid">
             <div className="rs-skeleton-card">
               <div className="rs-skeleton-block" style={{ width: '40%', height: '24px' }} />
-              <div className="rs-skeleton-block" style={{ width: '60%', height: '70px', margin: 'auto' }} />
+              <div
+                className="rs-skeleton-block"
+                style={{ width: '60%', height: '70px', margin: 'auto' }}
+              />
               <div className="rs-skeleton-block" style={{ width: '100%', height: '40px' }} />
             </div>
             <div className="rs-skeleton-card">
               <div className="rs-skeleton-block" style={{ width: '40%', height: '24px' }} />
-              <div className="rs-skeleton-block" style={{ width: '60%', height: '70px', margin: 'auto' }} />
+              <div
+                className="rs-skeleton-block"
+                style={{ width: '60%', height: '70px', margin: 'auto' }}
+              />
               <div className="rs-skeleton-block" style={{ width: '100%', height: '40px' }} />
             </div>
           </div>
@@ -315,7 +448,8 @@ export default function Results() {
             </div>
             <h2 className="rs-error-title">Could Not Retrieve Session Summary</h2>
             <p className="rs-error-desc">
-              {error || 'Make sure you complete both the pre-test baseline, practice sets, and post-test graduation sessions.'}
+              {error ||
+                'Make sure you complete both the pre-test baseline, practice sets, and post-test graduation sessions.'}
             </p>
             <button
               className="rs-btn-primary"
@@ -332,7 +466,34 @@ export default function Results() {
   }
 
   const activeQuestions = data.questionBreakdowns?.[activeTab]?.questions || [];
-  const activeSessionLabel = data.questionBreakdowns?.[activeTab]?.sessionLabel || 'Session Questions';
+  const activeSessionLabel =
+    {
+      preTest: 'Starting check (pre-test)',
+      postTest: 'Progress check (post-test)',
+      set1: 'Practice set 1',
+      set2: 'Practice set 2',
+      set3: 'Practice set 3',
+    }[activeTab] || 'Session questions';
+
+  // A direct report URL follows the same reflection-before-results sequence.
+  if (!isPracticeMode && isValidScore(data.masteryScore) && data.postConfidenceScore == null) {
+    return <Navigate to="/likert-post" replace />;
+  }
+  if (!isPracticeMode && !isValidScore(data.masteryScore)) {
+    if (!isValidScore(data.preTestScore)) return <Navigate to="/dashboard" replace />;
+    return (
+      <TestWorkspace
+        variant="pre"
+        isSessionComplete
+        result={{
+          score: data.preTestScore,
+          weakness: data.preWeaknessTag || data.threeCBreakdown?.lowestMetric,
+        }}
+        onExit={() => navigate('/dashboard')}
+        onContinue={() => navigate('/dashboard')}
+      />
+    );
+  }
 
   return (
     <div className="rs-root">
@@ -367,7 +528,7 @@ export default function Results() {
       </header>
 
       {/* ── Level Unlocked Celebration Banner ────────────────────────────── */}
-      {data.unlocked && (
+      {isNextDifficultyUnlocked && (
         <aside className="rs-unlock-banner" role="status" aria-live="polite">
           <div className="rs-unlock-banner-content">
             <div className="rs-unlock-banner-main">
@@ -377,14 +538,14 @@ export default function Results() {
               <div>
                 <h3 className="rs-unlock-banner-title">Milestone Level Unlocked!</h3>
                 <p className="rs-unlock-banner-desc">
-                  You surpassed the {data.unlockThreshold}% benchmark threshold. You have officially unlocked{' '}
-                  <strong>{data.nextDifficulty}</strong> difficulty.
+                  You met the {formatScore(unlockTargetScore)} / 5.0 benchmark. You have officially
+                  unlocked <strong>{nextDifficulty}</strong> difficulty.
                 </p>
               </div>
             </div>
             <div className="rs-unlock-pill">
               <Sparkles size={14} />
-              {data.nextDifficulty} Tier Ready
+              {nextDifficulty} Tier Ready
             </div>
           </div>
         </aside>
@@ -395,53 +556,51 @@ export default function Results() {
         {/* Page Greeting */}
         <section className="rs-header-section">
           <h1 className="rs-page-title">
-            {isPracticeMode ? 'Practice Performance Analysis' : 'Interview Diagnostic Summary'}
+            {isPracticeMode ? 'Your practice results' : 'Your starting and progress checks'}
           </h1>
           <p className="rs-page-subtitle">
-            Comprehensive breakdown of your technical communication, structured answers, and verbal confidence growth.
+            {isPracticeMode
+              ? 'Review your answers and choose what to practise next.'
+              : 'Compare your five starting answers with your five answers after practice.'}
           </p>
         </section>
 
+        {!isPracticeMode && (
+          <section
+            className="rs-card rs-assessment-summary"
+            aria-label="What changed and what comes next"
+          >
+            <h2 className="rs-card-title">{comparison?.heading || 'Your results are ready'}</h2>
+            <p>
+              {comparison?.description ||
+                'Your comparison will appear when both assessment scores are available.'}
+            </p>
+            {dimensionChanges[0] && (
+              <p>
+                {PRACTICE_FOCUS[dimensionChanges[0].key].label}:{' '}
+                {startingThreeCs[dimensionChanges[0].key]} →{' '}
+                {progressThreeCs[dimensionChanges[0].key]} / 5.{' '}
+                {dimensionChanges[0].delta === 0
+                  ? 'This dimension stayed the same.'
+                  : 'This was your largest change across the three dimensions.'}
+              </p>
+            )}
+            <p>
+              <strong>Next practice: </strong>
+              {nextFocus?.next ||
+                'Review an answer and practise a clearer, more complete explanation.'}
+            </p>
+            <p className="rs-assessment-note">
+              These scores describe your answers to this assessment.
+            </p>
+            <button type="button" className="rs-btn-primary" onClick={() => navigate('/dashboard')}>
+              Continue practice <ArrowRight size={18} aria-hidden="true" />
+            </button>
+          </section>
+        )}
+
         {/* ─── 1. Hero Dual Telemetry Stage (50/50 Split) ──────────────────── */}
         <section className="rs-hero-grid" aria-label="Performance Highlights">
-          {/* Confidence Growth Card */}
-          <article className="rs-card rs-confidence-card">
-            <div className="rs-card-header">
-              <div className="rs-card-header-left">
-                <div className="rs-card-icon-badge rs-card-icon-badge--blue">
-                  <TrendingUp size={20} />
-                </div>
-                <div>
-                  <h2 className="rs-card-title">Confidence Growth</h2>
-                  <p className="rs-card-subtitle">Self-efficacy Likert telemetry delta</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rs-delta-display">
-              <div className="rs-delta-metric">
-                <span className="rs-delta-sign">{deltaPct >= 0 ? '+' : ''}</span>
-                <span className="rs-delta-value">{animDelta}</span>
-                <span className="rs-delta-unit">%</span>
-              </div>
-              <p className="rs-delta-caption">Improvement between Pre-Test and Post-Test</p>
-            </div>
-
-            <div className="rs-comparison-track">
-              <div className="rs-stage-pill">
-                <span className="rs-stage-label">Pre-Test</span>
-                <span className="rs-stage-value">{animPre}%</span>
-              </div>
-              <div className="rs-stage-arrow">
-                <ArrowRight size={18} />
-              </div>
-              <div className="rs-stage-pill">
-                <span className="rs-stage-label">Post-Test</span>
-                <span className="rs-stage-value rs-stage-value--highlight">{animPost}%</span>
-              </div>
-            </div>
-          </article>
-
           {/* Mastery Score Card */}
           <article className="rs-card rs-mastery-card">
             <div className="rs-card-header">
@@ -451,9 +610,13 @@ export default function Results() {
                 </div>
                 <div>
                   <h2 className="rs-card-title">
-                    {isPracticeMode ? 'Practice Mastery Score' : 'Graduation Mastery Score'}
+                    {isPracticeMode ? 'Practice score' : 'Progress-check score'}
                   </h2>
-                  <p className="rs-card-subtitle">Overall evaluated technical competence</p>
+                  <p className="rs-card-subtitle">
+                    {isPracticeMode
+                      ? 'Your completed practice sets'
+                      : 'Your five answers after practice'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -461,21 +624,25 @@ export default function Results() {
             <div className="rs-mastery-display">
               <div className="rs-mastery-metric">
                 <span className="rs-mastery-value">
-                  {animMastery !== null ? animMastery : 'N/A'}
+                  {isScoreOutOfFive(displayScore) ? animMastery : 'Unavailable'}
                 </span>
-                <span className="rs-mastery-denom">/100</span>
+                {isScoreOutOfFive(displayScore) && <span className="rs-mastery-denom">/5.0</span>}
               </div>
               <p className="rs-mastery-caption">
-                {isPracticeMode ? 'Practice sets combined benchmark' : 'Post-Test graduation evaluation'}
+                {isPracticeMode
+                  ? 'Average across your practice sets'
+                  : 'Progress check (post-test)'}
               </p>
             </div>
 
             {!isPracticeMode && (
               <div className="rs-progression-row">
                 <div className="rs-progression-item">
-                  <span className="rs-progression-label">Baseline Pre-Test</span>
+                  <span className="rs-progression-label">Starting check</span>
                   <span className="rs-progression-score">
-                    {data.preTestScore !== null ? `${data.preTestScore}%` : 'N/A'}
+                    {isScoreOutOfFive(preTestScore)
+                      ? `${preTestScore.toFixed(1)} / 5.0`
+                      : 'Unavailable'}
                   </span>
                 </div>
 
@@ -484,28 +651,215 @@ export default function Results() {
                 </div>
 
                 <div className="rs-progression-item">
-                  <span className="rs-progression-label">Graduation Post-Test</span>
-                  <span className="rs-progression-score" style={{ color: 'var(--rs-correctness)' }}>
-                    {data.masteryScore !== null ? `${data.masteryScore}%` : 'N/A'}
+                  <span className="rs-progression-label">Progress check</span>
+                  <span
+                    className="rs-progression-score"
+                    style={{ color: 'var(--rs-correctness-ink)' }}
+                  >
+                    {isScoreOutOfFive(postTestScore)
+                      ? `${postTestScore.toFixed(1)} / 5.0`
+                      : 'Unavailable'}
                   </span>
                 </div>
 
-                {data.improvementDelta !== null && (
+                {comparison && (
                   <div
                     className={`rs-progression-delta-tag ${
-                      data.improvementDelta >= 0
+                      comparison.delta > 0
                         ? 'rs-progression-delta-tag--positive'
-                        : 'rs-progression-delta-tag--negative'
+                        : comparison.delta < 0
+                          ? 'rs-progression-delta-tag--negative'
+                          : 'rs-progression-delta-tag--neutral'
                     }`}
                   >
-                    {data.improvementDelta >= 0 ? '+' : ''}
-                    {data.improvementDelta}%
+                    {comparison.label}
                   </div>
                 )}
               </div>
             )}
           </article>
+
+          {/* Confidence Growth Card */}
+          <article className="rs-card rs-confidence-card">
+            <div className="rs-card-header">
+              <div className="rs-card-header-left">
+                <div className="rs-card-icon-badge rs-card-icon-badge--blue">
+                  <TrendingUp size={20} />
+                </div>
+                <div>
+                  <h2 className="rs-card-title">How your confidence changed</h2>
+                  <p className="rs-card-subtitle">Your own ratings before and after practice</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rs-delta-display">
+              <div className="rs-delta-metric">
+                <span
+                  className={`rs-delta-value${!confidenceComparison ? ' rs-delta-value--unavailable' : ''}`}
+                >
+                  {confidenceComparison
+                    ? `${confidenceComparison.delta > 0 ? '+' : ''}${animDelta}`
+                    : 'Unavailable'}
+                </span>
+                {confidenceComparison && <span className="rs-delta-unit">on the 1–5 scale</span>}
+              </div>
+              <p className="rs-delta-caption">Change in your average confidence rating</p>
+            </div>
+
+            <div className="rs-comparison-track">
+              <div className="rs-stage-pill">
+                <span className="rs-stage-label">Before practice</span>
+                <span className="rs-stage-value">
+                  {isScoreOutOfFive(preConf) ? `${animPre.toFixed(1)} / 5.0` : 'Unavailable'}
+                </span>
+              </div>
+              <div className="rs-stage-arrow">
+                <ArrowRight size={18} />
+              </div>
+              <div className="rs-stage-pill">
+                <span className="rs-stage-label">After practice</span>
+                <span className="rs-stage-value rs-stage-value--highlight">
+                  {isScoreOutOfFive(postConf) ? `${animPost.toFixed(1)} / 5.0` : 'Unavailable'}
+                </span>
+              </div>
+            </div>
+          </article>
         </section>
+
+        {hasNextDifficulty && unlockTargetScore && (
+          <section
+            className={`rs-card rs-difficulty-card${
+              isNextDifficultyUnlocked ? ' rs-difficulty-card--unlocked' : ''
+            }`}
+            aria-labelledby="rs-difficulty-title"
+          >
+            <div className="rs-difficulty-header">
+              <div className="rs-difficulty-heading">
+                <div className="rs-card-icon-badge rs-card-icon-badge--blue">
+                  <Target size={20} aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="rs-card-title" id="rs-difficulty-title">
+                    {isNextDifficultyUnlocked
+                      ? `${nextDifficulty} difficulty unlocked`
+                      : `Unlock ${nextDifficulty} difficulty`}
+                  </h2>
+                  <p className="rs-card-subtitle">
+                    Complete Sets 1–3 with a combined average of {formatScore(unlockTargetScore)} /
+                    5.0 or higher.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rs-difficulty-route-wrap">
+                <div
+                  className="rs-difficulty-route"
+                  aria-label={`${currentDifficulty} to ${nextDifficulty} difficulty`}
+                >
+                  <span className="rs-difficulty-tier">{currentDifficulty}</span>
+                  <ArrowRight size={15} aria-hidden="true" />
+                  <span className="rs-difficulty-tier rs-difficulty-tier--next">
+                    {nextDifficulty}
+                  </span>
+                </div>
+                <span
+                  className={`rs-difficulty-state ${
+                    isNextDifficultyUnlocked
+                      ? 'rs-difficulty-state--unlocked'
+                      : 'rs-difficulty-state--pending'
+                  }`}
+                >
+                  {isNextDifficultyUnlocked ? (
+                    <>
+                      <CheckCircle2 size={14} aria-hidden="true" /> Unlocked
+                    </>
+                  ) : (
+                    <>
+                      <Clock size={14} aria-hidden="true" />{' '}
+                      {!hasCompletedAllPracticeSets
+                        ? `${completedPracticeSetCount} of 3 sets complete`
+                        : practicePointsNeeded !== null
+                          ? `${formatScore(practicePointsNeeded)} ${practicePointsNeeded === 1 ? 'point' : 'points'} needed`
+                          : 'Complete Sets 1–3'}
+                    </>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="rs-difficulty-requirement">
+              <div className="rs-difficulty-requirement-header">
+                <div>
+                  <h3>Sets 1–3 combined average</h3>
+                  <p>{practiceProgressDescription}</p>
+                </div>
+                <span className="rs-difficulty-score">
+                  {hasPracticeAverage
+                    ? `${formatScore(practiceAverageScore)} / 5.0`
+                    : 'Not available'}
+                </span>
+              </div>
+
+              <div
+                className="rs-difficulty-track"
+                {...(hasPracticeAverage
+                  ? {
+                      role: 'progressbar',
+                      'aria-label': 'Sets 1–3 combined average progress',
+                      'aria-valuemin': 0,
+                      'aria-valuemax': SCORE_MAX,
+                      'aria-valuenow': practiceAverageScore,
+                      'aria-valuetext': `${formatScore(practiceAverageScore)} out of 5; target ${formatScore(unlockTargetScore)} out of 5`,
+                    }
+                  : {})}
+              >
+                <span
+                  className={`rs-difficulty-fill${
+                    practiceAverageMet ? ' rs-difficulty-fill--met' : ''
+                  }`}
+                  style={{ width: scoreWidth(practiceAverageScore) }}
+                  aria-hidden="true"
+                />
+                <span
+                  className="rs-difficulty-target-marker"
+                  style={{ left: `${(unlockTargetScore / SCORE_MAX) * 100}%` }}
+                  aria-hidden="true"
+                />
+              </div>
+
+              <div className="rs-difficulty-requirement-footer">
+                <span>Target: {formatScore(unlockTargetScore)} / 5.0</span>
+                <span
+                  className={`rs-difficulty-gap${
+                    practiceAverageMet ? ' rs-difficulty-gap--met' : ''
+                  }`}
+                >
+                  {practiceAverageMet ? (
+                    <>
+                      <CheckCircle2 size={14} aria-hidden="true" /> Threshold reached
+                    </>
+                  ) : !hasCompletedAllPracticeSets ? (
+                    `Complete all three sets (${completedPracticeSetCount}/3 complete)`
+                  ) : practicePointsNeeded !== null ? (
+                    <>
+                      <Clock size={14} aria-hidden="true" /> {formatScore(practicePointsNeeded)}{' '}
+                      {practicePointsNeeded === 1 ? 'point' : 'points'} needed
+                    </>
+                  ) : (
+                    'Complete Sets 1–3'
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <p className="rs-difficulty-note">
+              {isShowingSavedPracticeAttempt
+                ? 'This score was restored from your completed practice history. Focus drills do not change difficulty progress.'
+                : 'Only this combined practice average unlocks the next difficulty. Your progress-check score does not affect advancement.'}
+            </p>
+          </section>
+        )}
 
         {/* ─── 2. The 3C Rubric Diagnostic Breakdown ───────────────────────── */}
         <section className="rs-card rs-rubric-card" aria-label="3C Rubric Diagnostic Breakdown">
@@ -515,9 +869,11 @@ export default function Results() {
                 <Compass size={20} />
               </div>
               <div>
-                <h2 className="rs-card-title">The 3C Rubric Diagnostic</h2>
+                <h2 className="rs-card-title">What makes a strong answer</h2>
                 <p className="rs-card-subtitle">
-                  Core speech evaluation framework: Clarity (Sky Blue), Correctness (Cool Mint), Completeness (Golden Amber)
+                  {isPracticeMode
+                    ? 'Your practice feedback across three dimensions'
+                    : 'Your progress-check answers across three dimensions'}
                 </p>
               </div>
             </div>
@@ -531,19 +887,17 @@ export default function Results() {
                   <span className="rs-rubric-indicator-dot rs-rubric-indicator-dot--clarity" />
                   Clarity
                 </div>
-                {data.threeCBreakdown?.lowestMetric === 'clarity' && (
+                {focusKey === 'clarity' && (
                   <span className="rs-rubric-focus-badge">Focus Area</span>
                 )}
               </div>
               <div className="rs-rubric-score-row">
                 <span className="rs-rubric-num rs-rubric-num--clarity">
-                  {clarityScore !== null ? clarityScore.toFixed(1) : 'N/A'}
+                  {isScoreOutOfFive(clarityScore) ? clarityScore.toFixed(1) : 'N/A'}
                 </span>
                 <span className="rs-rubric-denom">/5.0</span>
               </div>
-              <p className="rs-rubric-desc">
-                Pacing, articulate enunciation, structural coherence, and minimal filler words.
-              </p>
+              <p className="rs-rubric-desc">Was your explanation easy to follow?</p>
               <div className="rs-progress-track">
                 <div
                   className="rs-progress-bar rs-progress-bar--clarity"
@@ -559,19 +913,17 @@ export default function Results() {
                   <span className="rs-rubric-indicator-dot rs-rubric-indicator-dot--correctness" />
                   Correctness
                 </div>
-                {data.threeCBreakdown?.lowestMetric === 'correctness' && (
+                {focusKey === 'correctness' && (
                   <span className="rs-rubric-focus-badge">Focus Area</span>
                 )}
               </div>
               <div className="rs-rubric-score-row">
                 <span className="rs-rubric-num rs-rubric-num--correctness">
-                  {correctnessScore !== null ? correctnessScore.toFixed(1) : 'N/A'}
+                  {isScoreOutOfFive(correctnessScore) ? correctnessScore.toFixed(1) : 'N/A'}
                 </span>
                 <span className="rs-rubric-denom">/5.0</span>
               </div>
-              <p className="rs-rubric-desc">
-                Technical accuracy, valid concepts, proper terminology, and sound algorithmic reasoning.
-              </p>
+              <p className="rs-rubric-desc">Was the information accurate?</p>
               <div className="rs-progress-track">
                 <div
                   className="rs-progress-bar rs-progress-bar--correctness"
@@ -587,19 +939,17 @@ export default function Results() {
                   <span className="rs-rubric-indicator-dot rs-rubric-indicator-dot--completeness" />
                   Completeness
                 </div>
-                {data.threeCBreakdown?.lowestMetric === 'completeness' && (
+                {focusKey === 'completeness' && (
                   <span className="rs-rubric-focus-badge">Focus Area</span>
                 )}
               </div>
               <div className="rs-rubric-score-row">
                 <span className="rs-rubric-num rs-rubric-num--completeness">
-                  {completenessScore !== null ? completenessScore.toFixed(1) : 'N/A'}
+                  {isScoreOutOfFive(completenessScore) ? completenessScore.toFixed(1) : 'N/A'}
                 </span>
                 <span className="rs-rubric-denom">/5.0</span>
               </div>
-              <p className="rs-rubric-desc">
-                Depth of explanation, coverage of edge cases, architectural trade-offs, and examples.
-              </p>
+              <p className="rs-rubric-desc">Did you cover the important parts?</p>
               <div className="rs-progress-track">
                 <div
                   className="rs-progress-bar rs-progress-bar--completeness"
@@ -644,7 +994,7 @@ export default function Results() {
                 </div>
                 <div className="rs-set-score-box">
                   <span className="rs-set-score-text">
-                    {data.setScores?.set1?.score !== null
+                    {isScoreOutOfFive(data.setScores?.set1?.score)
                       ? `${data.setScores.set1.score.toFixed(1)} / 5.0`
                       : 'Pending'}
                   </span>
@@ -685,7 +1035,7 @@ export default function Results() {
                 </div>
                 <div className="rs-set-score-box">
                   <span className="rs-set-score-text">
-                    {data.setScores?.set2?.score !== null
+                    {isScoreOutOfFive(data.setScores?.set2?.score)
                       ? `${data.setScores.set2.score.toFixed(1)} / 5.0`
                       : 'Pending'}
                   </span>
@@ -726,7 +1076,7 @@ export default function Results() {
                 </div>
                 <div className="rs-set-score-box">
                   <span className="rs-set-score-text">
-                    {data.setScores?.set3?.score !== null
+                    {isScoreOutOfFive(data.setScores?.set3?.score)
                       ? `${data.setScores.set3.score.toFixed(1)} / 5.0`
                       : 'Pending'}
                   </span>
@@ -761,7 +1111,7 @@ export default function Results() {
                 </div>
                 <div>
                   <h2 className="rs-card-title">Set 3: STAR Dimensions</h2>
-                  <p className="rs-card-subtitle">Behavioral storytelling criteria (0-10 scale)</p>
+                  <p className="rs-card-subtitle">Behavioral storytelling criteria (1–5 scale)</p>
                 </div>
               </div>
             </div>
@@ -775,8 +1125,8 @@ export default function Results() {
                     <span className="rs-star-sublabel">(Context)</span>
                   </div>
                   <span className="rs-star-value">
-                    {data.starBreakdown?.situation !== null
-                      ? `${data.starBreakdown.situation.toFixed(1)} / 10`
+                    {isScoreOutOfFive(data.starBreakdown?.situation)
+                      ? `${data.starBreakdown.situation.toFixed(1)} / 5.0`
                       : 'Not assessed'}
                   </span>
                 </div>
@@ -784,11 +1134,7 @@ export default function Results() {
                   <div
                     className="rs-star-fill rs-star-fill--situation"
                     style={{
-                      width: `${
-                        data.starBreakdown?.situation !== null
-                          ? (data.starBreakdown.situation / 10) * 100
-                          : 0
-                      }%`,
+                      width: scoreWidth(data.starBreakdown?.situation),
                     }}
                   />
                 </div>
@@ -802,8 +1148,8 @@ export default function Results() {
                     <span className="rs-star-sublabel">(Strategy)</span>
                   </div>
                   <span className="rs-star-value">
-                    {data.starBreakdown?.action !== null
-                      ? `${data.starBreakdown.action.toFixed(1)} / 10`
+                    {isScoreOutOfFive(data.starBreakdown?.action)
+                      ? `${data.starBreakdown.action.toFixed(1)} / 5.0`
                       : 'Not assessed'}
                   </span>
                 </div>
@@ -811,11 +1157,7 @@ export default function Results() {
                   <div
                     className="rs-star-fill rs-star-fill--action"
                     style={{
-                      width: `${
-                        data.starBreakdown?.action !== null
-                          ? (data.starBreakdown.action / 10) * 100
-                          : 0
-                      }%`,
+                      width: scoreWidth(data.starBreakdown?.action),
                     }}
                   />
                 </div>
@@ -829,8 +1171,8 @@ export default function Results() {
                     <span className="rs-star-sublabel">(Outcomes)</span>
                   </div>
                   <span className="rs-star-value">
-                    {data.starBreakdown?.result !== null
-                      ? `${data.starBreakdown.result.toFixed(1)} / 10`
+                    {isScoreOutOfFive(data.starBreakdown?.result)
+                      ? `${data.starBreakdown.result.toFixed(1)} / 5.0`
                       : 'Not assessed'}
                   </span>
                 </div>
@@ -838,11 +1180,7 @@ export default function Results() {
                   <div
                     className="rs-star-fill rs-star-fill--result"
                     style={{
-                      width: `${
-                        data.starBreakdown?.result !== null
-                          ? (data.starBreakdown.result / 10) * 100
-                          : 0
-                      }%`,
+                      width: scoreWidth(data.starBreakdown?.result),
                     }}
                   />
                 </div>
@@ -853,7 +1191,10 @@ export default function Results() {
 
         {/* ─── 4. Question-by-Question Coaching Insights Drawer ───────────── */}
         {data.questionBreakdowns && (
-          <section className="rs-card rs-questions-card" aria-label="Question by Question Breakdown">
+          <section
+            className="rs-card rs-questions-card"
+            aria-label="Question by Question Breakdown"
+          >
             <div className="rs-card-header">
               <div className="rs-card-header-left">
                 <div className="rs-card-icon-badge rs-card-icon-badge--blue">
@@ -876,11 +1217,11 @@ export default function Results() {
                   return null;
                 }
                 const labelMap = {
-                  preTest: 'Pre-Test',
+                  preTest: 'Starting check',
                   set1: 'Set 1',
                   set2: 'Set 2',
                   set3: 'Set 3',
-                  postTest: 'Post-Test',
+                  postTest: 'Progress check',
                 };
                 return (
                   <button
@@ -932,7 +1273,7 @@ export default function Results() {
                           <h4 className="rs-question-text">{q.question}</h4>
                         </div>
                         <div className="rs-question-header-right">
-                          {q.questionAverage !== null && (
+                          {isScoreOutOfFive(q.questionAverage) && (
                             <span className="rs-qscore-badge">
                               {q.questionAverage.toFixed(1)} / 5.0
                             </span>
@@ -964,7 +1305,7 @@ export default function Results() {
                           {q.metrics && (
                             <div className="rs-metrics-chips">
                               {Object.entries(q.metrics).map(([mKey, mVal]) => {
-                                if (mVal === null || mVal === undefined) return null;
+                                if (!isScoreOutOfFive(mVal)) return null;
                                 const niceLabel =
                                   mKey === 'problemSolving'
                                     ? 'Problem Solving'

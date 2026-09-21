@@ -270,10 +270,7 @@ export function AICoachCard({ coachTip }) {
           <div className="ix-coach-text-block">
             <h4 className="ix-coach-title">AI Coach</h4>
             <p className="ix-coach-tip">
-              {coachTip &&
-              coachTip !== 'Your personalized AI feedback will appear here after each answer.'
-                ? coachTip
-                : 'Great structure! Now try adding more concrete trade-offs or edge cases.'}
+              {coachTip || 'Your personalized AI feedback will appear here after each answer.'}
             </p>
           </div>
         </div>
@@ -286,35 +283,46 @@ export function AICoachCard({ coachTip }) {
  * AI Feedback Cards (What you did well / Try improving)
  */
 export function AIFeedbackCard({
-  whatYouDidWell = 'You clearly outlined your points with direct structure and confident pacing.',
-  tryImproving = 'Quantifying your results or highlighting specific architecture choices will strengthen your answer.',
+  whatYouDidWell = '',
+  tryImproving = '',
 }) {
-  return (
-    <div className="ix-feedback-section">
-      <div className="ix-section-heading">AI FEEDBACK</div>
-      <div className="ix-feedback-cards">
-        {/* What you did well */}
-        <div className="ix-feedback-item-card">
-          <div className="ix-feedback-icon-wrap green">
-            <ThumbsUp size={14} />
-          </div>
-          <div className="ix-feedback-item-content">
-            <h5 className="ix-feedback-item-title">What you did well</h5>
-            <p className="ix-feedback-item-desc">{whatYouDidWell}</p>
-          </div>
-        </div>
+  const hasFeedback = Boolean(whatYouDidWell || tryImproving);
 
-        {/* Try improving */}
-        <div className="ix-feedback-item-card">
-          <div className="ix-feedback-icon-wrap amber">
-            <Lightbulb size={14} />
-          </div>
-          <div className="ix-feedback-item-content">
-            <h5 className="ix-feedback-item-title">Try improving</h5>
-            <p className="ix-feedback-item-desc">{tryImproving}</p>
-          </div>
+  return (
+    <div className="ix-feedback-section" aria-live="polite" aria-atomic="true">
+      <div className="ix-section-heading">AI FEEDBACK</div>
+      {hasFeedback ? (
+        <div className="ix-feedback-cards">
+          {whatYouDidWell && (
+            <div className="ix-feedback-item-card">
+              <div className="ix-feedback-icon-wrap green">
+                <ThumbsUp size={14} />
+              </div>
+              <div className="ix-feedback-item-content">
+                <h5 className="ix-feedback-item-title">What you did well</h5>
+                <p className="ix-feedback-item-desc">{whatYouDidWell}</p>
+              </div>
+            </div>
+          )}
+
+          {tryImproving && (
+            <div className="ix-feedback-item-card">
+              <div className="ix-feedback-icon-wrap amber">
+                <Lightbulb size={14} />
+              </div>
+              <div className="ix-feedback-item-content">
+                <h5 className="ix-feedback-item-title">Try improving</h5>
+                <p className="ix-feedback-item-desc">{tryImproving}</p>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="ix-feedback-empty">
+          <MessageSquare size={16} aria-hidden="true" />
+          <p>Complete your first answer to see response-specific feedback.</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,22 +11,28 @@ import {
   Play,
   ArrowRight,
   TrendingUp,
+  TrendingDown,
   MessageSquare,
   Target,
   PackageCheck,
   RotateCcw,
   AlertCircle,
   Star,
-  Code,
-  Users,
-  Video,
-  Coffee,
 } from 'lucide-react';
 import { signOut, onAuthStateChanged, updateProfile } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import SetBriefingOverlay from '../components/SetBriefingOverlay';
+import StartingScoreDetails from '../components/StartingScoreDetails';
+import AIOrb from '../components/AIOrb';
+import {
+  averageThreeCs,
+  getPracticeFocus,
+  getScoreComparison,
+  isValidScore,
+  lowestThreeC,
+} from '../utils/assessmentGuidance';
 import logoSrc from '../assets/logo';
 import './Dashboard.css';
 
@@ -43,9 +49,9 @@ const JOURNEY_STAGE_ROUTES = {
 const JOURNEY_STAGE_LABELS = {
   'likert-pre': 'Confidence check next',
   'mic-test': 'Microphone check next',
-  pretest: 'Pre-test in progress',
-  mainsets: 'MainSets session in progress',
-  posttest: 'Post-test in progress',
+  pretest: 'Starting check in progress',
+  mainsets: 'Practice session in progress',
+  posttest: 'Progress check next',
   'likert-post': 'Final confidence check next',
 };
 
@@ -92,57 +98,43 @@ const TAB_ICONS = {
   History: History,
 };
 
-// "Choose your practice" grid. `tint` is tied to the session type the card
-// triggers, `preset` is forwarded to handleStartSession on launch, only
-// role/focus/difficulty, the axes the launch flow actually honors. Resume
-// lives in the banner, not in this grid, so the grid never reflows with
-// session state.
+// Focused 3C drill grid. The role and difficulty stay in the configuration
+// bar; each card changes only the rubric dimension the next practice session
+// targets. This keeps the choices stable as the role catalogue grows.
 const PRACTICE_CARDS = [
   {
-    id: 'warmup',
-    title: 'Warm-up Question',
-    desc: 'A quick question to get your brain in interview mode.',
-    tint: 'amber',
-    preset: { difficulty: 'easy' },
-  },
-  {
-    id: 'frontend',
-    title: 'Frontend Practice',
-    desc: 'Practice real frontend interview questions.',
-    tint: 'mint',
-    preset: { role: 'frontend' },
-  },
-  {
-    id: 'behavioral',
-    title: 'Behavioral Round',
-    desc: 'Strengthen your stories and communicate with impact.',
-    tint: 'lavender',
-    preset: { focus: 'star' },
-  },
-  {
     id: 'clarity',
+    focusKey: 'clarity',
     title: 'Clarity Drill',
-    desc: 'Practice structuring your thoughts clearly and concisely.',
+    desc: 'Practice organizing technical answers so they are easy to follow.',
     tint: 'cyan',
     preset: { focus: 'clarity' },
   },
   {
-    id: 'mock',
-    title: 'Mock Interview',
-    desc: 'A mixed round that simulates the real interview flow.',
-    tint: 'blue',
-    preset: {},
+    id: 'correctness',
+    focusKey: 'correctness',
+    title: 'Correctness Drill',
+    desc: 'Strengthen technical accuracy, terminology, and core concepts.',
+    tint: 'mint',
+    preset: { focus: 'correctness' },
+  },
+  {
+    id: 'completeness',
+    focusKey: 'completeness',
+    title: 'Completeness Drill',
+    desc: 'Build fuller answers with relevant details, examples, and context.',
+    tint: 'amber',
+    preset: { focus: 'completeness' },
   },
 ];
 
-// Session facts, mirror the backend set contract: every practice set is exactly
-// 5 questions (generated upfront in set1/2/3Socket; the resume banner shows
-// "Q{n}/5"). The rolling history cap is enforced server-side with $push + $slice: -20
+// The rolling history cap is enforced server-side with $push + $slice: -20
 // (backend/routes/userRoutes.js and backend/controllers/set3Socket.js).
-const QUESTIONS_PER_SESSION = 5;
 const PRACTICE_HISTORY_LIMIT = 20;
 // How many history rows render before the "Show older sessions" toggle.
 const HISTORY_VISIBLE_COUNT = 5;
+const SCORE_MAX = 5;
+const PERCENT_MAX = 100;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -161,6 +153,40 @@ function formatRoleLabel(value) {
   return match ? match.label : value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function isScoreOutOfFive(value) {
+  return isValidScore(value) && value >= 1 && value <= SCORE_MAX;
+}
+
+function percentageToScoreOutOfFive(value) {
+  if (!isValidScore(value) || value < 0 || value > PERCENT_MAX) return null;
+  return Math.round((value / 20) * 10) / 10;
+}
+
+function legacyScoreToScoreOutOfFive(value) {
+  if (!isValidScore(value) || value < 0 || value > 10) return null;
+  const score = value <= SCORE_MAX ? value : value / 2;
+  return Math.round(score * 10) / 10;
+}
+
+function formatScoreValue(value) {
+  return isScoreOutOfFive(value) ? value.toFixed(1) : null;
+}
+
+function formatScoreOutOfFive(value) {
+  const formatted = formatScoreValue(value);
+  return formatted ? `${formatted} / 5.0` : '--';
+}
+
+function getAttemptScoreOutOfFive(attempt) {
+  const percentageScore = percentageToScoreOutOfFive(attempt?.overallScorePercentage);
+  if (percentageScore !== null) return percentageScore;
+
+  const scoreOutOfFive = legacyScoreToScoreOutOfFive(attempt?.threeCBreakdown?.averageOutOf5);
+  if (scoreOutOfFive !== null) return scoreOutOfFive;
+
+  return legacyScoreToScoreOutOfFive(attempt?.threeCBreakdown?.averageOutOf10);
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 const BaselineCard = memo(function BaselineCard({
@@ -173,13 +199,15 @@ const BaselineCard = memo(function BaselineCard({
   lowest,
   onViewDetails,
 }) {
+  const scoreComparison = getScoreComparison(baseline, mastery);
+
   return (
     <section className="db-baseline-card">
       <div className="db-baseline-card__header">
         <div className="db-baseline-card__text">
           <h2 className="db-baseline-card__title">Your progress at a glance</h2>
           <p className="db-baseline-card__sub">
-            Baseline from your pre-test. Every session builds on this start line.
+            Your starting answers compared with your progress-check answers.
           </p>
         </div>
         <button type="button" className="db-view-link db-view-link--pill" onClick={onViewDetails}>
@@ -192,19 +220,22 @@ const BaselineCard = memo(function BaselineCard({
         <div className="db-progression">
           <div className="db-progression__label">Your journey so far</div>
           <div className="db-progression__scores">
-            <div className="db-progression__baseline">
-              {baseline != null ? `${baseline}%` : '--'}
-            </div>
+            <div className="db-progression__baseline">{formatScoreOutOfFive(baseline)}</div>
             <ArrowRight size={18} className="db-progression__arrow" aria-hidden="true" />
-            <div className="db-progression__mastery">{mastery != null ? `${mastery}%` : '--'}</div>
+            <div className="db-progression__mastery">{formatScoreOutOfFive(mastery)}</div>
           </div>
-          {growth != null && (
-            <div className="db-delta-pill">
-              <TrendingUp size={12} className="db-delta-pill__icon" aria-hidden="true" />
-              <div className="db-delta-pill__text">
-                {growth >= 0 ? '+' : ''}
-                {growth}% growth
-              </div>
+          {growth != null && scoreComparison && (
+            <div
+              className={`db-delta-pill${scoreComparison.delta < 0 ? ' db-delta-pill--lower' : scoreComparison.delta === 0 ? ' db-delta-pill--same' : ''}`}
+            >
+              {scoreComparison.delta > 0 ? (
+                <TrendingUp size={12} className="db-delta-pill__icon" aria-hidden="true" />
+              ) : scoreComparison.delta < 0 ? (
+                <TrendingDown size={12} className="db-delta-pill__icon" aria-hidden="true" />
+              ) : (
+                <ArrowRight size={12} className="db-delta-pill__icon" aria-hidden="true" />
+              )}
+              <div className="db-delta-pill__text">{scoreComparison.label}</div>
             </div>
           )}
         </div>
@@ -222,7 +253,7 @@ const BaselineCard = memo(function BaselineCard({
               {lowest === 'clarity' && <span className="db-3c-tag">Lowest · targeted</span>}
             </div>
             <div className="db-3c-cell__score db-3c-cell__score--clarity">
-              {clarity != null ? `${clarity} / 5` : '--'}
+              {formatScoreOutOfFive(clarity)}
             </div>
           </div>
 
@@ -237,7 +268,7 @@ const BaselineCard = memo(function BaselineCard({
               {lowest === 'correctness' && <span className="db-3c-tag">Lowest · targeted</span>}
             </div>
             <div className="db-3c-cell__score db-3c-cell__score--correctness">
-              {correctness != null ? `${correctness} / 5` : '--'}
+              {formatScoreOutOfFive(correctness)}
             </div>
           </div>
 
@@ -255,13 +286,13 @@ const BaselineCard = memo(function BaselineCard({
               {lowest === 'completeness' && <span className="db-3c-tag">Lowest · targeted</span>}
             </div>
             <div className="db-3c-cell__score db-3c-cell__score--completeness">
-              {completeness != null ? `${completeness} / 5` : '--'}
+              {formatScoreOutOfFive(completeness)}
             </div>
           </div>
         </div>
 
         <p className="db-3c-grid__foot">
-          Each dimension is scored out of 5. Your overall progress is shown as a percentage.
+          Every assessment score on this page uses the same 1–5 scale.
         </p>
       </div>
     </section>
@@ -277,17 +308,16 @@ const ProgressEmptyState = memo(function ProgressEmptyState({ onSwitchTab }) {
         <div className="db-progress-empty-hero__content">
           <div className="db-progress-empty-hero__badge">
             <span className="db-pulse-dot" aria-hidden="true" />
-            <span>Baseline diagnostic pending</span>
+            <span>Starting check next</span>
           </div>
 
           <h2 id="db-progress-empty-title" className="db-progress-empty-hero__title">
-            Your progress unlocks with your baseline
+            Find your starting point
           </h2>
 
           <p className="db-progress-empty-hero__sub">
-            Complete your 5-minute kickoff diagnostic on <strong>Interview Prep</strong> to calibrate
-            your starting benchmark across Clarity, Correctness, and Completeness. Your progress
-            trajectory, difficulty tiers, and session history will appear here.
+            Answer five interview questions on <strong>Interview Prep</strong> to choose your
+            practice focus. After practice, repeat them to compare your answers.
           </p>
 
           <div className="db-progress-empty-hero__actions">
@@ -405,7 +435,11 @@ const ProgressEmptyState = memo(function ProgressEmptyState({ onSwitchTab }) {
 const MetricsStates = memo(function MetricsStates({ dataStatus, onRetry, onLogin }) {
   if (dataStatus === 'loading') {
     return (
-      <div className="db-baseline-card db-baseline-card--loading" role="status" aria-label="Loading dashboard metrics...">
+      <div
+        className="db-baseline-card db-baseline-card--loading"
+        role="status"
+        aria-label="Loading dashboard metrics..."
+      >
         <span className="sr-only">Loading dashboard metrics...</span>
         <div className="db-skeleton db-skeleton--baseline-title" aria-hidden="true" />
         <div className="db-skeleton db-skeleton--baseline-body" aria-hidden="true" />
@@ -458,59 +492,66 @@ const MetricsStates = memo(function MetricsStates({ dataStatus, onRetry, onLogin
 // One row in the practice log, memoized so the list never re-renders when
 // unrelated dashboard state changes (attempt objects keep stable references).
 const AttemptCard = memo(function AttemptCard({ attempt }) {
+  const attemptScore = getAttemptScoreOutOfFive(attempt);
+  const completedAt = attempt.completedAt ? new Date(attempt.completedAt) : null;
+  const hasValidCompletedAt = completedAt && !Number.isNaN(completedAt.getTime());
+  const completedAtLabel = hasValidCompletedAt
+    ? completedAt.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'Recently';
+
   return (
-    <div className="db-attempt-card">
+    <article className="db-attempt-card">
       <div className="db-attempt-card__left">
-        <span className="db-attempt-badge">
-          {attempt.attemptNumber != null ? `Attempt #${attempt.attemptNumber}` : 'Practice session'}
-        </span>
-        <div>
-          <div className="db-attempt-card__title">
-            <span>{formatRoleLabel(attempt.role)}</span>
-            {' · '}
-            {attempt.difficulty || 'Easy'}
-            <span className="db-badge db-badge--purple">
-              <Mic size={11} strokeWidth={2.2} />
-              Focus: {attempt.focusArea || 'Auto'}
-            </span>
-          </div>
-          <div className="db-attempt-card__meta">
-            {attempt.completedAt
-              ? new Date(attempt.completedAt).toLocaleString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : 'Recently'}
-          </div>
+        <div className="db-attempt-card__meta">
+          <span className="db-attempt-badge">
+            {attempt.attemptNumber != null
+              ? `Attempt ${attempt.attemptNumber}`
+              : 'Practice session'}
+          </span>
+          <span aria-hidden="true">·</span>
+          {hasValidCompletedAt ? (
+            <time dateTime={completedAt.toISOString()}>{completedAtLabel}</time>
+          ) : (
+            <span>{completedAtLabel}</span>
+          )}
+        </div>
+        <h3 className="db-attempt-card__title">{formatRoleLabel(attempt.role)}</h3>
+        <div className="db-attempt-card__context">
+          <span className="db-attempt-card__difficulty">{attempt.difficulty || 'Easy'}</span>
+          <span className="db-badge db-badge--purple">
+            <Mic size={11} strokeWidth={2.2} aria-hidden="true" />
+            {attempt.focusArea || 'Auto'} focus
+          </span>
         </div>
       </div>
       <div className="db-attempt-card__right">
         {attempt.threeCBreakdown && (
-          <div className="db-3c-mini">
-            <span>
-              Clarity: <strong>{attempt.threeCBreakdown.clarity ?? '--'}</strong>
-            </span>
-            <span>
-              Correct: <strong>{attempt.threeCBreakdown.correctness ?? '--'}</strong>
-            </span>
-            <span>
-              Complete: <strong>{attempt.threeCBreakdown.completeness ?? '--'}</strong>
-            </span>
-          </div>
+          <dl className="db-3c-mini" aria-label="3C score breakdown">
+            <div className="db-3c-mini__metric">
+              <dt>Clarity</dt>
+              <dd>{formatScoreOutOfFive(attempt.threeCBreakdown.clarity)}</dd>
+            </div>
+            <div className="db-3c-mini__metric">
+              <dt>Correctness</dt>
+              <dd>{formatScoreOutOfFive(attempt.threeCBreakdown.correctness)}</dd>
+            </div>
+            <div className="db-3c-mini__metric">
+              <dt>Completeness</dt>
+              <dd>{formatScoreOutOfFive(attempt.threeCBreakdown.completeness)}</dd>
+            </div>
+          </dl>
         )}
-        <span className="db-attempt-score">
-          {attempt.overallScorePercentage !== null && attempt.overallScorePercentage !== undefined
-            ? `${attempt.overallScorePercentage}%`
-            : attempt.threeCBreakdown?.averageOutOf5
-              ? `${(attempt.threeCBreakdown.averageOutOf5 * 20).toFixed(0)}%`
-              : attempt.threeCBreakdown?.averageOutOf10
-                ? `${(attempt.threeCBreakdown.averageOutOf10 * 10).toFixed(0)}%`
-                : '--'}
-        </span>
+        <div className="db-attempt-card__overall">
+          <span className="db-attempt-card__score-label">Overall</span>
+          <strong className="db-attempt-score">{formatScoreOutOfFive(attemptScore)}</strong>
+        </div>
       </div>
-    </div>
+    </article>
   );
 });
 
@@ -528,81 +569,91 @@ const HistoryPanel = memo(function HistoryPanel({
   const hiddenCount = history.length - HISTORY_VISIBLE_COUNT;
 
   return (
-    <section className="db-setup-card db-history-card">
-      <div className="db-setup-card__header">
-        <div className="db-setup-card__text">
-          <h2 className="db-setup-card__title">
-            <History size={17} className="db-setup-card__title-icon" />
-            Practice history
-          </h2>
-          <p className="db-setup-card__sub">
-            Your past practice sessions, 3C breakdowns, and rolling history.
-          </p>
+    <section className="db-setup-card db-history-card" aria-labelledby="db-history-title">
+      <div className="db-setup-card__header db-history-card__header">
+        <div className="db-history-card__heading">
+          <span className="db-history-card__icon" aria-hidden="true">
+            <History size={19} />
+          </span>
+          <div className="db-setup-card__text">
+            <h2 id="db-history-title" className="db-setup-card__title">
+              Practice history
+            </h2>
+            <p className="db-setup-card__sub">
+              Review the overall and 3C scores from each completed session.
+            </p>
+          </div>
         </div>
-        <span className="db-history-badge">Recent sessions</span>
+        <span className="db-history-badge">
+          {dataStatus === 'ready'
+            ? `${history.length} completed session${history.length === 1 ? '' : 's'}`
+            : 'Session log'}
+        </span>
       </div>
 
-      {dataStatus === 'loading' ? (
-        <div
-          className="db-history-skeleton"
-          role="status"
-          aria-label="Loading your practice history..."
-        >
-          <span className="sr-only">Loading your practice history...</span>
-          <div className="db-skeleton db-skeleton--history-row" aria-hidden="true" />
-          <div className="db-skeleton db-skeleton--history-row" aria-hidden="true" />
-        </div>
-      ) : dataStatus === 'error' ? (
-        <div className="db-empty db-empty--error" role="alert">
-          <p>Couldn't load your practice history. Check your connection and try again.</p>
-          {onRetry && (
-            <button
-              type="button"
-              className="db-btn-secondary"
-              onClick={onRetry}
-              style={{ marginTop: 12 }}
-            >
-              <RotateCcw size={14} />
-              Retry
-            </button>
-          )}
-        </div>
-      ) : history.length > 0 ? (
-        <div className="db-history-list">
-          {visibleHistory.map((attempt, idx) => (
-            <AttemptCard key={attempt._id || idx} attempt={attempt} />
-          ))}
-          {hiddenCount > 0 && (
-            <button
-              type="button"
-              className="db-history-toggle"
-              onClick={() => setShowAll((v) => !v)}
-            >
-              {showAll
-                ? 'Show less'
-                : `Show ${hiddenCount} older session${hiddenCount === 1 ? '' : 's'}`}
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="db-empty">
-          <p>
-            No practice attempts logged yet. Head over to Interview Prep to complete your baseline
-            diagnostic and begin your practice history!
-          </p>
-          {onSwitchTab && (
-            <button
-              type="button"
-              className="db-btn-secondary"
-              onClick={() => onSwitchTab('Interview Prep')}
-              style={{ marginTop: 12 }}
-            >
-              Go to Interview Prep
-              <ArrowRight size={14} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      )}
+      <div className="db-history-card__body">
+        {dataStatus === 'loading' ? (
+          <div
+            className="db-history-skeleton"
+            role="status"
+            aria-label="Loading your practice history..."
+          >
+            <span className="sr-only">Loading your practice history...</span>
+            <div className="db-skeleton db-skeleton--history-row" aria-hidden="true" />
+            <div className="db-skeleton db-skeleton--history-row" aria-hidden="true" />
+          </div>
+        ) : dataStatus === 'error' ? (
+          <div className="db-empty db-empty--error" role="alert">
+            <p>Couldn't load your practice history. Check your connection and try again.</p>
+            {onRetry && (
+              <button type="button" className="db-btn-secondary" onClick={onRetry}>
+                <RotateCcw size={14} />
+                Retry
+              </button>
+            )}
+          </div>
+        ) : history.length > 0 ? (
+          <div className="db-history-list">
+            {visibleHistory.map((attempt, idx) => (
+              <AttemptCard key={attempt._id || idx} attempt={attempt} />
+            ))}
+            {hiddenCount > 0 && (
+              <button
+                type="button"
+                className="db-history-toggle"
+                onClick={() => setShowAll((v) => !v)}
+                aria-expanded={showAll}
+              >
+                {showAll
+                  ? 'Show fewer sessions'
+                  : `Show ${hiddenCount} older session${hiddenCount === 1 ? '' : 's'}`}
+                <ChevronDown
+                  size={16}
+                  className={`db-history-toggle__icon ${showAll ? 'db-history-toggle__icon--open' : ''}`}
+                  aria-hidden="true"
+                />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="db-empty">
+            <p>
+              No practice attempts yet. Start with five interview questions on Interview Prep, then
+              begin practice.
+            </p>
+            {onSwitchTab && (
+              <button
+                type="button"
+                className="db-btn-secondary"
+                onClick={() => onSwitchTab('Interview Prep')}
+              >
+                Go to Interview Prep
+                <ArrowRight size={14} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </section>
   );
 });
@@ -626,6 +677,9 @@ const ProgressPanel = memo(function ProgressPanel({
   weakTopic,
   sessionsCount,
   onSwitchTab,
+  comparisonReady,
+  needsFinalReflection,
+  onFinishReflection,
 }) {
   if (dataStatus === 'loading' || dataStatus === 'error') {
     return <MetricsStates dataStatus={dataStatus} onRetry={onRetry} />;
@@ -633,6 +687,31 @@ const ProgressPanel = memo(function ProgressPanel({
 
   if (dataStatus === 'empty' || baseline == null) {
     return <ProgressEmptyState onSwitchTab={onSwitchTab} />;
+  }
+
+  if (!comparisonReady) {
+    return (
+      <section className="db-assessment-guidance">
+        <h2>
+          {needsFinalReflection ? 'Your progress check is saved' : 'Your starting point is saved'}
+        </h2>
+        <p>
+          {needsFinalReflection
+            ? 'Finish your confidence check to see how your answers compare.'
+            : getPracticeFocus(weakTopic || lowestMetric)?.starting ||
+              'Practise clear, accurate answers that cover the important parts.'}
+        </p>
+        <button
+          type="button"
+          className="db-cta-btn db-onboarding__cta"
+          onClick={needsFinalReflection ? onFinishReflection : () => onSwitchTab('Interview Prep')}
+        >
+          {needsFinalReflection ? 'Finish confidence check' : 'Continue practice'}{' '}
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>
+        <StartingScoreDetails score={baseline} sourceScale="out-of-five" />
+      </section>
+    );
   }
 
   return (
@@ -657,7 +736,7 @@ const ProgressPanel = memo(function ProgressPanel({
             3C Average
           </div>
           <div className="db-stat-card__value-row">
-            <span className="db-stat-card__value">{average3C != null ? `${average3C}%` : '--'}</span>
+            <span className="db-stat-card__value">{formatScoreOutOfFive(average3C)}</span>
             {/* Growth is shown once, in the BaselineCard delta pill above. */}
           </div>
         </div>
@@ -700,19 +779,22 @@ const ProgressPanel = memo(function ProgressPanel({
 // so the grid reads as one system. When a real mascot asset for a card lands,
 // drop an <img> inside the tile, the slot sizes it.
 const CARD_ART_ICONS = {
-  warmup: Coffee,
-  frontend: Code,
-  behavioral: Users,
-  clarity: Sparkles,
-  mock: Video,
+  clarity: MessageSquare,
+  correctness: Target,
+  completeness: PackageCheck,
 };
 
-const PracticeCard = memo(function PracticeCard({ card, onLaunch, isLocked = false }) {
+const PracticeCard = memo(function PracticeCard({
+  card,
+  onLaunch,
+  isLocked = false,
+  isRecommended = false,
+}) {
   const ArtIcon = CARD_ART_ICONS[card.id] || Sparkles;
   return (
     <button
       type="button"
-      className={`db-practice-card db-practice-card--${card.tint} ${isLocked ? 'db-practice-card--locked' : ''}`}
+      className={`db-practice-card db-practice-card--${card.tint} ${isLocked ? 'db-practice-card--locked' : ''} ${isRecommended ? 'db-practice-card--recommended' : ''}`}
       onClick={() => onLaunch(card)}
     >
       <span className="db-practice-card__media">
@@ -720,6 +802,12 @@ const PracticeCard = memo(function PracticeCard({ card, onLaunch, isLocked = fal
           <span className="db-practice-card__lock-badge" aria-hidden="true">
             <Lock size={12} />
             <span>Locked</span>
+          </span>
+        )}
+        {!isLocked && isRecommended && (
+          <span className="db-practice-card__recommended-badge">
+            <Star size={12} fill="currentColor" aria-hidden="true" />
+            <span>Recommended</span>
           </span>
         )}
         {/* ══ CARD ART ══
@@ -751,7 +839,7 @@ const PracticeCard = memo(function PracticeCard({ card, onLaunch, isLocked = fal
             </>
           ) : (
             <>
-              Start
+              Start drill
               <ArrowRight size={14} />
             </>
           )}
@@ -761,10 +849,41 @@ const PracticeCard = memo(function PracticeCard({ card, onLaunch, isLocked = fal
   );
 });
 
+const CoachCard = memo(function CoachCard({ onOpen, compact = false }) {
+  return (
+    <button
+      type="button"
+      className={`db-coach-card ${compact ? 'db-coach-card--compact' : ''}`}
+      aria-label="Open AI Voice Agent"
+      onClick={onOpen}
+    >
+      <span className="db-coach-card__mascot" aria-hidden="true">
+        <AIOrb expressionState="ready" followPointer className="db-coach-card__orb" />
+      </span>
+      <span className="db-coach-card__content">
+        <span className="db-coach-card__name">AI Voice Agent</span>
+        <span className="db-coach-card__level db-coach-card__level--starter">
+          <Sparkles size={12} aria-hidden="true" />
+          Ready to talk
+        </span>
+        <span className="db-coach-card__hint">
+          Talk through interviews, nerves, and your next steps.
+        </span>
+      </span>
+      <span className="db-coach-card__arrow" aria-hidden="true">
+        <ArrowRight size={16} />
+      </span>
+    </button>
+  );
+});
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [isCompactLayout, setIsCompactLayout] = useState(() =>
+    typeof window === 'undefined' ? false : window.matchMedia('(max-width: 1024px)').matches
+  );
   const [activeTab, setActiveTab] = useState('Interview Prep');
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('easy');
@@ -783,6 +902,7 @@ export default function Dashboard() {
 
   // Pre-Flight Mission Calibration modal state
   const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
+  const [briefingMode, setBriefingMode] = useState('practice');
 
   // Profile modal state
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -796,6 +916,16 @@ export default function Dashboard() {
   // handling live on the dialog node itself so they always see fresh state).
   const profileModalRef = useRef(null);
   const avatarBtnRef = useRef(null);
+
+  useEffect(() => {
+    const compactLayoutQuery = window.matchMedia('(max-width: 1024px)');
+    const syncCompactLayout = (event) => setIsCompactLayout(event.matches);
+
+    setIsCompactLayout(compactLayoutQuery.matches);
+    compactLayoutQuery.addEventListener('change', syncCompactLayout);
+
+    return () => compactLayoutQuery.removeEventListener('change', syncCompactLayout);
+  }, []);
 
   useEffect(() => {
     if (!isProfileModalOpen) return;
@@ -976,8 +1106,8 @@ export default function Dashboard() {
   const pendingJourneyLabel = JOURNEY_STAGE_LABELS[activeSession?.nextStage] || null;
   const canContinueWithoutRole = Boolean(
     isSessionActive ||
-      activeSession?.hasResumableSession ||
-      ['posttest', 'likert-post'].includes(activeSession?.nextStage)
+    activeSession?.hasResumableSession ||
+    ['posttest', 'likert-post'].includes(activeSession?.nextStage)
   );
 
   // `overrides` lets the practice cards preset role/focus/difficulty for this
@@ -1085,6 +1215,7 @@ export default function Dashboard() {
       }
 
       // A returning user with no unfinished attempt can configure a new practice run.
+      setBriefingMode('practice');
       setIsBriefingModalOpen(true);
     },
     [
@@ -1097,43 +1228,62 @@ export default function Dashboard() {
     ]
   );
 
-  // Launch a practice card, applies its preset (if any), then starts.
-  // Cards cannot silently hijack an active session (resuming ignored their
-  // presets anyway): the banner owns resume, so a card click during a live
-  // session surfaces guidance instead of a confusing mid-session swap.
+  // Focus drills are independent, disposable exercises. They bypass the
+  // curriculum journey resolver so they can never create, replace, or resume a
+  // Set 1–3 session—even when a resumable main set already exists.
   const handleCardLaunch = useCallback(
     (card) => {
-      if (isSessionActive) {
-        setFormError(
-          'You have a session in progress. Resume it from the banner, or start fresh to change your setup.'
-        );
+      if (!auth.currentUser) {
+        setFormError('Please log in first.');
         return;
       }
-      handleStartSession(card.preset || {});
+      if (!selectedRole) {
+        setFormError('Select a target role to continue.');
+        return;
+      }
+
+      const focus = card.preset?.focus || card.focusKey || selectedFocus;
+      setFormError(null);
+      setSelectedFocus(focus);
+      setBriefingMode('drill');
+      setIsBriefingModalOpen(true);
     },
-    [handleStartSession, isSessionActive]
+    [selectedFocus, selectedRole]
   );
 
-  const handleConfirmLaunch = useCallback(async () => {
-    const user = auth.currentUser;
-    if (!user) return;
-    try {
-      await fetch('/api/users/role', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firebaseUid: user.uid,
-          role: selectedRole,
-          difficulty: selectedDifficulty,
-          focusArea: selectedFocus,
-        }),
-      });
-    } catch (err) {
-      console.error('Error saving role & focus area:', err);
-    }
-    setIsBriefingModalOpen(false);
-    navigate(`/interview?set=1&mode=practice&focusArea=${selectedFocus}`);
-  }, [selectedRole, selectedDifficulty, selectedFocus, navigate]);
+  const handleConfirmLaunch = useCallback(
+    async (briefingFocus) => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const focus = briefingFocus || selectedFocus;
+
+      if (briefingMode === 'drill') {
+        setSelectedFocus(focus);
+        setIsBriefingModalOpen(false);
+        navigate(`/interview?set=1&mode=drill&focusArea=${encodeURIComponent(focus)}`);
+        return;
+      }
+
+      try {
+        await fetch('/api/users/role', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firebaseUid: user.uid,
+            role: selectedRole,
+            difficulty: selectedDifficulty,
+            focusArea: focus,
+          }),
+        });
+      } catch (err) {
+        console.error('Error saving role & focus area:', err);
+      }
+      setSelectedFocus(focus);
+      setIsBriefingModalOpen(false);
+      navigate(`/interview?set=1&mode=practice&focusArea=${encodeURIComponent(focus)}`);
+    },
+    [briefingMode, selectedRole, selectedDifficulty, selectedFocus, navigate]
+  );
 
   const handleCloseBriefing = useCallback(() => {
     setIsBriefingModalOpen(false);
@@ -1178,26 +1328,61 @@ export default function Dashboard() {
   }, []);
 
   // Derived display values, real data only; null until a diagnostic exists
-  const breakdown = diagnosticData?.threeCBreakdown || {};
+  const comparisonReady =
+    isValidScore(diagnosticData?.masteryScore) && diagnosticData?.postConfidenceScore != null;
+  const breakdown = comparisonReady
+    ? averageThreeCs(diagnosticData?.questionBreakdowns?.postTest?.questions)
+    : diagnosticData?.threeCBreakdown || {};
   const clarity = breakdown.clarity ?? null;
   const correctness = breakdown.correctness ?? null;
   const completeness = breakdown.completeness ?? null;
-  const lowestMetric = breakdown.lowestMetric || null;
-  const baselineScore = diagnosticData?.preTestScore ?? null;
-  const masteryScore = diagnosticData?.masteryScore ?? null;
+  const lowestMetric = comparisonReady ? lowestThreeC(breakdown) : breakdown.lowestMetric || null;
+  const orderedPracticeCards = useMemo(() => {
+    if (!lowestMetric) return PRACTICE_CARDS;
+    return [...PRACTICE_CARDS].sort(
+      (a, b) => Number(b.focusKey === lowestMetric) - Number(a.focusKey === lowestMetric)
+    );
+  }, [lowestMetric]);
+  const baselineScore = percentageToScoreOutOfFive(diagnosticData?.preTestScore);
+  const needsFinalReflection = isValidScore(diagnosticData?.masteryScore) && !comparisonReady;
+  const masteryScore = comparisonReady
+    ? percentageToScoreOutOfFive(diagnosticData.masteryScore)
+    : null;
   const growthDelta =
-    diagnosticData?.improvementDelta != null
-      ? diagnosticData.improvementDelta
-      : baselineScore != null && masteryScore != null
-        ? masteryScore - baselineScore
-        : null;
-  const avg3C =
-    diagnosticData?.threeCBreakdown?.averagePercentage ?? diagnosticData?.masteryScore ?? null;
-  const weakTopic = diagnosticData?.postWeaknessTag || diagnosticData?.preWeaknessTag || null;
-  const sessionsCount = diagnosticData?.practiceHistory?.length ?? 0;
+    comparisonReady && baselineScore != null && masteryScore != null
+      ? masteryScore - baselineScore
+      : null;
+  const averageScores = [clarity, correctness, completeness].filter(isValidScore);
+  const avg3C = averageScores.length
+    ? Math.round(
+        (averageScores.reduce((sum, value) => sum + value, 0) / averageScores.length) * 10
+      ) / 10
+    : null;
+  const weakTopic =
+    (comparisonReady && diagnosticData?.postWeaknessTag) || diagnosticData?.preWeaknessTag || null;
+  const practiceHistory = diagnosticData?.practiceHistory || [];
+  const sessionsCount = practiceHistory.length;
+  const latestPractice = sessionsCount > 0 ? practiceHistory[sessionsCount - 1] : null;
+  const latestPracticeWeakness =
+    getPracticeFocus(latestPractice?.weaknessTag)?.key ||
+    lowestThreeC(latestPractice?.threeCBreakdown || {});
+  const recommendedFocus =
+    getPracticeFocus(latestPracticeWeakness || weakTopic || lowestMetric) ||
+    getPracticeFocus('clarity');
+  const recommendedDifficulty = unlockedDifficulty || 'easy';
+  const recommendedDifficultyLabel =
+    recommendedDifficulty.charAt(0).toUpperCase() + recommendedDifficulty.slice(1);
 
   return (
-    <div className="db-root">
+    /*
+      THESIS: A focused interview-practice workbench, not a wall of equal widgets.
+      OWN-WORLD: Luminous slate canvas, cobalt actions, ink rules, and 3C pastel signals.
+      STORY: See the next useful step, understand the short path, then begin with confidence.
+      FIRST VIEWPORT: Slim top navigation above a wide action stage and compact journey ledger.
+      FORM: Practice workbench, selected from the surface study; seed 5b7f5767.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+    */
+    <div className="db-root" data-design-seed="5b7f5767">
       {/* ── Sidebar (Left rail on desktop, Top dual-tier header on <= 1024px) ── */}
       <aside className="db-sidebar">
         {/* Brand logo & mobile/tablet user actions */}
@@ -1265,24 +1450,7 @@ export default function Dashboard() {
 
         <div className="db-sidebar__spacer db-desktop-only" aria-hidden="true" />
 
-        {/* AI Interview Coach (desktop only) */}
-        <section className="db-coach-card db-desktop-only" aria-label="AI Interview Coach">
-          <div className="db-coach-card__mascot" aria-hidden="true">
-            <div className="db-mascot-avatar">
-              <Sparkles size={26} className="db-mascot-avatar__icon" />
-            </div>
-          </div>
-          <h3 className="db-coach-card__name">AI Interview Coach</h3>
-          <span className="db-coach-card__level db-coach-card__level--starter">
-            <Sparkles size={12} aria-hidden="true" />
-            Ready to assist
-          </span>
-          <p className="db-coach-card__hint">
-            {hasCompletedDiagnostic
-              ? 'Keep practicing to level up your interview readiness!'
-              : 'Complete your kickoff diagnostic to begin coaching.'}
-          </p>
-        </section>
+        {!isCompactLayout && <CoachCard onOpen={() => navigate('/voice-agent')} />}
 
         {/* Desktop Footer (avatar, name, sign out) */}
         <div className="db-sidebar__footer db-desktop-only">
@@ -1299,12 +1467,7 @@ export default function Dashboard() {
           <span className="db-sidebar__user-name" title={fullName}>
             {fullName}
           </span>
-          <button
-            type="button"
-            className="db-signout-btn"
-            title="Sign Out"
-            onClick={handleLogout}
-          >
+          <button type="button" className="db-signout-btn" title="Sign Out" onClick={handleLogout}>
             <LogOut size={16} />
           </button>
         </div>
@@ -1316,13 +1479,10 @@ export default function Dashboard() {
         <div className="db-page-header">
           <div className="db-page-header__text">
             <h1 className="db-greeting">
-              {getGreeting()}, {fullName}!
-              <span className="db-greeting__wave" aria-hidden="true">
-                👋
-              </span>
+              {getGreeting()}, {fullName}.
             </h1>
             <p className="db-sub-greeting">
-              Let's get you interview-ready with focused, friendly practice.
+              Take one clear step toward a stronger technical interview.
             </p>
           </div>
           <div className="db-page-header__actions">
@@ -1352,6 +1512,8 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {isCompactLayout && <CoachCard compact onOpen={() => navigate('/voice-agent')} />}
+
         {/* ══ Interview Prep Panel ══ */}
         <div
           role="tabpanel"
@@ -1377,131 +1539,155 @@ export default function Dashboard() {
               <div className="db-kickoff-view">
                 {/* ── Onboarding Diagnostic Hero Card ── */}
                 <section
-                    className="db-onboarding"
-                    aria-label={isSessionActive ? "Resume MainSets session" : "Kickoff pre-test"}
-                  >
-                  <div className="db-onboarding__head">
-                    <div className="db-onboarding__icon">
-                      <Gauge size={22} aria-hidden="true" />
+                  className={`db-onboarding${isSessionActive ? ' db-onboarding--resume' : ''}`}
+                  aria-labelledby="db-onboarding-title"
+                >
+                  <div className="db-onboarding__primary">
+                    <div className="db-onboarding__head">
+                      <div className="db-onboarding__icon">
+                        <Gauge size={22} aria-hidden="true" />
+                      </div>
+                      <div className="db-onboarding__pills" aria-label="Session details">
+                        <span className="db-micro-pill db-micro-pill--amber">
+                          <Sparkles size={12} className="db-micro-pill__icon" />
+                          {isSessionActive
+                            ? `Set ${activeSession.activeSet} in progress`
+                            : 'Personalized baseline'}
+                        </span>
+                        <span className="db-micro-pill">
+                          {isSessionActive
+                            ? `Question ${activeSession.answersCount + 1} of 5`
+                            : 'About 10 minutes'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="db-onboarding__pills">
-                      <span className="db-micro-pill db-micro-pill--amber">
-                        <Sparkles size={12} className="db-micro-pill__icon" />
-                        {isSessionActive ? `Set ${activeSession.activeSet} in progress` : 'Baseline diagnostic required'}
-                      </span>
-                      <span className="db-micro-pill">
+
+                    <div className="db-onboarding__text">
+                      <h2 id="db-onboarding-title" className="db-onboarding__title">
                         {isSessionActive
-                          ? `Question ${activeSession.answersCount + 1} of 5`
-                          : 'Takes ~5 mins'}
-                      </span>
-                      <span className="db-micro-pill">
-                        {isSessionActive ? 'Answers saved' : 'Calibrates adaptive difficulty'}
-                      </span>
+                          ? `Continue Set ${activeSession.activeSet}`
+                          : 'Find your starting point'}
+                      </h2>
+                      <p className="db-onboarding__sub">
+                        {isSessionActive ? (
+                          <>
+                            Your unfinished interview is saved. Resume at question{' '}
+                            <strong>{activeSession.answersCount + 1}</strong> without repeating
+                            earlier steps.
+                          </>
+                        ) : (
+                          <>
+                            Choose a target role, check your audio, and answer five questions out
+                            loud. We’ll use your 3C scores to shape the practice that follows.
+                          </>
+                        )}
+                      </p>
                     </div>
-                  </div>
 
-                  <div className="db-onboarding__text">
-                    <h2 className="db-onboarding__title">
-                      {isSessionActive
-                        ? `Continue MainSets from Set ${activeSession.activeSet}`
-                        : 'Start with your kickoff pre-test'}
-                    </h2>
-                    <p className="db-onboarding__sub">
-                      {isSessionActive ? (
-                        <>
-                          Your unfinished interview is saved. Resume at question{' '}
-                          <strong>{activeSession.answersCount + 1}</strong> without repeating the pre-test.
-                        </>
-                      ) : (
-                        <>
-                          A short diagnostic sets your baseline across the 3C metrics:{' '}
-                          <strong>Clarity</strong>, <strong>Correctness</strong>, and{' '}
-                          <strong>Completeness</strong>. Practice tracks, progress analytics, and difficulty
-                          tiers unlock immediately right after.
-                        </>
-                      )}
-                    </p>
-                  </div>
-
-                  {/* ── 3-Step Sequence Disclosure ── */}
-                  {!isSessionActive && (
-                    <div className="db-onboarding-sequence" aria-label="Pre-test setup sequence">
-                    <div className="db-sequence-step">
-                      <span className="db-sequence-step__num">1</span>
-                      <div className="db-sequence-step__info">
-                        <strong className="db-sequence-step__title">Confidence survey</strong>
-                        <span className="db-sequence-step__meta">~1 min · self-reflection</span>
+                    <div className="db-onboarding__controls">
+                      <div className="db-onboarding__field">
+                        <label className="db-onboarding__role-label" htmlFor="role-select">
+                          Target role
+                        </label>
+                        <div className="db-select-wrap db-onboarding__select">
+                          <Briefcase
+                            size={17}
+                            className="db-select-wrap__icon db-select-wrap__icon--violet"
+                          />
+                          <select
+                            id="role-select"
+                            className="db-select"
+                            value={selectedRole}
+                            onChange={(e) => {
+                              setSelectedRole(e.target.value);
+                              if (formError) setFormError(null);
+                            }}
+                            disabled={isSessionActive}
+                            aria-describedby={
+                              formError
+                                ? 'db-role-error'
+                                : !selectedRole
+                                  ? 'db-role-helper'
+                                  : undefined
+                            }
+                          >
+                            {ROLE_OPTIONS.map((o) => (
+                              <option key={o.value} value={o.value} disabled={o.value === ''}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown size={17} className="db-select-wrap__chevron" />
+                        </div>
                       </div>
-                    </div>
-                    <div className="db-sequence-step__divider" aria-hidden="true" />
-                    <div className="db-sequence-step">
-                      <span className="db-sequence-step__num">2</span>
-                      <div className="db-sequence-step__info">
-                        <strong className="db-sequence-step__title">Microphone test</strong>
-                        <span className="db-sequence-step__meta">30s · audio check</span>
-                      </div>
-                    </div>
-                    <div className="db-sequence-step__divider" aria-hidden="true" />
-                    <div className="db-sequence-step">
-                      <span className="db-sequence-step__num">3</span>
-                      <div className="db-sequence-step__info">
-                        <strong className="db-sequence-step__title">Spoken diagnostic</strong>
-                        <span className="db-sequence-step__meta">5 questions · ~4 mins</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  )}
-
-                  <div className="db-onboarding__controls">
-                    <div className="db-select-wrap db-onboarding__select">
-                      <Briefcase
-                        size={17}
-                        className="db-select-wrap__icon db-select-wrap__icon--violet"
-                      />
-                      <select
-                        id="role-select"
-                        className="db-select"
-                        aria-label="Target role"
-                        value={selectedRole}
-                        onChange={(e) => {
-                          setSelectedRole(e.target.value);
-                          if (formError) setFormError(null);
-                        }}
-                        disabled={isSessionActive}
+                      <button
+                        type="button"
+                        className="db-cta-btn db-onboarding__cta"
+                        onClick={() => handleStartSession()}
+                        disabled={!selectedRole}
+                        aria-label={
+                          isSessionActive
+                            ? `Resume Set ${activeSession.activeSet} interview`
+                            : 'Set up your starting check'
+                        }
                       >
-                        {ROLE_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value} disabled={o.value === ''}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={17} className="db-select-wrap__chevron" />
+                        <Play size={16} aria-hidden="true" />
+                        {isSessionActive ? 'Resume practice' : 'Begin setup'}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      className="db-cta-btn db-onboarding__cta"
-                      onClick={() => handleStartSession()}
-                      disabled={!selectedRole}
-                      aria-label={
-                        isSessionActive
-                          ? `Resume Set ${activeSession.activeSet} interview`
-                          : 'Begin pre-test setup for your baseline'
-                      }
-                    >
-                      <Play size={16} aria-hidden="true" />
-                      {isSessionActive ? 'Resume MainSets' : 'Begin pre-test setup'}
-                    </button>
+
+                    {!selectedRole && !formError && (
+                      <p id="db-role-helper" className="db-cta-helper">
+                        Choose a target role to begin.
+                      </p>
+                    )}
+                    {formError && (
+                      <p id="db-role-error" className="db-form-error" role="alert">
+                        <AlertCircle size={15} />
+                        {formError}
+                      </p>
+                    )}
                   </div>
 
-                  {!selectedRole && !formError && (
-                    <p className="db-cta-helper">Select a target role above to continue.</p>
-                  )}
-                  {formError && (
-                    <p className="db-form-error" role="alert">
-                      <AlertCircle size={15} />
-                      {formError}
-                    </p>
+                  {!isSessionActive && (
+                    <aside className="db-onboarding__journey" aria-label="What happens next">
+                      <div className="db-onboarding__journey-heading">
+                        <h3>Three calm steps</h3>
+                        <p>You’ll know what’s coming before you start.</p>
+                      </div>
+                      <div className="db-onboarding-sequence" aria-label="Pre-test setup sequence">
+                        <div className="db-sequence-step">
+                          <span className="db-sequence-step__num">1</span>
+                          <div className="db-sequence-step__info">
+                            <strong className="db-sequence-step__title">Confidence check</strong>
+                            <span className="db-sequence-step__meta">Tell us how you feel now</span>
+                          </div>
+                        </div>
+                        <div className="db-sequence-step__divider" aria-hidden="true" />
+                        <div className="db-sequence-step">
+                          <span className="db-sequence-step__num">2</span>
+                          <div className="db-sequence-step__info">
+                            <strong className="db-sequence-step__title">Microphone check</strong>
+                            <span className="db-sequence-step__meta">
+                              Make sure you sound clear
+                            </span>
+                          </div>
+                        </div>
+                        <div className="db-sequence-step__divider" aria-hidden="true" />
+                        <div className="db-sequence-step">
+                          <span className="db-sequence-step__num">3</span>
+                          <div className="db-sequence-step__info">
+                            <strong className="db-sequence-step__title">Five spoken answers</strong>
+                            <span className="db-sequence-step__meta">
+                              Get your first 3C snapshot
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="db-onboarding__privacy">
+                        No timer on this page. You’ll see each step before it begins.
+                      </p>
+                    </aside>
                   )}
                 </section>
 
@@ -1516,13 +1702,13 @@ export default function Dashboard() {
                         Practice curriculum
                       </h2>
                       <p className="db-practice-section__sub">
-                        Complete your kickoff pre-test above to calibrate your baseline and unlock
+                        Complete your starting check above to choose your practice focus and unlock
                         these personalized practice tracks.
                       </p>
                     </div>
                     <span className="db-preview-badge">
                       <Lock size={12} aria-hidden="true" />
-                      Unlocks after baseline diagnostic
+                      Available after your starting check
                     </span>
                   </div>
 
@@ -1553,71 +1739,100 @@ export default function Dashboard() {
               </div>
             ) : (
               <>
-                {/* ── Progress snapshot, the journey stays visible on the launch tab ── */}
-                <section
-                  className="db-progress-snapshot"
-                  aria-labelledby="db-progress-snapshot-title"
-                >
-                  <div className="db-progress-snapshot__intro">
-                    <span className="db-progress-snapshot__icon" aria-hidden="true">
-                      <TrendingUp size={18} />
+                {/* ── Actionable practice recommendation for returning users ── */}
+                {comparisonReady ? (
+                  <section
+                    className={`db-next-practice${isSessionActive ? ' db-next-practice--active' : ''}`}
+                    aria-labelledby="db-next-practice-title"
+                  >
+                    <span className="db-next-practice__icon" aria-hidden="true">
+                      {isSessionActive ? <Play size={20} /> : <Target size={20} />}
                     </span>
-                    <span className="db-progress-snapshot__intro-copy">
-                      <h2 id="db-progress-snapshot-title" className="db-progress-snapshot__title">
-                        Progress snapshot
+
+                    <div className="db-next-practice__body">
+                      <h2 id="db-next-practice-title" className="db-next-practice__title">
+                        {isSessionActive
+                          ? `Continue Set ${activeSession.activeSet}`
+                          : `Strengthen your ${recommendedFocus.label}`}
                       </h2>
-                      <span className="db-progress-snapshot__sub">Diagnostic to current score</span>
-                    </span>
-                  </div>
+                      <p className="db-next-practice__description">
+                        {isSessionActive
+                          ? `Your answers are saved. Continue with question ${activeSession.answersCount + 1} of ${activeSession.totalQuestions || 5}.`
+                          : recommendedFocus.next}
+                      </p>
 
-                  <div
-                    className="db-progress-snapshot__journey"
-                    role="img"
-                    aria-label={`Score journey: baseline ${
-                      baselineScore != null ? `${baselineScore}%` : 'not set'
-                    }, current ${masteryScore != null ? `${masteryScore}%` : 'not set'}`}
-                  >
-                    <span className="db-progress-snapshot__checkpoint">
-                      <span className="db-progress-snapshot__label">Baseline</span>
-                      <strong className="db-progress-snapshot__score">
-                        {baselineScore != null ? `${baselineScore}%` : '--'}
-                      </strong>
-                    </span>
-                    <span className="db-progress-snapshot__connector" aria-hidden="true">
-                      <span className="db-progress-snapshot__line" />
-                      <ArrowRight size={14} />
-                    </span>
-                    <span className="db-progress-snapshot__checkpoint db-progress-snapshot__checkpoint--current">
-                      <span className="db-progress-snapshot__label">Current</span>
-                      <strong className="db-progress-snapshot__score">
-                        {masteryScore != null ? `${masteryScore}%` : '--'}
-                      </strong>
-                    </span>
-                  </div>
-
-                  {growthDelta != null && (
-                    <div
-                      className={`db-progress-snapshot__change ${
-                        growthDelta < 0 ? 'db-progress-snapshot__change--negative' : ''
-                      }`}
-                    >
-                      <span className="db-progress-snapshot__label">Change</span>
-                      <strong className="db-progress-snapshot__change-value">
-                        {growthDelta >= 0 ? '+' : ''}
-                        {growthDelta}%
-                      </strong>
+                      <div
+                        className="db-next-practice__meta"
+                        aria-label="Recommended practice setup"
+                      >
+                        <span className="db-next-practice__meta-item db-next-practice__meta-item--status">
+                          {isSessionActive
+                            ? 'Session in progress'
+                            : latestPractice
+                              ? 'Based on your latest session'
+                              : 'Based on your progress check'}
+                        </span>
+                        <span className="db-next-practice__meta-item">
+                          <Briefcase size={13} aria-hidden="true" />
+                          {formatRoleLabel(selectedRole)}
+                        </span>
+                        <span className="db-next-practice__meta-item">
+                          <Gauge size={13} aria-hidden="true" />
+                          {isSessionActive
+                            ? `Set ${activeSession.activeSet}`
+                            : `${recommendedDifficultyLabel} difficulty`}
+                        </span>
+                        <span className="db-next-practice__meta-item">
+                          <PackageCheck size={13} aria-hidden="true" />
+                          {isSessionActive
+                            ? `Question ${activeSession.answersCount + 1} of ${activeSession.totalQuestions || 5}`
+                            : 'Sets 1–3'}
+                        </span>
+                      </div>
                     </div>
-                  )}
 
-                  <button
-                    type="button"
-                    className="db-progress-snapshot__action"
-                    onClick={() => setActiveTab('My Progress')}
-                  >
-                    View report
-                    <ArrowRight size={14} aria-hidden="true" />
-                  </button>
-                </section>
+                    <button
+                      type="button"
+                      className="db-cta-btn db-next-practice__action"
+                      onClick={() =>
+                        isSessionActive
+                          ? handleStartSession()
+                          : handleStartSession({
+                              focus: recommendedFocus.key,
+                              difficulty: recommendedDifficulty,
+                            })
+                      }
+                      disabled={!isSessionActive && !selectedRole}
+                    >
+                      {isSessionActive ? 'Resume session' : 'Start recommended practice'}
+                      <ArrowRight size={16} aria-hidden="true" />
+                    </button>
+                  </section>
+                ) : (
+                  <section className="db-assessment-guidance db-assessment-guidance--snapshot">
+                    <h2>
+                      {needsFinalReflection
+                        ? 'Your progress check is saved'
+                        : 'Your starting point is saved'}
+                    </h2>
+                    <p>
+                      {needsFinalReflection
+                        ? 'Finish your confidence check to see how your answers compare.'
+                        : getPracticeFocus(weakTopic || lowestMetric)?.starting ||
+                          'Next, practise clear, accurate answers that cover the important parts.'}
+                    </p>
+                    {needsFinalReflection && (
+                      <button
+                        type="button"
+                        className="db-cta-btn db-onboarding__cta"
+                        onClick={() => navigate('/likert-post')}
+                      >
+                        Finish confidence check <ArrowRight size={18} aria-hidden="true" />
+                      </button>
+                    )}
+                    <StartingScoreDetails score={baselineScore} sourceScale="out-of-five" />
+                  </section>
+                )}
 
                 {/* ── Session console bar, configure & launch ── */}
                 <section className="db-config-bar" aria-label="Session setup">
@@ -1727,7 +1942,9 @@ export default function Dashboard() {
                     id="btn-start-pretest"
                     className="db-cta-btn db-config-bar__cta"
                     onClick={() => handleStartSession()}
-                    disabled={dataStatus === 'loading' || (!selectedRole && !canContinueWithoutRole)}
+                    disabled={
+                      dataStatus === 'loading' || (!selectedRole && !canContinueWithoutRole)
+                    }
                   >
                     <Play size={16} />
                     {dataStatus === 'loading'
@@ -1849,14 +2066,19 @@ export default function Dashboard() {
 
                 {/* ── Choose your practice ── */}
                 <section className="db-practice-section">
-                  <h2 className="db-practice-section__title">Choose your practice</h2>
+                  <h2 className="db-practice-section__title">Practice a 3C skill</h2>
                   <p className="db-practice-section__sub">
-                    Pick a session that fits your goals. Every session is {QUESTIONS_PER_SESSION}{' '}
-                    questions. You can change anytime.
+                    Choose the part of your interview answers you want to strengthen. Your lowest
+                    scoring skill is recommended first.
                   </p>
                   <div className="db-practice-cards">
-                    {PRACTICE_CARDS.map((card) => (
-                      <PracticeCard key={card.id} card={card} onLaunch={handleCardLaunch} />
+                    {orderedPracticeCards.map((card) => (
+                      <PracticeCard
+                        key={card.id}
+                        card={card}
+                        onLaunch={handleCardLaunch}
+                        isRecommended={card.focusKey === lowestMetric}
+                      />
                     ))}
                   </div>
                 </section>
@@ -1893,6 +2115,9 @@ export default function Dashboard() {
               dataStatus={dataStatus}
               onRetry={retryLoad}
               onViewReport={handleViewResults}
+              comparisonReady={comparisonReady}
+              needsFinalReflection={needsFinalReflection}
+              onFinishReflection={() => navigate('/likert-post')}
               baseline={baselineScore}
               mastery={masteryScore}
               growth={growthDelta}
@@ -2083,6 +2308,7 @@ export default function Dashboard() {
             role={selectedRole}
             focusArea={selectedFocus}
             diagnosticData={diagnosticData}
+            sessionMode={briefingMode}
             onConfirm={handleConfirmLaunch}
             onClose={handleCloseBriefing}
           />

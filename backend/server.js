@@ -13,6 +13,7 @@ const { handleSet3Socket } = require("./controllers/set3Socket");
 const { handlePostTestSocket } = require("./controllers/postTestSocket");
 const { handleDevSttSocket } = require("./controllers/devSttSocket");
 const { handleDemoSocket } = require("./controllers/demoSocket");
+const { handleVoiceAgentSocket } = require("./controllers/voiceAgentSocket");
 
 const app = express();
 
@@ -40,6 +41,9 @@ app.use("/api/deepgram", deepgramRoutes);
 
 const ttsRoutes = require("./routes/ttsRoutes");
 app.use("/api/tts", ttsRoutes);
+
+const voiceAgentRoutes = require("./routes/voiceAgentRoutes");
+app.use("/api/voice-agent", voiceAgentRoutes);
 
 // DEV-ONLY: AI question generation dry-run (no TTS/STT/WebSocket)
 const debugRoutes = require("./routes/debugRoutes");
@@ -84,6 +88,10 @@ server.on("upgrade", (request, socket, head) => {
     wss.handleUpgrade(request, socket, head, (ws) => {
       handleDemoSocket(ws, request);
     });
+  } else if (pathname === "/ws/voice-agent") {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      handleVoiceAgentSocket(ws, request);
+    });
   } else {
     socket.destroy(); // reject unknown WS paths
   }
@@ -109,6 +117,6 @@ server.on("error", (err) => {
 server.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
   console.log(
-    `🔌 WebSockets ready at ws://localhost:${PORT}/ws/interview | /ws/set1 | /ws/set2 | /ws/set3 | /ws/posttest | /ws/demo`
+    `🔌 WebSockets ready at ws://localhost:${PORT}/ws/interview | /ws/set1 | /ws/set2 | /ws/set3 | /ws/posttest | /ws/demo | /ws/voice-agent`
   );
 });

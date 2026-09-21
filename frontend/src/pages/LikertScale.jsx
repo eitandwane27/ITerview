@@ -50,7 +50,6 @@ export default function LikertScale({ phase = 'pre' }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState(INITIAL_ANSWERS);
   const [isDone, setIsDone] = useState(false);
-  const [doneScore, setDoneScore] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -107,7 +106,6 @@ export default function LikertScale({ phase = 'pre' }) {
 
       if (!response.ok) throw new Error('We could not save your answers. Please try again.');
 
-      setDoneScore(confidenceScore);
       setIsDone(true);
     } catch (error) {
       console.error(`[LikertScale] Failed to save ${phase}-test scores:`, error);
@@ -155,15 +153,6 @@ export default function LikertScale({ phase = 'pre' }) {
   };
 
   if (isDone) {
-    const tier =
-      doneScore >= 20
-        ? 'Strong confidence'
-        : doneScore >= 13
-          ? 'Moderate confidence'
-          : 'Building confidence';
-    const tierClass =
-      doneScore >= 20 ? 'tier-strong' : doneScore >= 13 ? 'tier-moderate' : 'tier-building';
-
     return (
       <div className="likert-container">
         <TopBar phase={phase} progressRatio={1} isDone />
@@ -207,23 +196,13 @@ export default function LikertScale({ phase = 'pre' }) {
 
             <div className="likert-done-copy">
               <p className="likert-complete-kicker">All five answers saved</p>
-              <h2 id="likert-complete-title">Assessment complete!</h2>
+              <h2 id="likert-complete-title">Confidence check saved</h2>
               <p>
                 {phase === 'pre'
-                  ? "Your confidence baseline is ready. Now let's warm up your microphone."
-                  : 'Great work. Your post-test confidence is ready to compare.'}
+                  ? 'Next, check your microphone before recording your starting answers.'
+                  : 'Your answers and confidence are ready to compare.'}
               </p>
             </div>
-
-            {phase === 'post' && doneScore !== null && (
-              <div className="likert-score-chip" aria-label={`${doneScore} out of 25, ${tier}`}>
-                <div className="likert-score-main">
-                  <span className="likert-score-number">{doneScore}</span>
-                  <span className="likert-score-denom">out of 25</span>
-                </div>
-                <span className={`likert-score-tier ${tierClass}`}>{tier}</span>
-              </div>
-            )}
 
             <button
               id="likert-continue-btn"
@@ -231,7 +210,7 @@ export default function LikertScale({ phase = 'pre' }) {
               onClick={handleContinue}
               type="button"
             >
-              {phase === 'pre' ? 'Check my microphone' : 'View my results'}
+              {phase === 'pre' ? 'Check my microphone' : 'View full results'}
               <ArrowRight size={18} strokeWidth={2.5} aria-hidden="true" />
             </button>
           </Motion.section>
@@ -271,7 +250,13 @@ export default function LikertScale({ phase = 'pre' }) {
               >
                 {currentQuestion.text}
               </h2>
-              <p className="likert-question-help">Choose the answer that feels true right now.</p>
+              <p className="likert-question-help">
+                {currentIndex === 0
+                  ? phase === 'post'
+                    ? 'Before seeing your results, tell us how you feel now. We’ll compare this with your first confidence check.'
+                    : 'Tell us how you feel before practice. We’ll ask again afterward to compare.'
+                  : 'Choose the answer that feels true right now.'}
+              </p>
             </div>
 
             <div
@@ -384,7 +369,7 @@ export default function LikertScale({ phase = 'pre' }) {
                   ? 'Try again'
                   : currentIndex < totalQuestions - 1
                     ? 'Continue'
-                    : 'Finish assessment'}
+                    : 'Finish confidence check'}
                 <ArrowRight size={18} strokeWidth={2.5} aria-hidden="true" />
               </>
             )}
@@ -412,7 +397,7 @@ function TopBar({
           <span className="likert-brand-text">ITerview</span>
         </div>
         <span className="likert-phase-badge">
-          {phase === 'pre' ? 'Pre-Test Confidence Check' : 'Post-Test Confidence Check'}
+          {phase === 'pre' ? 'Starting confidence check' : 'Final confidence check'}
         </span>
       </div>
 

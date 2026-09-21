@@ -1,0 +1,74 @@
+/* Preview controls live below the product so they never cover its actions. */
+.dev-test-preview {
+  background: #f7f9fc;
+}
+.dev-test-controls {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 40px 32px;
+  border-top: 1px solid #dee5ef;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #58677d;
+  font-size: 12px;
+}
+.dev-test-controls-head,
+.dev-test-controls-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dev-test-controls-head > span {
+  font-weight: 600;
+}
+.dev-test-controls-head > div,
+.dev-test-frames {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dev-test-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 13px;
+  border: 1px solid #dee5ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #17243b;
+  font: inherit;
+  cursor: pointer;
+}
+.dev-test-controls button:hover {
+  background: #edf3ff;
+}
+.dev-test-controls button[aria-pressed='true'] {
+  background: #17243b;
+  color: #fff;
+  border-color: #17243b;
+}
+.dev-test-controls button:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+.dev-test-frames {
+  margin-top: 16px;
+}
+.dev-test-controls p {
+  line-height: 1.6;
+  margin: 12px 0;
+}
+.dev-test-controls-foot {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #dee5ef;
+  font-size: 11px;
+}
+@media (max-width: 570px) {
+  .dev-test-controls {
+    padding: 24px 16px;
+  }
+}

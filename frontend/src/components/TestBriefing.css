@@ -1,0 +1,288 @@
+/* The approved fox-and-journey concept, scaled to the existing test workspace. */
+.test-briefing {
+  width: 100%;
+}
+.test-briefing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 48px;
+  max-width: 880px;
+  margin-inline: auto;
+}
+.test-briefing-art {
+  position: relative;
+  width: 100%;
+  max-width: 336px;
+  height: 320px;
+  justify-self: center;
+}
+.test-briefing-backdrop {
+  position: absolute;
+  inset: 24px 0 16px;
+  border-radius: 42% 58% 52% 48% / 46% 44% 56% 54%;
+  background: var(--test-canvas-ice);
+  transform: rotate(-8deg);
+}
+.test-briefing-art img {
+  position: absolute;
+  bottom: 8px;
+  left: 4%;
+  width: auto;
+  height: 296px;
+  object-fit: contain;
+  user-select: none;
+}
+.test-briefing-mic {
+  position: absolute;
+  bottom: 8px;
+  right: 2%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 72px;
+  transform: rotate(4deg);
+}
+.test-briefing-mic-head {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 80px;
+  color: var(--test-surface);
+  border: 1px solid var(--test-blue-hover);
+  border-radius: 28px;
+  background: var(--test-blue);
+  box-shadow:
+    inset 4px 0 0 rgba(255, 255, 255, 0.16),
+    0 3px 0 var(--test-blue-active);
+}
+.test-page .test-briefing-mic-head svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.75;
+}
+.test-briefing-mic-stand {
+  width: 10px;
+  height: 24px;
+  background: var(--test-blue-hover);
+}
+.test-briefing-mic-base {
+  width: 64px;
+  height: 12px;
+  border: 1px solid var(--test-blue-hover);
+  border-radius: var(--test-radius-pill);
+  background: var(--test-blue);
+  box-shadow: 0 3px 0 var(--test-blue-active);
+}
+.test-briefing-copy {
+  min-width: 0;
+  max-width: 440px;
+  text-align: left;
+}
+.test-briefing-count {
+  display: inline-block;
+  padding: 4px 12px;
+  color: var(--test-blue-hover);
+  border-radius: var(--test-radius-pill);
+  background: var(--test-blue-light);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.test-briefing-title {
+  margin-top: 16px !important;
+  font-family: var(--test-font-display);
+  font-size: clamp(2.25rem, 3vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.test-briefing-title span {
+  display: block;
+}
+.test-briefing-title span + span {
+  color: var(--test-blue);
+}
+.test-briefing-description {
+  margin-top: 16px !important;
+  color: var(--test-ink-muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+.test-briefing-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 360px;
+  margin: 24px 0 0;
+  padding: 0;
+  color: var(--test-ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  list-style: none;
+}
+.test-briefing-actions li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.test-page .test-briefing-action-arrow {
+  position: absolute;
+  top: 10px;
+  left: calc(100% - 4px);
+  color: var(--test-blue-border);
+  width: 20px;
+  height: 20px;
+}
+.test-briefing-action-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--test-radius-pill);
+  background: var(--test-blue-light);
+}
+.test-page .test-briefing-action-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.75;
+}
+.test-briefing .test-briefing-footer {
+  max-width: 360px;
+  margin-top: 24px;
+}
+.test-page .test-button.test-briefing-start {
+  justify-content: space-between;
+  width: 100%;
+  min-height: 52px;
+  padding-inline: 24px;
+  font-size: 0.9375rem;
+}
+.test-briefing-note {
+  margin-top: 12px !important;
+  color: var(--test-ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+@media (max-width: 767px) {
+  .test-briefing-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    max-width: 440px;
+  }
+  .test-briefing-art {
+    max-width: 200px;
+    height: 176px;
+  }
+  .test-briefing-art img {
+    height: 168px;
+    bottom: 0;
+  }
+  .test-briefing-backdrop {
+    inset: 12px 0 0;
+  }
+  .test-briefing-mic {
+    bottom: 2px;
+    width: 48px;
+  }
+  .test-briefing-mic-head {
+    width: 36px;
+    height: 52px;
+  }
+  .test-page .test-briefing-mic-head svg {
+    width: 22px;
+    height: 22px;
+  }
+  .test-briefing-mic-stand {
+    width: 6px;
+    height: 16px;
+  }
+  .test-briefing-mic-base {
+    width: 44px;
+    height: 8px;
+  }
+  .test-briefing-copy {
+    width: 100%;
+    text-align: center;
+  }
+  .test-briefing-title {
+    margin-top: 12px !important;
+    font-size: 1.875rem;
+  }
+  .test-briefing-description {
+    margin-top: 12px !important;
+  }
+  .test-briefing-actions,
+  .test-briefing .test-briefing-footer {
+    margin-inline: auto;
+  }
+  .test-briefing-actions {
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .test-briefing .test-briefing-footer {
+    margin-top: 20px;
+  }
+}
+@media (max-width: 767px) and (max-height: 740px) {
+  .test-briefing-hero {
+    gap: 12px;
+  }
+  .test-briefing-art {
+    max-width: 160px;
+    height: 132px;
+  }
+  .test-briefing-art img {
+    height: 128px;
+  }
+  .test-briefing-title {
+    margin-top: 8px !important;
+    font-size: 1.625rem;
+  }
+  .test-briefing-description {
+    margin-top: 8px !important;
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+  .test-briefing-actions {
+    margin-top: 16px;
+    gap: 8px;
+  }
+  .test-briefing-actions li {
+    gap: 4px;
+  }
+  .test-briefing-action-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .test-page .test-briefing-action-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .test-page .test-briefing-action-arrow {
+    top: 6px;
+  }
+  .test-briefing .test-briefing-footer {
+    margin-top: 16px;
+  }
+  .test-briefing-note {
+    margin-top: 8px !important;
+  }
+}
+@media (min-width: 768px) and (max-height: 740px) {
+  .test-briefing-art {
+    max-width: 280px;
+    height: 264px;
+  }
+  .test-briefing-art img {
+    height: 248px;
+  }
+  .test-briefing-title {
+    font-size: 2.25rem;
+  }
+}

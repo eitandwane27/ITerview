@@ -9,6 +9,7 @@
 // - Stabilized Zero-CLS Live Transcript & Response Panel
 // - Chat-style Transcript tab: AI question → candidate answer → AI reply
 // - Full answer transcript modal for the recorded response
+// - Living orb is audio-reactive to the AI's voice via a Web Audio AnalyserNode tap
 // - SetBriefingOverlay shown on mount
 // - Design: ITerview studio world (Session Ramp neutrals, cyan signal)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ import Set3TransitionOverlay from '../components/Set3TransitionOverlay';
 import InterviewSidebar from '../components/InterviewSidebar';
 // Living orb lives in its own component now; re-exported for PreTest compat.
 import { AIOrb } from '../components/AIOrb';
+import { useTtsAudioLevel } from '../hooks/useTtsAudioLevel';
 import logoSrc from '../assets/logo';
 import {
   Mic,
@@ -45,9 +47,9 @@ const WS_BASE = BACKEND_URL.replace(/^http/, 'ws');
 
 // ── Set metadata ───────────────────────────────────────────────────────────
 const SET_META = {
-  1: { label: 'Set 1: Personalized', difficulty: 'easy', category: 'Personalized' },
-  2: { label: 'Set 2: Technical Mastery', difficulty: 'hard', category: 'Technical' },
-  3: { label: 'Set 3: Behavioral STAR', difficulty: 'medium', category: 'Behavioral' },
+  1: { label: 'Set 1: Personalized', category: 'Personalized' },
+  2: { label: 'Set 2: Technical Mastery', category: 'Technical' },
+  3: { label: 'Set 3: Behavioral STAR', category: 'Behavioral' },
 };
 
 // Sidebar previews for unasked questions in preview/dev mode (real sessions
@@ -81,6 +83,39 @@ const pad2 = (n) => String(n).padStart(2, '0');
 const formatHMS = (t) =>
   `${pad2(Math.floor(t / 3600))}:${pad2(Math.floor((t % 3600) / 60))}:${pad2(t % 60)}`;
 const formatMS = (t) => `${pad2(Math.floor(t / 60))}:${pad2(t % 60)}`;
+
+const VALID_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
+const DIFFICULTY_RANK = { easy: 1, medium: 2, hard: 3 };
+
+function normalizeDifficulty(value) {
+  const normalized = String(value || '').toLowerCase();
+  return VALID_DIFFICULTIES.has(normalized) ? normalized : null;
+}
+
+function getEffectiveUserDifficulty(user) {
+  const selected = normalizeDifficulty(user?.difficulty) || 'easy';
+  const unlocked = normalizeDifficulty(user?.unlockedDifficulty) || 'easy';
+  return DIFFICULTY_RANK[selected] <= DIFFICULTY_RANK[unlocked] ? selected : unlocked;
+}
+
+function getFirstSentence(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  return text.match(/^.*?[.!?](?=\s|$)/)?.[0]?.trim() || text;
+}
+
+function getLatestFeedback(questions) {
+  for (let index = questions.length - 1; index >= 0; index -= 1) {
+    const question = questions[index];
+    if (question.answered && (question.reply || question.tip)) {
+      return {
+        whatYouDidWell: getFirstSentence(question.reply),
+        tryImproving: question.tip || '',
+      };
+    }
+  }
+  return null;
+}
 
 const STAGE_STATE_COPY = {
   ready: {
@@ -210,12 +245,21 @@ export function MascotLogo({ src = logoSrc, size = 32, className = '' }) {
 }
 
 export default function MainSets() {
+  const location = useLocation();
+
+  // Query-string navigation keeps the route component mounted. Key the actual
+  // session so moving between sets gets a clean set-scoped state lifecycle.
+  return <MainSetsSession key={`${location.pathname}${location.search}`} />;
+}
+
+function MainSetsSession() {
   const navigate = useNavigate();
   const location = useLocation();
   const voice = location.state?.voice || 'aura-2-luna-en';
   const query = new URLSearchParams(location.search);
   const setNumber = parseInt(query.get('set')) || 1;
   const mode = query.get('mode') || 'diagnostic';
+  const isDrill = mode === 'drill';
   const focusArea = query.get('focusArea') || '';
   const isResume = query.get('resume') === 'true';
   const isAutostart = query.get('autostart') === 'true';
@@ -234,6 +278,10 @@ export default function MainSets() {
   const [isSessionComplete, setIsSessionComplete] = useState(false);
   const [showNextTransition, setShowNextTransition] = useState(false);
   const [userRole, setUserRole] = useState('Frontend');
+  const [sessionDifficulty, setSessionDifficulty] = useState(() =>
+    preview ? normalizeDifficulty(query.get('difficulty')) || 'easy' : null
+  );
+  const [totalQuestions, setTotalQuestions] = useState(isDrill ? 3 : 5);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [hasReceivedQ1Audio, setHasReceivedQ1Audio] = useState(false);
   const [_slowWait, setSlowWait] = useState(false);
@@ -272,13 +320,13 @@ export default function MainSets() {
     setQuestionsAsked((prev) =>
       prev.some((q) => q.index === index)
         ? prev.map((q) => (q.index === index ? { ...q, text } : q))
-        : [...prev, { index, text, answered: false, answer: '', reply: '' }]
+        : [...prev, { index, text, answered: false, answer: '', reply: '', tip: '' }]
     );
   }, []);
 
   // Flags the most recent unanswered question as answered and attaches the AI's
   // spoken reply (interviewer_reply) that drives the transcript thread.
-  const markCurrentAnswered = useCallback((answerText, replyText) => {
+  const markCurrentAnswered = useCallback((answerText, replyText, tipText) => {
     setQuestionsAsked((prev) => {
       const next = [...prev];
       for (let i = next.length - 1; i >= 0; i -= 1) {
@@ -288,6 +336,7 @@ export default function MainSets() {
             answered: true,
             answer: answerText || '',
             reply: replyText || '',
+            tip: tipText || '',
           };
           break;
         }
@@ -328,58 +377,76 @@ export default function MainSets() {
     }
   }, [finalTranscript, partialTranscript, isRecording]);
 
+  // ── AI voice level (the "AnalyserNode" that makes the orb alive) ──────────
+  // Taps each queued TTS clip into a shared Web Audio analyser and publishes a
+  // smoothed 0–100 speech level, so the orb pulses with the interviewer's
+  // actual voice instead of holding a static speaking pose.
+  const {
+    level: ttsAudioLevel,
+    attach: attachTtsAudioLevel,
+    detach: detachTtsAudioLevel,
+  } = useTtsAudioLevel();
+
   // ── Playback Functions ─────────────────────────────────────────────────────
 
-  const playBase64 = useCallback((base64Data, onEnded, onError) => {
-    if (!isMountedRef.current) return;
-    try {
-      fetch(`data:audio/mpeg;base64,${base64Data}`)
-        .then((r) => r.blob())
-        .then((blob) => {
-          if (!isMountedRef.current) return;
+  const playBase64 = useCallback(
+    (base64Data, onEnded, onError) => {
+      if (!isMountedRef.current) return;
+      try {
+        fetch(`data:audio/mpeg;base64,${base64Data}`)
+          .then((r) => r.blob())
+          .then((blob) => {
+            if (!isMountedRef.current) return;
 
-          if (currentObjectUrlRef.current) {
-            URL.revokeObjectURL(currentObjectUrlRef.current);
-            currentObjectUrlRef.current = null;
-          }
-
-          const url = URL.createObjectURL(blob);
-          currentObjectUrlRef.current = url;
-          const audio = new Audio(url);
-          currentAudioRef.current = audio;
-
-          const cleanupThisAudio = () => {
-            if (currentAudioRef.current === audio) {
-              currentAudioRef.current = null;
-            }
-            if (currentObjectUrlRef.current === url) {
-              URL.revokeObjectURL(url);
+            if (currentObjectUrlRef.current) {
+              URL.revokeObjectURL(currentObjectUrlRef.current);
               currentObjectUrlRef.current = null;
             }
-          };
 
-          audio.onended = () => {
-            cleanupThisAudio();
-            if (isMountedRef.current) onEnded();
-          };
+            const url = URL.createObjectURL(blob);
+            currentObjectUrlRef.current = url;
+            const audio = new Audio(url);
+            currentAudioRef.current = audio;
 
-          audio.onerror = () => {
-            cleanupThisAudio();
-            if (isMountedRef.current) onError(new Error('Audio playback failed.'));
-          };
+            // Tap the clip into the shared analyser so the orb rides the AI's
+            // voice; the element's output now flows source → analyser → speakers.
+            attachTtsAudioLevel(audio);
 
-          audio.play().catch((err) => {
-            cleanupThisAudio();
+            const cleanupThisAudio = () => {
+              detachTtsAudioLevel();
+              if (currentAudioRef.current === audio) {
+                currentAudioRef.current = null;
+              }
+              if (currentObjectUrlRef.current === url) {
+                URL.revokeObjectURL(url);
+                currentObjectUrlRef.current = null;
+              }
+            };
+
+            audio.onended = () => {
+              cleanupThisAudio();
+              if (isMountedRef.current) onEnded();
+            };
+
+            audio.onerror = () => {
+              cleanupThisAudio();
+              if (isMountedRef.current) onError(new Error('Audio playback failed.'));
+            };
+
+            audio.play().catch((err) => {
+              cleanupThisAudio();
+              if (isMountedRef.current) onError(err);
+            });
+          })
+          .catch((err) => {
             if (isMountedRef.current) onError(err);
           });
-        })
-        .catch((err) => {
-          if (isMountedRef.current) onError(err);
-        });
-    } catch (err) {
-      if (isMountedRef.current) onError(err);
-    }
-  }, []);
+      } catch (err) {
+        if (isMountedRef.current) onError(err);
+      }
+    },
+    [attachTtsAudioLevel, detachTtsAudioLevel]
+  );
 
   const processQueue = useCallback(() => {
     if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
@@ -393,7 +460,7 @@ export default function MainSets() {
       audioQueueRef.current.shift();
       if (audioQueueRef.current.length === 0) {
         setIsPlayingAudio(false);
-        if (isSessionCompleteRef.current && setNumber < 3) {
+        if (isSessionCompleteRef.current && !isDrill && setNumber < 3) {
           setShowNextTransition(true);
         }
       }
@@ -403,7 +470,7 @@ export default function MainSets() {
     if (item.type === 'base64') {
       playBase64(item.data, onEnded, onEnded);
     }
-  }, [playBase64, setNumber]);
+  }, [isDrill, playBase64, setNumber]);
 
   useEffect(() => {
     processQueueRef.current = processQueue;
@@ -419,6 +486,9 @@ export default function MainSets() {
 
   // ── Cleanup Audio ────────────────────────────────────────────────────────
   const cleanupAudio = useCallback(() => {
+    // Hard-stop the voice meter so the orb settles instantly on pause/unmount.
+    detachTtsAudioLevel({ immediate: true });
+
     if (currentAudioRef.current) {
       try {
         currentAudioRef.current.pause();
@@ -460,7 +530,7 @@ export default function MainSets() {
       audioContextRef.current = null;
     }
     setVolume(0);
-  }, []);
+  }, [detachTtsAudioLevel]);
 
   // ── Fetch user role on mount ───────────────────────────────────────────────
   useEffect(() => {
@@ -472,6 +542,9 @@ export default function MainSets() {
           if (data.user?.role) {
             const r = data.user.role;
             setUserRole(r.charAt(0).toUpperCase() + r.slice(1));
+          }
+          if (data.user) {
+            setSessionDifficulty(getEffectiveUserDifficulty(data.user));
           }
           const u = auth.currentUser;
           const rawName =
@@ -557,6 +630,15 @@ export default function MainSets() {
       }
 
       switch (msg.type) {
+        case 'session_meta':
+          if (msg.role) setUserRole(msg.role.charAt(0).toUpperCase() + msg.role.slice(1));
+          if (normalizeDifficulty(msg.difficulty)) {
+            setSessionDifficulty(normalizeDifficulty(msg.difficulty));
+          }
+          if (Number.isInteger(msg.totalQuestions) && msg.totalQuestions > 0) {
+            setTotalQuestions(msg.totalQuestions);
+          }
+          break;
         case 'generation_progress':
           if (msg.role) setUserRole(msg.role.charAt(0).toUpperCase() + msg.role.slice(1));
           if (msg.message) setStatus(msg.message);
@@ -579,7 +661,7 @@ export default function MainSets() {
           break;
         case 'coach_tip':
           setCoachTip(msg.tip);
-          markCurrentAnswered(finalTranscriptRef.current, msg.interviewer_reply);
+          markCurrentAnswered(finalTranscriptRef.current, msg.interviewer_reply, msg.tip);
           if (setNumber === 2) {
             setScores({
               problem_solving: msg.problem_solving_score,
@@ -614,9 +696,9 @@ export default function MainSets() {
         case 'session_complete':
           setIsSessionComplete(true);
           isSessionCompleteRef.current = true;
-          setStatus(`Set ${setNumber} Complete!`);
+          setStatus(isDrill ? 'Drill complete!' : `Set ${setNumber} Complete!`);
           setIsEvaluating(false);
-          if (setNumber < 3) {
+          if (!isDrill && setNumber < 3) {
             if (!isPlayingRef.current && audioQueueRef.current.length === 0) {
               setShowNextTransition(true);
             }
@@ -641,6 +723,7 @@ export default function MainSets() {
     voice,
     focusArea,
     mode,
+    isDrill,
     isResume,
     enqueueBase64Audio,
     addQuestion,
@@ -731,14 +814,21 @@ export default function MainSets() {
         setStatus('Answer submitted. Evaluating...');
 
         setTimeout(() => {
-          setIsEvaluating(false);
-          setCoachTip(
+          const previewTip =
             setNumber === 1
               ? 'Great detail on the database structure. Try to explain why you chose SQL over NoSQL.'
               : setNumber === 2
                 ? 'Good explanation of database types. Focus on scaling trade-offs next time.'
-                : 'Excellent use of the STAR method. You clearly outlined the situation and task.'
-          );
+                : 'Excellent use of the STAR method. You clearly outlined the situation and task.';
+          const previewReply =
+            setNumber === 1
+              ? 'That is a solid answer. Let us move on to how you handled testing in that project.'
+              : setNumber === 2
+                ? 'Good explanation of database types. Focus on scaling trade-offs next time.'
+                : 'Excellent use of the STAR method. You clearly outlined the situation and task.';
+
+          setIsEvaluating(false);
+          setCoachTip(previewTip);
 
           if (setNumber === 2) {
             setScores({ problem_solving: 8, accuracy: 9, depth: 7 });
@@ -746,14 +836,7 @@ export default function MainSets() {
             setScores({ situation: 8, action: 7, result: 9 });
           }
 
-          markCurrentAnswered(
-            finalTranscriptRef.current,
-            setNumber === 1
-              ? 'That is a solid answer. Let us move on to how you handled testing in that project.'
-              : setNumber === 2
-                ? 'Good explanation of database types. Focus on scaling trade-offs next time.'
-                : 'Excellent use of the STAR method. You clearly outlined the situation and task.'
-          );
+          markCurrentAnswered(finalTranscriptRef.current, previewReply, previewTip);
 
           const nextQ = currentQuestion + 1;
           if (nextQ > 5) {
@@ -946,7 +1029,9 @@ export default function MainSets() {
   }, [cleanupAudio, isEvaluating, isRecording, navigate]);
 
   const finishSession = () => {
-    if (mode === 'practice' && setNumber === 3) {
+    if (isDrill) {
+      navigate('/dashboard');
+    } else if (mode === 'practice' && setNumber === 3) {
       navigate('/results?mode=practice');
     } else if (setNumber === 3) {
       navigate('/post-test', { state: { voice } });
@@ -1030,6 +1115,8 @@ export default function MainSets() {
     partialTranscript,
   ]);
 
+  const latestFeedback = getLatestFeedback(questionsAsked);
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="ix-root">
@@ -1067,16 +1154,30 @@ export default function MainSets() {
             </div>
 
             <div className="ix-topbar-center">
-              <span className="ix-topbar-progress">Question {activeQuestionIndex} of 5</span>
+              <span className="ix-topbar-progress">
+                Question {activeQuestionIndex} of {totalQuestions}
+              </span>
             </div>
 
             <div className="ix-topbar-right">
-              <span className="ix-badge-difficulty">
-                <span className="ix-pill-dot green" />
-                {meta.difficulty ? meta.difficulty.toUpperCase() : 'EASY'}
+              <span
+                className="ix-badge-difficulty"
+                data-difficulty={sessionDifficulty || 'loading'}
+                aria-label={
+                  sessionDifficulty
+                    ? `Difficulty: ${sessionDifficulty}`
+                    : 'Difficulty is being calibrated'
+                }
+              >
+                <span className="ix-pill-dot" />
+                {sessionDifficulty ? sessionDifficulty.toUpperCase() : 'CALIBRATING'}
               </span>
 
-              <span className="ix-badge-set">{meta.label || 'Set 1: Personalized'}</span>
+              <span className="ix-badge-set">
+                {isDrill
+                  ? `${focusArea ? focusArea.charAt(0).toUpperCase() + focusArea.slice(1) : '3C'} Drill`
+                  : meta.label || 'Set 1: Personalized'}
+              </span>
 
               <div className="ix-topbar-actions">
                 <button type="button" className="ix-topbar-icon-btn" title="Toggle theme">
@@ -1137,9 +1238,13 @@ export default function MainSets() {
                   </div>
                 </div>
 
-                {/* Shader-driven glass companion; it pauses offscreen and has a CSS fallback. */}
+                {/* Shader-driven glass companion; it pauses offscreen and has a CSS fallback.
+                    Mic level drives it while you answer; the TTS analyser drives it while the AI speaks. */}
                 <div className="ix-stage-orb-wrap">
-                  <InterviewBubbleBot state={stageState} volume={isRecording ? volume : 0} />
+                  <InterviewBubbleBot
+                    state={stageState}
+                    volume={isRecording ? volume : ttsAudioLevel}
+                  />
                 </div>
 
                 {/* Bottom Heading & Subtext */}
@@ -1320,7 +1425,9 @@ export default function MainSets() {
                           ? mode === 'practice'
                             ? 'View Practice Summary'
                             : 'Start Graduation Challenge'
-                          : 'Return to Dashboard'}
+                          : isDrill
+                            ? 'Finish Drill'
+                            : 'Return to Dashboard'}
                       </span>
                     </button>
                   ) : (
@@ -1345,10 +1452,10 @@ export default function MainSets() {
                         type="button"
                         className="ix-dock-btn-secondary"
                         onClick={() => setShowEndModal(true)}
-                        title="Pause interview session"
+                        title={isDrill ? 'Leave drill' : 'Pause interview session'}
                       >
                         <PhoneOff size={15} />
-                        <span>Pause</span>
+                        <span>{isDrill ? 'Leave drill' : 'Pause'}</span>
                       </button>
                     </>
                   )}
@@ -1367,13 +1474,19 @@ export default function MainSets() {
               activeTab={activeTab}
               onTabChange={setActiveTab}
               coachTip={coachTip}
+              whatYouDidWell={latestFeedback?.whatYouDidWell}
+              tryImproving={latestFeedback?.tryImproving}
             />
           </div>
 
           {/* Centered Privacy Footer */}
           <footer className="ix-footer">
             <Shield size={13} className="ix-footer-shield" />
-            <span>Your answers are saved automatically and kept private.</span>
+            <span>
+              {isDrill
+                ? 'Drill answers are temporary and are not added to progress or history.'
+                : 'Your answers are saved automatically and kept private.'}
+            </span>
           </footer>
 
           {/* ── Full Transcript Modal ── */}
@@ -1446,7 +1559,7 @@ export default function MainSets() {
               >
                 <div className="ix-modal-header">
                   <h3 id="modal-end-title" className="ix-modal-title">
-                    Pause Interview Session?
+                    {isDrill ? 'Leave This Drill?' : 'Pause Interview Session?'}
                   </h3>
                   <button
                     type="button"
@@ -1462,8 +1575,12 @@ export default function MainSets() {
                     {isRecording
                       ? 'Stop and submit your current answer before leaving. The current recording has not been saved yet.'
                       : isEvaluating
-                        ? 'Your answer is being scored and saved. Please wait a moment before leaving.'
-                        : 'Your generated questions, submitted answers, and coach feedback are saved. You can resume this exact set from the dashboard.'}
+                        ? isDrill
+                          ? 'Your answer is being scored. Please wait a moment before leaving.'
+                          : 'Your answer is being scored and saved. Please wait a moment before leaving.'
+                        : isDrill
+                          ? 'This drill is temporary. Leaving will discard its questions, answers, and feedback without changing your main-set progress.'
+                          : 'Your generated questions, submitted answers, and coach feedback are saved. You can resume this exact set from the dashboard.'}
                   </p>
                 </div>
                 <div className="ix-modal-footer">
@@ -1484,7 +1601,9 @@ export default function MainSets() {
                       ? 'Stop Answer First'
                       : isEvaluating
                         ? 'Saving Answer?'
-                        : 'Pause & Return to Dashboard'}
+                        : isDrill
+                          ? 'Leave Drill'
+                          : 'Pause & Return to Dashboard'}
                   </button>
                 </div>
               </div>
