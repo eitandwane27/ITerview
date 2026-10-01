@@ -1,0 +1,733 @@
+/* A small coaching space within the landing page: mascot-led introduction,
+   question rows, open assistant replies, and a persistent writing area. */
+.track-guide-surface {
+  --ui-primary: #2563eb;
+  --ui-primary-hover: #1d4ed8;
+  --ui-ink: #0f172a;
+  --ui-muted: #64748b;
+  --ui-border: #e2e8f0;
+  --ui-subtle: #f1f5f9;
+  --guide-duration-open: 360ms;
+  --guide-duration-close: 240ms;
+  --guide-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: var(--ui-ink);
+  font-weight: 500;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.track-guide-surface *,
+.track-guide-surface *::before,
+.track-guide-surface *::after {
+  box-sizing: border-box;
+}
+.track-guide-surface h2,
+.track-guide-surface h3,
+.track-guide-surface p {
+  margin: 0;
+}
+.track-guide-surface button {
+  font-family: inherit;
+}
+.track-guide-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.track-guide {
+  position: fixed;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 120;
+}
+.track-guide-launcher.ui-button {
+  height: 48px;
+  padding: 0 18px;
+  gap: 10px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #fff;
+  color: var(--ui-primary);
+  box-shadow: 0 4px 14px -4px rgb(15 23 42 / 14%);
+  font-size: 0.8125rem;
+  transition:
+    padding var(--guide-duration-open) var(--guide-ease-out),
+    gap var(--guide-duration-open) var(--guide-ease-out),
+    background 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms var(--guide-ease-out);
+}
+.track-guide-launcher.ui-button:hover {
+  background: #eff6ff;
+  border-color: var(--ui-primary);
+  color: var(--ui-primary-hover);
+}
+.track-guide-launcher-icon {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.track-guide-launcher-icon svg {
+  position: absolute;
+  inset: 0;
+  transition:
+    opacity var(--guide-duration-close) ease,
+    transform var(--guide-duration-open) var(--guide-ease-out);
+}
+.track-guide-launcher-close {
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.65);
+}
+.track-guide-launcher-label {
+  max-width: 144px;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-width var(--guide-duration-open) var(--guide-ease-out),
+    opacity var(--guide-duration-close) ease,
+    transform var(--guide-duration-open) var(--guide-ease-out);
+}
+.track-guide--open .track-guide-launcher {
+  padding: 0 13px;
+  gap: 0;
+}
+.track-guide--open .track-guide-launcher-label {
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(6px);
+}
+.track-guide--open .track-guide-launcher-chat {
+  opacity: 0;
+  transform: rotate(35deg) scale(0.65);
+}
+.track-guide--open .track-guide-launcher-close {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+.track-guide-launcher.ui-button:active {
+  transform: scale(0.96);
+}
+.track-guide-panel {
+  width: min(440px, calc(100vw - 24px));
+  height: min(760px, calc(100dvh - 116px));
+  max-height: var(--radix-popover-content-available-height);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow:
+    0 18px 60px -14px rgb(15 23 42 / 22%),
+    0 4px 12px -4px rgb(15 23 42 / 8%);
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+.track-guide-panel[data-state='open'] {
+  animation: track-guide-enter var(--guide-duration-open) var(--guide-ease-out) both;
+}
+.track-guide-panel[data-state='closed'] {
+  pointer-events: none;
+  animation: track-guide-exit var(--guide-duration-close) cubic-bezier(0.4, 0, 1, 1) both;
+}
+.track-guide-panel[data-state='closed'] * {
+  animation-play-state: paused;
+}
+.track-guide-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 16px 16px 20px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.track-guide-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.track-guide-heading h2 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+.track-guide-heading p {
+  color: var(--ui-muted);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+.track-guide-header-actions {
+  display: flex;
+  gap: 0;
+}
+.track-guide-header-actions .ui-button {
+  width: 40px;
+  height: 44px;
+}
+.track-guide-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  overflow: hidden;
+}
+.track-guide-avatar img {
+  display: block;
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+  user-select: none;
+}
+.track-guide-avatar--welcome {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+}
+.track-guide-avatar--message {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  margin-top: 23px;
+}
+.track-guide-thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 22px;
+  scroll-padding-bottom: 24px;
+}
+.track-guide-welcome {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px;
+  align-items: center;
+  column-gap: 12px;
+}
+.track-guide-welcome h3 {
+  grid-column: 1;
+  grid-row: 1;
+  font-family: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+.track-guide-welcome > p {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: #475569;
+}
+.track-guide-starters {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+}
+.track-guide-starter.ui-button {
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 11px 14px;
+  text-align: left;
+  white-space: normal;
+  border-radius: 12px;
+}
+.track-guide-starter-icon {
+  color: #475569;
+}
+.track-guide-starter > span {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.track-guide-starter strong {
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+.track-guide-starter > svg:last-child {
+  color: var(--ui-muted);
+}
+.track-guide-starter:hover {
+  border-color: #bfdbfe;
+}
+.track-guide-tracks {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 12px;
+}
+.track-guide-tracks > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+.track-guide-tracks .ui-button {
+  min-height: 44px;
+  padding: 8px;
+  gap: 6px;
+  font-size: 0.6875rem;
+  color: #475569;
+}
+.track-guide-conversation-marker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  font-size: 0.6875rem;
+  color: var(--ui-muted);
+}
+.track-guide-conversation-marker::before,
+.track-guide-conversation-marker::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--ui-border);
+}
+.track-guide-row {
+  transform-origin: left bottom;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.track-guide-message-group {
+  min-width: 0;
+  flex: 1;
+}
+.track-guide-messages {
+  position: relative;
+}
+.track-guide-message-author {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+.track-guide-message {
+  font-size: 0.8125rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.track-guide-message p {
+  color: inherit;
+  white-space: pre-wrap;
+}
+.track-guide-reply > * {
+  margin: 0;
+}
+.track-guide-message .track-guide-reply > * + * {
+  margin-top: 12px;
+}
+.track-guide-reply strong {
+  font-weight: 700;
+}
+.track-guide-reply-list {
+  padding-left: 20px;
+  white-space: pre-wrap;
+}
+.track-guide-reply-list li {
+  padding-left: 4px;
+}
+.track-guide-reply-list li + li {
+  margin-top: 8px;
+}
+.track-guide-reply-list li::marker {
+  color: #2563eb;
+  font-weight: 700;
+}
+ul.track-guide-reply-list {
+  list-style: none;
+}
+ol.track-guide-reply-list {
+  list-style: decimal;
+}
+ul.track-guide-reply-list li {
+  position: relative;
+}
+ul.track-guide-reply-list li::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 0.7em;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: #2563eb;
+}
+.track-guide-row--user {
+  transform-origin: right bottom;
+  justify-content: flex-end;
+  padding-left: 30px;
+}
+.track-guide-row--user .track-guide-message-group {
+  flex: initial;
+  max-width: 90%;
+}
+.track-guide-row--user .track-guide-message-author {
+  text-align: right;
+}
+.track-guide-row--user .track-guide-message {
+  padding: 11px 15px;
+  border-radius: 14px 4px 14px 14px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+.track-guide-recommendation {
+  margin-top: 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  padding: 16px;
+  background: #f8fbff;
+}
+.track-guide-recommendation-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.track-guide-track-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #dbeafe;
+  color: #1e40af;
+}
+.track-guide-recommendation h3 {
+  margin-top: 5px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.track-guide-recommendation .ui-badge {
+  padding: 0;
+  background: transparent;
+  font-size: 0.625rem;
+}
+.track-guide-topics {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.track-guide-topics li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.6875rem;
+  color: #475569;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.track-guide-topics li::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  background: #64748b;
+  border-radius: 50%;
+  flex-shrink: 0;
+  align-self: center;
+}
+.track-guide-start.ui-button {
+  width: 100%;
+  margin-top: 4px;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+.track-guide-loading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 26px;
+  font-size: 0.6875rem;
+  color: var(--ui-muted);
+}
+.track-guide-loading-dots {
+  display: flex;
+  gap: 4px;
+}
+.track-guide-loading-dots i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #64748b;
+  animation: track-guide-dot 1200ms ease-in-out infinite;
+}
+.track-guide-loading-dots i:nth-child(2) {
+  animation-delay: 120ms;
+}
+.track-guide-loading-dots i:nth-child(3) {
+  animation-delay: 240ms;
+}
+.track-guide-error {
+  margin: 12px 0 0 38px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #991b1b;
+}
+.track-guide-error p {
+  font-size: 0.75rem;
+  line-height: 1.7;
+}
+.track-guide-error .ui-button {
+  margin-top: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 0.6875rem;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.track-guide-footer {
+  flex-shrink: 0;
+  padding: 16px 20px;
+  border-top: 1px solid var(--ui-border);
+  background: #fff;
+}
+.track-guide-composer {
+  padding: 3px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color 150ms ease;
+}
+.track-guide-composer:focus-within {
+  border-color: #2563eb;
+  outline: 2px solid #dbeafe;
+  outline-offset: 1px;
+}
+.track-guide-composer .ui-textarea {
+  display: block;
+  min-height: 52px;
+  height: 52px;
+  max-height: 120px;
+  resize: none;
+  border: 0;
+  outline: none;
+  padding: 8px 11px 4px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.track-guide-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 3px 3px 11px;
+}
+.track-guide-composer-actions > span {
+  color: var(--ui-muted);
+  font-size: 0.6875rem;
+  line-height: 1.6;
+}
+.track-guide-composer-actions .ui-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  transition:
+    background 180ms ease,
+    opacity 180ms ease,
+    transform 180ms var(--guide-ease-out);
+}
+.track-guide-composer-actions .ui-button:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.track-guide-send-icon {
+  display: grid;
+  place-items: center;
+}
+.track-guide-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 10px !important;
+  color: var(--ui-muted);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+.track-guide-touch-help {
+  display: none;
+}
+@media (pointer: coarse) {
+  .track-guide-keyboard-help {
+    display: none;
+  }
+  .track-guide-touch-help {
+    display: inline;
+  }
+}
+.track-guide-privacy svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.track-guide-spin {
+  animation: track-guide-spin 800ms linear infinite;
+}
+@keyframes track-guide-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes track-guide-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+@keyframes track-guide-dot {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+@keyframes track-guide-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 640px) {
+  .track-guide {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .track-guide-panel {
+    height: min(760px, calc(100dvh - 96px));
+    border-radius: 18px;
+  }
+  .track-guide-header {
+    padding: 12px;
+  }
+  .track-guide-heading {
+    gap: 8px;
+  }
+  .track-guide-heading h2 {
+    font-size: 0.8125rem;
+  }
+  .track-guide-heading p {
+    font-size: 0.625rem;
+  }
+  .track-guide-header .track-guide-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+  .track-guide-header-actions .ui-button {
+    width: 36px;
+  }
+  .track-guide-thread {
+    padding: 20px 18px;
+  }
+  .track-guide-avatar--welcome {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+  }
+  .track-guide-welcome h3 {
+    font-size: 1.625rem;
+  }
+  .track-guide-starters {
+    margin-top: 16px;
+  }
+  .track-guide-footer {
+    padding: 12px 14px;
+  }
+  .track-guide-composer .ui-textarea {
+    font-size: 1rem;
+    min-height: 60px;
+    height: 60px;
+  }
+}
+@media (max-height: 620px) {
+  .track-guide-thread {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .track-guide-welcome h3 {
+    font-size: 1.375rem;
+  }
+  .track-guide-avatar--welcome {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+  }
+  .track-guide-welcome {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+  .track-guide-welcome > p {
+    margin-top: 10px;
+    font-size: 0.75rem;
+    line-height: 1.6;
+  }
+  .track-guide-starters {
+    margin-top: 14px;
+  }
+  .track-guide-header {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .track-guide-footer {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .track-guide-composer .ui-textarea {
+    min-height: 44px;
+    height: 44px;
+  }
+  .track-guide-privacy {
+    margin-top: 6px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .track-guide-panel[data-state],
+  .track-guide-loading-dots i,
+  .track-guide-spin {
+    animation: none;
+  }
+  .track-guide-surface *,
+  .track-guide-surface *::before,
+  .track-guide-surface *::after {
+    transition: none;
+  }
+}

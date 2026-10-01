@@ -11,6 +11,7 @@ import AuthModal from '../components/AuthModal';
 import Reveal from '../components/motion/Reveal';
 import CountUp from '../components/motion/CountUp';
 import MentorMascot from '../components/MentorMascot';
+import RecommendationChatbot from '../components/RecommendationChatbot';
 import { EASE } from '../components/motion/motion';
 const TryItLiveDemo = lazy(() => import('../components/TryItLiveDemo'));
 import logoSrc from '../assets/logo';
@@ -1412,6 +1413,8 @@ const LandingPage = () => {
             </div>
           </div>
         </footer>
+
+        <RecommendationChatbot onStart={openRegisterModal} />
 
         {/* ── Auth Modal ── */}
         <AuthModal

@@ -19,6 +19,9 @@ const app = express();
 
 // 1. Setup middleware (allows frontend to talk to backend)
 app.use(cors());
+// Mount public chat before the global parser so its smaller body limit applies.
+const recommendationRoutes = require("./routes/recommendationRoutes");
+app.use("/api/recommendations", recommendationRoutes);
 app.use(express.json());
 
 // 2. Connect to MongoDB
