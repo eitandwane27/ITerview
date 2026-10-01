@@ -21,6 +21,30 @@ dist-ssr
 # Environment variables
 .env
 .env.*
+!.env.example
+
+# Credentials and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+*service-account*.json
+*service_account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+
+# Local exports, database dumps, and generated previews
+/output/
+/docs/design-concepts/*.png
+*.ejson
+*.dump
+*.sqlite
+*.sqlite3
+*.db
+coverage/
+test-results/
+playwright-report/
 
 # Project specific
 .ai-skills/

@@ -13,11 +13,9 @@
   "type": "commonjs",
   "dependencies": {
     "@deepgram/sdk": "^5.4.0",
-    "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "groq-sdk": "^1.2.1",
     "mongoose": "^9.6.3",
     "openai": "^6.45.0",
     "ws": "^8.21.0"
