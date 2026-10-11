@@ -4,6 +4,7 @@
 // Evaluates answers across three dimensions: problem solving, accuracy, and depth.
 
 const mongoose = require("mongoose");
+const { VALID_ROLES } = require("../config/roleConfig");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-schema: one AI-generated technical question + the user's scored answer
@@ -50,7 +51,7 @@ const set2SessionSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ["frontend", "backend", "fullstack"],
+    enum: VALID_ROLES,
     default: "fullstack",
   },
 

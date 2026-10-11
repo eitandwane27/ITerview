@@ -1896,6 +1896,7 @@
 /* ── Streamlined Control Action Dock ─────────────────────────────────────── */
 .ix-action-dock {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 12px;

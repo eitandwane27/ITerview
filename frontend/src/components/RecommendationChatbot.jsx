@@ -28,7 +28,8 @@ import './RecommendationChatbot.css';
 // Existing platform help, track discovery, and registration handoff remain intact.
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const MAX_MESSAGE_LENGTH = 600;
-const REQUEST_TIMEOUT_MS = 30000;
+// Allow the backend's 60-second AI deadline plus time to deliver the response.
+const REQUEST_TIMEOUT_MS = 65000;
 const MESSAGE_EASE = [0.16, 1, 0.3, 1];
 
 const starters = [

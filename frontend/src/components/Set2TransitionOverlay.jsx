@@ -2,6 +2,8 @@ import React from 'react';
 import { motion as Motion } from 'framer-motion';
 import mascotHeadSrc from '../assets/mascot-head.png';
 import './Set2TransitionOverlay.css';
+import useRoleCatalogue from '../hooks/useRoleCatalogue';
+import { formatRoleLabel } from '../utils/roleCatalogue';
 
 // ─── Motion variants (frontend.md § Loading States & Modal Overlays) ──────────
 // "Entrance = fade + subtle scale (0.96 -> 1.0), not slide-up"
@@ -47,16 +49,9 @@ const fadeUp = {
 };
 
 // ─── Role metadata ─────────────────────────────────────────────────────────────
-const ROLE_META = {
-  frontend: { label: 'Frontend Developer' },
-  backend: { label: 'Backend Developer' },
-  fullstack: { label: 'Fullstack Developer' },
-};
-
-export default function Set2TransitionOverlay({ onReady, role = 'Frontend' }) {
-  const meta = ROLE_META[role.toLowerCase()] ?? {
-    label: `${role} Developer`,
-  };
+export default function Set2TransitionOverlay({ onReady, role = '', roleLabel = '' }) {
+  const { roles } = useRoleCatalogue();
+  const label = roleLabel || formatRoleLabel(role, roles);
 
   return (
     <Motion.div
@@ -95,7 +90,7 @@ export default function Set2TransitionOverlay({ onReady, role = 'Frontend' }) {
         {/* Description: Plus Jakarta Sans body */}
         <Motion.p className="s2-description" variants={fadeUp} custom={0.44}>
           The AI will now shift focus to your technical knowledge as a{' '}
-          <span className="s2-role-highlight">{meta.label}</span>. Expect standard industry
+          <span className="s2-role-highlight">{label}</span>. Expect standard industry
           questions on core concepts and mechanics.
         </Motion.p>
 

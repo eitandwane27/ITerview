@@ -15,12 +15,6 @@ Run `npm run build` from `frontend` to create a production frontend build. Keep 
 
 ## Repository contents
 
-Commit application source, tests, required artwork/fonts, configuration, and maintenance documentation. Environment files, private keys, local tool state, database exports, generated guidebooks, and preview screenshots are ignored. Public setup examples contain placeholders only.
+The public repository contains application source, tests, required artwork/fonts, configuration, and the chatbot's student guide at `backend/knowledge/iterview-guide.md`. Environment files, private keys, local tool state, database exports, internal documentation under `docs/`, generated guidebooks, and preview screenshots are ignored. Public setup examples contain placeholders only.
 
-See `docs/chatbot-knowledge.md` for assistant maintenance and `docs/voice-agent-websocket-billing-audit.md` for outstanding voice-agent deployment work.
-
-## Public sharing and deployment
-
-Removing a file from the latest commit does not remove it from Git history. An older database export under `output/backups/` needs a separate history cleanup before treating the repository as free of that data. Do not push all branches or tags as a workaround.
-
-Repository cleanup is not production security approval. The current `/api/deepgram/token` endpoint returns the server's long-lived Deepgram key to the browser; it needs a credential-safe replacement before public deployment. Debug endpoints and billable voice-agent connections also need production restrictions, as documented in the billing audit.
+The role catalogue covers Frontend, Backend, Fullstack, QA, Cybersecurity, Network Engineering, Game Development, UI/UX, Android, iOS, DevOps, Data Analysis, AI Engineering, and IT Support.

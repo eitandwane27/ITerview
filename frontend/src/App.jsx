@@ -18,6 +18,7 @@ import SetBriefingOverlay from './components/SetBriefingOverlay';
 import FluxDebugger from './components/FluxDebugger';
 import LandingPage from './pages/LandingPage';
 import VoiceAgentPlayground from './features/voice-agent';
+import HrTester from './components/hrTester';
 import './App.css';
 
 function App() {
@@ -70,6 +71,8 @@ function App() {
           <Route path="/dev/interview" element={<MainSets />} />
           <Route path="/results" element={<Results />} />
           <Route path="/voice-agent" element={<VoiceAgentPlayground />} />
+          <Route path="/hr-tester" element={<HrTester />} />
+          <Route path="/hrTester" element={<Navigate to="/hr-tester" replace />} />
 
           {/* Dev only route to preview Set 1 Mission Calibration Modal */}
           <Route
@@ -86,7 +89,7 @@ function App() {
                 }}
               >
                 <SetBriefingOverlay
-                  role="Frontend Developer"
+                  role="frontend"
                   focusArea="clarity"
                   diagnosticData={{
                     preTestScore: 74,

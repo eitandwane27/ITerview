@@ -5,11 +5,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { OpenAI } = require("openai");
-const { getRoleConfig } = require("../config/roleConfig");
-const { getEvaluatorRubric } = require("../config/evaluatorRubrics");
+const { getRoleConfig, getRoleSetConfig, getRoleRestrictions } = require("../config/roleConfig");
+const { getEvaluatorRubric, HARD_SET1_SCORING, SET1_ITEM_LIST_SCORING } = require("../config/evaluatorRubrics");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
+const { getEasySet1QuestionIssue } = require("../utils/easySet1QuestionGuard");
+const { getMediumSet1QuestionIssue } = require("../utils/mediumQuestionGuard");
+const { getHardSet1QuestionIssue } = require("../utils/hardSet1QuestionGuard");
+const { normalizeQuestionDraft, isItemListTask } = require('../utils/questionWording');
+const { selectSet1QuestionFallback } = require('../utils/set1QuestionFallback');
+const { getQuestionTopicCoverage, rememberQuestionTopic, resolveQuestionTopic } = require("../utils/questionTopicCoverage");
+const { HARD_SET1_FOCUS_INSTRUCTIONS, HARD_SET1_QUESTION_STYLE } = require("../config/hardSet1Config");
 const { safeParseJSON } = require("../utils/jsonParser");
-const { EASY_AVOID_LIST, MEDIUM_AVOID_LIST, HARD_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
+const { EASY_AVOID_LIST, EASY_QUESTION_STYLE, MEDIUM_AVOID_LIST, MEDIUM_QUESTION_STYLE, HARD_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -27,7 +34,7 @@ const EVALUATOR_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
  * Generates a personalized Set 1 interview question based on the user's weakness, role, and difficulty.
  *
  * @param {string} weakness_tag - focus_clarity, focus_correctness, or focus_completeness
- * @param {string} role - frontend, backend, or fullstack
+ * @param {string} role - A registered role ID from roleConfig.js
  * @param {string} difficulty - easy, medium, or hard
  * @param {Array<string>} previousQuestions - Array of questions already asked in this session
  * @returns {Promise<string>} The generated question
@@ -49,143 +56,95 @@ async function generateSet1Question(
   ].includes(weakness_tag)
     ? weakness_tag
     : "focus_correctness";
+  const setData = getRoleSetConfig(roleData, 'set1', difficulty, safeWeakness);
 
   // ── Resolve Difficulty Configurations dynamically ───────────────────────────
   const isHard = difficulty === "hard";
   const isMedium = difficulty === "medium";
-  // isEasy is the fallback when neither hard nor medium
+  const isEasy = !isHard && !isMedium;
 
   let examplePool = [];
   if (isHard) {
-    examplePool = roleData.set1.hardExamples?.[safeWeakness] || [];
+    examplePool = setData.hardExamples?.[safeWeakness] || [];
   } else if (isMedium) {
-    examplePool = roleData.set1.mediumExamples?.[safeWeakness] || [];
+    examplePool = setData.mediumExamples?.[safeWeakness] || [];
   } else {
-    examplePool = roleData.set1.easyExamples?.[safeWeakness] || [];
+    examplePool = setData.easyExamples?.[safeWeakness] || [];
   }
 
   const difficultyLabel = isHard
-    ? "Hard (Advanced Junior Developer)"
+    ? "Hard (Advanced Junior Candidate)"
     : isMedium
-    ? "Medium (Conceptual Application / Junior Developer)"
+    ? "Medium (Conceptual Application / Junior Candidate)"
     : "Easy (Entry Level / Fresh Graduate)";
 
   const difficultyContext = isHard
-    ? `The candidate is an advanced junior developer ready to discuss trade-offs, security, and performance optimizations. They understand under-the-hood browser/server mechanics and have applied these concepts in personal or academic projects.`
+    ? `The candidate is an advanced junior with strong academic or personal-project understanding of role-specific performance, security, and reliability. They have no required commercial experience. Ask one bounded 3C task requiring at most three connected reasoning steps, not senior architecture or a full investigation.`
     : isMedium
-    ? `The candidate is a fresh IT graduate who understands core concepts and has completed small projects. They are ready to explain basic logic flow and perform minor conceptual troubleshooting. They have zero production experience, so questions should still remain simple.`
-    : `The candidate is a fresh IT graduate or IT student practicing core interview basics. They have mostly academic knowledge and personal project experience — no commercial work experience. Questions MUST be simple, fundamental, and answerable without any industry experience.`;
+    ? `The candidate is a fresh IT graduate who has practiced core concepts in small academic or personal projects. They can explain a simple mechanism, predict a basic behavior, or identify relevant checks. They have no production or commercial team experience. Require at most two reasoning steps and keep the answer burden small.`
+    : `The candidate is an IT student or fresh graduate practicing introductory classroom fundamentals. They may have limited confidence and only basic lessons or lab experience. Do not assume completed projects, framework knowledge, or commercial experience. Questions must be simple and answerable from the selected introductory topics.`;
 
-  const avoidList = `${roleData.avoidList || ""}\n\n${
+  const avoidList = `${getRoleRestrictions(roleData, difficulty)}\n\n${
     isHard ? HARD_AVOID_LIST : isMedium ? MEDIUM_AVOID_LIST : EASY_AVOID_LIST
   }\n\n${TTS_SAFETY}`;
 
   // ── Step 2: Build the weakness-specific instruction ───────────────────────
-  let weaknessInstruction = "";
-  if (safeWeakness === "focus_clarity") {
-    weaknessInstruction = `The question must ask the candidate to EXPLAIN one specific concept in their own words. It tests HOW WELL they can communicate — not just whether they know the answer.
-QUESTION FORMAT RULES:
-- ONE concept only. Do not chain concepts with "and", "including", or "from X to Y".
-- Single sentence. No sub-questions. No compound structure.
-${
-  isHard
-    ? `- Hard: Ask them to explain trade-offs, rendering cycles, or security flows. Focus on advanced junior topics like event propagation, CSR vs SSR, database transaction properties, or CORS resolution.
-- Good: "How would you explain the browser event loop and the difference between microtasks and macrotasks to a teammate?"
-- Good: "How would you describe the difference between Client-Side Rendering and Server-Side Rendering including the impact on page load speed?"
-- Bad: "Can you explain how flexbox works, including alignment, direction, and wrapping?"`
-    : isMedium
-    ? `- Good: "How would you explain the difference between a block element and an inline element to a teammate?"
-- Good: "How would you describe the flow of an HTTP request passing through a middleware function?"
-- Bad: "Can you explain how flexbox works, including alignment, direction, and wrapping?"`
-    : `- Good: "Can you explain how the CSS box model works?"
-- Bad: "Can you explain how the box model works, including margin and padding, and how it affects layout?"`
-}`;
-  } else if (safeWeakness === "focus_correctness") {
-    weaknessInstruction = `The question must test ONE simple, fundamental fact — a basic definition, a difference between two basic items, or a "what is / what does X do" question.
-${
-  isHard
-    ? `CRITICAL HARD DIFFICULTY RULES:
-- The question must test advanced junior-level concepts such as security mechanics, rendering performance, authentication trade-offs, or intermediate protocol details.
-- Keep the question focused on a single key concept or trade-off.
-- Good: "What is the difference between debouncing and throttling a function in JavaScript?"
-- Good: "What is the purpose of CORS preflight requests and what HTTP method do they use?"`
-    : isMedium
-    ? `CRITICAL MEDIUM DIFFICULTY RULES:
-- The question must test junior-level concepts, such as intermediate JS/CSS/backend behaviors (e.g. query selectors, preventDefault, local vs session storage, basic status code types).
-- Keep the question focused on a single key concept.
-- Keep comparisons to straightforward junior concepts.
-- Good: "What is the difference between storing data in local storage and storing it in session storage?"
-- Good: "What is the difference between the query selector method and the get element by ID method in JavaScript?"`
-    : `CRITICAL EASY DIFFICULTY RULES:
-- The question must be extremely simple and foundational. It must NOT test abstract rendering concepts, CSS cascade conflicts, or advanced JS mechanics.
-- Do NOT ask about the browser's rendering engine or internals.
-- Do NOT ask about CSS specificity calculation, cascading rules, or selector weight.
-- Do NOT ask about JavaScript hoisting, closures, temporal dead zone, function expressions versus declarations, or arrow functions vs regular functions.
-- Keep comparisons to very basic things like: var/let/const, double equals/triple equals, display none/visibility hidden, local storage/session storage, SQL/NoSQL.
-- Good: "What is the difference between let and const in JavaScript?"
-- Good: "What does the textContent property do in JavaScript?"`
-}
-QUESTION FORMAT RULES:
-- ONE fact only. Do not combine two questions into one sentence.
-- Single sentence. Short and direct.
-- Bad: "What is the difference between a function expression and a declaration, and how does hoisting affect them?"`;
-  } else {
-    weaknessInstruction = `The question must ask the candidate to list or name MULTIPLE related things about ONE specific topic. It tests their ability to retrieve foundational items.
-QUESTION FORMAT RULES:
-- Ask them to list or name multiple items of a single category.
-- Keep it to a single, simple sentence.
-- STRICTLY BAN any compound structures or chained sub-questions. Do NOT ask "how they work", "how they affect layout", "when you would use them", "what they are used for", or "and why". The question should only ask to list or name them.
-${
-  isHard
-    ? `- Hard: Ask them to list three specific technical measures, optimizations, or security steps around an advanced junior topic.
-- Good: "What are three different ways to optimize the loading performance of images and assets on a webpage?"
-- Good: "What are three security measures you can implement to protect a frontend application from cross-site scripting attacks?"
-- Bad: "What are three HTTP methods and how would you choose which one to use?"`
-    : isMedium
-    ? `- Good: "What are three common HTTP status codes and what does each one mean?"
-- Good: "What are three different CSS layout properties you can use to position elements on a page?"
-- Bad: "What are three HTTP methods and how would you choose which one to use?"`
-    : `- Good: "What are three different HTML semantic tags you can use to structure a webpage?"
-- Good: "What are some of the values you can use for the CSS position property?"
-- Bad: "What are some different display properties in CSS, and how do they affect the layout of elements on a webpage?"
-- Bad: "What are some ways to center an element in CSS, and when would each approach be appropriate?"`
-}`;
-  }
+  const easyWeaknessInstructions = {
+    focus_clarity: 'Ask for the meaning or simple purpose of ONE concept in the student\'s own words. Use direct wording. Do not ask for steps, a procedure, a comparison, or a definition followed by when or how to use it.',
+    focus_correctness: 'Ask for ONE basic fact, purpose, or an unambiguous comparison of TWO familiar concepts. Avoid questions where several tools or properties could be the intended answer. Do not append a reason, example, or usage question.',
+    focus_completeness: 'Start with Name two or List two. Ask for exactly TWO familiar items from one clearly bounded category in the selected topic. Do not request explanations or supply possible answers in the question with such as, like, or for example. Do not list specialist properties, implementation techniques, or arbitrary things a tool can do. If a category does not naturally have two beginner answers, choose another category within the selected topic.',
+  };
+  const mediumWeaknessInstructions = {
+    focus_clarity: 'Ask the candidate to explain how ONE mechanism works or why ONE concept serves a stated purpose in a small project. Test a clear cause-and-effect explanation, not a comparison or implementation walkthrough.',
+    focus_correctness: 'Test ONE accurate behavior, expected outcome, or focused comparison of TWO core concepts in a stated context. Include the conditions needed to answer; do not append a reason, example, or implementation task.',
+    focus_completeness: 'Start with Name two or List two. Ask for exactly TWO distinct relevant checks, parts, or related items from ONE bounded category in the selected topic. Give a small-project context where useful; do not ask for explanations or supply possible answers.',
+  };
+  const weaknessInstruction = (isEasy ? easyWeaknessInstructions : isMedium ? mediumWeaknessInstructions : HARD_SET1_FOCUS_INSTRUCTIONS)[safeWeakness];
 
   // ── Step 3: Build the calibration + exclusion section ───────────────────
   let examplesSection = "";
-  let curationBlacklist = [];
   if (examplePool && examplePool.length > 0) {
     const shuffled = [...examplePool].sort(() => Math.random() - 0.5);
     const benchmarkSamples = shuffled
       .slice(0, 2)
       .map((q, i) => `  ${i + 1}. ${q}`)
       .join("\n");
-    examplesSection = `
-DIFFICULTY BENCHMARK — these questions represent the EXACT difficulty level and vocabulary you must target:
+    examplesSection = isEasy ? `
+CLASSROOM BENCHMARKS — match the short wording, small task, and introductory difficulty of these examples:
 ${benchmarkSamples}
 
-IMPORTANT: Do NOT repeat or closely paraphrase any of those examples. Generate a DIFFERENT, NOVEL question at the same difficulty level.`;
-    curationBlacklist = examplePool;
+These examples guide difficulty and format, not topic selection. Stay within the allowed role topics. Familiar wording and fundamental concepts are welcome; do not increase difficulty to avoid resembling an example.` : isMedium ? `
+JUNIOR APPLICATION BENCHMARKS — match the focused task, short wording, and conceptual demand of these examples:
+${benchmarkSamples}
+
+These examples guide difficulty and format, not topic selection. Stay within the allowed role topics; do not increase difficulty to avoid resembling an example.` : `
+ADVANCED JUNIOR 3C BENCHMARKS — match the focused task, spoken wording, and conceptual demand:
+${benchmarkSamples}
+
+These examples guide difficulty and 3C focus, not topic selection. Stay within the allowed role topics. Do not increase difficulty merely to avoid resembling a benchmark.`;
   }
 
   // ── Step 3.5: Select a topic to ensure variance and avoid repetition ──────
-  const topics = roleData.set1.topicScope || [];
-  const keywordLists = roleData.set1.topicKeywords || [];
+  const topics = setData.topicScope || [];
+  const keywordLists = setData.topicKeywords || [];
+  const appliedCoverage = isMedium || isHard ? getQuestionTopicCoverage(previousQuestions, keywordLists, topics) : [];
   let selectedTopic = "";
   if (topics.length > 0) {
+    const easyCoverage = topics.map(() => 0);
+    if (isEasy) previousQuestions.forEach(q => {
+      const words = ` ${q.toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `;
+      const matches = keywordLists.map(keywords => keywords.filter(word => {
+        const term = word.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        return [term, `${term}s`, `${term}es`].some(value => words.includes(` ${value} `));
+      }).length);
+      const bestMatch = Math.max(...matches);
+      // Assign an earlier question to its strongest topic match. Incidental
+      // context words must not make several unasked categories look covered.
+      if (bestMatch > 0) easyCoverage[matches.indexOf(bestMatch)]++;
+    });
     const topicScores = topics.map((topic, index) => {
-      const keywords = keywordLists[index] || [];
-      let score = 0;
-      previousQuestions.forEach((q) => {
-        const qLower = q.toLowerCase();
-        keywords.forEach((word) => {
-          if (qLower.includes(word.toLowerCase())) {
-            score++;
-          }
-        });
-      });
-      return { index, score, topic };
+      if (isEasy) return { index, score: easyCoverage[index], topic };
+      return { index, score: appliedCoverage[index], topic };
     });
 
     const minScore = Math.min(...topicScores.map((t) => t.score));
@@ -206,12 +165,15 @@ ${difficultyContext}
 ALLOWED TOPICS — Your question MUST come from one of these topics only. Do not go outside this list:
 ${topicScope}
 
-STRICT TOPIC FOCUS:
-You MUST generate a question specifically targeting this topic: "${selectedTopic}".
-Do not ask about any other topic. Make sure the question focuses purely on this specific concept or tool.
+PREFERRED TOPIC FOCUS:
+Prefer a question specifically targeting this topic: "${selectedTopic}".
+Another topic from the allowed role and difficulty scope is acceptable when it produces a clearer question for the same 3C focus. Topic variety is a preference, not a reason to make the task harder.
 
 QUESTION TYPE REQUIREMENT:
 ${weaknessInstruction}
+${isEasy ? `\n${EASY_QUESTION_STYLE}` : ""}
+${isMedium ? `\n${MEDIUM_QUESTION_STYLE}` : ""}
+${isHard ? `\n${HARD_SET1_QUESTION_STYLE}` : ""}
 ${avoidList ? `\nSTRICT CONSTRAINTS:\n${avoidList}` : ""}
 ${examplesSection}
 
@@ -224,13 +186,17 @@ OUTPUT RULE:
 - No introduction, no explanation, no quotes, no numbering. Just the single, final question itself.`;
 
   // ── Step 5: Build the messages array ─────────────────────────────────────
-  const allExcluded = [...previousQuestions, ...curationBlacklist];
+  const allExcluded = previousQuestions;
   const messages = [{ role: "system", content: systemPrompt }];
 
   if (allExcluded.length > 0) {
     messages.push({
       role: "user",
-      content: `Generate a fresh, novel question. Do NOT repeat or closely paraphrase any of these — either already-asked questions or the benchmark examples above:\n${allExcluded.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nNow generate one original question.`,
+      content: isEasy
+        ? `Generate one classroom-level question. Avoid repeating the same task or fact tested by these already-asked questions; changing only the wording is not enough:\n${allExcluded.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nPrefer the selected topic within the allowed role scope and keep the task simple.`
+        : isMedium
+          ? `Generate one focused junior-level question. Avoid the same task or fact tested by these already-asked questions; changing only the wording is not enough:\n${allExcluded.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nKeep the 3C focus and prefer the selected topic within the allowed role scope, with at most two reasoning steps.`
+          : `Generate one advanced-junior 3C question in the selected topic and focus. Avoid the same mechanism, distinction, outcome, or list category tested by these already-asked questions, even with different wording:\n${allExcluded.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nKeep the answer bounded to at most three connected reasoning steps or the three requested list items.`,
     });
   } else {
     messages.push({
@@ -239,38 +205,56 @@ OUTPUT RULE:
     });
   }
 
-  const response = await deepseek.chat.completions.create({
+  const request = {
     model: EVALUATOR_MODEL,
     messages,
-    temperature: 0.85,
+    temperature: isHard ? 0.3 : 0.85,
     max_tokens: 2000,
     thinking: { type: "disabled" },
-  });
+  };
 
-  if (
-    !response.choices ||
-    response.choices.length === 0 ||
-    !response.choices[0]?.message?.content
-  ) {
-    console.error(
-      "[DeepSeek Error] Received empty choices or error response in generateSet1Question:",
-      JSON.stringify(response),
-    );
+  // Two repairs retain the requested task. Exhaustion may use only a scoped,
+  // validated reviewed question; rejected drafts are never served.
+  const maxAttempts = 3;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const response = await deepseek.chat.completions.create(request);
+    const raw = normalizeQuestionDraft(response.choices?.[0]?.message?.content || '');
+    if (!raw) throw new Error('Question service returned an empty question.');
+    const question = sanitizeTTS(raw);
+    if (!question) throw new Error('Question service returned an empty question.');
+    let issue = isEasy ? getEasySet1QuestionIssue(raw, safeWeakness, previousQuestions)
+        || getEasySet1QuestionIssue(question, safeWeakness, previousQuestions)
+      : isMedium ? getMediumSet1QuestionIssue(raw, safeWeakness, previousQuestions)
+        || getMediumSet1QuestionIssue(question, safeWeakness, previousQuestions)
+        : getHardSet1QuestionIssue(raw, safeWeakness, previousQuestions)
+          || getHardSet1QuestionIssue(question, safeWeakness, previousQuestions);
+    const actualTopic = resolveQuestionTopic(question, keywordLists, topics, selectedTopic);
+    const acceptedTopic = actualTopic || selectedTopic;
+    if (isHard && !issue && selectedTopic && !actualTopic) {
+      issue = 'Stay within the allowed hard topics for this role and include a relevant technical concept.';
+    }
+    if (!issue) {
+      if (isMedium || isHard) rememberQuestionTopic(previousQuestions, question, acceptedTopic);
+      return question;
+    }
+    console.warn('[aiSet1Generator] Rejected question:', JSON.stringify({
+      role: roleData.id, difficulty, focus: safeWeakness, topic: selectedTopic, attempt: attempt + 1, reason: issue, draft: raw.slice(0, 500),
+    }));
+    if (attempt === maxAttempts - 1) {
+      const fallback = selectSet1QuestionFallback(roleData.id, difficulty, safeWeakness,
+        setData, previousQuestions, selectedTopic);
+      if (fallback) {
+        rememberQuestionTopic(previousQuestions, fallback.question, fallback.topic);
+        console.warn('[aiSet1Generator] Using reviewed fallback:', JSON.stringify({ role: roleData.id, difficulty, focus: safeWeakness, topic: fallback.topic }));
+        return fallback.question;
+      }
+      throw new Error(`Question service could not produce a suitable ${isHard ? 'hard' : isMedium ? 'medium' : 'easy'} question. Please retry.`);
+    }
+    request.messages = [...request.messages,
+      { role: 'assistant', content: raw },
+      { role: 'user', content: `Revise the last question: ${issue} Keep the same role, difficulty, and focus. Prefer the selected topic, but another allowed role topic is acceptable. Return only the revised question.` },
+    ];
   }
-
-  const fallbackQuestions = [
-    "Can you tell me about a project you worked on and what your specific role and contributions were?",
-    "What is the difference between client-side and server-side in web development?",
-    "How does a browser request and load a webpage from a server?",
-    "Why is it important to use semantic HTML tags when building a webpage?",
-    "What are some basic git commands you use to manage your project code?",
-  ];
-
-  const raw =
-    response.choices?.[0]?.message?.content?.trim() ||
-    fallbackQuestions[previousQuestions.length % fallbackQuestions.length];
-
-  return sanitizeTTS(raw);
 }
 
 const SET1_SCORING_SYSTEM_PROMPT = `You are a strict, objective IT interview scoring engine and coach.
@@ -280,7 +264,7 @@ You must respond with ONLY a valid JSON object.
 ### STEP 1 — SCORING RULES
 Score each dimension from 1 to 5:
 - clarity_score: How well-organised, articulate, and easy to follow is the answer?
-- correctness_score: Does the answer directly and correctly respond to what the question is asking?
+- correctness_score: Are the claims and supplied items relevant and factually accurate? Judge missing requested coverage separately under completeness.
 - completeness_score: How thoroughly does the answer cover the specific points the question is asking about?
 
 ### STEP 2 — COACHING TIP & INTERVIEWER REPLY
@@ -351,7 +335,14 @@ const SET1_SCORING_RESPONSE_FORMAT = {
  * @param {string} difficulty - Session difficulty level ("easy" | "medium" | "hard")
  * @returns {Promise<{ clarity_score: number, correctness_score: number, completeness_score: number, tip: string, interviewer_reply: string }>}
  */
-async function evaluateSet1Answer(question, transcript, difficulty = "easy") {
+async function evaluateSet1Answer(question, transcript, difficulty = "easy", requestOptions) {
+  const fallbackTip = difficulty === 'hard'
+    ? isItemListTask(question, 3)
+      ? 'Give three distinct relevant items from the category requested.'
+      : 'Address the specific mechanism, distinction, or outcome requested.'
+    : difficulty === 'medium'
+    ? "Address the specific concept or items requested in the question."
+    : "Try to provide a bit more detail next time to fully address the question.";
   if (!transcript || transcript.trim().length === 0) {
     return {
       clarity_score: 1,
@@ -363,8 +354,14 @@ async function evaluateSet1Answer(question, transcript, difficulty = "easy") {
     };
   }
 
-  const difficultyRubric = getEvaluatorRubric(difficulty);
-  const systemPrompt = `${SET1_SCORING_SYSTEM_PROMPT}\n\n${difficultyRubric}`;
+  const difficultyRubric = difficulty === 'hard' ? HARD_SET1_SCORING : getEvaluatorRubric(difficulty);
+  const mediumScoringContext = difficulty === 'medium' ? `\n\nMEDIUM SET 1 SCORING:
+Judge clarity by whether the requested concept or mechanism is understandable, correctness by factual accuracy, and completeness by coverage of the specific requested points.
+For a two-item list, two distinct valid items are sufficient; do not require their definitions or examples. For a comparison, a correct relevant distinction is sufficient.
+Do not demand extra reasoning, trade-offs, syntax, or implementation beyond the task. Match coaching to these same expectations.` : '';
+  const listScoringContext = isItemListTask(question, 2) || isItemListTask(question, 3)
+    ? `\n\n${SET1_ITEM_LIST_SCORING}` : '';
+  const systemPrompt = `${SET1_SCORING_SYSTEM_PROMPT}\n\n${difficultyRubric}${mediumScoringContext}${listScoringContext}`;
 
   const response = await deepseek.chat.completions.create({
     model: EVALUATOR_MODEL,
@@ -379,38 +376,29 @@ async function evaluateSet1Answer(question, transcript, difficulty = "easy") {
     max_tokens: 2000,
     thinking: { type: "disabled" },
     response_format: { type: "json_object" },
-  });
+  }, requestOptions);
 
   const raw = response.choices?.[0]?.message?.content || "";
   const parsed = safeParseJSON(raw);
 
-  if (!parsed) {
-    console.error("[aiSet1Generator] JSON parse error. Raw response:", raw);
-    return {
-      clarity_score: 3,
-      correctness_score: 3,
-      completeness_score: 3,
-      tip: "Try to provide a bit more detail next time to fully address the question.",
-      interviewer_reply:
-        "That was a solid start. Let's build on that in the next parts.",
-    };
+  const scoreKeys = ["clarity_score", "correctness_score", "completeness_score"];
+  if (!parsed || !scoreKeys.every(key => Number.isInteger(parsed[key]) && parsed[key] >= 1 && parsed[key] <= 5)) {
+    throw new Error("Evaluation service returned invalid scores. Please retry.");
   }
-
-  const clamp = (n) => Math.min(5, Math.max(1, parseInt(n) || 3));
 
   console.log(
     `[aiSet1Generator] Evaluated using: ${response.model || EVALUATOR_MODEL} (via DeepSeek V3)`,
   );
 
   return {
-    clarity_score: clamp(parsed.clarity_score),
-    correctness_score: clamp(parsed.correctness_score),
-    completeness_score: clamp(parsed.completeness_score),
+    clarity_score: parsed.clarity_score,
+    correctness_score: parsed.correctness_score,
+    completeness_score: parsed.completeness_score,
     tip:
-      parsed.tip ||
-      "Try to provide a bit more detail next time to fully address the question.",
+      typeof parsed.tip === "string" && parsed.tip.trim() ? parsed.tip.trim() :
+      fallbackTip,
     interviewer_reply:
-      parsed.interviewer_reply ||
+      typeof parsed.interviewer_reply === "string" && parsed.interviewer_reply.trim() ? parsed.interviewer_reply.trim() :
       "That was a solid start. Let's build on that in the next parts.",
   };
 }

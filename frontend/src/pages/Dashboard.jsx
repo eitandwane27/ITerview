@@ -35,6 +35,8 @@ import {
 } from '../utils/assessmentGuidance';
 import logoSrc from '../assets/logo';
 import './Dashboard.css';
+import useRoleCatalogue from '../hooks/useRoleCatalogue';
+import { formatRoleLabel, getRoleOptions, getRoleSelectionError } from '../utils/roleCatalogue';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -54,13 +56,6 @@ const JOURNEY_STAGE_LABELS = {
   posttest: 'Progress check next',
   'likert-post': 'Final confidence check next',
 };
-
-const ROLE_OPTIONS = [
-  { value: '', label: 'Select a role...' },
-  { value: 'frontend', label: 'Frontend Developer' },
-  { value: 'backend', label: 'Backend Developer' },
-  { value: 'fullstack', label: 'Fullstack Developer' },
-];
 
 const FOCUS_OPTIONS = [
   {
@@ -145,12 +140,22 @@ function getGreeting() {
   return 'Good evening';
 }
 
-// Map a stored role value ('frontend') to its display label
-// ('Frontend Developer'); falls back to a capitalized raw value.
-function formatRoleLabel(value) {
-  if (!value) return 'Developer';
-  const match = ROLE_OPTIONS.find((o) => o.value === value);
-  return match ? match.label : value.charAt(0).toUpperCase() + value.slice(1);
+function RoleCatalogueStatus({ id, status, onRetry }) {
+  if (status === 'ready') return null;
+  return (
+    <div id={id} role="status">
+      <p className="db-cta-helper">
+        {status === 'loading' ? 'Loading target roles…' :
+          'Couldn’t load target roles. Check your connection and try again.'}
+      </p>
+      {status === 'error' && (
+        <button type="button" className="db-btn-secondary db-btn-secondary--sm" onClick={onRetry}>
+          <RotateCcw size={14} aria-hidden="true" />
+          Retry loading roles
+        </button>
+      )}
+    </div>
+  );
 }
 
 function isScoreOutOfFive(value) {
@@ -491,7 +496,7 @@ const MetricsStates = memo(function MetricsStates({ dataStatus, onRetry, onLogin
 
 // One row in the practice log, memoized so the list never re-renders when
 // unrelated dashboard state changes (attempt objects keep stable references).
-const AttemptCard = memo(function AttemptCard({ attempt }) {
+const AttemptCard = memo(function AttemptCard({ attempt, roles }) {
   const attemptScore = getAttemptScoreOutOfFive(attempt);
   const completedAt = attempt.completedAt ? new Date(attempt.completedAt) : null;
   const hasValidCompletedAt = completedAt && !Number.isNaN(completedAt.getTime());
@@ -520,7 +525,7 @@ const AttemptCard = memo(function AttemptCard({ attempt }) {
             <span>{completedAtLabel}</span>
           )}
         </div>
-        <h3 className="db-attempt-card__title">{formatRoleLabel(attempt.role)}</h3>
+        <h3 className="db-attempt-card__title">{formatRoleLabel(attempt.role, roles)}</h3>
         <div className="db-attempt-card__context">
           <span className="db-attempt-card__difficulty">{attempt.difficulty || 'Easy'}</span>
           <span className="db-badge db-badge--purple">
@@ -561,6 +566,7 @@ const HistoryPanel = memo(function HistoryPanel({
   practiceHistory,
   onRetry,
   onSwitchTab,
+  roles,
 }) {
   const [showAll, setShowAll] = useState(false);
   // Newest first, computed once per data change, not inline on every render.
@@ -615,7 +621,7 @@ const HistoryPanel = memo(function HistoryPanel({
         ) : history.length > 0 ? (
           <div className="db-history-list">
             {visibleHistory.map((attempt, idx) => (
-              <AttemptCard key={attempt._id || idx} attempt={attempt} />
+              <AttemptCard key={attempt._id || idx} attempt={attempt} roles={roles} />
             ))}
             {hiddenCount > 0 && (
               <button
@@ -881,6 +887,7 @@ const CoachCard = memo(function CoachCard({ onOpen, compact = false }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { roles, status: rolesStatus, retry: retryRoles } = useRoleCatalogue();
   const [isCompactLayout, setIsCompactLayout] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia('(max-width: 1024px)').matches
   );
@@ -908,6 +915,10 @@ export default function Dashboard() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('');
+  const roleOptions = getRoleOptions(roles, rolesStatus, selectedRole);
+  const profileRoleOptions = getRoleOptions(roles, rolesStatus, editRole);
+  const rolesReady = rolesStatus === 'ready';
+  const selectedRoleAvailable = rolesReady && roles.some((role) => role.id === selectedRole);
   const [editFocus, setEditFocus] = useState('auto');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState(null);
@@ -954,11 +965,13 @@ export default function Dashboard() {
     let summaryData = null;
 
     try {
-      const [res, summaryRes, activeRes] = await Promise.all([
-        fetch(`/api/users/${user.uid}`),
+      // The summary can persist a newly unlocked difficulty. Read the profile
+      // afterward so the dropdown receives that updated tier on this load.
+      const [summaryRes, activeRes] = await Promise.all([
         fetch(`/api/users/results-summary?uid=${user.uid}`),
         fetch(`/api/users/active-practice-session?uid=${user.uid}`),
       ]);
+      const res = await fetch(`/api/users/${user.uid}`);
 
       if (res.ok) {
         userLoadOk = true;
@@ -1048,6 +1061,13 @@ export default function Dashboard() {
     if (!firebaseUser) return;
 
     const trimmedName = editName.trim();
+    if (editRole && editRole !== selectedRole) {
+      const selectionError = getRoleSelectionError(editRole, roles, rolesStatus);
+      if (selectionError) {
+        setProfileError(selectionError);
+        return;
+      }
+    }
     setIsSavingProfile(true);
     setProfileError(null);
 
@@ -1062,7 +1082,8 @@ export default function Dashboard() {
         body: JSON.stringify({
           firebaseUid: firebaseUser.uid,
           displayName: trimmedName,
-          role: editRole || selectedRole,
+          role: rolesReady && roles.some((role) => role.id === (editRole || selectedRole))
+            ? editRole || selectedRole : undefined,
           focusArea: editFocus || selectedFocus,
         }),
       });
@@ -1084,7 +1105,7 @@ export default function Dashboard() {
     } finally {
       setIsSavingProfile(false);
     }
-  }, [editName, editRole, editFocus, selectedRole, selectedFocus]);
+  }, [editName, editRole, editFocus, selectedRole, selectedFocus, roles, rolesStatus, rolesReady]);
 
   // WAI-ARIA tabs pattern: arrow-key navigation across the tablist
   const handleTabKeyDown = useCallback(
@@ -1150,12 +1171,13 @@ export default function Dashboard() {
         journeyState?.nextStage
       );
       if (shouldSaveOnboardingProfile) {
-        if (!role) {
-          setFormError('Select a target role to continue.');
+        const selectionError = getRoleSelectionError(role, roles, rolesStatus);
+        if (selectionError) {
+          setFormError(selectionError);
           return;
         }
         try {
-          await fetch('/api/users/role', {
+          const profileResponse = await fetch('/api/users/role', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1165,8 +1187,11 @@ export default function Dashboard() {
               focusArea: focus,
             }),
           });
+          if (!profileResponse.ok) throw new Error('Profile update failed');
         } catch (err) {
           console.error('Error saving onboarding profile:', err);
+          setFormError('Couldn’t save your target role. Please try again.');
+          return;
         }
       }
 
@@ -1190,14 +1215,15 @@ export default function Dashboard() {
         return;
       }
 
-      if (!role) {
-        setFormError('Select a target role to continue.');
+      const selectionError = getRoleSelectionError(role, roles, rolesStatus);
+      if (selectionError) {
+        setFormError(selectionError);
         return;
       }
 
       if (!hasCompletedDiagnostic) {
         try {
-          await fetch('/api/users/role', {
+          const profileResponse = await fetch('/api/users/role', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1207,8 +1233,11 @@ export default function Dashboard() {
               focusArea: focus,
             }),
           });
+          if (!profileResponse.ok) throw new Error('Profile update failed');
         } catch (err) {
           console.error('Error saving role:', err);
+          setFormError('Couldn’t save your target role. Please try again.');
+          return;
         }
         navigate('/likert-pre');
         return;
@@ -1225,6 +1254,8 @@ export default function Dashboard() {
       hasCompletedDiagnostic,
       activeSession,
       navigate,
+      roles,
+      rolesStatus,
     ]
   );
 
@@ -1237,8 +1268,9 @@ export default function Dashboard() {
         setFormError('Please log in first.');
         return;
       }
-      if (!selectedRole) {
-        setFormError('Select a target role to continue.');
+      const selectionError = getRoleSelectionError(selectedRole, roles, rolesStatus);
+      if (selectionError) {
+        setFormError(selectionError);
         return;
       }
 
@@ -1248,7 +1280,7 @@ export default function Dashboard() {
       setBriefingMode('drill');
       setIsBriefingModalOpen(true);
     },
-    [selectedFocus, selectedRole]
+    [selectedFocus, selectedRole, roles, rolesStatus]
   );
 
   const handleConfirmLaunch = useCallback(
@@ -1265,7 +1297,7 @@ export default function Dashboard() {
       }
 
       try {
-        await fetch('/api/users/role', {
+        const profileResponse = await fetch('/api/users/role', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1275,8 +1307,12 @@ export default function Dashboard() {
             focusArea: focus,
           }),
         });
+        if (!profileResponse.ok) throw new Error('Profile update failed');
       } catch (err) {
         console.error('Error saving role & focus area:', err);
+        setFormError('Couldn’t save your target role. Please try again.');
+        setIsBriefingModalOpen(false);
+        return;
       }
       setSelectedFocus(focus);
       setIsBriefingModalOpen(false);
@@ -1522,6 +1558,14 @@ export default function Dashboard() {
           hidden={activeTab !== 'Interview Prep'}
           className="db-prep-stack"
         >
+          {activeTab === 'Interview Prep' && (
+            <RoleCatalogueStatus id="db-role-catalogue-status" status={rolesStatus} onRetry={retryRoles} />
+          )}
+          {activeTab === 'Interview Prep' && rolesReady && selectedRole && !selectedRoleAvailable && (
+            <p id="db-role-unavailable" className="db-cta-helper" role="status">
+              Your saved target role is unavailable. Choose another target role to start a new session.
+            </p>
+          )}
           {activeTab === 'Interview Prep' &&
             (dataStatus === 'loading' ? (
               <div
@@ -1602,17 +1646,21 @@ export default function Dashboard() {
                               setSelectedRole(e.target.value);
                               if (formError) setFormError(null);
                             }}
-                            disabled={isSessionActive}
+                            disabled={isSessionActive || !rolesReady}
                             aria-describedby={
-                              formError
-                                ? 'db-role-error'
-                                : !selectedRole
-                                  ? 'db-role-helper'
-                                  : undefined
+                              !rolesReady
+                                ? 'db-role-catalogue-status'
+                                : selectedRole && !selectedRoleAvailable
+                                  ? 'db-role-unavailable'
+                                  : formError
+                                    ? 'db-role-error'
+                                    : !selectedRole
+                                      ? 'db-role-helper'
+                                      : undefined
                             }
                           >
-                            {ROLE_OPTIONS.map((o) => (
-                              <option key={o.value} value={o.value} disabled={o.value === ''}>
+                            {roleOptions.map((o) => (
+                              <option key={o.value} value={o.value} disabled={o.disabled}>
                                 {o.label}
                               </option>
                             ))}
@@ -1624,7 +1672,7 @@ export default function Dashboard() {
                         type="button"
                         className="db-cta-btn db-onboarding__cta"
                         onClick={() => handleStartSession()}
-                        disabled={!selectedRole}
+                        disabled={!canContinueWithoutRole && !selectedRoleAvailable}
                         aria-label={
                           isSessionActive
                             ? `Resume Set ${activeSession.activeSet} interview`
@@ -1774,7 +1822,7 @@ export default function Dashboard() {
                         </span>
                         <span className="db-next-practice__meta-item">
                           <Briefcase size={13} aria-hidden="true" />
-                          {formatRoleLabel(selectedRole)}
+                          {formatRoleLabel(selectedRole, roles)}
                         </span>
                         <span className="db-next-practice__meta-item">
                           <Gauge size={13} aria-hidden="true" />
@@ -1854,15 +1902,17 @@ export default function Dashboard() {
                           setSelectedRole(e.target.value);
                           if (formError) setFormError(null);
                         }}
-                        disabled={isSessionActive}
+                        disabled={isSessionActive || !rolesReady}
+                        aria-describedby={!rolesReady ? 'db-role-catalogue-status' :
+                          selectedRole && !selectedRoleAvailable ? 'db-role-unavailable' : undefined}
                         title={
                           isSessionActive
                             ? "Target Role is locked during active practice session. Click 'Start Fresh Session' below to edit."
                             : ''
                         }
                       >
-                        {ROLE_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value} disabled={o.value === ''}>
+                        {roleOptions.map((o) => (
+                          <option key={o.value} value={o.value} disabled={o.disabled}>
                             {o.label}
                           </option>
                         ))}
@@ -1943,7 +1993,7 @@ export default function Dashboard() {
                     className="db-cta-btn db-config-bar__cta"
                     onClick={() => handleStartSession()}
                     disabled={
-                      dataStatus === 'loading' || (!selectedRole && !canContinueWithoutRole)
+                      dataStatus === 'loading' || (!selectedRoleAvailable && !canContinueWithoutRole)
                     }
                   >
                     <Play size={16} />
@@ -2099,6 +2149,7 @@ export default function Dashboard() {
               practiceHistory={diagnosticData?.practiceHistory}
               onRetry={retryLoad}
               onSwitchTab={setActiveTab}
+              roles={roles}
             />
           )}
         </div>
@@ -2229,16 +2280,18 @@ export default function Dashboard() {
                     className="db-select"
                     value={editRole}
                     onChange={(e) => setEditRole(e.target.value)}
-                    disabled={isSavingProfile}
+                    disabled={isSavingProfile || !rolesReady}
+                    aria-describedby={rolesReady ? undefined : 'db-profile-role-catalogue-status'}
                   >
-                    {ROLE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value} disabled={o.value === ''}>
+                    {profileRoleOptions.map((o) => (
+                      <option key={o.value} value={o.value} disabled={o.disabled}>
                         {o.label}
                       </option>
                     ))}
                   </select>
                   <ChevronDown size={17} className="db-select-wrap__chevron" />
                 </div>
+                <RoleCatalogueStatus id="db-profile-role-catalogue-status" status={rolesStatus} onRetry={retryRoles} />
               </div>
 
               {/* Focus Area */}
@@ -2307,6 +2360,7 @@ export default function Dashboard() {
           <SetBriefingOverlay
             role={selectedRole}
             focusArea={selectedFocus}
+            difficulty={selectedDifficulty}
             diagnosticData={diagnosticData}
             sessionMode={briefingMode}
             onConfirm={handleConfirmLaunch}

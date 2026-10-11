@@ -2,23 +2,11 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion as Motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { Sparkles, Check, AlertCircle, RefreshCw, ArrowRight, Lock, X, Target, BadgeCheck, ListChecks } from 'lucide-react';
 import './AiAnalysisLoader.css';
+import { auth } from '../firebase';
+import useRoleCatalogue from '../hooks/useRoleCatalogue';
+import { formatRoleLabel, getRoleTopics } from '../utils/roleCatalogue';
 
-// ── Role & Weakness Registry (Mirrors backend/config/roleConfig.js) ─────────
-const ROLE_CONFIG_INFO = {
-  frontend: {
-    label: 'Frontend Developer',
-    scopeSnippet: 'DOM Manipulation, CSS Cascade & State',
-  },
-  backend: {
-    label: 'Backend Developer',
-    scopeSnippet: 'REST APIs, Express Middleware & DB Queries',
-  },
-  fullstack: {
-    label: 'Fullstack Developer',
-    scopeSnippet: 'Client-Server Flow, Auth & API Architecture',
-  },
-};
-
+// Role labels and topics come from the backend catalogue.
 const WEAKNESS_INFO = {
   focus_clarity: { label: 'Clarity & structured explanations', tag: 'Clarity' },
   focus_correctness: { label: 'Technical precision & accuracy', tag: 'Correctness' },
@@ -92,7 +80,7 @@ const DIAL_C = 2 * Math.PI * DIAL_R;
 
 export default function AiAnalysisLoader({
   setNumber = 1,
-  role = 'frontend',
+  role = '',
   weakness = 'focus_completeness',
   focusArea = '',
   statusMessage = '',
@@ -106,6 +94,22 @@ export default function AiAnalysisLoader({
   diagnosticData = null,
   timeoutMs = 16000,
 }) {
+  const { roles } = useRoleCatalogue();
+  const [profileRole, setProfileRole] = useState('');
+  useEffect(() => {
+    if (role || !auth.currentUser) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    fetch(`/api/users/${encodeURIComponent(auth.currentUser.uid)}`, { signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (!controller.signal.aborted) setProfileRole(data?.user?.role || ''); })
+      .catch(() => {})
+      .finally(() => clearTimeout(timeout));
+    return () => { clearTimeout(timeout); controller.abort(); };
+  }, [role]);
+  const roleId = role || profileRole;
+  const roleLabel = formatRoleLabel(roleId, roles);
+  const roleTopics = getRoleTopics(roleId, roles, setNumber).slice(0, 3).join(', ');
   const [currentStep, setCurrentStep] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [isTimedOut, setIsTimedOut] = useState(false);
@@ -123,8 +127,6 @@ export default function AiAnalysisLoader({
   }, []);
 
   // Normalize role and weakness inputs
-  const roleKey = (role || 'frontend').toLowerCase().replace(/\s+/g, '');
-  const activeRole = ROLE_CONFIG_INFO[roleKey] || ROLE_CONFIG_INFO.frontend;
 
   const weaknessKey = (weakness || 'focus_completeness').toLowerCase().includes('clarity')
     ? 'focus_clarity'
@@ -147,8 +149,8 @@ export default function AiAnalysisLoader({
           detail: 'Picking the core concepts for your graduation challenge',
         },
         {
-          title: `Choosing ${activeRole.label} topics`,
-          detail: `Focusing on ${activeRole.scopeSnippet.toLowerCase()}`,
+          title: `Choosing ${roleLabel} topics`,
+          detail: roleTopics ? `Focusing on ${roleTopics}` : 'Choosing topics for your selected role',
         },
         {
           title: 'Setting the difficulty bar',
@@ -170,15 +172,15 @@ export default function AiAnalysisLoader({
         detail: `We'll lean into ${activeWeakness.label.toLowerCase()}`,
       },
       {
-        title: `Choosing ${activeRole.label} topics`,
-        detail: `Focusing on ${activeRole.scopeSnippet.toLowerCase()}`,
+        title: `Choosing ${roleLabel} topics`,
+        detail: roleTopics ? `Focusing on ${roleTopics}` : 'Choosing topics for your selected role',
       },
       {
         title: 'Recording your question audio',
         detail: "Getting the coach's voice ready so you can start instantly",
       },
     ];
-  }, [setNumber, activeRole, activeWeakness]);
+  }, [setNumber, roleLabel, roleTopics, activeWeakness]);
 
   // Effective stage — jumps to "complete" the moment the backend signals isReady
   const activeStep = isReady ? steps.length : currentStep;
@@ -422,12 +424,12 @@ export default function AiAnalysisLoader({
               <p className="aal-subtitle">
                 {statusMessage ||
                   (setNumber === 2
-                    ? `We're choosing the right technical questions for ${activeRole.label}.${focusSuffix}`
-                    : `We're personalizing every question for ${activeRole.label}, leaning into ${activeWeakness.label}.${focusSuffix}`)}
+                    ? `We're choosing the right technical questions for ${roleLabel}.${focusSuffix}`
+                    : `We're personalizing every question for ${roleLabel}, leaning into ${activeWeakness.label}.${focusSuffix}`)}
               </p>
               <div className="aal-chips">
                 <span className="aal-chip aal-chip--indigo" title="Target role">
-                  {activeRole.label}
+                  {roleLabel}
                 </span>
                 {focusEntry && (
                   <span

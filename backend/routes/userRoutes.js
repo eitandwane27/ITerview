@@ -6,6 +6,9 @@ const PostTestSession = require('../models/PostTestSession');
 const Set1Session = require('../models/Set1Session');
 const Set2Session = require('../models/Set2Session');
 const Set3Session = require('../models/Set3Session');
+const { VALID_ROLES } = require('../config/roleConfig');
+const { DIFFICULTY_UNLOCK_THRESHOLD } = require('../config/interviewConfig');
+const { calculatePracticeScores } = require('../utils/practiceScoring');
 
 function isPercentage(value) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
@@ -193,41 +196,9 @@ router.get('/results-summary', async (req, res) => {
     const preConf = user?.confidenceScore ?? null;
     const postConf = user?.postConfidenceScore ?? null;
 
-    // Formulate individual set averages (out of 5)
-    const set1Score =
-      set1 && set1.isCompleted && set1.avg_clarity !== null
-        ? parseFloat(
-            ((set1.avg_clarity + set1.avg_correctness + set1.avg_completeness) / 3).toFixed(1)
-          )
-        : null;
-
-    const set2Score =
-      set2 && set2.isCompleted && set2.avg_problem_solving !== null
-        ? parseFloat(
-            ((set2.avg_problem_solving + set2.avg_accuracy + set2.avg_depth) / 3).toFixed(1)
-          )
-        : null;
-
-    const set3Score =
-      set3 && set3.isCompleted && set3.avg_situation !== null
-        ? parseFloat(((set3.avg_situation + set3.avg_action + set3.avg_result) / 3).toFixed(1))
-        : null;
-
-    // Calculate overall practice sets average (out of 5 and 100%)
-    const completedPracticeScores = [set1Score, set2Score, set3Score].filter((s) => s !== null);
-    const hasCompletedAllLivePracticeSets = completedPracticeScores.length === 3;
-    const livePracticeSetsAvgScore =
-      completedPracticeScores.length > 0
-        ? parseFloat(
-            (
-              completedPracticeScores.reduce((a, b) => a + b, 0) / completedPracticeScores.length
-            ).toFixed(1)
-          )
-        : null;
-    const livePracticeSetsAvgPercentage =
-      livePracticeSetsAvgScore !== null
-        ? parseFloat(((livePracticeSetsAvgScore / 5) * 100).toFixed(1))
-        : null;
+    const livePractice = calculatePracticeScores(set1, set2, set3);
+    const { set1: set1Score, set2: set2Score, set3: set3Score } = livePractice.setScores;
+    const hasCompletedAllLivePracticeSets = livePractice.completedSetCount === 3;
 
     // Set documents are mutable working state and are deleted when a fresh run
     // begins. practiceHistory is the durable record of completed runs, so keep
@@ -236,16 +207,18 @@ router.get('/results-summary', async (req, res) => {
     const useLatestCompletedAttempt = Boolean(
       !hasCompletedAllLivePracticeSets && latestCompletedAttempt
     );
-    const practiceSetsAvgPercentage = useLatestCompletedAttempt
+    const rawPracticePercentage = useLatestCompletedAttempt
       ? latestCompletedAttempt.overallScorePercentage
-      : livePracticeSetsAvgPercentage;
+      : livePractice.overallScorePercentage;
+    const practiceSetsAvgPercentage = rawPracticePercentage !== null
+      ? Number(rawPracticePercentage.toFixed(1)) : null;
     const practiceSetsAvgScore =
       practiceSetsAvgPercentage !== null
         ? parseFloat((practiceSetsAvgPercentage / 20).toFixed(1))
         : null;
     const completedPracticeSetCount = useLatestCompletedAttempt
       ? 3
-      : completedPracticeScores.length;
+      : livePractice.completedSetCount;
     const hasCompletedAllPracticeSets = completedPracticeSetCount === 3;
     const historicalSetScores = useLatestCompletedAttempt
       ? latestCompletedAttempt.setScores || {}
@@ -254,17 +227,17 @@ router.get('/results-summary', async (req, res) => {
       ? isScoreOutOfFive(historicalSetScores.set1)
         ? historicalSetScores.set1
         : null
-      : set1Score;
+      : set1Score !== null ? Number(set1Score.toFixed(1)) : null;
     const displayedSet2Score = useLatestCompletedAttempt
       ? isScoreOutOfFive(historicalSetScores.set2)
         ? historicalSetScores.set2
         : null
-      : set2Score;
+      : set2Score !== null ? Number(set2Score.toFixed(1)) : null;
     const displayedSet3Score = useLatestCompletedAttempt
       ? isScoreOutOfFive(historicalSetScores.set3)
         ? historicalSetScores.set3
         : null
-      : set3Score;
+      : set3Score !== null ? Number(set3Score.toFixed(1)) : null;
     const historicalStarBreakdown = useLatestCompletedAttempt
       ? latestCompletedAttempt.starBreakdown || {}
       : {};
@@ -314,11 +287,11 @@ router.get('/results-summary', async (req, res) => {
     if (currentDiff === 'hard') nextDifficulty = 'hard';
 
     // Difficulty advancement is based only on the combined average across Practice Sets 1–3.
-    const unlockThreshold = 70;
+    const unlockThreshold = DIFFICULTY_UNLOCK_THRESHOLD;
     const isUnlocked =
       hasCompletedAllPracticeSets &&
-      practiceSetsAvgPercentage !== null &&
-      practiceSetsAvgPercentage >= unlockThreshold;
+      rawPracticePercentage !== null &&
+      rawPracticePercentage >= unlockThreshold;
 
     if (isUnlocked && user) {
       let upgradedDiff = user.unlockedDifficulty;
@@ -799,6 +772,11 @@ router.put('/role', async (req, res) => {
       return res.status(400).json({ message: 'Firebase UID is required' });
     }
 
+    // Empty role values preserve the existing profile-only update behavior.
+    if (role !== undefined && role !== null && role !== '' && !VALID_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Select a supported target role.' });
+    }
+
     const updateFields = {};
     if (role) updateFields.role = role;
     if (difficulty) updateFields.difficulty = difficulty;
@@ -809,12 +787,15 @@ router.put('/role', async (req, res) => {
     const user = await User.findOneAndUpdate(
       { firebaseUid },
       { $set: updateFields },
-      { returnDocument: 'after', upsert: true }
+      { returnDocument: 'after', upsert: true, runValidators: true }
     );
 
     console.log(`✅ Updated profile for user ${firebaseUid}:`, updateFields);
     res.status(200).json({ message: 'Profile updated successfully!', user });
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Invalid profile preferences.' });
+    }
     console.error('❌ Error updating profile:', error);
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
@@ -904,17 +885,7 @@ router.post('/posttest', async (req, res) => {
 // Enforces a strict 20-session rolling cap using $push with $slice: -20.
 router.post('/practice-history', async (req, res) => {
   try {
-    const {
-      firebaseUid,
-      role,
-      difficulty,
-      focusArea,
-      overallScorePercentage,
-      setScores,
-      threeCBreakdown,
-      starBreakdown,
-      weaknessTag,
-    } = req.body;
+    const { firebaseUid } = req.body;
 
     if (!firebaseUid) {
       return res.status(400).json({ message: 'Firebase UID is required' });
@@ -924,6 +895,25 @@ router.post('/practice-history', async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    // History can unlock difficulties. Every score and session setting must
+    // come from backend records, never from the caller's submitted payload.
+    const [set1, set2, set3] = await Promise.all([
+      Set1Session.findOne({ firebaseUid }),
+      Set2Session.findOne({ firebaseUid }),
+      Set3Session.findOne({ firebaseUid }),
+    ]);
+    const practiceScores = calculatePracticeScores(set1, set2, set3);
+    if (practiceScores.completedSetCount !== 3) {
+      return res.status(409).json({ message: 'Complete all three practice sets before saving a practice attempt.' });
+    }
+    const role = set1.role || user.role || 'fullstack';
+    const difficulty = set1.difficulty || user.difficulty || 'easy';
+    if ([set2, set3].some(set => set.role && set.role !== role) ||
+        (set2.difficulty && set2.difficulty !== difficulty)) {
+      return res.status(409).json({ message: 'Practice sets must have matching role and difficulty settings.' });
+    }
+    const averageOutOf5 = Number(practiceScores.setScores.set1.toFixed(1));
 
     const existingHistory = user.practiceHistory || [];
     const maxAttempt = existingHistory.reduce((max, item) => {
@@ -935,14 +925,24 @@ router.post('/practice-history', async (req, res) => {
     const newAttempt = {
       attemptNumber: nextAttemptNumber,
       completedAt: new Date(),
-      role: role || user.role || 'fullstack',
-      difficulty: difficulty || user.difficulty || 'easy',
-      focusArea: focusArea || user.focusArea || 'auto',
-      overallScorePercentage: overallScorePercentage ?? null,
-      setScores: setScores || null,
-      threeCBreakdown: threeCBreakdown || null,
-      starBreakdown: starBreakdown || null,
-      weaknessTag: weaknessTag || null,
+      role,
+      difficulty,
+      focusArea: user.focusArea || 'auto',
+      overallScorePercentage: practiceScores.overallScorePercentage,
+      setScores: practiceScores.setScores,
+      threeCBreakdown: {
+        clarity: set1.avg_clarity,
+        correctness: set1.avg_correctness,
+        completeness: set1.avg_completeness,
+        averageOutOf5,
+        averageOutOf10: Number((averageOutOf5 * 2).toFixed(1)),
+      },
+      starBreakdown: {
+        situation: set3.avg_situation,
+        action: set3.avg_action,
+        result: set3.avg_result,
+      },
+      weaknessTag: set3.final_weakness_tag || 'focus_completeness',
     };
 
     const updatedUser = await User.findOneAndUpdate(

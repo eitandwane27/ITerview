@@ -21,35 +21,13 @@ import {
 } from 'lucide-react';
 import mascotLaptopSrc from '../assets/mascot-laptop.png';
 import './SetBriefingOverlay.css';
+import useRoleCatalogue from '../hooks/useRoleCatalogue';
+import { formatRoleLabel, getRoleSelectionError } from '../utils/roleCatalogue';
 
 // Env-driven backend URL
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 // ─── Format & Role Helpers ───────────────────────────────────────────────────
-
-function formatRole(role) {
-  if (!role || typeof role !== 'string') return 'Frontend Engineer';
-  const trimmed = role.trim();
-  if (!trimmed) return 'Frontend Engineer';
-  const lower = trimmed.toLowerCase();
-  if (lower === 'frontend') return 'Frontend Engineer';
-  if (lower === 'backend') return 'Backend Engineer';
-  if (lower === 'fullstack') return 'Fullstack Engineer';
-  if (/developer/i.test(trimmed)) {
-    return trimmed
-      .replace(/developer/i, 'Engineer')
-      .split(/\s+/)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(' ');
-  }
-  if (!/engineer/i.test(trimmed)) {
-    return `${trimmed.charAt(0).toUpperCase() + trimmed.slice(1)} Engineer`;
-  }
-  return trimmed
-    .split(/\s+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ');
-}
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
 
@@ -100,12 +78,14 @@ const itemVariants = {
 export default function SetBriefingOverlay({
   role = '',
   focusArea = 'auto',
+  difficulty = 'easy',
   diagnosticData = null,
   sessionMode = 'practice',
   onConfirm,
   onClose,
   onReady, // legacy alias
 }) {
+  const { roles, status: roleStatus, retry: retryRoles } = useRoleCatalogue();
   const [profile, setProfile] = useState(null);
   const [isSampleBaseline, setIsSampleBaseline] = useState(false);
   const [loading, setLoading] = useState(!role && !diagnosticData);
@@ -144,7 +124,6 @@ export default function SetBriefingOverlay({
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setProfile({
-          role: 'Frontend',
           threeCBreakdown: {
             clarity: 3.2,
             correctness: 4.2,
@@ -183,8 +162,8 @@ export default function SetBriefingOverlay({
   }, [role, diagnosticData]);
 
   // Derived effective values
-  const effectiveRole = role || profile?.role || profile?.user?.role || 'Frontend';
-  const formattedRole = formatRole(effectiveRole);
+  const effectiveRole = role || profile?.role || profile?.user?.role || '';
+  const formattedRole = formatRoleLabel(effectiveRole, roles);
   const effectiveDiagnostic = diagnosticData || profile;
 
   // Extract 3C Breakdown scores
@@ -238,12 +217,15 @@ export default function SetBriefingOverlay({
   const [isSessionReady, setIsSessionReady] = useState(false);
   const [prepProgress, setPrepProgress] = useState(0);
   const [stageText, setStageText] = useState('');
+  const [preparationError, setPreparationError] = useState('');
   const prepTimersRef = useRef([]);
   const wsRef = useRef(null);
+  const preparationAbortRef = useRef(null);
 
   // Clean up timers & socket on unmount
   useEffect(() => {
     return () => {
+      preparationAbortRef.current?.abort();
       prepTimersRef.current.forEach(clearTimeout);
       if (wsRef.current) {
         wsRef.current.onclose = null;
@@ -254,6 +236,7 @@ export default function SetBriefingOverlay({
   }, []);
 
   const handleDismiss = useCallback(() => {
+    preparationAbortRef.current?.abort();
     prepTimersRef.current.forEach(clearTimeout);
     prepTimersRef.current = [];
     if (wsRef.current) {
@@ -270,6 +253,7 @@ export default function SetBriefingOverlay({
 
   const handleCancelPreparation = useCallback(() => {
     if (isPreparing) {
+      preparationAbortRef.current?.abort();
       prepTimersRef.current.forEach(clearTimeout);
       prepTimersRef.current = [];
       if (wsRef.current) {
@@ -290,6 +274,12 @@ export default function SetBriefingOverlay({
   // Launch callback with real backend WebSocket telemetry
   const handleLaunch = useCallback(async () => {
     if (isTriggeredRef.current || isPreparing) return;
+    setPreparationError('');
+    const selectionError = getRoleSelectionError(effectiveRole, roles, roleStatus);
+    if (selectionError && auth.currentUser) {
+      setPreparationError(selectionError);
+      return;
+    }
 
     // A drill has no persistent session to prepare or reserve. Its questions
     // are generated in the interview socket after navigation and discarded
@@ -329,61 +319,55 @@ export default function SetBriefingOverlay({
     const user = auth.currentUser;
     const uid = user ? user.uid : 'anonymous_user';
 
-    // 1. Persist chosen role and chosen focus area to backend
-    if (user) {
-      try {
-        await fetch('/api/users/role', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            firebaseUid: user.uid,
-            role: effectiveRole,
-            focusArea: selectedFocus,
-          }),
-        });
-      } catch (err) {
-        console.warn('Could not save role before socket generation:', err);
-      }
-    }
-
-    // 2. Open live WebSocket connection to stream question generation
-    let isSocketHandled = false;
-
-    const runFallbackSimulation = () => {
-      if (isSocketHandled) return;
-      isSocketHandled = true;
-      setPrepProgress(28);
-      setStageText('Generating five practice questions calibrated to your baseline...');
+    const controller = new AbortController();
+    preparationAbortRef.current = controller;
+    const failPreparation = (message) => {
+      if (preparationAbortRef.current !== controller || controller.signal.aborted) return;
+      prepTimersRef.current.forEach(clearTimeout);
+      prepTimersRef.current = [];
       if (wsRef.current) {
         wsRef.current.onclose = null;
         wsRef.current.close();
         wsRef.current = null;
       }
-
-      const t1 = setTimeout(() => {
-        setPrepProgress(52);
-        setStageText(`Adapting questions for ${formattedRole} (${selectedFocus})...`);
-      }, 700);
-
-      const t2 = setTimeout(() => {
-        setPrepProgress(78);
-        setStageText('Synthesizing voice prompt audio...');
-      }, 1500);
-
-      const t3 = setTimeout(() => {
-        setPrepProgress(100);
-        setStageText('Practice studio ready.');
-        setIsPreparing(false);
-        setIsSessionReady(true);
-      }, 2300);
-
-      prepTimersRef.current = [t1, t2, t3];
+      setIsPreparing(false);
+      setIsSessionReady(false);
+      setPreparationError(message);
     };
+
+    // 1. Persist the exact role, difficulty, and focus before generating.
+    if (user) {
+      try {
+        const response = await fetch('/api/users/role', {
+          signal: controller.signal,
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firebaseUid: user.uid,
+            role: effectiveRole,
+            difficulty,
+            focusArea: selectedFocus,
+          }),
+        });
+        if (!response.ok) throw new Error('Could not save your interview settings.');
+      } catch {
+        failPreparation('Could not save your interview settings. Please try again.');
+        return;
+      }
+    } else {
+      setIsPreparing(false);
+      if (typeof onConfirm === 'function') onConfirm(selectedFocus);
+      else if (typeof onReady === 'function') onReady(selectedFocus);
+      return;
+    }
+
+    // 2. Open live WebSocket connection to stream question generation
+    if (controller.signal.aborted) return;
 
     try {
       const focusParam = selectedFocus ? `&focusArea=${encodeURIComponent(selectedFocus)}` : '';
       const ws = new WebSocket(
-        `${BACKEND_URL.replace(/^http/, 'ws')}/ws/set1?voice=aura-2-luna-en&uid=${uid}${focusParam}`
+        `${BACKEND_URL.replace(/^http/, 'ws')}/ws/set1?voice=aura-2-luna-en&uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(sessionMode)}${focusParam}`
       );
       wsRef.current = ws;
 
@@ -393,6 +377,7 @@ export default function SetBriefingOverlay({
       };
 
       ws.onmessage = (event) => {
+        if (controller.signal.aborted) return;
         let msg;
         try {
           msg = JSON.parse(event.data);
@@ -421,7 +406,8 @@ export default function SetBriefingOverlay({
 
           case 'generation_complete':
           case 'tts_audio':
-            isSocketHandled = true;
+            prepTimersRef.current.forEach(clearTimeout);
+            prepTimersRef.current = [];
             setPrepProgress(100);
             setStageText('Studio ready.');
             setIsPreparing(false);
@@ -429,8 +415,7 @@ export default function SetBriefingOverlay({
             break;
 
           case 'error':
-            console.warn('[SetBriefingOverlay] WS error event:', msg.message);
-            runFallbackSimulation();
+            failPreparation(msg.message || 'Could not prepare the interview. Please try again.');
             break;
 
           default:
@@ -438,27 +423,24 @@ export default function SetBriefingOverlay({
         }
       };
 
-      ws.onerror = () => {
-        console.warn('[SetBriefingOverlay] WS error, using safe fallback simulation.');
-        runFallbackSimulation();
-      };
-
-      // Guard timer
+      ws.onerror = () => failPreparation('Could not connect to the interview service. Please try again.');
+      ws.onclose = () => failPreparation('The interview connection closed before the session was ready. Please try again.');
       const guardTimer = setTimeout(() => {
-        if (!isTriggeredRef.current) {
-          runFallbackSimulation();
-        }
-      }, 10000);
+        failPreparation('Preparing the interview took too long. Please try again.');
+      }, 300000);
       prepTimersRef.current.push(guardTimer);
-    } catch (err) {
-      console.warn('[SetBriefingOverlay] WS exception:', err);
-      runFallbackSimulation();
+    } catch {
+      failPreparation('Could not connect to the interview service. Please try again.');
     }
   }, [
     isPreparing,
     isSessionReady,
     formattedRole,
     effectiveRole,
+    roles,
+    roleStatus,
+    difficulty,
+    sessionMode,
     selectedFocus,
     isDrill,
     onConfirm,
@@ -500,7 +482,7 @@ export default function SetBriefingOverlay({
         description:
           'Structured reasoning, clear signposting, and logical flow from premise to conclusion.',
         coachTip:
-          "I'll focus on how logically your answers unfold. Structure your thoughts clearly before diving into code!",
+          "I'll focus on how logically your answers unfold. Structure your thoughts clearly before diving into details!",
       },
       {
         key: 'correctness',
@@ -508,7 +490,7 @@ export default function SetBriefingOverlay({
         shortLabel: 'Correctness',
         score: correctnessScore,
         description:
-          'Precise engineering terminology, sound architectural concepts, and correct trade-offs.',
+          'Accurate role-specific facts, terminology, and reasoning.',
         coachTip:
           "I'll listen closely for precise concepts, accurate API usage, and technically sound reasoning!",
       },
@@ -518,7 +500,7 @@ export default function SetBriefingOverlay({
         shortLabel: 'Completeness',
         score: completenessScore,
         description:
-          'Edge cases, performance trade-offs, scalability, and holistic implementation details.',
+          'Supporting details and examples that fully address the question.',
         coachTip:
           "I'll challenge you on edge cases, scaling limits, and realistic production trade-offs!",
       },
@@ -799,6 +781,10 @@ export default function SetBriefingOverlay({
             )}
           </div>
 
+          {preparationError && <p role="alert">{preparationError}</p>}
+          {roleStatus === 'error' && (
+            <button type="button" className="sb-btn-secondary" onClick={retryRoles}>Retry loading roles</button>
+          )}
           <div className="sb-footer-actions">
             {onClose && (
               <button
@@ -816,7 +802,7 @@ export default function SetBriefingOverlay({
               className="sb-btn-primary"
               onClick={handleLaunch}
               id="btn-confirm-launch-practice"
-              disabled={loading || isPreparing}
+              disabled={loading || isPreparing || (!!auth.currentUser && roleStatus !== 'ready')}
             >
               <span>
                 {loading

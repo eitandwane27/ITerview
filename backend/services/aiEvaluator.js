@@ -1,24 +1,15 @@
-// backend/services/aiEvaluator.js
-// ─────────────────────────────────────────────────────────────────────────────
-// Phase 3 – Step 1 (Upgraded): 3C Structured JSON Scoring
-//
-// evaluate3CScores(question, transcript)
-//   → returns { clarity_score, correctness_score, completeness_score, primary_weakness }
-//
-// Uses temperature: 0.0 and response_format: { type: "json_object" } for deterministic output.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const { OpenAI } = require("openai");
-const { getEvaluatorRubric } = require("../config/evaluatorRubrics");
-const { safeParseJSON } = require("../utils/jsonParser");
+// this is only for the pretest and posttest, not for the interview session
+const { OpenAI } = require('openai');
+const { getEvaluatorRubric } = require('../config/evaluatorRubrics');
+const { safeParseJSON } = require('../utils/jsonParser');
 
 const deepseek = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
-  baseURL: "https://api.deepseek.com",
+  baseURL: 'https://api.deepseek.com',
 });
 
 // Valid weakness tags — kept as a constant so validation is centralised
-const VALID_TAGS = ["focus_clarity", "focus_correctness", "focus_completeness"];
+const VALID_TAGS = ['focus_clarity', 'focus_correctness', 'focus_completeness'];
 
 const BASE_SCORING_SYSTEM_PROMPT = `You are an objective IT interview scoring engine.
 Your sole task is to evaluate a student's spoken answer against the SPECIFIC interview question.
@@ -80,14 +71,14 @@ Return exactly this shape:
  * @param {string} difficulty - Session difficulty level ("easy" | "medium" | "hard").
  * @returns {Promise<{ clarity_score: number, correctness_score: number, completeness_score: number, primary_weakness: string }>}
  */
-async function evaluate3CScores(question, transcript, difficulty = "easy") {
+async function evaluate3CScores(question, transcript, difficulty = 'easy') {
   // Guard: empty transcript → lowest scores, flag completeness
   if (!transcript || transcript.trim().length === 0) {
     return {
       clarity_score: 1,
       correctness_score: 1,
       completeness_score: 1,
-      primary_weakness: "focus_completeness",
+      primary_weakness: 'focus_completeness',
     };
   }
 
@@ -96,11 +87,11 @@ async function evaluate3CScores(question, transcript, difficulty = "easy") {
 
   try {
     const response = await deepseek.chat.completions.create({
-      model: process.env.DEEPSEEK_MODEL || "deepseek-v4-flash",
+      model: process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: 'system', content: systemPrompt },
         {
-          role: "user",
+          role: 'user',
           content: `Score ONLY how well the Student's Answer responds to the specific Interview Question below.
 An answer that talks about a different topic entirely must receive low correctness and completeness scores.
 
@@ -111,32 +102,30 @@ Student's Answer: "${transcript}"`,
       ],
       temperature: 0.0, // deterministic scoring
       max_tokens: 2000,
-      thinking: { type: "disabled" }, // Disables native reasoning CoT for sub-second/1s latency
-      response_format: { type: "json_object" }, // forces valid JSON output
+      thinking: { type: 'disabled' }, // Disables native reasoning CoT for sub-second/1s latency
+      response_format: { type: 'json_object' }, // forces valid JSON output
     });
 
-    const raw = response.choices?.[0]?.message?.content || "";
-    const parsed = safeParseJSON(raw) || {};
+    const raw = response.choices?.[0]?.message?.content || '';
+    const parsed = safeParseJSON(raw);
+    const scoreKeys = ['clarity_score', 'correctness_score', 'completeness_score'];
+    if (!parsed || !scoreKeys.every(key => Number.isInteger(parsed[key]) && parsed[key] >= 1 && parsed[key] <= 5)) {
+      throw new Error('Evaluation service returned invalid scores. Please retry.');
+    }
 
-    // Clamp scores to 1–5 and validate the weakness tag
-    const clamp = (n) => Math.min(5, Math.max(1, parseInt(n) || 3));
+    // Validate the weakness tag independently of the score dimensions.
 
     return {
-      clarity_score: clamp(parsed.clarity_score),
-      correctness_score: clamp(parsed.correctness_score),
-      completeness_score: clamp(parsed.completeness_score),
+      clarity_score: parsed.clarity_score,
+      correctness_score: parsed.correctness_score,
+      completeness_score: parsed.completeness_score,
       primary_weakness: VALID_TAGS.includes(parsed.primary_weakness)
         ? parsed.primary_weakness
-        : "focus_completeness",
+        : 'focus_completeness',
     };
   } catch (err) {
-    console.error("[aiEvaluator] Error evaluating 3C scores:", err.message);
-    return {
-      clarity_score: 3,
-      correctness_score: 3,
-      completeness_score: 3,
-      primary_weakness: "focus_completeness",
-    };
+    console.error('[aiEvaluator] Error evaluating 3C scores:', err.message);
+    throw err;
   }
 }
 

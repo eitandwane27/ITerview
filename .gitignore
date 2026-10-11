@@ -33,10 +33,14 @@ credentials.json
 *service_account*.json
 *serviceAccount*.json
 *firebase-adminsdk*.json
+.aws/
+.ssh/
+.terraform/
+*.tfstate
+*.tfstate.*
 
 # Local exports, database dumps, and generated previews
 /output/
-/docs/design-concepts/*.png
 *.ejson
 *.dump
 *.sqlite
@@ -50,9 +54,15 @@ playwright-report/
 .ai-skills/
 guide/
 scripts/
+!/backend/scripts/
+/backend/scripts/*
+!/backend/scripts/calibrate_scoring.js
 .agents/
 DESIGN.md
 PRODUCT.md
+
+# Internal documentation, research, validation, and conversation handoffs
+/docs/
 
 # Editor directories and files
 .vscode/*

@@ -28,6 +28,7 @@ const {
 } = require("../services/aiSet2Generator");
 const Set2Session = require("../models/Set2Session");
 const User = require("../models/User");
+const { resolveUserDifficulty, requireRegisteredRole, sessionMetadata } = require('../services/interviewSettings');
 
 const MAX_QUESTIONS = 5;
 
@@ -42,7 +43,7 @@ function handleSet2Socket(ws, request) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
   const firebaseUid = url.searchParams.get("uid");
-  const sessionMode =
+  let sessionMode =
     url.searchParams.get("mode") === "practice" ? "practice" : "diagnostic";
 
   if (!firebaseUid) {
@@ -145,17 +146,8 @@ function handleSet2Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        const difficultyRank = { easy: 1, medium: 2, hard: 3 };
-        const userDiff = user.difficulty || "easy";
-        const userUnlocked = user.unlockedDifficulty || "easy";
-        sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
+        sessionDifficulty = resolveUserDifficulty(user);
       }
-
-      send({
-        type: "session_meta",
-        role: sessionRole,
-        difficulty: sessionDifficulty,
-      });
 
       // Check if user requested a reset via URL
       const isResetRequested = url.searchParams.get("reset") === "true";
@@ -168,6 +160,9 @@ function handleSet2Socket(ws, request) {
         !existingDoc.isCompleted;
 
       if (isResuming) {
+        sessionRole = existingDoc.role || sessionRole;
+        sessionDifficulty = existingDoc.difficulty || sessionDifficulty;
+        sessionMode = existingDoc.mode || sessionMode;
         sessionDoc = await Set2Session.findOneAndUpdate(
           {
             _id: existingDoc._id,
@@ -184,9 +179,12 @@ function handleSet2Socket(ws, request) {
           return;
         }
 
+        send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS }));
+
         if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
           questions = existingDoc.questions;
         } else {
+          requireRegisteredRole(sessionRole);
           questions = existingDoc.answers.map((a) => a.question);
           while (questions.length < MAX_QUESTIONS) {
             const q = await generateSet2Question(
@@ -240,6 +238,7 @@ function handleSet2Socket(ws, request) {
       }
 
       // Initialize fresh Set2Session in DB if not resuming
+      requireRegisteredRole(sessionRole);
       sessionDoc = await Set2Session.findOneAndUpdate(
         { firebaseUid },
         {
@@ -262,6 +261,8 @@ function handleSet2Socket(ws, request) {
       console.log(
         `[DB] ✅ Set 2 session initialized: ${sessionId} for user: ${firebaseUid}`,
       );
+
+      send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS }));
 
       // 3. Generate ALL 5 questions sequentially
       send({
@@ -351,7 +352,7 @@ function handleSet2Socket(ws, request) {
       });
     } catch (err) {
       console.error("[WS] Set 2 startup error:", err);
-      send({ type: "error", message: "Failed to initialize Set 2." });
+      send({ type: "error", message: err.code === 'INVALID_ROLE' ? err.message : "Failed to initialize Set 2." });
     }
   })();
 
@@ -423,6 +424,7 @@ function handleSet2Socket(ws, request) {
           message: "AI Coach is evaluating your answer...",
         });
 
+        let evaluationSucceeded = false;
         try {
           // 1. Evaluate the answer
           console.time("[Perf] AI Technical Evaluation");
@@ -432,6 +434,7 @@ function handleSet2Socket(ws, request) {
             confirmedText,
             sessionDifficulty,
           );
+          evaluationSucceeded = true;
           const evalDuration = Date.now() - evalStart;
           metrics.evaluationLatencies.push(evalDuration);
           console.timeEnd("[Perf] AI Technical Evaluation");
@@ -707,8 +710,15 @@ function handleSet2Socket(ws, request) {
             });
           }
         } catch (err) {
+          if (!evaluationSucceeded) console.timeEnd("[Perf] AI Technical Evaluation");
           console.error("[WS] Set 2 evaluation error:", err);
-          send({ type: "error", message: "Failed to evaluate answer." });
+          send({
+            type: "error",
+            code: evaluationSucceeded ? undefined : "EVALUATION_FAILED",
+            message: evaluationSucceeded
+              ? "Could not finish processing your answer. Please reconnect to resume your session."
+              : "Could not score your answer. Retry evaluation to submit the same answer again.",
+          });
         }
         console.log(`-------------------------------------\n`);
         break;

@@ -9,6 +9,7 @@
 // Answers are scored using STAR dimensions: situation, action, result.
 
 const mongoose = require("mongoose");
+const { VALID_ROLES } = require("../config/roleConfig");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-schema: one AI-generated behavioral question + the user's scored answer
@@ -68,7 +69,7 @@ const set3SessionSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ["frontend", "backend", "fullstack"],
+    enum: VALID_ROLES,
     default: "fullstack",
   },
 

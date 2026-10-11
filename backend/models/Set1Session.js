@@ -4,6 +4,7 @@
 // generated dynamically by the AI based on the user's final_weakness_tag.
 
 const mongoose = require("mongoose");
+const { VALID_ROLES } = require("../config/roleConfig");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-schema: one AI-generated question + the user's scored answer
@@ -66,7 +67,7 @@ const set1SessionSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ["frontend", "backend", "fullstack"],
+    enum: VALID_ROLES,
     default: "fullstack",
   },
 

@@ -1,0 +1,46 @@
+// Original reviewed Set 2 recovery banks. Prefixes match cyber-security.js.
+const easy = [
+  ['Security principles', 'What does availability mean for a student service?'],
+  ['Security principles', 'Why should private student records have confidentiality protection?'],
+  ['Identity basics', 'How does authentication differ from authorization during access to a private record?'],
+  ['Identity basics', 'Name two checks for whether a student account uses independent authentication factors?'],
+  ['Phishing awareness', 'A suspicious message requests a password in an attachment; what protective action should the recipient take?'],
+  ['Phishing awareness', 'Why should a suspicious message be reported through a trusted school channel?'],
+  ['Network basics', 'A firewall permits only connections from the school network; what happens to a connection from outside that network?'],
+  ['Network basics', 'What does HTTPS protect during a web connection?'],
+  ['Data protection', 'How does a backup differ from encryption for protecting a private file?'],
+  ['Data protection', 'A file is lost and an approved backup contains it; what resource should the student use to restore it?'],
+  ['Device hygiene', 'Name two checks for whether a device screen locks when left unattended?'],
+  ['Device hygiene', 'A security update is approved for a student device; what action applies that update?'],
+];
+const medium = [
+  ['Access controls', 'How does limiting permissions to required tasks reduce the impact of account misuse?'],
+  ['Access controls', 'Why would you prefer independent authentication factors over adding a second password?'],
+  ['Web protection', 'A private record belongs to another student and sharing is prohibited; what happens when server authorization enforces ownership?'],
+  ['Web protection', 'Name two checks for whether web authorization prevents reading a private record belonging to another student?'],
+  ['Alert triage', 'How does a false positive alert differ from a genuine malicious sign-in?'],
+  ['Alert triage', 'A sign-in alert coincides with an approved exercise; what contextual log evidence should you check first?'],
+  ['Vulnerability management', 'Why does an exposed vulnerability need attention before exploitation is observed?'],
+  ['Vulnerability management', 'A device update addresses a known vulnerability; what observation should verify that the corrected version is installed?'],
+  ['Cryptographic purposes', 'How does hashing differ from encryption when checking whether a file changed?'],
+  ['Cryptographic purposes', 'Name two checks for whether a reference digest is suitable for a file integrity comparison?'],
+  ['Incident handling', 'An approved incident playbook requires reporting before cleanup; what evidence detail should be included in that report?'],
+  ['Incident handling', 'Why would you prefer preserving incident evidence before removing suspicious files?'],
+];
+const hard = [
+  ['Authorization lifecycle', 'How does current authorization checking prevent an old session permission from granting access after revocation?'],
+  ['Authorization lifecycle', 'A revoked permission stays cached for thirty minutes without server rechecking; what happens to requests using it during that interval?'],
+  ['Alert correlation', 'Why does correlation need aligned log timestamps before drawing conclusions about event order across devices?'],
+  ['Alert correlation', 'Two sign-in log sources differ by a known clock offset; what timing condition should you check first before claiming simultaneous activity?'],
+  ['Risk prioritization', 'How does asset exposure differ from a vulnerability severity rating when assessing practical risk?'],
+  ['Risk prioritization', 'Why would you prefer mitigating an actively exploited exposed service over an isolated service with equal impact and no observed exploitation?'],
+  ['Containment trade-offs', 'Incident evidence exists only in memory and authorized network isolation is available; what containment action limits network spread while preserving memory?'],
+  ['Containment trade-offs', 'How does isolating a compromised device differ from powering it off when volatile evidence is needed?'],
+  ['Trust boundaries', 'Name two checks for whether segmentation blocks a prohibited connection between student and private-record networks?'],
+  ['Trust boundaries', 'A connection uses encryption but lacks record access control; what happens to confidentiality when a user requests a private record belonging to another student?'],
+  ['Recovery assurance', 'Restored files match a digest an attacker could also replace; what trusted comparison source should you check first before accepting integrity?'],
+  ['Recovery assurance', 'Name two recovery checks for whether a restored service enforces the intended student access rules?'],
+  ['Recovery assurance', 'Why would you prefer a separately protected backup over a writable backup reachable with the compromised account?'],
+  ['Recovery assurance', 'How does verifying restored access controls reduce recovery risk beyond merely confirming that the service starts?'],
+];
+module.exports = { easy, medium, hard };

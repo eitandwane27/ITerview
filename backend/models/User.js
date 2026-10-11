@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { VALID_ROLES } = require("../config/roleConfig");
 
 const userSchema = new mongoose.Schema({
   // We use the ID provided by Firebase as our main link
@@ -19,7 +20,7 @@ const userSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ["frontend", "backend", "fullstack"],
+    enum: VALID_ROLES,
     default: null,
   },
 

@@ -22,6 +22,8 @@
 //   Q5 → Problem Solving & Initiative
 // ─────────────────────────────────────────────────────────────────────────────
 
+const { calculatePracticeScores } = require("../utils/practiceScoring");
+
 const { createDeepgramLiveSession } = require("../services/sttService");
 const { synthesizeSpeech } = require("../services/ttsService");
 const {
@@ -33,6 +35,7 @@ const Set3Session = require("../models/Set3Session");
 const Set1Session = require("../models/Set1Session");
 const Set2Session = require("../models/Set2Session");
 const User = require("../models/User");
+const { resolveUserDifficulty, requireRegisteredRole, sessionMetadata, resolveSetDifficulty } = require('../services/interviewSettings');
 
 const MAX_QUESTIONS = 5;
 
@@ -47,7 +50,7 @@ function handleSet3Socket(ws, request) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
   const firebaseUid = url.searchParams.get("uid");
-  const sessionMode =
+  let sessionMode =
     url.searchParams.get("mode") === "practice" ? "practice" : "diagnostic";
 
   if (!firebaseUid) {
@@ -203,17 +206,9 @@ function handleSet3Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || "fullstack";
-        const difficultyRank = { easy: 1, medium: 2, hard: 3 };
-        const userDiff = user.difficulty || "easy";
-        const userUnlocked = user.unlockedDifficulty || "easy";
-        sessionDifficulty = difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
+        sessionDifficulty = resolveUserDifficulty(user);
       }
-
-      send({
-        type: "session_meta",
-        role: sessionRole,
-        difficulty: sessionDifficulty,
-      });
+      sessionDifficulty = resolveSetDifficulty('set3', sessionDifficulty);
 
       // Check if user requested a reset via URL
       const isResetRequested = url.searchParams.get("reset") === "true";
@@ -226,13 +221,17 @@ function handleSet3Socket(ws, request) {
         !existingDoc.isCompleted;
 
       if (isResuming) {
+        sessionRole = existingDoc.role || sessionRole;
+        // Legacy medium/hard Set 3 banks were also generated at easy level.
+        sessionDifficulty = resolveSetDifficulty('set3', existingDoc.difficulty || sessionDifficulty);
+        sessionMode = existingDoc.mode || sessionMode;
         sessionDoc = await Set3Session.findOneAndUpdate(
           {
             _id: existingDoc._id,
             sessionId: existingDoc.sessionId,
             isCompleted: false,
           },
-          { $set: { sessionId } },
+          { $set: { sessionId, difficulty: sessionDifficulty } },
           { returnDocument: "after" },
         );
         if (!sessionDoc) {
@@ -242,9 +241,12 @@ function handleSet3Socket(ws, request) {
           return;
         }
 
+        send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS }));
+
         if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
           questions = existingDoc.questions;
         } else {
+          requireRegisteredRole(sessionRole);
           questions = existingDoc.answers.map((a) => a.question);
           while (questions.length < MAX_QUESTIONS) {
             const q = await generateSet3Question(questions, sessionDifficulty);
@@ -275,11 +277,13 @@ function handleSet3Socket(ws, request) {
         });
 
         currentQuestionText = questions[currentQuestionIndex];
+        currentCompetency = getCompetencyTopic(currentQuestionIndex);
 
         send({
           type: "question_text",
           text: currentQuestionText,
           index: currentQuestionIndex + 1,
+          competency: currentCompetency,
         });
 
         const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
@@ -294,6 +298,7 @@ function handleSet3Socket(ws, request) {
       }
 
       // Initialize fresh Set3Session in DB if not resuming
+      requireRegisteredRole(sessionRole);
       sessionDoc = await Set3Session.findOneAndUpdate(
         { firebaseUid },
         {
@@ -316,6 +321,8 @@ function handleSet3Socket(ws, request) {
       console.log(
         `[DB] ✅ Set 3 session initialized: ${sessionId} for user: ${firebaseUid}`,
       );
+
+      send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS }));
 
       // 3. Generate all 5 questions upfront, launching Q1 TTS concurrently
       send({
@@ -388,7 +395,7 @@ function handleSet3Socket(ws, request) {
       });
     } catch (err) {
       console.error("[WS] Set 3 startup error:", err);
-      send({ type: "error", message: "Failed to initialize Set 3." });
+      send({ type: "error", message: err.code === 'INVALID_ROLE' ? err.message : "Failed to initialize Set 3." });
     }
   })();
 
@@ -480,6 +487,7 @@ function handleSet3Socket(ws, request) {
             currentQuestionText,
             confirmedText,
             sessionDifficulty,
+            currentCompetency,
           );
           const evalDuration = Date.now() - evalStart;
           metrics.evaluationLatencies.push(evalDuration);
@@ -633,21 +641,13 @@ function handleSet3Socket(ws, request) {
               ]);
 
               if (userDoc) {
-                const set1Score = set1Doc && set1Doc.isCompleted && set1Doc.avg_clarity !== null
-                  ? parseFloat(((set1Doc.avg_clarity + set1Doc.avg_correctness + set1Doc.avg_completeness) / 3).toFixed(1))
-                  : null;
-                const set2Score = set2Doc && set2Doc.isCompleted && set2Doc.avg_problem_solving !== null
-                  ? parseFloat(((set2Doc.avg_problem_solving + set2Doc.avg_accuracy + set2Doc.avg_depth) / 3).toFixed(1))
-                  : null;
-                const set3Score = sessionDoc.avg_situation !== null
-                  ? parseFloat(((sessionDoc.avg_situation + sessionDoc.avg_action + sessionDoc.avg_result) / 3).toFixed(1))
-                  : null;
-
-                const completedScores = [set1Score, set2Score, set3Score].filter((s) => s !== null);
-                const avgScoreOutOf5 = completedScores.length > 0
-                  ? parseFloat((completedScores.reduce((a, b) => a + b, 0) / completedScores.length).toFixed(1))
-                  : (set3Score ?? 0);
-                const overallScorePercentage = parseFloat((avgScoreOutOf5 * 20).toFixed(1));
+                const practiceScores = calculatePracticeScores(set1Doc, set2Doc, sessionDoc);
+                // Only complete three-set runs belong in completed practice history.
+                if (practiceScores.completedSetCount !== 3) {
+                  throw new Error("Cannot archive an incomplete three-set practice attempt.");
+                }
+                const { set1: set1Score, set2: set2Score, set3: set3Score } = practiceScores.setScores;
+                const overallScorePercentage = practiceScores.overallScorePercentage;
 
                 const existingHist = userDoc.practiceHistory || [];
                 const maxAttempt = existingHist.reduce((max, item) => {

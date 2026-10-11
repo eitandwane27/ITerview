@@ -17,6 +17,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../firebase';
+import useRoleCatalogue from '../hooks/useRoleCatalogue';
+import { formatRoleLabel } from '../utils/roleCatalogue';
 import { AnimatePresence } from 'framer-motion';
 import Set2TransitionOverlay from '../components/Set2TransitionOverlay';
 import Set3TransitionOverlay from '../components/Set3TransitionOverlay';
@@ -271,13 +273,22 @@ function MainSetsSession() {
   const [showBriefing, setShowBriefing] = useState(setNumber !== 1 && !isResume && !isAutostart);
   const [_status, setStatus] = useState('Waiting to start...');
   const [error, setError] = useState('');
+  const [canRetryEvaluation, setCanRetryEvaluation] = useState(false);
+  const submittedAnswerRef = useRef('');
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [isSessionComplete, setIsSessionComplete] = useState(false);
   const [showNextTransition, setShowNextTransition] = useState(false);
-  const [userRole, setUserRole] = useState('Frontend');
+  const { roles } = useRoleCatalogue();
+  const [userRole, setUserRole] = useState('');
+  const [sessionRoleLabel, setSessionRoleLabel] = useState('');
+  const [savedSessionMode, setSavedSessionMode] = useState(null);
+  const [savedSessionFocus, setSavedSessionFocus] = useState('');
+  const effectiveMode = savedSessionMode || mode;
+  const effectiveFocus = savedSessionFocus || focusArea;
+  const userRoleLabel = sessionRoleLabel || formatRoleLabel(userRole, roles);
   const [sessionDifficulty, setSessionDifficulty] = useState(() =>
     preview ? normalizeDifficulty(query.get('difficulty')) || 'easy' : null
   );
@@ -540,11 +551,11 @@ function MainSetsSession() {
         .then((res) => res.json())
         .then((data) => {
           if (data.user?.role) {
-            const r = data.user.role;
-            setUserRole(r.charAt(0).toUpperCase() + r.slice(1));
+            // Session metadata is authoritative when a saved set is resumed.
+            setUserRole(current => current || data.user.role);
           }
           if (data.user) {
-            setSessionDifficulty(getEffectiveUserDifficulty(data.user));
+            setSessionDifficulty(current => current || getEffectiveUserDifficulty(data.user));
           }
           const u = auth.currentUser;
           const rawName =
@@ -631,7 +642,12 @@ function MainSetsSession() {
 
       switch (msg.type) {
         case 'session_meta':
-          if (msg.role) setUserRole(msg.role.charAt(0).toUpperCase() + msg.role.slice(1));
+          if (msg.role) setUserRole(msg.role);
+          if (msg.roleLabel) setSessionRoleLabel(msg.roleLabel);
+          if (['practice', 'diagnostic', 'drill'].includes(msg.mode)) setSavedSessionMode(msg.mode);
+          if (['focus_clarity', 'focus_correctness', 'focus_completeness'].includes(msg.weakness)) {
+            setSavedSessionFocus(msg.weakness.replace('focus_', ''));
+          }
           if (normalizeDifficulty(msg.difficulty)) {
             setSessionDifficulty(normalizeDifficulty(msg.difficulty));
           }
@@ -640,7 +656,7 @@ function MainSetsSession() {
           }
           break;
         case 'generation_progress':
-          if (msg.role) setUserRole(msg.role.charAt(0).toUpperCase() + msg.role.slice(1));
+          if (msg.role) setUserRole(msg.role);
           if (msg.message) setStatus(msg.message);
           break;
         case 'status':
@@ -651,6 +667,8 @@ function MainSetsSession() {
           enqueueBase64Audio(msg.data);
           break;
         case 'question_text':
+          setCanRetryEvaluation(false);
+          setError('');
           addQuestion(msg.index, msg.text);
           setCurrentQuestionText(msg.text);
           setCurrentQuestion(msg.index);
@@ -691,6 +709,7 @@ function MainSetsSession() {
           break;
         case 'error':
           setError(msg.message);
+          setCanRetryEvaluation(msg.code === 'EVALUATION_FAILED');
           setIsEvaluating(false);
           break;
         case 'session_complete':
@@ -733,8 +752,8 @@ function MainSetsSession() {
   const goToNextSet = () => {
     setShowNextTransition(false);
     const nextSet = setNumber + 1;
-    const modeParam = mode === 'practice' ? '&mode=practice' : '';
-    const focusParam = focusArea ? `&focusArea=${focusArea}` : '';
+    const modeParam = effectiveMode === 'practice' ? '&mode=practice' : '';
+    const focusParam = effectiveFocus ? `&focusArea=${encodeURIComponent(effectiveFocus)}` : '';
     navigate(`/interview?set=${nextSet}${modeParam}${focusParam}&autostart=true`, {
       state: { voice },
     });
@@ -896,6 +915,7 @@ function MainSetsSession() {
 
     if (!isConnected) return;
     setError('');
+    setCanRetryEvaluation(false);
 
     if (isRecording) {
       cleanupAudio();
@@ -906,6 +926,7 @@ function MainSetsSession() {
         finalTranscriptRef.current +
         (partialTranscript ? (finalTranscriptRef.current ? ' ' : '') + partialTranscript : '')
       ).trim();
+      submittedAnswerRef.current = combinedText;
       wsRef.current?.send(
         JSON.stringify({
           type: 'submit_answer',
@@ -1031,13 +1052,22 @@ function MainSetsSession() {
   const finishSession = () => {
     if (isDrill) {
       navigate('/dashboard');
-    } else if (mode === 'practice' && setNumber === 3) {
+    } else if (effectiveMode === 'practice' && setNumber === 3) {
       navigate('/results?mode=practice');
     } else if (setNumber === 3) {
       navigate('/post-test', { state: { voice } });
     } else {
       navigate('/dashboard');
     }
+  };
+
+  const retryEvaluation = () => {
+    if (!isConnected || isEvaluating || wsRef.current?.readyState !== WebSocket.OPEN) return;
+    setError('');
+    setCanRetryEvaluation(false);
+    setIsEvaluating(true);
+    setStatus('Retrying evaluation...');
+    wsRef.current.send(JSON.stringify({ type: 'submit_answer', final_text: submittedAnswerRef.current }));
   };
 
   const activeQuestionIndex = currentQuestion > 0 ? currentQuestion : 1;
@@ -1123,7 +1153,7 @@ function MainSetsSession() {
       {/* ── Overlay gates (Briefing / Transition) ── */}
       <AnimatePresence>
         {showBriefing && setNumber === 2 && (
-          <Set2TransitionOverlay key="start-2" onReady={startSession} role={userRole} />
+          <Set2TransitionOverlay key="start-2" onReady={startSession} role={userRole} roleLabel={userRoleLabel} />
         )}
         {showBriefing && setNumber === 3 && (
           <Set3TransitionOverlay key="start-3" onReady={startSession} />
@@ -1132,7 +1162,7 @@ function MainSetsSession() {
 
       <AnimatePresence>
         {!showBriefing && showNextTransition && setNumber === 1 && (
-          <Set2TransitionOverlay key="next-2" onReady={goToNextSet} role={userRole} />
+          <Set2TransitionOverlay key="next-2" onReady={goToNextSet} role={userRole} roleLabel={userRoleLabel} />
         )}
         {!showBriefing && showNextTransition && setNumber === 2 && (
           <Set3TransitionOverlay key="next-3" onReady={goToNextSet} />
@@ -1175,7 +1205,7 @@ function MainSetsSession() {
 
               <span className="ix-badge-set">
                 {isDrill
-                  ? `${focusArea ? focusArea.charAt(0).toUpperCase() + focusArea.slice(1) : '3C'} Drill`
+                  ? `${effectiveFocus ? effectiveFocus.charAt(0).toUpperCase() + effectiveFocus.slice(1) : '3C'} Drill`
                   : meta.label || 'Set 1: Personalized'}
               </span>
 
@@ -1262,7 +1292,7 @@ function MainSetsSession() {
                     <span />
                   </div>
                   <h3 className="ix-stage-heading">{stageCopy.title}</h3>
-                  <p className="ix-stage-subtext">{stageCopy.detail}</p>
+                  <p className="ix-stage-subtext" role={error ? 'alert' : undefined}>{error || stageCopy.detail}</p>
                 </div>
               </section>
 
@@ -1288,14 +1318,14 @@ function MainSetsSession() {
                       <span className="ix-q-sublabel">CURRENT QUESTION</span>
                     </div>
                     <span className="ix-focus-tag">
-                      {focusArea || (meta.category ? meta.category.toLowerCase() : 'clarity')}
+                      {effectiveFocus || (meta.category ? meta.category.toLowerCase() : 'clarity')}
                     </span>
                   </div>
                   <h2 className="ix-question-title">
                     {currentQuestionText ||
-                      (preview || !isConnected
+                      (preview
                         ? 'Can you explain the difference between using the let keyword and the const keyword when declaring a variable in JavaScript?'
-                        : 'Loading question...')}
+                        : isConnected ? 'Loading question...' : 'Connecting to your interview...')}
                   </h2>
                 </div>
 
@@ -1413,6 +1443,12 @@ function MainSetsSession() {
 
                 {/* ── Action Dock (Streamlined, Zero Decoys) ── */}
                 <div className="ix-action-dock">
+                  {canRetryEvaluation && (
+                    <button type="button" className="ix-btn-primary-action" onClick={retryEvaluation}
+                      disabled={!isConnected || isEvaluating || isRecording || isPlayingAudio}>
+                      Retry evaluation
+                    </button>
+                  )}
                   {isSessionComplete ? (
                     <button
                       className="ix-btn-primary-action"
@@ -1422,7 +1458,7 @@ function MainSetsSession() {
                       <Flag size={15} />
                       <span>
                         {setNumber === 3
-                          ? mode === 'practice'
+                          ? effectiveMode === 'practice'
                             ? 'View Practice Summary'
                             : 'Start Graduation Challenge'
                           : isDrill

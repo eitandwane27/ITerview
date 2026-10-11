@@ -17,6 +17,7 @@ const { generateSet1Question, evaluateSet1Answer } = require('../services/aiSet1
 const PreTestSession = require('../models/PreTestSession');
 const Set1Session = require('../models/Set1Session');
 const User = require('../models/User');
+const { resolveUserDifficulty, requireRegisteredRole, sessionMetadata } = require('../services/interviewSettings');
 
 const MAIN_SET_QUESTIONS = 5;
 const DRILL_QUESTIONS = 3;
@@ -42,7 +43,7 @@ function handleSet1Socket(ws, request) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get('voice') || 'aura-2-luna-en';
   const firebaseUid = url.searchParams.get('uid');
-  const sessionMode = resolveSessionMode(url.searchParams.get('mode'));
+  let sessionMode = resolveSessionMode(url.searchParams.get('mode'));
   const isDrill = sessionMode === 'drill';
   const questionLimit = getQuestionLimit(sessionMode);
 
@@ -172,11 +173,7 @@ function handleSet1Socket(ws, request) {
       const user = await User.findOne({ firebaseUid });
       if (user) {
         sessionRole = user.role || 'fullstack';
-        const difficultyRank = { easy: 1, medium: 2, hard: 3 };
-        const userDiff = user.difficulty || 'easy';
-        const userUnlocked = user.unlockedDifficulty || 'easy';
-        sessionDifficulty =
-          difficultyRank[userDiff] <= difficultyRank[userUnlocked] ? userDiff : userUnlocked;
+        sessionDifficulty = resolveUserDifficulty(user);
       }
 
       // Check if a specific focusArea was selected on Dashboard or passed in query string
@@ -204,14 +201,6 @@ function handleSet1Socket(ws, request) {
         }
       }
 
-      send({
-        type: 'session_meta',
-        role: sessionRole,
-        difficulty: sessionDifficulty,
-        mode: sessionMode,
-        totalQuestions: questionLimit,
-      });
-
       // Drills are intentionally ephemeral. Only curriculum/practice sessions
       // may read, claim, create, or update a Set1Session document.
       if (!isDrill) {
@@ -220,6 +209,12 @@ function handleSet1Socket(ws, request) {
         const isResuming = !isResetRequested && existingDoc && !existingDoc.isCompleted;
 
         if (isResuming) {
+          // The saved session owns its question and scoring settings. Profile
+          // edits apply only to the next fresh session.
+          sessionRole = existingDoc.role || sessionRole;
+          sessionDifficulty = existingDoc.difficulty || sessionDifficulty;
+          sessionWeaknessTag = existingDoc.weakness_tag || sessionWeaknessTag;
+          sessionMode = existingDoc.mode || sessionMode;
           // Claim this session atomically. Another socket may have taken ownership
           // while this connection was starting.
           sessionDoc = await Set1Session.findOneAndUpdate(
@@ -236,9 +231,14 @@ function handleSet1Socket(ws, request) {
             return;
           }
 
+          send(sessionMetadata(sessionRole, sessionDifficulty, {
+            mode: sessionMode, totalQuestions: questionLimit, weakness: sessionWeaknessTag,
+          }));
+
           if (existingDoc.questions && existingDoc.questions.length === questionLimit) {
             questions = existingDoc.questions;
           } else {
+            requireRegisteredRole(sessionRole);
             questions = existingDoc.answers.map((a) => a.question);
             while (questions.length < questionLimit) {
               const q = await generateSet1Question(
@@ -294,6 +294,7 @@ function handleSet1Socket(ws, request) {
 
         // Initialize a fresh persistent Set 1 session. Drill mode deliberately
         // skips this write so abandoning a drill cannot create a resume lock.
+        requireRegisteredRole(sessionRole);
         sessionDoc = await Set1Session.findOneAndUpdate(
           { firebaseUid },
           {
@@ -315,6 +316,11 @@ function handleSet1Socket(ws, request) {
           { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
         );
       }
+
+      requireRegisteredRole(sessionRole);
+      send(sessionMetadata(sessionRole, sessionDifficulty, {
+        mode: sessionMode, totalQuestions: questionLimit, weakness: sessionWeaknessTag,
+      }));
 
       // 3. Generate the set or drill questions sequentially
       send({
@@ -414,7 +420,8 @@ function handleSet1Socket(ws, request) {
       console.error('[WS] Startup error:', err);
       send({
         type: 'error',
-        message: isDrill ? 'Failed to initialize the drill.' : 'Failed to initialize Set 1.',
+        message: err.code === 'INVALID_ROLE' ? err.message
+          : isDrill ? 'Failed to initialize the drill.' : 'Failed to initialize Set 1.',
       });
     }
   })();
@@ -486,6 +493,7 @@ function handleSet1Socket(ws, request) {
           message: 'AI Coach is evaluating your answer...',
         });
 
+        let evaluationSucceeded = false;
         try {
           // 1. Evaluate answer
           console.time('[Perf] AI Evaluation');
@@ -495,6 +503,7 @@ function handleSet1Socket(ws, request) {
             confirmedText,
             sessionDifficulty
           );
+          evaluationSucceeded = true;
           const evalDuration = Date.now() - evalStart;
           metrics.evaluationLatencies.push(evalDuration);
           console.timeEnd('[Perf] AI Evaluation');
@@ -784,8 +793,15 @@ function handleSet1Socket(ws, request) {
             send({ type: 'session_complete', mode: sessionMode });
           }
         } catch (err) {
+          if (!evaluationSucceeded) console.timeEnd('[Perf] AI Evaluation');
           console.error('[WS] Evaluation error:', err);
-          send({ type: 'error', message: 'Failed to evaluate answer.' });
+          send({
+            type: 'error',
+            code: evaluationSucceeded ? undefined : 'EVALUATION_FAILED',
+            message: evaluationSucceeded
+              ? 'Could not finish processing your answer. Please reconnect to resume your session.'
+              : 'Could not score your answer. Retry evaluation to submit the same answer again.',
+          });
         }
         console.log(`-------------------------------------\n`);
         break;

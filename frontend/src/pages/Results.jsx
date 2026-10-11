@@ -115,7 +115,7 @@ const MOCK_RESULTS_DATA = {
   unlocked: true,
   targetDifficulty: 'medium',
   nextDifficulty: 'hard',
-  unlockThreshold: 70,
+  unlockThreshold: 75,
   threeCBreakdown: {
     clarity: 4.2,
     correctness: 4.5,

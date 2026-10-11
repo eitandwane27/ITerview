@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "calibrate": "node scripts/calibrate_scoring.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "powershell -Command \"$p = Get-NetTCPConnection -LocalPort 5000 -EA SilentlyContinue | Select -Expand OwningProcess -Unique; if ($p) { Stop-Process -Id $p -Force }\" && nodemon server.js"
   },
