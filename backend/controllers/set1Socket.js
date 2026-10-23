@@ -1,3 +1,5 @@
+const { randomUUID } = require('node:crypto');
+const { hasAttemptIdentity, savedAnswerCount } = require('../utils/practiceAttempt');
 // backend/controllers/set1Socket.js
 // ─────────────────────────────────────────────────────────────────────────────
 // WebSocket traffic controller for Set 1 (Personalized Interview)
@@ -13,6 +15,7 @@
 
 const { createDeepgramLiveSession } = require('../services/sttService');
 const { synthesizeSpeech } = require('../services/ttsService');
+const { createNextQuestionTransition } = require('../utils/interviewTransition');
 const { generateSet1Question, evaluateSet1Answer } = require('../services/aiSet1Generator');
 const PreTestSession = require('../models/PreTestSession');
 const Set1Session = require('../models/Set1Session');
@@ -42,7 +45,7 @@ function handleSet1Socket(ws, request) {
 
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get('voice') || 'aura-2-luna-en';
-  const firebaseUid = url.searchParams.get('uid');
+  const firebaseUid = request.auth?.uid;
   let sessionMode = resolveSessionMode(url.searchParams.get('mode'));
   const isDrill = sessionMode === 'drill';
   const questionLimit = getQuestionLimit(sessionMode);
@@ -66,6 +69,10 @@ function handleSet1Socket(ws, request) {
   let preTestBaseline = null;
   let currentQuestionText = '';
   let sessionDoc = null;
+  let attemptId = null;
+  let submissionInFlight = false;
+  let questionReady = false;
+  const nextQuestionTransition = createNextQuestionTransition();
 
   // Prefetching and caching variables
   let questions = [];
@@ -150,6 +157,44 @@ function handleSet1Socket(ws, request) {
     isRecording = false;
   }
 
+
+  async function finaliseSavedSession() {
+    if (savedAnswerCount(sessionDoc) !== 5) throw new Error('Cannot finalize an incomplete set.');
+    if (sessionDoc.isCompleted) return sessionDoc;
+    console.time('[Perf] Finalise Session');
+    sessionDoc.finalise(preTestBaseline);
+    sessionDoc = await Set1Session.findOneAndUpdate(
+      { _id: sessionDoc._id, sessionId, isCompleted: false },
+      {
+        $set: {
+          avg_clarity: sessionDoc.avg_clarity,
+          avg_correctness: sessionDoc.avg_correctness,
+          avg_completeness: sessionDoc.avg_completeness,
+          improvement_score: sessionDoc.improvement_score,
+          isCompleted: true,
+          completedAt: sessionDoc.completedAt,
+        },
+      },
+      { returnDocument: 'after' }
+    );
+    if (!sessionDoc) {
+      questionReady = false;
+      console.log(
+        '[WS] Set 1 finalisation ignored because this socket no longer owns the session.'
+      );
+      return;
+    }
+    console.timeEnd('[Perf] Finalise Session');
+    return sessionDoc;
+  }
+
+  function sendCompletion() {
+    questionReady = false;
+    send({ type: 'session_complete', mode: sessionMode,
+      overall_score_percentage: sessionDoc?.overall_score_percentage,
+    });
+  }
+
   // Startup: fetch the learner profile, optionally initialize persistence, then
   // generate either a full set or a shorter in-memory drill.
   const startupStart = Date.now();
@@ -206,9 +251,19 @@ function handleSet1Socket(ws, request) {
       if (!isDrill) {
         const isResetRequested = url.searchParams.get('reset') === 'true';
         const existingDoc = await Set1Session.findOne({ firebaseUid });
-        const isResuming = !isResetRequested && existingDoc && !existingDoc.isCompleted;
+        const requestedLaunch = url.searchParams.get('launch');
+        const launchId = /^[a-zA-Z0-9-]{1,80}$/.test(requestedLaunch || '') ? requestedLaunch : null;
+        const isNewLaunch = launchId && existingDoc?.isCompleted && launchId !== existingDoc.launchId;
+        const isResuming = !isResetRequested && !isNewLaunch && existingDoc &&
+          (!existingDoc.isCompleted || hasAttemptIdentity(existingDoc));
+        attemptId = isResuming ? existingDoc.attemptId || randomUUID() : randomUUID();
 
         if (isResuming) {
+          if (existingDoc.isCompleted) {
+            sessionDoc = existingDoc;
+            sendCompletion();
+            return;
+          }
           // The saved session owns its question and scoring settings. Profile
           // edits apply only to the next fresh session.
           sessionRole = existingDoc.role || sessionRole;
@@ -223,7 +278,7 @@ function handleSet1Socket(ws, request) {
               sessionId: existingDoc.sessionId,
               isCompleted: false,
             },
-            { $set: { sessionId } },
+            { $set: { sessionId, attemptId } },
             { returnDocument: 'after' }
           );
           if (!sessionDoc) {
@@ -234,6 +289,12 @@ function handleSet1Socket(ws, request) {
           send(sessionMetadata(sessionRole, sessionDifficulty, {
             mode: sessionMode, totalQuestions: questionLimit, weakness: sessionWeaknessTag,
           }));
+
+          if (savedAnswerCount(sessionDoc) === 5) {
+            if (!await finaliseSavedSession()) return;
+            sendCompletion();
+            return;
+          }
 
           if (existingDoc.questions && existingDoc.questions.length === questionLimit) {
             questions = existingDoc.questions;
@@ -262,7 +323,7 @@ function handleSet1Socket(ws, request) {
             }
           }
 
-          currentQuestionIndex = existingDoc.answers.length;
+          currentQuestionIndex = savedAnswerCount(sessionDoc);
 
           console.log(
             `[DB] ⏯️ Resuming Set 1 session for user ${firebaseUid} at Question ${currentQuestionIndex + 1} (${currentQuestionIndex} previous answers saved)`
@@ -284,6 +345,8 @@ function handleSet1Socket(ws, request) {
           const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
           send({ type: 'tts_audio', data: audioBuffer.toString('base64') });
 
+          questionReady = true;
+
           send({
             type: 'status',
             message: 'Question ready. Click Unmute to answer.',
@@ -299,6 +362,8 @@ function handleSet1Socket(ws, request) {
           { firebaseUid },
           {
             sessionId,
+            attemptId,
+            launchId,
             weakness_tag: sessionWeaknessTag,
             role: sessionRole,
             difficulty: sessionDifficulty,
@@ -356,13 +421,18 @@ function handleSet1Socket(ws, request) {
           sessionDifficulty,
           questions
         );
+        if (ws.readyState !== ws.OPEN) return;
         const qGenDuration = Date.now() - qGenStart;
         metrics.questionGenLatencies.push(qGenDuration);
         questions.push(q);
 
         // Start synthesis for Q1 as soon as it is generated, to overlap LLM generation of Q2-5
         if (i === 0) {
-          q1SynthesisPromise = synthesizeSpeech(q, voiceModel);
+          // Observe rejection immediately, even if later generation fails or
+          // the client disconnects before startup consumes the audio.
+          q1SynthesisPromise = synthesizeSpeech(q, voiceModel).then(
+            (audio) => ({ audio }), (error) => ({ error })
+          );
         }
       }
       const totalGenDuration = Date.now() - genStart;
@@ -399,8 +469,10 @@ function handleSet1Socket(ws, request) {
       });
 
       // Wait for Q1 audio to finish synthesizing and speak it
-      const q1AudioBuffer = await q1SynthesisPromise;
+      const q1Synthesis = await q1SynthesisPromise;
       if (ws.readyState !== ws.OPEN) return;
+      if (q1Synthesis.error) throw q1Synthesis.error;
+      const q1AudioBuffer = q1Synthesis.audio;
       const q1TtsLatency = Date.now() - startupStart;
       metrics.ttsLatencies.push(q1TtsLatency);
 
@@ -411,6 +483,8 @@ function handleSet1Socket(ws, request) {
       });
 
       send({ type: 'tts_audio', data: q1AudioBuffer.toString('base64') });
+
+      questionReady = true;
 
       send({
         type: 'status',
@@ -439,6 +513,8 @@ function handleSet1Socket(ws, request) {
     } catch {
       return;
     }
+
+    if (!msg || typeof msg !== 'object' || Array.isArray(msg) || typeof msg.type !== 'string') return;
 
     switch (msg.type) {
       case 'start_recording':
@@ -485,6 +561,11 @@ function handleSet1Socket(ws, request) {
         break;
 
       case 'submit_answer': {
+        if (submissionInFlight || !questionReady || currentQuestionIndex >= questionLimit) return;
+        if (msg.final_text != null && typeof msg.final_text !== 'string') return;
+        submissionInFlight = true;
+        const answerIndex = currentQuestionIndex;
+        const answerQuestion = currentQuestionText;
         const confirmedText = msg.final_text || fullTranscript;
         console.log(`\n--- Set 1 Q${currentQuestionIndex + 1} Processing ---`);
         console.log(`[WS] Transcript received: "${confirmedText.substring(0, 60)}..."`);
@@ -499,7 +580,7 @@ function handleSet1Socket(ws, request) {
           console.time('[Perf] AI Evaluation');
           const evalStart = Date.now();
           const evaluation = await evaluateSet1Answer(
-            currentQuestionText,
+            answerQuestion,
             confirmedText,
             sessionDifficulty
           );
@@ -513,8 +594,8 @@ function handleSet1Socket(ws, request) {
           if (!isDrill) {
             console.time('[Perf] DB Record Save');
             const answerRecord = {
-              questionIndex: currentQuestionIndex,
-              question: currentQuestionText,
+              questionIndex: answerIndex,
+              question: answerQuestion,
               weakness_tag: sessionWeaknessTag,
               transcript: confirmedText,
               clarity_score: evaluation.clarity_score,
@@ -528,18 +609,24 @@ function handleSet1Socket(ws, request) {
                 _id: sessionDoc._id,
                 sessionId,
                 isCompleted: false,
-                'answers.questionIndex': { $ne: currentQuestionIndex },
+                'answers.questionIndex': { $ne: answerIndex },
               },
               { $push: { answers: answerRecord } },
               { returnDocument: 'after' }
             );
             if (!sessionDoc) {
+              questionReady = false;
               console.log(
                 '[WS] Set 1 answer ignored because this socket no longer owns the session.'
               );
               return;
             }
             console.timeEnd('[Perf] DB Record Save');
+          }
+
+          questionReady = false;
+          if (!isDrill && savedAnswerCount(sessionDoc) === 5) {
+            if (!await finaliseSavedSession()) return;
           }
 
           if (ws.readyState !== ws.OPEN) {
@@ -575,11 +662,11 @@ function handleSet1Socket(ws, request) {
               index: currentQuestionIndex + 1,
             });
 
-            // Synthesize ONLY the interviewer_reply audio sentence-by-sentence concurrently
+            // Speak the coaching reply, then a connector, before the next question.
             console.time('[Perf] Reply TTS Synthesis');
             const replyTtsStart = Date.now();
 
-            const replyText = evaluation.interviewer_reply;
+            const replyText = `${evaluation.interviewer_reply} ${nextQuestionTransition()}`;
             const replySentences = (replyText.match(/[^.!?]+[.!?]*/g) || [replyText])
               .map((s) => s.trim())
               .filter(Boolean);
@@ -666,6 +753,8 @@ function handleSet1Socket(ws, request) {
               }
             }
 
+            questionReady = true;
+
             send({
               type: 'status',
               message: 'Question ready. Click Unmute to answer.',
@@ -677,29 +766,7 @@ function handleSet1Socket(ws, request) {
             });
 
             if (!isDrill) {
-              console.time('[Perf] Finalise Session');
-              sessionDoc.finalise(preTestBaseline);
-              sessionDoc = await Set1Session.findOneAndUpdate(
-                { _id: sessionDoc._id, sessionId, isCompleted: false },
-                {
-                  $set: {
-                    avg_clarity: sessionDoc.avg_clarity,
-                    avg_correctness: sessionDoc.avg_correctness,
-                    avg_completeness: sessionDoc.avg_completeness,
-                    improvement_score: sessionDoc.improvement_score,
-                    isCompleted: true,
-                    completedAt: sessionDoc.completedAt,
-                  },
-                },
-                { returnDocument: 'after' }
-              );
-              if (!sessionDoc) {
-                console.log(
-                  '[WS] Set 1 finalisation ignored because this socket no longer owns the session.'
-                );
-                return;
-              }
-              console.timeEnd('[Perf] Finalise Session');
+              if (!await finaliseSavedSession()) return;
             }
 
             if (ws.readyState !== ws.OPEN) return;
@@ -802,6 +869,8 @@ function handleSet1Socket(ws, request) {
               ? 'Could not finish processing your answer. Please reconnect to resume your session.'
               : 'Could not score your answer. Retry evaluation to submit the same answer again.',
           });
+        } finally {
+          submissionInFlight = false;
         }
         console.log(`-------------------------------------\n`);
         break;

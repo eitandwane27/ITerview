@@ -1,0 +1,180 @@
+.db-signout-modal {
+  margin: auto;
+  width: calc(100% - 32px);
+  max-width: 440px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 28px;
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-r-xl);
+  background: var(--db-card-bg);
+  color: var(--db-ink);
+  font: inherit;
+  box-shadow: 0 24px 64px -16px rgb(15 23 42 / 28%);
+}
+
+.db-signout-modal[open] {
+  animation: db-signout-enter var(--db-med) var(--db-ease) both;
+}
+
+.db-signout-modal::backdrop {
+  background: rgb(15 23 42 / 46%);
+  animation: db-signout-backdrop-enter var(--db-med) var(--db-ease) both;
+}
+
+/* Keep the native dialog and focus trap alive until the exit finishes. */
+.db-signout-modal[data-closing] {
+  animation: db-signout-exit var(--db-exit, 140ms) var(--db-ease-exit, ease-in) both;
+}
+
+.db-signout-modal[data-closing]::backdrop {
+  animation: db-signout-backdrop-exit var(--db-exit, 140ms) var(--db-ease-exit, ease-in) both;
+}
+
+.db-signout-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.db-signout-modal__icon { color: var(--db-blue); }
+
+.db-signout-modal__close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -8px -8px -8px 0;
+  border: 0;
+  border-radius: var(--db-r-sm);
+  background: transparent;
+  color: var(--db-ink-faint);
+  cursor: pointer;
+  transition: background-color var(--db-fast), color var(--db-fast);
+}
+
+.db-signout-modal__close:hover:not(:disabled) {
+  background: var(--db-canvas-subtle);
+  color: var(--db-ink);
+}
+
+.db-signout-modal__copy h2 {
+  margin-bottom: 10px;
+  font-family: var(--db-font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.db-signout-modal__copy p {
+  color: var(--db-ink-muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.db-signout-modal__footer {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--db-border);
+}
+
+.db-signout-modal__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--db-r-md);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--db-fast), border-color var(--db-fast), transform var(--db-fast), box-shadow var(--db-fast);
+}
+
+.db-signout-modal__button--cancel {
+  border-color: var(--db-border-strong);
+  background: var(--db-card-bg);
+  color: var(--db-ink-secondary);
+}
+
+.db-signout-modal__button--cancel:hover:not(:disabled) { background: var(--db-canvas-subtle); }
+
+.db-signout-modal__button--confirm {
+  background: var(--db-blue);
+  color: white;
+  box-shadow: var(--db-shadow-tactile-primary);
+}
+
+.db-signout-modal__button--confirm:hover:not(:disabled) { background: var(--db-blue-hover); }
+
+.db-signout-modal__button--confirm:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--db-blue-hover);
+}
+
+.db-signout-modal button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.db-signout-modal__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--db-coral-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.db-signout-modal__error svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.db-signout-modal__spinner { animation: db-signout-spin 800ms linear infinite; }
+
+@keyframes db-signout-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes db-signout-exit {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.97); }
+}
+
+@keyframes db-signout-backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes db-signout-backdrop-exit {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes db-signout-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 480px) {
+  .db-signout-modal { padding: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .db-signout-modal[open],
+  .db-signout-modal[data-closing],
+  .db-signout-modal::backdrop { animation-duration: 1ms; }
+  .db-signout-modal__spinner { animation: none; }
+  .db-signout-modal button { transition: none; }
+}

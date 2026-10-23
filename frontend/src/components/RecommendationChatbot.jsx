@@ -7,6 +7,7 @@ import {
   Check,
   Code2,
   Compass,
+  ExternalLink,
   Layers,
   LoaderCircle,
   MessageCircle,
@@ -21,6 +22,7 @@ import { Textarea } from './ui/textarea';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
 import mascotHeadSrc from '../assets/mascot-head.png';
 import AssistantReply from './AssistantReply';
+import { normalizeAssistantSources } from '../utils/assistantSources';
 import './RecommendationChatbot.css';
 
 // Operate: a mascot-led introduction, question rows, open assistant replies,
@@ -53,7 +55,7 @@ const welcomeMessage = {
   id: 'welcome',
   role: 'assistant',
   content:
-    "Hey! Interviews are enough of a guessing game. I can explain ITerview or help you find a practice track. What's on your mind?",
+    "Hey! I can explain ITerview, help you study, or talk through your next career step. What's on your mind?",
 };
 const trackIcons = { frontend: Code2, backend: Terminal, fullstack: Layers };
 
@@ -166,7 +168,7 @@ function RecommendationChatbot({ onStart }) {
     const historySource = isRetry ? messages.slice(0, -1) : messages;
     const history = historySource.slice(-8).map(({ role, content: messageContent }) => ({
       role,
-      content: messageContent.slice(0, MAX_MESSAGE_LENGTH),
+      content: messageContent.slice(0, role === 'assistant' ? 900 : MAX_MESSAGE_LENGTH),
     }));
     const controller = new AbortController();
     requestRef.current = controller;
@@ -197,6 +199,8 @@ function RecommendationChatbot({ onStart }) {
           role: 'assistant',
           content: data.reply,
           recommendedRole: data.recommendedRole || null,
+          sources: normalizeAssistantSources(data.sources),
+          searchStatus: data.searchStatus === 'unavailable' ? 'unavailable' : null,
         },
       ]);
     } catch (requestError) {
@@ -266,7 +270,7 @@ function RecommendationChatbot({ onStart }) {
             <CoachAvatar />
             <div>
               <h2 id="track-guide-title">ITerview assistant</h2>
-              <p id="track-guide-description">Platform help &amp; track guidance</p>
+              <p id="track-guide-description">Platform, study &amp; career help</p>
             </div>
           </div>
           <div className="track-guide-header-actions">
@@ -391,6 +395,28 @@ function RecommendationChatbot({ onStart }) {
                               <p>{message.content}</p>
                             )}
                           </div>
+                          {message.sources?.length > 0 && (
+                            <nav className="track-guide-sources" aria-label="Sources for this reply">
+                              <span className="track-guide-sources-label">Sources</span>
+                              <ul>
+                                {message.sources.map((source) => (
+                                  <li key={source.url}>
+                                    <a href={source.url} target="_blank" rel="noopener noreferrer">
+                                      <span>
+                                        <strong>{source.title}</strong>
+                                        <small>{source.domain}</small>
+                                      </span>
+                                      <ExternalLink size={14} aria-hidden="true" />
+                                      <span className="track-guide-sr-only"> (opens in a new tab)</span>
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            </nav>
+                          )}
+                          {message.searchStatus === 'unavailable' && (
+                            <p className="track-guide-search-note">Live search was unavailable for this reply.</p>
+                          )}
                           {message.recommendedRole && (
                             <TrackRecommendation
                               role={message.recommendedRole}
@@ -442,7 +468,7 @@ function RecommendationChatbot({ onStart }) {
         <footer className="track-guide-footer">
           <form className="track-guide-form" onSubmit={handleSubmit}>
             <label className="track-guide-sr-only" htmlFor="track-guide-input">
-              Ask about ITerview or your interests
+              Ask about ITerview, studying, or your career
             </label>
             <div className="track-guide-composer">
               <Textarea
@@ -502,7 +528,7 @@ function RecommendationChatbot({ onStart }) {
           <p className="track-guide-privacy">
             <ShieldCheck size={13} aria-hidden="true" />
             <span>
-              Avoid personal details and passwords. Messages may be processed by an AI service.
+              Avoid personal details and passwords. AI and search services may process your questions.
             </span>
           </p>
         </footer>

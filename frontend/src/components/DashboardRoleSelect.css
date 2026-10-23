@@ -1,0 +1,155 @@
+.db-role-select__trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--db-border);
+  border-radius: var(--db-r-md);
+  background: var(--db-canvas-subtle);
+  color: var(--db-ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--db-fast) ease, background-color var(--db-fast) ease,
+    box-shadow var(--db-fast) ease;
+}
+
+.db-role-select__trigger:hover:not(:disabled) {
+  border-color: var(--db-border-strong);
+  background: var(--db-card-bg);
+}
+
+.db-role-select__trigger[data-state='open'] {
+  border-color: var(--db-blue);
+  background: var(--db-card-bg);
+  box-shadow: 0 3px 10px -5px rgb(37 99 235 / 25%);
+}
+
+.db-role-select__trigger[data-placeholder] .db-role-select__value {
+  color: var(--db-ink-muted);
+  font-weight: 500;
+}
+
+.db-role-select__trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.db-role-select__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-role-select__icon,
+.db-role-select__chevron {
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.db-role-select__icon {
+  color: var(--db-indigo);
+}
+
+.db-role-select__chevron {
+  color: var(--db-ink-faint);
+  transition: transform var(--db-med) var(--db-ease), color var(--db-fast) var(--db-ease);
+}
+
+.db-role-select__trigger[data-state='open'] .db-role-select__chevron {
+  transform: rotate(180deg);
+  color: var(--db-blue);
+}
+
+.db-role-select__menu {
+  position: relative;
+  z-index: 120;
+  width: var(--radix-popover-trigger-width);
+  max-width: var(--radix-popover-content-available-width);
+  max-height: min(300px, var(--radix-popover-content-available-height));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--db-border-strong) transparent;
+  padding: 6px;
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-r-md);
+  background: var(--db-card-bg);
+  color: var(--db-ink);
+  box-shadow: 0 12px 28px -8px rgb(15 23 42 / 16%), 0 4px 8px -4px rgb(15 23 42 / 8%);
+  outline: none;
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+
+.db-role-select__menu[data-state='open'] {
+  animation: db-role-menu-reveal var(--db-med) var(--db-ease);
+}
+
+.db-role-select__menu[data-state='closed'] {
+  animation: db-role-menu-dismiss var(--db-exit, 140ms) var(--db-ease-exit, ease-in);
+  pointer-events: none;
+}
+
+.db-role-select__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px;
+  border-radius: var(--db-r-sm);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.db-role-select__option[aria-selected='true'] {
+  color: var(--db-blue-hover);
+  font-weight: 600;
+}
+
+.db-role-select__option[data-active='true'] {
+  background: var(--db-blue-light);
+  color: var(--db-blue-hover);
+}
+
+.db-role-select__option[aria-disabled='true'] {
+  color: var(--db-ink-muted);
+  cursor: not-allowed;
+}
+
+.db-role-select__option svg {
+  flex-shrink: 0;
+}
+
+@keyframes db-role-menu-reveal {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes db-role-menu-dismiss {
+  from { opacity: 1; transform: scaleY(1); }
+  to { opacity: 0; transform: scaleY(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .db-role-select__trigger,
+  .db-role-select__chevron,
+  .db-role-select__option {
+    transition: none;
+  }
+
+  .db-role-select__menu {
+    animation: none !important;
+  }
+}

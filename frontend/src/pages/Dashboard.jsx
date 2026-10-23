@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../utils/authenticatedApi';
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import {
   LogOut,
@@ -18,14 +19,24 @@ import {
   RotateCcw,
   AlertCircle,
   Star,
+  Bookmark,
 } from 'lucide-react';
 import { signOut, onAuthStateChanged, updateProfile } from 'firebase/auth';
 import { auth } from '../firebase';
-import { useNavigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, LayoutGroup, MotionConfig, motion as Motion, useReducedMotion } from 'framer-motion';
+import DashboardPanel from '../components/motion/DashboardMotion';
+import { EASE } from '../components/motion/motion';
 import SetBriefingOverlay from '../components/SetBriefingOverlay';
 import StartingScoreDetails from '../components/StartingScoreDetails';
 import AIOrb from '../components/AIOrb';
+import { useNikkiOpening } from '../features/voice-agent/nikkiOpeningContext';
+import DashboardRoleSelect from '../components/DashboardRoleSelect';
+import DashboardSignOutDialog from '../components/DashboardSignOutDialog';
+import DashboardCoach from '../components/DashboardCoach';
+import DashboardPracticeAgain from '../components/DashboardPracticeAgain';
+import { useSchoolAuth } from '../auth/schoolAuth';
+import { useSignInTransition } from '../auth/signInTransition';
 import {
   averageThreeCs,
   getPracticeFocus,
@@ -35,6 +46,7 @@ import {
 } from '../utils/assessmentGuidance';
 import logoSrc from '../assets/logo';
 import './Dashboard.css';
+import '../components/motion/DashboardMotion.css';
 import useRoleCatalogue from '../hooks/useRoleCatalogue';
 import { formatRoleLabel, getRoleOptions, getRoleSelectionError } from '../utils/roleCatalogue';
 
@@ -85,12 +97,14 @@ const FOCUS_OPTIONS = [
   },
 ];
 
-const NAV_TABS = ['Interview Prep', 'My Progress', 'History'];
+const NAV_TABS = ['Interview Prep', 'Practice Again', 'My Progress', 'History', 'AI Coach'];
 
 const TAB_ICONS = {
   'Interview Prep': Mic,
+  'Practice Again': Bookmark,
   'My Progress': TrendingUp,
   History: History,
+  'AI Coach': MessageSquare,
 };
 
 // Focused 3C drill grid. The role and difficulty stay in the configuration
@@ -571,7 +585,7 @@ const HistoryPanel = memo(function HistoryPanel({
   const [showAll, setShowAll] = useState(false);
   // Newest first, computed once per data change, not inline on every render.
   const history = useMemo(() => (practiceHistory || []).slice().reverse(), [practiceHistory]);
-  const visibleHistory = showAll ? history : history.slice(0, HISTORY_VISIBLE_COUNT);
+  const visibleHistory = history.slice(0, HISTORY_VISIBLE_COUNT);
   const hiddenCount = history.length - HISTORY_VISIBLE_COUNT;
 
   return (
@@ -624,11 +638,21 @@ const HistoryPanel = memo(function HistoryPanel({
               <AttemptCard key={attempt._id || idx} attempt={attempt} roles={roles} />
             ))}
             {hiddenCount > 0 && (
+              <div className="db-history-older" data-expanded={showAll} aria-hidden={!showAll} inert={!showAll} id="db-history-older">
+                <div className="db-history-older__content">
+                  {history.slice(HISTORY_VISIBLE_COUNT).map((attempt, idx) => (
+                    <AttemptCard key={attempt._id || idx + HISTORY_VISIBLE_COUNT} attempt={attempt} roles={roles} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {hiddenCount > 0 && (
               <button
                 type="button"
                 className="db-history-toggle"
                 onClick={() => setShowAll((v) => !v)}
                 aria-expanded={showAll}
+                aria-controls="db-history-older"
               >
                 {showAll
                   ? 'Show fewer sessions'
@@ -887,11 +911,17 @@ const CoachCard = memo(function CoachCard({ onOpen, compact = false }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const nikkiOpening = useNikkiOpening();
+  const openNikki = () => nikkiOpening ? nikkiOpening.begin() : navigate('/voice-agent');
+  const logout = useSchoolAuth()?.logout;
   const { roles, status: rolesStatus, retry: retryRoles } = useRoleCatalogue();
   const [isCompactLayout, setIsCompactLayout] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia('(max-width: 1024px)').matches
   );
-  const [activeTab, setActiveTab] = useState('Interview Prep');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') === 'practice-again' ? 'Practice Again' : 'Interview Prep');
+  const reduceMotion = useReducedMotion();
+  const motionTransition = { duration: reduceMotion ? 0 : 0.24, ease: EASE };
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('easy');
   const [selectedFocus, setSelectedFocus] = useState('auto');
@@ -902,10 +932,21 @@ export default function Dashboard() {
   const [diagnosticData, setDiagnosticData] = useState(null);
   const [activeSession, setActiveSession] = useState(null);
   const [dataStatus, setDataStatus] = useState('loading'); // "loading" | "ready" | "empty" | "error"
+  const signInTransition = useSignInTransition();
+  const finishSignIn = signInTransition?.finish;
+  const cancelSignIn = signInTransition?.cancel;
+  useEffect(() => {
+    if (dataStatus === 'ready' || dataStatus === 'empty') finishSignIn?.();
+    else if (dataStatus === 'error' || dataStatus === 'unauthenticated') cancelSignIn?.();
+  }, [dataStatus, finishSignIn, cancelSignIn]);
   const [formError, setFormError] = useState(null);
   const [isConfirmFresh, setIsConfirmFresh] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [freshResetError, setFreshResetError] = useState(null);
+  const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState(null);
+  const signOutInProgress = useRef(false);
 
   // Pre-Flight Mission Calibration modal state
   const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
@@ -967,11 +1008,12 @@ export default function Dashboard() {
     try {
       // The summary can persist a newly unlocked difficulty. Read the profile
       // afterward so the dropdown receives that updated tier on this load.
+      const signal = AbortSignal.timeout(15000);
       const [summaryRes, activeRes] = await Promise.all([
-        fetch(`/api/users/results-summary?uid=${user.uid}`),
-        fetch(`/api/users/active-practice-session?uid=${user.uid}`),
+        authenticatedFetch(`/api/users/results-summary?uid=${user.uid}`, { signal }),
+        authenticatedFetch(`/api/users/active-practice-session?uid=${user.uid}`, { signal }),
       ]);
-      const res = await fetch(`/api/users/${user.uid}`);
+      const res = await authenticatedFetch(`/api/users/${user.uid}`, { signal });
 
       if (res.ok) {
         userLoadOk = true;
@@ -1010,15 +1052,13 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (auth.currentUser) {
-      fetchUserData(auth.currentUser);
-    }
+    // Firebase delivers the current user on subscription, including on mount.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         fetchUserData(user);
       } else {
         setDataStatus('unauthenticated');
-        navigate('/login');
+        navigate(signOutInProgress.current ? '/landing' : '/login', { replace: true });
       }
     });
     return () => unsubscribe();
@@ -1029,13 +1069,30 @@ export default function Dashboard() {
   }, [fetchUserData]);
 
   const handleLogout = useCallback(async () => {
+    if (signOutInProgress.current) return;
+    signOutInProgress.current = true;
+    setIsSigningOut(true);
+    setSignOutError(null);
     try {
-      await signOut(auth);
-      navigate('/landing');
+      if (logout) await logout({ redirectTo: '/landing' });
+      else await signOut(auth);
+      navigate('/landing', { replace: true });
     } catch (err) {
       console.error('Sign-out error:', err);
+      signOutInProgress.current = false;
+      setIsSigningOut(false);
+      setSignOutError('Couldn’t sign out. Please try again.');
     }
-  }, [navigate]);
+  }, [navigate, logout]);
+
+  const handleOpenSignOutDialog = useCallback(() => {
+    setSignOutError(null);
+    setIsSignOutDialogOpen(true);
+  }, []);
+
+  const handleCloseSignOutDialog = useCallback(() => {
+    if (!signOutInProgress.current) setIsSignOutDialogOpen(false);
+  }, []);
 
   // Stable navigation callback so memoized children (BaselineCard) skip re-renders.
   const handleViewResults = useCallback(() => navigate('/results'), [navigate]);
@@ -1076,7 +1133,7 @@ export default function Dashboard() {
       await updateProfile(firebaseUser, { displayName: trimmedName || null });
 
       // 2. Persist displayName + role + focusArea to MongoDB in one atomic call
-      const res = await fetch('/api/users/role', {
+      const res = await authenticatedFetch('/api/users/role', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1124,7 +1181,9 @@ export default function Dashboard() {
   // Single source of truth for "a practice session is in flight", used by the
   // launch handler, the card guard, the config bar locks, and the banner.
   const isSessionActive = Boolean(activeSession?.hasActiveSession);
-  const pendingJourneyLabel = JOURNEY_STAGE_LABELS[activeSession?.nextStage] || null;
+  const pendingJourneyLabel = activeSession?.nextStage === 'mainsets' && !isSessionActive
+    ? 'Practice Set 1 next'
+    : JOURNEY_STAGE_LABELS[activeSession?.nextStage] || null;
   const canContinueWithoutRole = Boolean(
     isSessionActive ||
     activeSession?.hasResumableSession ||
@@ -1156,7 +1215,7 @@ export default function Dashboard() {
       // This keeps exits from sending users backward to an already completed step.
       let journeyState = activeSession;
       try {
-        const activeCheckRes = await fetch(
+        const activeCheckRes = await authenticatedFetch(
           '/api/users/active-practice-session?uid=' + encodeURIComponent(user.uid)
         );
         if (activeCheckRes.ok) {
@@ -1177,7 +1236,7 @@ export default function Dashboard() {
           return;
         }
         try {
-          const profileResponse = await fetch('/api/users/role', {
+          const profileResponse = await authenticatedFetch('/api/users/role', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1195,7 +1254,7 @@ export default function Dashboard() {
         }
       }
 
-      if (journeyState?.nextStage === 'mainsets' && journeyState.activeSet) {
+      if (journeyState?.hasActiveSession && journeyState.nextStage === 'mainsets' && journeyState.activeSet) {
         const resumeMode = journeyState.mode === 'practice' ? 'practice' : 'diagnostic';
         navigate(
           '/interview?set=' +
@@ -1223,7 +1282,7 @@ export default function Dashboard() {
 
       if (!hasCompletedDiagnostic) {
         try {
-          const profileResponse = await fetch('/api/users/role', {
+          const profileResponse = await authenticatedFetch('/api/users/role', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1243,8 +1302,9 @@ export default function Dashboard() {
         return;
       }
 
-      // A returning user with no unfinished attempt can configure a new practice run.
-      setBriefingMode('practice');
+      // A required but unstarted Set 1 needs the same setup as a fresh practice
+      // run, while retaining its place in the diagnostic journey.
+      setBriefingMode(journeyState?.nextStage === 'mainsets' ? 'diagnostic' : 'practice');
       setIsBriefingModalOpen(true);
     },
     [
@@ -1284,7 +1344,7 @@ export default function Dashboard() {
   );
 
   const handleConfirmLaunch = useCallback(
-    async (briefingFocus) => {
+    async (briefingFocus, preparedLaunchId) => {
       const user = auth.currentUser;
       if (!user) return;
       const focus = briefingFocus || selectedFocus;
@@ -1297,7 +1357,7 @@ export default function Dashboard() {
       }
 
       try {
-        const profileResponse = await fetch('/api/users/role', {
+        const profileResponse = await authenticatedFetch('/api/users/role', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1316,7 +1376,7 @@ export default function Dashboard() {
       }
       setSelectedFocus(focus);
       setIsBriefingModalOpen(false);
-      navigate(`/interview?set=1&mode=practice&focusArea=${encodeURIComponent(focus)}`);
+      navigate(`/interview?set=1&mode=${briefingMode}&focusArea=${encodeURIComponent(focus)}&launch=${encodeURIComponent(preparedLaunchId || crypto.randomUUID())}`);
     },
     [briefingMode, selectedRole, selectedDifficulty, selectedFocus, navigate]
   );
@@ -1347,13 +1407,14 @@ export default function Dashboard() {
         setIsConfirmFresh(false);
         return;
       }
-      const res = await fetch('/api/users/reset-practice-session', {
+      const res = await authenticatedFetch('/api/users/reset-practice-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ firebaseUid: user.uid }),
       });
       if (!res.ok) throw new Error('Reset failed');
-      setActiveSession({ hasActiveSession: false });
+      const data = await res.json();
+      setActiveSession(data.activeSession);
       setIsConfirmFresh(false);
     } catch (err) {
       console.error('Error resetting session:', err);
@@ -1418,6 +1479,7 @@ export default function Dashboard() {
       FORM: Practice workbench, selected from the surface study; seed 5b7f5767.
       FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
     */
+    <MotionConfig reducedMotion="user" transition={motionTransition}>
     <div className="db-root" data-design-seed="5b7f5767">
       {/* ── Sidebar (Left rail on desktop, Top dual-tier header on <= 1024px) ── */}
       <aside className="db-sidebar">
@@ -1447,7 +1509,7 @@ export default function Dashboard() {
               className="db-signout-btn"
               title="Sign Out"
               id="btn-logout"
-              onClick={handleLogout}
+              onClick={handleOpenSignOutDialog}
               aria-label="Sign Out"
             >
               <LogOut size={16} />
@@ -1456,7 +1518,8 @@ export default function Dashboard() {
         </div>
 
         {/* Navigation tabs */}
-        <nav
+        <LayoutGroup>
+        <Motion.nav layoutScroll
           className="db-sidebar__nav"
           role="tablist"
           aria-label="Dashboard sections"
@@ -1477,16 +1540,25 @@ export default function Dashboard() {
                 className={`db-nav-item ${activeTab === tab ? 'db-nav-item--active' : ''}`}
                 onClick={() => setActiveTab(tab)}
               >
+                {activeTab === tab && (
+                  <Motion.span
+                    className="db-nav-indicator"
+                    layoutId="dashboard-active-tab"
+                    transition={{ duration: reduceMotion ? 0 : 0.28, ease: EASE }}
+                    aria-hidden="true"
+                  />
+                )}
                 <Icon size={18} />
                 <span>{tab}</span>
               </button>
             );
           })}
-        </nav>
+        </Motion.nav>
+        </LayoutGroup>
 
         <div className="db-sidebar__spacer db-desktop-only" aria-hidden="true" />
 
-        {!isCompactLayout && <CoachCard onOpen={() => navigate('/voice-agent')} />}
+        {!isCompactLayout && <CoachCard onOpen={openNikki} />}
 
         {/* Desktop Footer (avatar, name, sign out) */}
         <div className="db-sidebar__footer db-desktop-only">
@@ -1503,16 +1575,16 @@ export default function Dashboard() {
           <span className="db-sidebar__user-name" title={fullName}>
             {fullName}
           </span>
-          <button type="button" className="db-signout-btn" title="Sign Out" onClick={handleLogout}>
+          <button type="button" className="db-signout-btn" title="Sign Out" aria-label="Sign Out" onClick={handleOpenSignOutDialog}>
             <LogOut size={16} />
           </button>
         </div>
       </aside>
 
       {/* ── Main ── */}
-      <main className="db-main">
+      <main className={`db-main${activeTab === 'AI Coach' ? ' db-main--coaching' : ''}`}>
         {/* Page Header */}
-        <div className="db-page-header">
+        {activeTab !== 'AI Coach' && activeTab !== 'Practice Again' && <div className="db-page-header">
           <div className="db-page-header__text">
             <h1 className="db-greeting">
               {getGreeting()}, {fullName}.
@@ -1546,16 +1618,15 @@ export default function Dashboard() {
                 </span>
               ))}
           </div>
-        </div>
+        </div>}
 
-        {isCompactLayout && <CoachCard compact onOpen={() => navigate('/voice-agent')} />}
+        {isCompactLayout && activeTab !== 'AI Coach' && activeTab !== 'Practice Again' && <CoachCard compact onOpen={openNikki} />}
 
         {/* ══ Interview Prep Panel ══ */}
-        <div
-          role="tabpanel"
+        <DashboardPanel
           id="tabpanel-interview-prep"
           aria-labelledby="tab-interview-prep"
-          hidden={activeTab !== 'Interview Prep'}
+          active={activeTab === 'Interview Prep'}
           className="db-prep-stack"
         >
           {activeTab === 'Interview Prep' && (
@@ -1630,24 +1701,22 @@ export default function Dashboard() {
 
                     <div className="db-onboarding__controls">
                       <div className="db-onboarding__field">
-                        <label className="db-onboarding__role-label" htmlFor="role-select">
+                        <label id="role-select-label" className="db-onboarding__role-label" htmlFor="role-select">
                           Target role
                         </label>
                         <div className="db-select-wrap db-onboarding__select">
-                          <Briefcase
-                            size={17}
-                            className="db-select-wrap__icon db-select-wrap__icon--violet"
-                          />
-                          <select
+                          <DashboardRoleSelect
                             id="role-select"
-                            className="db-select"
+                            labelledBy="role-select-label"
+                            options={roleOptions}
                             value={selectedRole}
-                            onChange={(e) => {
-                              setSelectedRole(e.target.value);
+                            onChange={(role) => {
+                              setSelectedRole(role);
                               if (formError) setFormError(null);
                             }}
                             disabled={isSessionActive || !rolesReady}
-                            aria-describedby={
+                            invalid={Boolean(formError || (rolesReady && selectedRole && !selectedRoleAvailable))}
+                            describedBy={
                               !rolesReady
                                 ? 'db-role-catalogue-status'
                                 : selectedRole && !selectedRoleAvailable
@@ -1658,14 +1727,7 @@ export default function Dashboard() {
                                       ? 'db-role-helper'
                                       : undefined
                             }
-                          >
-                            {roleOptions.map((o) => (
-                              <option key={o.value} value={o.value} disabled={o.disabled}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown size={17} className="db-select-wrap__chevron" />
+                          />
                         </div>
                       </div>
                       <button
@@ -1684,17 +1746,19 @@ export default function Dashboard() {
                       </button>
                     </div>
 
-                    {!selectedRole && !formError && (
-                      <p id="db-role-helper" className="db-cta-helper">
-                        Choose a target role to begin.
-                      </p>
-                    )}
-                    {formError && (
-                      <p id="db-role-error" className="db-form-error" role="alert">
-                        <AlertCircle size={15} />
-                        {formError}
-                      </p>
-                    )}
+                    <div className="db-onboarding__feedback">
+                      {!selectedRole && !formError && (
+                        <p id="db-role-helper" className="db-cta-helper">
+                          Choose a target role to begin.
+                        </p>
+                      )}
+                      {formError && (
+                        <p id="db-role-error" className="db-form-error" role="alert">
+                          <AlertCircle size={15} />
+                          {formError}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {!isSessionActive && (
@@ -2134,14 +2198,21 @@ export default function Dashboard() {
                 </section>
               </>
             ))}
-        </div>
+        </DashboardPanel>
+
+        <DashboardPanel
+          id="tabpanel-practice-again"
+          aria-labelledby="tab-practice-again"
+          active={activeTab === 'Practice Again'}
+        >
+          <DashboardPracticeAgain key={auth.currentUser?.uid || 'signed-out'} active={activeTab === 'Practice Again'} roles={roles} />
+        </DashboardPanel>
 
         {/* ══ History Panel ══ */}
-        <div
-          role="tabpanel"
+        <DashboardPanel
           id="tabpanel-history"
           aria-labelledby="tab-history"
-          hidden={activeTab !== 'History'}
+          active={activeTab === 'History'}
         >
           {activeTab === 'History' && (
             <HistoryPanel
@@ -2152,14 +2223,13 @@ export default function Dashboard() {
               roles={roles}
             />
           )}
-        </div>
+        </DashboardPanel>
 
         {/* ══ My Progress Panel ══ */}
-        <div
-          role="tabpanel"
+        <DashboardPanel
           id="tabpanel-my-progress"
           aria-labelledby="tab-my-progress"
-          hidden={activeTab !== 'My Progress'}
+          active={activeTab === 'My Progress'}
         >
           {activeTab === 'My Progress' && (
             <ProgressPanel
@@ -2182,14 +2252,35 @@ export default function Dashboard() {
               onSwitchTab={setActiveTab}
             />
           )}
-        </div>
+        </DashboardPanel>
+        <DashboardPanel id="tabpanel-ai-coach" aria-labelledby="tab-ai-coach" active={activeTab === 'AI Coach'}>
+          <DashboardCoach key={auth.currentUser?.uid || 'signed-out'} active={activeTab === 'AI Coach'} />
+        </DashboardPanel>
       </main>
       {/* /db-content */}
 
+      {isSignOutDialogOpen && (
+        <DashboardSignOutDialog
+          pending={isSigningOut}
+          error={signOutError}
+          onCancel={handleCloseSignOutDialog}
+          onConfirm={handleLogout}
+        />
+      )}
+
       {/* ── Profile Settings Modal ── */}
+      <AnimatePresence initial={false}>
       {isProfileModalOpen && (
-        <div className="db-modal-backdrop" onClick={handleCloseProfileModal}>
-          <div
+        <Motion.div
+          key="profile-dialog"
+          initial={{ opacity: reduceMotion ? 1 : 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.14 } }}
+          className="db-modal-backdrop" onClick={handleCloseProfileModal}>
+          <Motion.div
+            initial={{ opacity: reduceMotion ? 1 : 0, scale: reduceMotion ? 1 : 0.97, y: reduceMotion ? 0 : 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.98, y: reduceMotion ? 0 : 4, transition: { duration: reduceMotion ? 0 : 0.14 } }}
             className="db-modal"
             ref={profileModalRef}
             role="dialog"
@@ -2350,9 +2441,10 @@ export default function Dashboard() {
                 {isSavingProfile ? 'Saving…' : 'Save changes'}
               </button>
             </div>
-          </div>
-        </div>
+          </Motion.div>
+        </Motion.div>
       )}
+      </AnimatePresence>
 
       {/* ── Pre-Flight Mission Calibration Modal ── */}
       <AnimatePresence>
@@ -2369,5 +2461,6 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
     </div>
+    </MotionConfig>
   );
 }

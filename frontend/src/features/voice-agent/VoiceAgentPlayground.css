@@ -4,11 +4,12 @@
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(min-content, 1fr);
   width: 100%;
   height: 100dvh;
   min-height: 100dvh;
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
   isolation: isolate;
   color: #0f172a;
   background:
@@ -276,17 +277,130 @@
   transform: scale(0.97);
 }
 
+.va-experience {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  width: min(100%, 1320px);
+  min-height: 0;
+  margin: 0 auto;
+}
+
+/* Keep the split layout until the workspace's exit has actually finished. */
+.va-experience:has(> .va-workspace) {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 24px;
+  padding: 24px 32px;
+}
+
 .va-stage {
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(4, auto);
+  align-content: center;
   justify-items: center;
+  gap: 8px;
   width: min(100%, 1120px);
-  height: 100%;
-  min-height: 0;
+  min-width: 0;
   margin: 0 auto;
-  padding: clamp(10px, 2vh, 24px) 24px clamp(22px, 4vh, 42px);
+  padding: 16px 24px 24px;
+}
+
+.va-experience:has(> .va-workspace) .va-stage {
+  padding: 0;
+}
+
+.va-experience:has(> .va-workspace) .va-orb-field {
+  width: min(100%, clamp(320px, 46dvh, 420px));
+}
+
+.va-experience:has(> .va-workspace) .va-status h1 {
+  font-size: 22px;
+}
+
+.va-experience:has(> .va-workspace) .va-status p {
+  font-size: 13px;
+  max-width: 38ch;
+}
+
+.va-experience:has(> .va-workspace) .va-status__wave {
+  display: none;
+}
+
+.va-show-me {
+  width: min(560px, 100%);
+  min-width: 0;
+  text-align: center;
+}
+.va-show-me > span {
+  display: block;
+  margin-bottom: 10px;
+  color: #536581;
+  font-size: 12px;
+  font-weight: 500;
+}
+.va-show-me > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+}
+.va-show-me button {
+  padding: 8px 12px;
+  min-height: 44px;
+  border: 1px solid rgb(94 127 173 / 0.17);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.65);
+  color: #364d70;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 160ms,
+    transform 140ms,
+    border-color 160ms;
+}
+.va-show-me button:hover:not(:disabled) {
+  background: white;
+  border-color: rgb(37 99 235 / 0.38);
+  transform: translateY(-2px);
+}
+.va-show-me button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.va-show-me button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+.va-show-me button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.va-show-me small {
+  display: block;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #64748b;
+}
+.va-workspace-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .va-show-me button {
+    transition: none;
+  }
+  .va-show-me button:hover:not(:disabled) {
+    transform: none;
+  }
 }
 
 .va-orb-field {
@@ -294,9 +408,8 @@
   align-self: center;
   display: grid;
   place-items: center;
-  width: min(70vmin, 620px);
-  aspect-ratio: 1.15;
-  transform: translateY(clamp(-12px, -1.4vh, -4px));
+  width: min(100%, clamp(300px, 42dvh, 460px));
+  aspect-ratio: 1;
 }
 
 .va-orb-field__halo {
@@ -316,8 +429,8 @@
 }
 
 .va-orb-field .ix-orb-container {
-  width: clamp(310px, 48vmin, 474px);
-  height: clamp(310px, 48vmin, 474px);
+  width: 100%;
+  height: 100%;
 }
 
 .va-status {
@@ -326,8 +439,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+  min-width: 0;
   max-width: 640px;
-  margin-top: clamp(-42px, -4vh, -18px);
+  overflow-wrap: anywhere;
   text-align: center;
 }
 
@@ -336,15 +451,15 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 34px;
-  margin-bottom: 5px;
+  height: 20px;
+  margin-bottom: 4px;
   color: rgb(var(--va-signal-rgb));
 }
 
 .va-status__wave i {
   display: block;
   width: 4px;
-  height: 12px;
+  height: 8px;
   border-radius: 999px;
   background: currentColor;
   transform: scaleY(calc(0.74 + var(--va-energy) * 1.25));
@@ -353,11 +468,11 @@
 
 .va-status__wave i:nth-child(2),
 .va-status__wave i:nth-child(4) {
-  height: 21px;
+  height: 13px;
 }
 
 .va-status__wave i:nth-child(3) {
-  height: 29px;
+  height: 18px;
 }
 
 .voice-agent-playground[data-state='speaking'] .va-status__wave i {
@@ -383,7 +498,7 @@
 .va-status h1 {
   margin: 0;
   font-family: 'Fredoka', 'Plus Jakarta Sans', sans-serif;
-  font-size: clamp(26px, 3vw, 38px);
+  font-size: 24px;
   font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.025em;
@@ -393,7 +508,7 @@
 .va-status p {
   margin: 7px 0 0;
   color: #64748b;
-  font-size: clamp(14px, 1.25vw, 17px);
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.5;
   text-wrap: balance;
@@ -406,7 +521,8 @@
   justify-items: center;
   width: 100%;
   gap: 10px;
-  margin-top: clamp(18px, 2.4vh, 26px);
+  min-width: 0;
+  margin-top: 8px;
 }
 
 .va-session-control {
@@ -565,7 +681,9 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
 .va-audio-settings-trigger {
@@ -573,7 +691,7 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 11px;
   border: 0;
   border-radius: 999px;
@@ -785,6 +903,8 @@
 
 @media (max-width: 640px) {
   .va-topbar {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
     min-height: 72px;
     padding: 12px 14px;
   }
@@ -823,8 +943,8 @@
   }
 
   .va-end-button {
-    width: 40px;
-    min-height: 40px;
+    width: 44px;
+    min-height: 44px;
     justify-content: center;
     padding: 0;
   }
@@ -834,37 +954,20 @@
   }
 
   .va-stage {
-    height: 100%;
-    min-height: 0;
-    padding-top: 2px;
-    padding-bottom: 20px;
-  }
-
-  .va-orb-field {
-    width: min(104vw, 480px);
-    transform: translateY(-4px);
-  }
-
-  .va-orb-field .ix-orb-container {
-    width: clamp(255px, 76vw, 350px);
-    height: clamp(255px, 76vw, 350px);
-  }
-
-  .va-status {
-    margin-top: -30px;
+    padding: 16px 16px 24px;
   }
 
   .va-status h1 {
-    font-size: 27px;
+    font-size: 22px;
   }
 
   .va-status p {
     max-width: 29ch;
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .va-session-controls {
-    margin-top: 20px;
+    margin-top: 8px;
   }
 
   .va-session-control--primary {
@@ -881,48 +984,13 @@
   }
 
   .va-session-control--secondary {
-    min-height: 42px;
+    min-height: 44px;
     padding-inline: 12px;
   }
 
   .va-session-controls__toolbar {
     max-width: calc(100vw - 24px);
     flex-wrap: wrap;
-  }
-}
-
-@media (max-height: 720px) and (min-width: 641px) {
-  .va-topbar {
-    min-height: 68px;
-    padding-block: 10px;
-  }
-
-  .va-stage {
-    height: 100%;
-    min-height: 0;
-    padding-top: 0;
-    padding-bottom: 18px;
-  }
-
-  .va-orb-field {
-    width: min(70vmin, 520px);
-  }
-
-  .va-orb-field .ix-orb-container {
-    width: clamp(300px, 54vmin, 420px);
-    height: clamp(300px, 54vmin, 420px);
-  }
-
-  .va-status {
-    margin-top: -34px;
-  }
-
-  .va-status h1 {
-    font-size: 29px;
-  }
-
-  .va-session-controls {
-    margin-top: 16px;
   }
 }
 
@@ -943,5 +1011,29 @@
 
   .va-audio-settings-trigger__chevron {
     transition: none;
+  }
+}
+
+/* Stack when the voice controls and reading panel no longer fit side by side. */
+@media (max-width: 1000px) {
+  .va-experience:has(> .va-workspace) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding: 16px max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+  }
+
+  .va-experience:has(> .va-workspace) .va-stage {
+    max-width: 640px;
+  }
+
+  .va-experience:has(> .va-workspace) .va-orb-field {
+    width: min(100%, 340px);
+  }
+}
+
+@media (max-width: 360px) {
+  .va-brand__wordmark {
+    display: none;
   }
 }

@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../utils/authenticatedApi';
 // frontend/src/pages/Results.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Navigate, useNavigate, useLocation } from 'react-router-dom';
@@ -271,7 +272,7 @@ export default function Results() {
 
       try {
         const endpoint = `/api/users/results-summary?uid=${user.uid}${isPracticeMode ? '&mode=practice' : ''}`;
-        const response = await fetch(endpoint);
+        const response = await authenticatedFetch(endpoint);
         if (!response.ok) {
           throw new Error('Failed to load results summary.');
         }
@@ -1357,7 +1358,7 @@ export default function Results() {
               id="btn-continue-session"
               className="rs-btn-primary"
               onClick={() =>
-                navigate(isPracticeMode ? '/interview?set=1&mode=practice' : '/dashboard')
+                navigate(isPracticeMode ? `/interview?set=1&mode=practice&launch=${crypto.randomUUID()}` : '/dashboard')
               }
             >
               <RotateCcw size={18} />

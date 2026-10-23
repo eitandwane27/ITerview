@@ -1,0 +1,154 @@
+/* Dashboard adaptations of transitions.dev: tabs sliding, panel reveal,
+   accordion, menu dropdown, modal open/close, and learn-more feedback. */
+.db-root {
+  --db-instant: 100ms;
+  --db-fast: 150ms;
+  --db-med: 240ms;
+  --db-slow: 280ms;
+  --db-exit: 140ms;
+  --db-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+.db-nav-item {
+  position: relative;
+  isolation: isolate;
+}
+
+.db-nav-item--active,
+.db-nav-item--active:hover {
+  background: transparent;
+}
+
+.db-nav-indicator {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--db-blue-light);
+  pointer-events: none;
+}
+
+/* Explicit hiding also wins over flex/grid panel layouts. */
+.db-root [role='tabpanel'][hidden] {
+  display: none !important;
+}
+
+.db-root [hidden],
+.db-root [hidden] *,
+.db-root [hidden] *::before,
+.db-root [hidden] *::after {
+  animation-play-state: paused !important;
+}
+
+/* Grid interpolation keeps the older log attached to its disclosure control. */
+.db-history-older {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--db-med) var(--db-ease),
+    opacity var(--db-exit) var(--db-ease),
+    visibility 0s var(--db-med);
+}
+
+.db-history-older[data-expanded='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.db-history-older__content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.db-root :is(.db-cta-btn, .db-btn-secondary, .db-view-link, .db-signout-btn, .db-user-avatar, .db-practice-card) {
+  transition:
+    transform var(--db-fast) var(--db-ease),
+    background-color var(--db-fast) var(--db-ease),
+    border-color var(--db-fast) var(--db-ease),
+    color var(--db-fast) var(--db-ease),
+    box-shadow var(--db-fast) var(--db-ease);
+}
+
+.db-root :is(.db-cta-btn, .db-btn-secondary, .db-view-link) > svg:last-child {
+  transition: transform var(--db-fast) var(--db-ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .db-root :is(.db-cta-btn, .db-view-link):hover:not(:disabled) > .lucide-arrow-right {
+    transform: translateX(3px);
+  }
+}
+
+.db-root :is(.db-btn-secondary, .db-practice-card):active:not(:disabled) {
+  transform: translateY(1px);
+  transition-duration: var(--db-instant);
+}
+
+/* Decorative illustrations settle; only real loading feedback keeps looping. */
+.db-root :is(.db-art-shape--ring, .db-art-shape--dot-a, .db-art-shape--dot-b, .db-greeting__wave) {
+  animation-iteration-count: 1;
+}
+
+.db-pulse-dot,
+.db-radar-circle--outer {
+  animation: none;
+}
+
+/* The panel owns navigation feedback; avoid animating the coach twice. */
+.db-ai-coach[data-active='true'] .db-ai-coach__layout {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .db-prep-stack > :is(.db-onboarding, .db-resume-banner, .db-setup-card):first-child {
+    animation: db-content-resolve var(--db-med) var(--db-ease);
+  }
+
+  @keyframes db-content-resolve {
+    from { opacity: 0.65; }
+    to { opacity: 1; }
+  }
+}
+
+/* Progressive enhancement: native score disclosures retain their semantics. */
+@supports (interpolate-size: allow-keywords) and (transition-behavior: allow-discrete) {
+  .db-root .starting-score-details { interpolate-size: allow-keywords; }
+  .db-root .starting-score-details::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition:
+      block-size var(--db-med) var(--db-ease),
+      opacity var(--db-fast) var(--db-ease),
+      content-visibility var(--db-med) allow-discrete;
+  }
+  .db-root .starting-score-details[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .db-root *,
+  .db-root *::before,
+  .db-root *::after,
+  .db-root ::details-content,
+  .db-signout-modal::backdrop {
+    /* Preserve animationend callbacks used by the native sign-out dialog. */
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .db-root :is(button, a):is(:hover, :active),
+  .db-root :is(button, a):is(:hover, :active) > svg {
+    transform: none !important;
+  }
+}

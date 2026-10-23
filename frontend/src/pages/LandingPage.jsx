@@ -11,6 +11,7 @@ import AuthModal from '../components/AuthModal';
 import Reveal from '../components/motion/Reveal';
 import CountUp from '../components/motion/CountUp';
 import MentorMascot from '../components/MentorMascot';
+import LearningJourney from '../components/LearningJourney';
 import RecommendationChatbot from '../components/RecommendationChatbot';
 import { EASE } from '../components/motion/motion';
 const TryItLiveDemo = lazy(() => import('../components/TryItLiveDemo'));
@@ -34,9 +35,10 @@ import {
   Zap,
   Activity,
   CreditCard,
+  Code2,
+  Database,
   Star,
   HeartHandshake,
-  Trash2,
 } from 'lucide-react';
 
 /* Five whole-point ticks — one per point on the real 1–5 scale. The engine
@@ -555,46 +557,147 @@ const HeroAtmosphere = () => {
   );
 };
 
-/* ── Mobile Menu Component (animated height + staggered links) ── */
+/* Page-local overrides keep landing-page styling isolated from shared styles. */
+const LANDING_PAGE_STYLES = `
+  html:has(.lp-root) {
+    scrollbar-color: #94a3b8 transparent;
+    scrollbar-width: thin;
+  }
+  .lp-root .lp-floating-nav-slot { height: 82px; }
+  .lp-root .lp-nav.lp-nav--floating {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    width: min(1200px, calc(100% - 48px));
+    background-color: rgba(255, 255, 255, 0.96);
+    border: 1px solid #d6e3f4;
+    border-radius: var(--r-pill);
+    box-shadow: 0 8px 20px -4px rgba(30, 64, 110, 0.14);
+    opacity: 1;
+    transition:
+      transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 180ms ease-out,
+      box-shadow var(--med) ease,
+      background-color var(--med) ease;
+  }
+  .lp-root .lp-nav--floating.lp-nav--hidden {
+    transform: translate(-50%, calc(-100% - 36px));
+    opacity: 0;
+    pointer-events: none;
+    transition-duration: 180ms, 140ms, var(--med), var(--med);
+    transition-timing-function: ease-in, ease-in, ease, ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lp-root .lp-nav.lp-nav--floating { transition: none; }
+  }
+  .lp-root .lp-nav--floating.lp-nav--scrolled {
+    background-color: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 10px 28px -6px rgba(30, 64, 110, 0.2);
+  }
+  .lp-root .lp-nav--floating .lp-nav-inner {
+    min-height: 62px;
+    padding: 7px 26px 7px 44px;
+    gap: 20px;
+  }
+  .lp-root .lp-nav--floating .lp-logo { flex-shrink: 0; }
+  .lp-root .lp-nav--floating .lp-logo-img { height: 36px; }
+  .lp-root .lp-nav--floating .lp-logo-text { font-size: 1.35rem; }
+  .lp-root .lp-nav--floating .lp-nav-links {
+    gap: 6px;
+    margin-left: 36px;
+  }
+  .lp-root .lp-nav--floating .lp-nav-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+  .lp-root .lp-nav--floating .lp-nav-cta { flex-shrink: 0; }
+  .lp-root .lp-nav--floating .lp-nav-cta button {
+    min-height: 44px;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+  .lp-root .lp-nav--floating .lp-nav-cta .lp-btn-ghost {
+    border-color: #d6e3f4;
+    padding-inline: 20px;
+  }
+  .lp-root .lp-nav--floating .lp-nav-cta .lp-btn-solid { padding-inline: 24px; }
+  .lp-root .lp-nav--floating .lp-hamburger { border-radius: var(--r-pill); }
+  .lp-root .lp-nav--floating .lp-mobile-menu {
+    position: absolute;
+    top: calc(100% + 12px);
+    left: 0;
+    right: 0;
+    max-height: calc(100dvh - 106px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid #d6e3f4;
+    border-radius: 24px;
+    box-shadow: 0 12px 28px -6px rgba(30, 64, 110, 0.16);
+  }
+  .lp-root :is(#rubric, #journey, #how-it-works, #privacy) { scroll-margin-top: 102px; }
+  @media (max-width: 1100px) {
+    .lp-root .lp-nav--floating .lp-nav-links,
+    .lp-root .lp-nav--floating .lp-nav-cta { display: none; }
+    .lp-root .lp-nav--floating .lp-hamburger { display: flex; }
+    .lp-root .lp-nav--floating .lp-nav-inner { padding-inline: 24px; }
+  }
+  @media (max-width: 768px) {
+    .lp-root .lp-floating-nav-slot { height: 74px; }
+    .lp-root .lp-nav.lp-nav--floating {
+      top: 12px;
+      width: calc(100% - 24px);
+    }
+    .lp-root .lp-nav--floating .lp-nav-inner {
+      min-height: 54px;
+      padding: 5px 12px 5px 20px;
+      gap: 12px;
+    }
+    .lp-root .lp-nav--floating .lp-logo-img { height: 36px; }
+    .lp-root .lp-nav--floating .lp-logo-text { font-size: 1.35rem; }
+    .lp-root .lp-nav--floating .lp-mobile-menu { max-height: calc(100dvh - 90px); }
+    .lp-root :is(#rubric, #journey, #how-it-works, #privacy) { scroll-margin-top: 86px; }
+  }
+`;
+
+/* The dropdown opens from the floating bar without moving its layout. */
 const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => {
   const reduce = useReducedMotion();
   const links = [
     { href: '#rubric', label: 'The 3C rubric' },
     { href: '#journey', label: 'Learning pathway' },
     { href: '#how-it-works', label: 'How it works' },
+    { href: '#privacy', label: 'Privacy' },
   ];
   return (
     <AnimatePresence initial={false}>
       {open && (
         <Motion.div
           key="lp-mobile-menu"
+          id="lp-mobile-menu"
           className="lp-mobile-menu"
-          style={{ overflow: 'hidden' }}
-          initial={reduce ? false : { height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={reduce ? undefined : { height: 0, opacity: 0 }}
-          transition={{ duration: 0.32, ease: EASE }}
+          style={{ transformOrigin: 'top center' }}
+          initial={reduce ? false : { y: -8, scale: 0.98, opacity: 0 }}
+          animate={{ y: 0, scale: 1, opacity: 1 }}
+          exit={{
+            y: reduce ? 0 : -6,
+            scale: reduce ? 1 : 0.98,
+            opacity: 0,
+            transition: { duration: reduce ? 0 : 0.14 },
+          }}
+          transition={{ duration: reduce ? 0 : 0.22, ease: EASE }}
         >
           <nav className="lp-mobile-nav" aria-label="Mobile navigation">
-            {links.map((link, i) => (
-              <Motion.a
-                key={link.href}
-                href={link.href}
-                onClick={onClose}
-                className="lp-mobile-nav-link"
-                initial={reduce ? false : { opacity: 0, y: -8 }}
-                animate={reduce ? undefined : { opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, ease: EASE, delay: 0.05 + i * 0.06 }}
-              >
+            {links.map((link) => (
+              <a key={link.href} href={link.href} onClick={onClose} className="lp-mobile-nav-link">
                 {link.label}
-              </Motion.a>
+              </a>
             ))}
-            <Motion.div
-              className="lp-mobile-nav-actions"
-              initial={reduce ? false : { opacity: 0, y: -8 }}
-              animate={reduce ? undefined : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.28, ease: EASE, delay: 0.05 + links.length * 0.06 }}
-            >
+            <div className="lp-mobile-nav-actions">
               <button
                 className="lp-btn-ghost lp-btn-full"
                 onClick={() => {
@@ -613,7 +716,7 @@ const MobileMenu = ({ open, onClose, onSignIn, onGetStarted }) => {
               >
                 Start practicing free
               </button>
-            </Motion.div>
+            </div>
           </nav>
         </Motion.div>
       )}
@@ -645,19 +748,71 @@ const LandingPage = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [navScrolled, setNavScrolled] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
   const [activeSection, setActiveSection] = useState('');
-  // Global user-preference flag so every animation degrades to its instant,
-  // final state when reduced motion is requested.
-  const reduce = useReducedMotion();
-
-  /* Nav scroll shadow */
+  const navRef = useRef(null);
+  const menuButtonRef = useRef(null);
+  /* Accumulate directional travel so tiny scroll reversals don't flicker the bar.
+     Clamp overscroll to avoid treating mobile rubber-band bounce as intent. */
   useEffect(() => {
-    const handleScroll = () => {
-      setNavScrolled(window.scrollY > 20);
+    let previousY = Math.max(0, window.scrollY);
+    let travel = 0;
+    let frame = 0;
+    const updateNavigation = () => {
+      frame = 0;
+      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const y = Math.max(0, Math.min(window.scrollY, maxY));
+      const delta = y - previousY;
+      previousY = y;
+      setNavScrolled(y > 20);
+
+      const keyboardFocus =
+        navRef.current?.contains(document.activeElement) &&
+        document.activeElement.matches(':focus-visible');
+      if (y <= 96 || menuOpen || authModalOpen || keyboardFocus) {
+        travel = 0;
+        setNavHidden(false);
+        return;
+      }
+      travel = Math.sign(delta) === Math.sign(travel) ? travel + delta : delta;
+      if (travel >= 16) {
+        setNavHidden(true);
+        travel = 0;
+      } else if (travel <= -12) {
+        setNavHidden(false);
+        travel = 0;
+      }
     };
+    const handleScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateNavigation);
+    };
+    updateNavigation();
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [menuOpen, authModalOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    const desktop = window.matchMedia('(min-width: 1101px)');
+    const closeOnDesktop = (event) => {
+      if (event.matches) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      desktop.removeEventListener('change', closeOnDesktop);
+    };
+  }, [menuOpen]);
 
   /* Scroll spy */
   useEffect(() => {
@@ -702,8 +857,15 @@ const LandingPage = () => {
   return (
     <MotionConfig reducedMotion="user">
       <div className="lp-root">
-        {/* ── Sticky Header ── */}
-        <header className={`lp-nav${navScrolled ? ' lp-nav--scrolled' : ''}`} role="banner">
+        <style>{LANDING_PAGE_STYLES}</style>
+        <div className="lp-floating-nav-slot" aria-hidden="true" />
+        {/* ── Floating Header ── */}
+        <header
+          ref={navRef}
+          className={`lp-nav lp-nav--floating${navScrolled ? ' lp-nav--scrolled' : ''}${navHidden ? ' lp-nav--hidden' : ''}`}
+          onFocusCapture={() => setNavHidden(false)}
+          role="banner"
+        >
           <div className="lp-nav-inner">
             <a href="/" className="lp-logo" aria-label="ITerview home">
               <img src={logoSrc} alt="ITerview" className="lp-logo-img" />
@@ -737,9 +899,11 @@ const LandingPage = () => {
             </div>
 
             <button
+              ref={menuButtonRef}
               className="lp-hamburger"
               aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={menuOpen}
+              aria-controls="lp-mobile-menu"
               onClick={() => setMenuOpen((v) => !v)}
             >
               <span className={`lp-ham-bar${menuOpen ? ' lp-ham-bar--top' : ''}`} />
@@ -763,72 +927,65 @@ const LandingPage = () => {
 
           <div className="lp-hero-container">
             <div className="lp-hero-intro">
-              {/* Sentence-case static micro-promise (replaces pulsing generic AI badge) */}
+              {/* Reference layout: a calm promise, one action, then roles and reassurance. */}
               <Reveal delay={0.05} y={16}>
                 <div className="lp-hero-pill-badge">
                   <span className="lp-hero-pill-icon" aria-hidden="true">
                     <Sparkles size={14} />
                   </span>
-                  <span className="lp-hero-pill-text">Voice practice, scored on all three Cs</span>
+                  <span className="lp-hero-pill-text">A calmer way to get interview-ready</span>
                 </div>
               </Reveal>
 
               <Reveal delay={0.15} y={20}>
                 <h1 className="lp-hero-headline">
-                  Master technical interviews <br className="lp-hero-br" />
-                  <span className="lp-hero-accent">in one calm place.</span>
+                  <span>Master technical interviews</span>
+                  <span className="lp-hero-accent">one answer at a time.</span>
                 </h1>
               </Reveal>
 
-              <Reveal delay={0.3}>
+              <Reveal className="lp-hero-copy" delay={0.3}>
                 <p className="lp-hero-subhead">
-                  Practice out loud, get scored honestly on every answer, and walk into the real
-                  room feeling ready.
+                  <span>Practice out loud. Find your weak spots.</span>{' '}
+                  <span>Make your next answer stronger.</span>
                 </p>
               </Reveal>
 
-              <Reveal delay={0.42}>
+              <Reveal className="lp-hero-action-wrap" delay={0.42}>
                 <div className="lp-hero-actions">
-                  <button className="lp-btn-hero-primary" onClick={openRegisterModal}>
+                  <button type="button" className="lp-btn-hero-primary" onClick={openRegisterModal}>
                     <span>Start practicing free</span>
-                    <ArrowRight size={17} strokeWidth={2.5} />
+                    <ArrowRight size={17} strokeWidth={2.5} aria-hidden="true" />
                   </button>
                 </div>
               </Reveal>
 
-              {/* ── Honest Capstone Platform Note (Substantiated, no template proof) ── */}
-              <Reveal delay={0.52} y={12}>
-                <div className="lp-hero-capstone-strip">
-                  <span className="lp-hero-capstone-dot" aria-hidden="true" />
-                  <span>
-                    Built for software & IT candidates · Voice-first rehearsal with instant rubric
-                    feedback
-                  </span>
+              <Reveal className="lp-hero-roles-wrap" delay={0.52} y={12}>
+                <div className="lp-hero-roles">
+                  <p className="lp-hero-roles-label">Built for your next</p>
+                  <ul className="lp-hero-role-list" aria-label="Supported interview tracks">
+                    <li><Code2 size={18} aria-hidden="true" /><span>Frontend</span></li>
+                    <li><Database size={18} aria-hidden="true" /><span>Backend</span></li>
+                    <li><Layers size={18} aria-hidden="true" /><span>Fullstack</span></li>
+                  </ul>
                 </div>
               </Reveal>
 
-              {/* ── Streamlined Benefit Strip (Replaces bulky stacked cards) ── */}
-              <Reveal delay={0.6} y={12}>
-                <div className="lp-hero-benefits-strip">
-                  <div className="lp-hero-benefit-item">
-                    <CreditCard size={14} className="lp-hero-benefit-icon" />
+              <Reveal className="lp-hero-benefits-wrap" delay={0.6} y={12}>
+                <ul className="lp-hero-benefits-strip" aria-label="Practice benefits">
+                  <li className="lp-hero-benefit-item">
+                    <CreditCard size={14} className="lp-hero-benefit-icon" aria-hidden="true" />
                     <span>No credit card</span>
-                  </div>
-                  <span className="lp-hero-benefit-sep" aria-hidden="true">
-                    ·
-                  </span>
-                  <div className="lp-hero-benefit-item">
-                    <Zap size={14} className="lp-hero-benefit-icon" />
-                    <span>Zero typing required</span>
-                  </div>
-                  <span className="lp-hero-benefit-sep" aria-hidden="true">
-                    ·
-                  </span>
-                  <div className="lp-hero-benefit-item">
-                    <Target size={14} className="lp-hero-benefit-icon" />
-                    <span>Instant 3C feedback</span>
-                  </div>
-                </div>
+                  </li>
+                  <li className="lp-hero-benefit-item">
+                    <Mic size={14} className="lp-hero-benefit-icon" aria-hidden="true" />
+                    <span>Voice-first practice</span>
+                  </li>
+                  <li className="lp-hero-benefit-item">
+                    <Target size={14} className="lp-hero-benefit-icon" aria-hidden="true" />
+                    <span>Honest 3C feedback</span>
+                  </li>
+                </ul>
               </Reveal>
             </div>
 
@@ -891,123 +1048,7 @@ const LandingPage = () => {
         </section>
 
         {/* ── Section 2: Learning Pathway & Growth Measurement ── */}
-        <section className="lp-section-wrap" id="journey" aria-labelledby="journey-title">
-          <div className="lp-section-inner">
-            <Reveal>
-              <div className="lp-section-head">
-                <div className="lp-section-badge lp-section-badge--indigo">
-                  <TrendingUp size={13} />
-                  <span>Measurable improvement</span>
-                </div>
-                <h2 className="lp-section-title" id="journey-title">
-                  From your first try to interview-ready
-                </h2>
-                <p className="lp-section-subtitle">
-                  Practice is only useful when you can prove you got better. Our diagnostic workflow
-                  measures your growth between your first attempt and your graduation test.
-                </p>
-              </div>
-            </Reveal>
-
-            <div className="lp-pathway-layout">
-              {/* Left — Connected Diagnostic Timeline (replaces isolated cards) */}
-              <div className="lp-pathway-timeline">
-                <Reveal as="div" className="lp-path-step" delay={0} y={18}>
-                  <div className="lp-path-step-num">1</div>
-                  <div className="lp-path-step-content">
-                    <h3 className="lp-path-step-title">Initial Baseline Assessment</h3>
-                    <p className="lp-path-step-desc">
-                      5 initial diagnostic questions establish your starting baseline across
-                      Clarity, Correctness, and Completeness without gating any tracks.
-                    </p>
-                  </div>
-                </Reveal>
-
-                <Reveal as="div" className="lp-path-step" delay={0.1} y={18}>
-                  <div className="lp-path-step-num">2</div>
-                  <div className="lp-path-step-content">
-                    <h3 className="lp-path-step-title">3-Round Mock Interview</h3>
-                    <p className="lp-path-step-desc">
-                      15 voice questions across Diagnostic, Role-Technical, and Behavioral
-                      (Situation, Task, Action, Result) categories with real-time rubric feedback.
-                    </p>
-                  </div>
-                </Reveal>
-
-                <Reveal as="div" className="lp-path-step" delay={0.2} y={18}>
-                  <div className="lp-path-step-num">3</div>
-                  <div className="lp-path-step-content">
-                    <h3 className="lp-path-step-title">Graduation Benchmark Assessment</h3>
-                    <p className="lp-path-step-desc">
-                      Re-test against identical benchmark questions to objectively verify and
-                      celebrate your score growth.
-                    </p>
-                  </div>
-                </Reveal>
-              </div>
-
-              {/* Right — Visual Growth Proof Card (Beautiful UI Insight Card) */}
-              <Reveal as="div" className="lp-growth-card" delay={0.1}>
-                <div className="lp-growth-header">
-                  <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 800 }}>
-                      Sample Practice Journey
-                    </h3>
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--ink-muted)' }}>
-                      Frontend Track
-                    </p>
-                  </div>
-                  <span className="lp-growth-badge">Measured Progress</span>
-                </div>
-
-                <div className="lp-growth-delta-row">
-                  <div className="lp-growth-stat">
-                    <span className="lp-growth-stat-label">Baseline Score</span>
-                    <span className="lp-growth-stat-val">
-                      <CountUp to={55} suffix="%" duration={1.0} delay={0.15} />
-                    </span>
-                  </div>
-                  <div className="lp-growth-arrow" aria-hidden="true">
-                    →
-                  </div>
-                  <div className="lp-growth-stat">
-                    <span className="lp-growth-stat-label">Graduation Score</span>
-                    <span className="lp-growth-stat-val">
-                      <CountUp to={82} suffix="%" duration={1.1} delay={0.4} />
-                    </span>
-                  </div>
-                  <Motion.div
-                    className="lp-growth-jump"
-                    initial={reduce ? false : { scale: 0.4, opacity: 0 }}
-                    whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
-                    viewport={{ once: true, margin: '-40px' }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 17, delay: 1.5 }}
-                  >
-                    <span>+27%</span>
-                  </Motion.div>
-                </div>
-
-                <div className="lp-growth-facts">
-                  <div className="lp-growth-fact-item">
-                    <Target size={18} color="var(--blue)" style={{ margin: '0 auto' }} />
-                    <span className="lp-growth-fact-strong">Targeted Prep</span>
-                    <span className="lp-growth-fact-sub">Focus on weak spots</span>
-                  </div>
-                  <div className="lp-growth-fact-item">
-                    <TrendingUp size={18} color="var(--mint)" style={{ margin: '0 auto' }} />
-                    <span className="lp-growth-fact-strong">75%+ Unlock</span>
-                    <span className="lp-growth-fact-sub">Unlocks harder tiers</span>
-                  </div>
-                  <div className="lp-growth-fact-item">
-                    <Gauge size={18} color="var(--amber)" style={{ margin: '0 auto' }} />
-                    <span className="lp-growth-fact-strong">Zero Guesswork</span>
-                    <span className="lp-growth-fact-sub">Objective rubric</span>
-                  </div>
-                </div>
-              </Reveal>
-            </div>
-          </div>
-        </section>
+        <LearningJourney />
 
         {/* ── Section 3: Bento Grid / How It Works (shadcn Badge System) ── */}
         <section
@@ -1241,19 +1282,21 @@ const LandingPage = () => {
           </div>
         </section>
 
-        {/* ── Section 5: Your Voice, Your Data: Quiet Editorial Trust Band ── */}
-        <section className="lp-trustvoice-section" id="privacy" aria-label="Your voice, your data">
+        {/* ── Section 5: Voice processing and saved session data ── */}
+        <section className="lp-trustvoice-section" id="privacy" aria-labelledby="lp-privacy-title">
           <div className="lp-trustvoice-inner">
             <Reveal y={0}>
               <div className="lp-trustvoice-head">
                 <div className="lp-section-badge lp-section-badge--mint">
-                  <ShieldCheck size={13} />
-                  <span>Privacy & Data Architecture</span>
+                  <ShieldCheck size={13} aria-hidden="true" />
+                  <span>Voice & session data</span>
                 </div>
-                <h2 className="lp-trustvoice-title">Your voice, your data</h2>
+                <h2 className="lp-trustvoice-title" id="lp-privacy-title">
+                  What happens to your voice
+                </h2>
                 <p className="lp-trustvoice-sub">
-                  Because ITerview records your answers through the microphone, here is our
-                  transparent data and speech architecture commitment before you press record.
+                  How your spoken answers become feedback, and what ITerview saves when you
+                  practice with an account.
                 </p>
               </div>
             </Reveal>
@@ -1261,35 +1304,36 @@ const LandingPage = () => {
             <div className="lp-trustvoice-grid">
               <Reveal as="article" className="lp-trustvoice-card" y={0} delay={0}>
                 <div className="lp-trustvoice-icon">
-                  <Mic size={22} strokeWidth={2} />
+                  <Mic size={22} strokeWidth={2} aria-hidden="true" />
                 </div>
-                <h3 className="lp-trustvoice-card-title">Recorded only when you choose to</h3>
+                <h3 className="lp-trustvoice-card-title">You start the microphone</h3>
                 <p className="lp-trustvoice-card-desc">
-                  The mic is active exclusively while you are recording an answer. No background
-                  listening, no ambient surveillance, and no microphone use when idle.
+                  Microphone access needs your browser&apos;s permission. Capture starts when you
+                  begin a mic check or record an answer, and stops when you end that capture.
                 </p>
               </Reveal>
 
               <Reveal as="article" className="lp-trustvoice-card" y={0} delay={0.08}>
                 <div className="lp-trustvoice-icon">
-                  <ShieldCheck size={22} strokeWidth={2} />
+                  <AlignLeft size={22} strokeWidth={2} aria-hidden="true" />
                 </div>
-                <h3 className="lp-trustvoice-card-title">Live transcription, never sold</h3>
+                <h3 className="lp-trustvoice-card-title">Transcription, then feedback</h3>
                 <p className="lp-trustvoice-card-desc">
-                  Audio streams directly over encrypted WebSocket to Deepgram for real-time
-                  transcription and rubric evaluation. We never sell your voice or share data with
-                  advertisers.
+                  During interviews, audio passes through ITerview&apos;s server to Deepgram for
+                  live transcription. Your answer text is sent to DeepSeek for scoring and
+                  coaching feedback.
                 </p>
               </Reveal>
 
               <Reveal as="article" className="lp-trustvoice-card" y={0} delay={0.16}>
                 <div className="lp-trustvoice-icon">
-                  <Trash2 size={22} strokeWidth={2} />
+                  <Database size={22} strokeWidth={2} aria-hidden="true" />
                 </div>
-                <h3 className="lp-trustvoice-card-title">You control what stays</h3>
+                <h3 className="lp-trustvoice-card-title">Text saved for your progress</h3>
                 <p className="lp-trustvoice-card-desc">
-                  Delete any recording, transcript, or entire session from your history at any time.
-                  Your practice benchmarks and progress data are yours to keep or purge.
+                  Your account stores transcripts, scores, and coaching feedback for results and
+                  progress tracking. ITerview does not save interview audio as recording files.
+                  There are currently no controls to delete individual transcripts or sessions.
                 </p>
               </Reveal>
             </div>

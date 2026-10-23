@@ -20,126 +20,142 @@ import LandingPage from './pages/LandingPage';
 import VoiceAgentPlayground from './features/voice-agent';
 import HrTester from './components/hrTester';
 import './App.css';
+import { SchoolAuthProvider } from './auth/SchoolAuthContext';
+import ProtectedRoute from './auth/ProtectedRoute';
+import VerifyEmail from './pages/VerifyEmail';
+import TermsAndConditions from './pages/TermsAndConditions';
+import SignInTransitionProvider from './auth/SignInTransitionProvider';
+import NikkiOpeningProvider from './features/voice-agent/NikkiOpeningProvider';
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="app-layout">
-        <Routes>
-          <Route path="/" element={<Navigate to="/landing" replace />} />
-          <Route path="/landing" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+      <SchoolAuthProvider>
+        <SignInTransitionProvider>
+        <NikkiOpeningProvider>
+        <div className="app-layout">
+          <Routes>
+            <Route path="/" element={<Navigate to="/landing" replace />} />
+            <Route path="/landing" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<Dashboard />} />
 
-          {/* Likert Scale — Pre-Test (H₀₂ baseline) → redirects to /mic-test */}
-          <Route path="/likert-pre" element={<LikertScale phase="pre" />} />
+              {/* Likert Scale — Pre-Test (H₀₂ baseline) → redirects to /mic-test */}
+              <Route path="/likert-pre" element={<LikertScale phase="pre" />} />
 
-          {/* Likert Scale — Post-Test (H₀₂ comparison) → redirects to /results */}
-          <Route path="/likert-post" element={<LikertScale phase="post" />} />
+              {/* Likert Scale — Post-Test (H₀₂ comparison) → redirects to /results */}
+              <Route path="/likert-post" element={<LikertScale phase="post" />} />
 
-          {/* Mic Setup & Test — between Likert (pre) and the interview */}
-          <Route path="/mic-test" element={<MicTest />} />
+              {/* Mic Setup & Test — between Likert (pre) and the interview */}
+              <Route path="/mic-test" element={<MicTest />} />
 
-          {/* Pre-Test Interview Phase */}
-          <Route path="/pre-test" element={<PreTest />} />
+              {/* Pre-Test Interview Phase */}
+              <Route path="/pre-test" element={<PreTest />} />
 
-          {/* Post-Test Graduation Challenge */}
-          <Route path="/post-test" element={<PostTest />} />
+              {/* Post-Test Graduation Challenge */}
+              <Route path="/post-test" element={<PostTest />} />
 
-          <Route
-            path="/test-loader"
-            element={
-              <AiAnalysisLoader
-                role="frontend"
-                weakness="focus_completeness"
-                focusArea="completeness"
-                diagnosticData={{
-                  threeCBreakdown: {
-                    clarity: 4.2,
-                    correctness: 4.5,
-                    completeness: 3.1,
-                    lowestMetric: 'completeness',
-                  },
-                }}
-                onClose={() => console.log('Dismissed loader')}
-                onComplete={() => console.log('Loader complete!')}
+              <Route
+                path="/test-loader"
+                element={
+                  <AiAnalysisLoader
+                    role="frontend"
+                    weakness="focus_completeness"
+                    focusArea="completeness"
+                    diagnosticData={{
+                      threeCBreakdown: {
+                        clarity: 4.2,
+                        correctness: 4.5,
+                        completeness: 3.1,
+                        lowestMetric: 'completeness',
+                      },
+                    }}
+                    onClose={() => console.log('Dismissed loader')}
+                    onComplete={() => console.log('Loader complete!')}
+                  />
+                }
               />
-            }
-          />
-          <Route path="/interview" element={<MainSets />} />
-          <Route path="/dev/interview" element={<MainSets />} />
-          <Route path="/results" element={<Results />} />
-          <Route path="/voice-agent" element={<VoiceAgentPlayground />} />
-          <Route path="/hr-tester" element={<HrTester />} />
-          <Route path="/hrTester" element={<Navigate to="/hr-tester" replace />} />
+              <Route path="/interview" element={<MainSets />} />
+              <Route path="/dev/interview" element={<MainSets />} />
+              <Route path="/results" element={<Results />} />
+              <Route path="/voice-agent" element={<VoiceAgentPlayground />} />
+              <Route path="/hr-tester" element={<HrTester />} />
+              <Route path="/hrTester" element={<Navigate to="/hr-tester" replace />} />
 
-          {/* Dev only route to preview Set 1 Mission Calibration Modal */}
-          <Route
-            path="/dev/briefing"
-            element={
-              <div
-                style={{
-                  width: '100vw',
-                  height: '100vh',
-                  background: '#09090B',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <SetBriefingOverlay
-                  role="frontend"
-                  focusArea="clarity"
-                  diagnosticData={{
-                    preTestScore: 74,
-                    threeCBreakdown: {
-                      clarity: 6.5,
-                      correctness: 8.5,
-                      completeness: 7.2,
-                      lowestMetric: 'clarity',
-                    },
-                  }}
-                  onConfirm={() => alert('Launching Practice Studio!')}
-                  onClose={() => alert('Closed briefing modal!')}
-                />
-              </div>
-            }
-          />
+              {/* Dev only route to preview Set 1 Mission Calibration Modal */}
+              <Route
+                path="/dev/briefing"
+                element={
+                  <div
+                    style={{
+                      width: '100vw',
+                      height: '100vh',
+                      background: '#09090B',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <SetBriefingOverlay
+                      role="frontend"
+                      focusArea="clarity"
+                      diagnosticData={{
+                        preTestScore: 74,
+                        threeCBreakdown: {
+                          clarity: 6.5,
+                          correctness: 8.5,
+                          completeness: 7.2,
+                          lowestMetric: 'clarity',
+                        },
+                      }}
+                      onConfirm={() => alert('Launching Practice Studio!')}
+                      onClose={() => alert('Closed briefing modal!')}
+                    />
+                  </div>
+                }
+              />
 
-          {/* Dev only route to preview Set 2 transition design */}
-          <Route
-            path="/dev/set2-transition"
-            element={
-              <div style={{ width: '100vw', height: '100vh', background: '#f8f9fa' }}>
-                <Set2TransitionOverlay onReady={() => console.log('Start Set 2!')} />
-              </div>
-            }
-          />
+              {/* Dev only route to preview Set 2 transition design */}
+              <Route
+                path="/dev/set2-transition"
+                element={
+                  <div style={{ width: '100vw', height: '100vh', background: '#f8f9fa' }}>
+                    <Set2TransitionOverlay onReady={() => console.log('Start Set 2!')} />
+                  </div>
+                }
+              />
 
-          {/* Dev only route to preview Set 3 transition design */}
-          <Route
-            path="/dev/set3-transition"
-            element={
-              <div style={{ width: '100vw', height: '100vh', background: '#f8f9fa' }}>
-                <Set3TransitionOverlay onReady={() => console.log('Start Set 3!')} />
-              </div>
-            }
-          />
+              {/* Dev only route to preview Set 3 transition design */}
+              <Route
+                path="/dev/set3-transition"
+                element={
+                  <div style={{ width: '100vw', height: '100vh', background: '#f8f9fa' }}>
+                    <Set3TransitionOverlay onReady={() => console.log('Start Set 3!')} />
+                  </div>
+                }
+              />
 
-          {/* Dev only — Post-Test graduation arena design board. The real
+              {/* Dev only — Post-Test graduation arena design board. The real
               /post-test is Firebase-auth + WebSocket gated, so this mirrors its
               render tree against scripted state (no backend or account needed). */}
-          <Route path="/dev/post-test" element={<DevPostTestPreview />} />
+              <Route path="/dev/post-test" element={<DevPostTestPreview />} />
 
-          {/* Legacy preview URL retained for existing bookmarks. */}
-          <Route path="/dev/voice-agent" element={<VoiceAgentPlayground />} />
+              {/* Legacy preview URL retained for existing bookmarks. */}
+              <Route path="/dev/voice-agent" element={<VoiceAgentPlayground />} />
 
-          {/* Dev only — STT latency & accuracy testbench */}
-          <Route path="/dev/stt-test" element={<FluxDebugger />} />
-          <Route path="/dev/flux" element={<FluxDebugger />} />
-        </Routes>
-      </div>
+              {/* Dev only — STT latency & accuracy testbench */}
+              <Route path="/dev/stt-test" element={<FluxDebugger />} />
+              <Route path="/dev/flux" element={<FluxDebugger />} />
+            </Route>
+          </Routes>
+        </div>
+        </NikkiOpeningProvider>
+        </SignInTransitionProvider>
+      </SchoolAuthProvider>
     </BrowserRouter>
   );
 }

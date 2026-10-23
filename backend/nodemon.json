@@ -1,0 +1,6 @@
+{
+  "watch": [".", ".env"],
+  "ext": "js,json,env,md",
+  "ignore": ["tests/**"],
+  "delay": 250
+}

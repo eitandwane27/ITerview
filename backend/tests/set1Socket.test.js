@@ -92,11 +92,12 @@ test('a drill can generate and score an answer without reading or writing Set1Se
     });
 
   handleDrillSocket(socket, {
+    auth: { uid: 'test-user' },
     url: '/ws/set1?uid=test-user&mode=drill&focusArea=clarity',
     headers: { host: 'localhost:5000' },
   });
 
-  await waitForMessage('question_text');
+  await waitForMessage('tts_audio');
   socket.emit(
     'message',
     Buffer.from(JSON.stringify({ type: 'submit_answer', final_text: 'A concise answer.' })),

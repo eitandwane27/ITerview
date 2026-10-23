@@ -1,3 +1,5 @@
+import { schoolSocketProtocols } from '../utils/authenticatedApi';
+import { authenticatedFetch } from '../utils/authenticatedApi';
 // frontend/src/pages/MainSets.jsx
 // ─────────────────────────────────────────────────────────────────────────────
 // Set 1 / 2 / 3 Interview Arena — Soft Productivity SaaS design system
@@ -18,8 +20,10 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../firebase';
 import useRoleCatalogue from '../hooks/useRoleCatalogue';
+import usePracticeBookmarks from '../hooks/usePracticeBookmarks';
 import { formatRoleLabel } from '../utils/roleCatalogue';
 import { AnimatePresence } from 'framer-motion';
+import * as Popover from '@radix-ui/react-popover';
 import Set2TransitionOverlay from '../components/Set2TransitionOverlay';
 import Set3TransitionOverlay from '../components/Set3TransitionOverlay';
 import InterviewSidebar from '../components/InterviewSidebar';
@@ -30,16 +34,17 @@ import logoSrc from '../assets/logo';
 import {
   Mic,
   Square,
-  PhoneOff,
-  Phone,
+  Pause,
+  LogOut,
   Clock,
   Flag,
   Sun,
-  Settings,
-  MoreHorizontal,
+  CircleHelp,
   Shield,
   Activity,
   ArrowRight,
+  Bookmark,
+  CircleCheck,
   X,
 } from 'lucide-react';
 import './MainSets.css';
@@ -140,6 +145,11 @@ const STAGE_STATE_COPY = {
     title: 'Thinking through your answer',
     detail: 'Finding the feedback that will help most.',
   },
+  responding: {
+    label: 'AI interviewer is preparing spoken feedback',
+    title: 'Your feedback is ready',
+    detail: 'Preparing the spoken response.',
+  },
   booting: {
     label: 'AI interviewer is preparing your questions',
     title: 'Preparing your interview',
@@ -167,42 +177,60 @@ function resolveStageState({
   isListening,
   isComplete,
   isEvaluating,
+  isPreparingFeedbackAudio,
   isBooting,
   isOffline,
   hasError,
 }) {
   if (hasError) return 'error';
-  if (isComplete) return 'complete';
   if (isListening) return 'listening';
   if (isSpeaking) return 'speaking';
+  if (isPreparingFeedbackAudio) return 'responding';
+  if (isComplete) return 'complete';
   if (isEvaluating) return 'evaluating';
   if (isBooting) return 'booting';
   if (isOffline) return 'offline';
   return 'ready';
 }
 
-function StageAtmosphere() {
+function StageAtmosphere({ isSpeaking = false, volume = 0 }) {
+  const edgeRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(() => !document.hidden);
+
+  useEffect(() => {
+    let isInView = true;
+    const updateVisibility = () => setIsVisible(isInView && !document.hidden);
+    const observer = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver(([entry]) => {
+          isInView = entry.isIntersecting;
+          updateVisibility();
+        })
+      : null;
+
+    if (edgeRef.current) observer?.observe(edgeRef.current);
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener('visibilitychange', updateVisibility);
+    };
+  }, []);
+
+  const isActive = isSpeaking && isVisible;
+  const speechLevel = isActive && Number.isFinite(volume)
+    ? Math.max(0, Math.min(1, volume / 100))
+    : 0;
+
   return (
-    <div className="ix-stage-atmosphere" aria-hidden="true">
-      <span className="ix-stage-glow" />
-      <span className="ix-stage-arch ix-stage-arch--left" />
-      <span className="ix-stage-arch ix-stage-arch--right" />
-      <span className="ix-stage-ribbon ix-stage-ribbon--vault" />
-      <span className="ix-stage-ribbon ix-stage-ribbon--violet" />
-      <span className="ix-stage-ribbon ix-stage-ribbon--cyan" />
-      <span className="ix-stage-ribbon ix-stage-ribbon--pearl" />
-      <span className="ix-stage-floor" />
-      <span className="ix-stage-particle ix-stage-particle--one" />
-      <span className="ix-stage-particle ix-stage-particle--two" />
-      <span className="ix-stage-particle ix-stage-particle--three" />
-      <span className="ix-stage-particle ix-stage-particle--four" />
-      <span className="ix-stage-particle ix-stage-particle--five" />
-      <span className="ix-stage-particle ix-stage-particle--six" />
-      <span className="ix-stage-particle ix-stage-particle--seven" />
-      <span className="ix-stage-particle ix-stage-particle--eight" />
-      <span className="ix-stage-particle ix-stage-particle--nine" />
-      <span className="ix-stage-particle ix-stage-particle--ten" />
-    </div>
+    <>
+      <div className="ix-stage-atmosphere" aria-hidden="true" />
+      <div
+        ref={edgeRef}
+        className="ix-stage-speaking-edge"
+        data-active={isActive ? 'true' : 'false'}
+        style={{ '--ix-stage-edge-level': speechLevel }}
+        aria-hidden="true"
+      />
+    </>
   );
 }
 
@@ -216,11 +244,13 @@ function InterviewBubbleBot({ state, volume = 0 }) {
       isSpeaking={state === 'speaking'}
       isListening={state === 'listening'}
       isComplete={state === 'complete'}
-      isEvaluating={state === 'evaluating'}
+      isEvaluating={state === 'evaluating' || state === 'responding'}
       isBooting={state === 'booting'}
       isOffline={state === 'offline'}
       hasError={state === 'error'}
       volume={volume}
+      expressiveMotion
+      ariaLabel={STAGE_STATE_COPY[state]?.label}
     />
   );
 }
@@ -261,9 +291,12 @@ function MainSetsSession() {
   const query = new URLSearchParams(location.search);
   const setNumber = parseInt(query.get('set')) || 1;
   const mode = query.get('mode') || 'diagnostic';
-  const isDrill = mode === 'drill';
+  const savedQuestionId = query.get('questionId') || '';
+  const isSavedPractice = Boolean(savedQuestionId);
+  const isDrill = mode === 'drill' || isSavedPractice;
   const focusArea = query.get('focusArea') || '';
   const isResume = query.get('resume') === 'true';
+  const launchId = query.get('launch') || '';
   const isAutostart = query.get('autostart') === 'true';
   const preview = query.get('preview') === 'true' || location.pathname.includes('/dev/');
 
@@ -279,6 +312,7 @@ function MainSetsSession() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [isPreparingFeedbackAudio, setIsPreparingFeedbackAudio] = useState(false);
   const [isSessionComplete, setIsSessionComplete] = useState(false);
   const [showNextTransition, setShowNextTransition] = useState(false);
   const { roles } = useRoleCatalogue();
@@ -292,7 +326,7 @@ function MainSetsSession() {
   const [sessionDifficulty, setSessionDifficulty] = useState(() =>
     preview ? normalizeDifficulty(query.get('difficulty')) || 'easy' : null
   );
-  const [totalQuestions, setTotalQuestions] = useState(isDrill ? 3 : 5);
+  const [totalQuestions, setTotalQuestions] = useState(isSavedPractice ? 1 : isDrill ? 3 : 5);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [hasReceivedQ1Audio, setHasReceivedQ1Audio] = useState(false);
   const [_slowWait, setSlowWait] = useState(false);
@@ -312,12 +346,44 @@ function MainSetsSession() {
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
   const [transcriptModalData, setTranscriptModalData] = useState(null);
   const [showEndModal, setShowEndModal] = useState(false);
+  const [showSessionGuide, setShowSessionGuide] = useState(false);
+  const endDialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!showEndModal) return undefined;
+    const previousFocus = document.activeElement;
+    const dialog = endDialogRef.current;
+    dialog?.querySelector('[data-pause-cancel]')?.focus();
+    const keepFocusInDialog = (event) => {
+      if (event.key !== 'Tab') return;
+      const buttons = [...dialog.querySelectorAll('button:not(:disabled)')];
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    dialog?.addEventListener('keydown', keepFocusInDialog);
+    return () => {
+      dialog?.removeEventListener('keydown', keepFocusInDialog);
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [showEndModal]);
 
   // ── Session HUD state (stage clock, sidebar question list, tabs, PIP) ─────
   const [elapsedSec, setElapsedSec] = useState(0);
   const [questionsAsked, setQuestionsAsked] = useState([]);
   const [activeTab, setActiveTab] = useState('questions');
   const [userInitials, setUserInitials] = useState('ME');
+
+  const { savedQuestionIndexes, toggle: togglePracticeSave, undo: undoPracticeSave,
+    toast: practiceToast, dismiss: dismissPracticeToast, error: bookmarkError, busy: bookmarkBusy } = usePracticeBookmarks({
+    preview, disabled: isDrill, setNumber, questions: questionsAsked, role: userRole, difficulty: sessionDifficulty,
+  });
 
   // Stage clock ticks only while a session is live.
   useEffect(() => {
@@ -547,7 +613,7 @@ function MainSetsSession() {
   useEffect(() => {
     const user = auth.currentUser;
     if (user) {
-      fetch(`/api/users/${user.uid}`)
+      authenticatedFetch(`/api/users/${user.uid}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.user?.role) {
@@ -575,7 +641,9 @@ function MainSetsSession() {
   }, []);
 
   // ── WebSocket connection (Starts automatically for Set 1, or after transition) ──
-  const startSession = useCallback(() => {
+  const socketAttemptRef = useRef(0);
+  useEffect(() => () => { socketAttemptRef.current += 1; }, []);
+  const startSession = useCallback(async () => {
     setShowBriefing(false);
 
     if (!isResume) {
@@ -601,7 +669,7 @@ function MainSetsSession() {
       return;
     }
 
-    if (!isResume && (setNumber === 1 || setNumber === 2)) {
+    if (!isResume && (setNumber === 1 || setNumber === 2 || isSavedPractice)) {
       setIsGeneratingQuestions(true);
       setHasReceivedQ1Audio(false);
       setSlowWait(false);
@@ -620,8 +688,15 @@ function MainSetsSession() {
     const user = auth.currentUser;
     const uid = user ? user.uid : 'anonymous_user';
     const focusParam = focusArea ? `&focusArea=${encodeURIComponent(focusArea)}` : '';
+    const attempt = ++socketAttemptRef.current;
+    let protocols;
+    try { protocols = await schoolSocketProtocols(); }
+    catch (error) { setError(error.message); setIsGeneratingQuestions(false); return; }
+    if (attempt !== socketAttemptRef.current) return;
     const ws = new WebSocket(
-      `${WS_BASE}/ws/set${setNumber}?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(mode)}${focusParam}`
+      isSavedPractice
+        ? `${WS_BASE}/ws/practice-again?questionId=${encodeURIComponent(savedQuestionId)}`
+        : `${WS_BASE}/ws/set${setNumber}?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(mode)}${focusParam}&launch=${encodeURIComponent(launchId)}`, protocols
     );
     ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
@@ -666,6 +741,10 @@ function MainSetsSession() {
           setHasReceivedQ1Audio(true);
           enqueueBase64Audio(msg.data);
           break;
+        case 'audio_unavailable':
+          setHasReceivedQ1Audio(true);
+          setStatus(msg.message);
+          break;
         case 'question_text':
           setCanRetryEvaluation(false);
           setError('');
@@ -678,6 +757,7 @@ function MainSetsSession() {
           setIsEvaluating(false);
           break;
         case 'coach_tip':
+          if (isSavedPractice) setIsEvaluating(false);
           setCoachTip(msg.tip);
           markCurrentAnswered(finalTranscriptRef.current, msg.interviewer_reply, msg.tip);
           if (setNumber === 2) {
@@ -709,10 +789,15 @@ function MainSetsSession() {
           break;
         case 'error':
           setError(msg.message);
+          setIsGeneratingQuestions(false);
+          cleanupAudio();
+          setIsRecording(false);
           setCanRetryEvaluation(msg.code === 'EVALUATION_FAILED');
           setIsEvaluating(false);
+          setIsPreparingFeedbackAudio(false);
           break;
         case 'session_complete':
+          setIsPreparingFeedbackAudio(msg.audioPending === true);
           setIsSessionComplete(true);
           isSessionCompleteRef.current = true;
           setStatus(isDrill ? 'Drill complete!' : `Set ${setNumber} Complete!`);
@@ -722,6 +807,9 @@ function MainSetsSession() {
               setShowNextTransition(true);
             }
           }
+          break;
+        case 'feedback_audio_complete':
+          setIsPreparingFeedbackAudio(false);
           break;
         default:
           break;
@@ -735,6 +823,14 @@ function MainSetsSession() {
 
     ws.onclose = () => {
       setIsConnected(false);
+      cleanupAudio();
+      setIsRecording(false);
+      setIsEvaluating(false);
+      setIsPreparingFeedbackAudio(false);
+      setIsGeneratingQuestions(false);
+      if (!isSessionCompleteRef.current) {
+        setError(current => current || 'Your interview connection closed. Return to the dashboard and try again.');
+      }
     };
   }, [
     preview,
@@ -743,10 +839,14 @@ function MainSetsSession() {
     focusArea,
     mode,
     isDrill,
+    isSavedPractice,
+    savedQuestionId,
     isResume,
+    launchId,
     enqueueBase64Audio,
     addQuestion,
     markCurrentAnswered,
+    cleanupAudio,
   ]);
 
   const goToNextSet = () => {
@@ -927,6 +1027,9 @@ function MainSetsSession() {
         (partialTranscript ? (finalTranscriptRef.current ? ' ' : '') + partialTranscript : '')
       ).trim();
       submittedAnswerRef.current = combinedText;
+      finalTranscriptRef.current = combinedText;
+      setFinalTranscript(combinedText);
+      setPartialTranscript('');
       wsRef.current?.send(
         JSON.stringify({
           type: 'submit_answer',
@@ -1005,8 +1108,9 @@ function MainSetsSession() {
     const handleKeyDown = (e) => {
       if (e.code === 'Space') {
         const activeTag = document.activeElement?.tagName?.toLowerCase();
-        if (activeTag === 'input' || activeTag === 'textarea') return;
-        if (showTranscriptModal || showEndModal || showBriefing || isSessionComplete) return;
+        if (['input', 'textarea', 'button', 'a', 'select'].includes(activeTag)
+          || document.activeElement?.isContentEditable) return;
+        if (showTranscriptModal || showEndModal || showSessionGuide || showBriefing || isSessionComplete) return;
         if (micDisabled && !isRecording) return;
         e.preventDefault();
         toggleMic();
@@ -1024,6 +1128,7 @@ function MainSetsSession() {
     isRecording,
     showTranscriptModal,
     showEndModal,
+    showSessionGuide,
     showBriefing,
     isSessionComplete,
   ]);
@@ -1046,12 +1151,12 @@ function MainSetsSession() {
       wsRef.current.close();
       wsRef.current = null;
     }
-    navigate('/dashboard', { replace: true });
-  }, [cleanupAudio, isEvaluating, isRecording, navigate]);
+    navigate(isSavedPractice ? '/dashboard?tab=practice-again' : '/dashboard', { replace: true });
+  }, [cleanupAudio, isEvaluating, isRecording, isSavedPractice, navigate]);
 
   const finishSession = () => {
     if (isDrill) {
-      navigate('/dashboard');
+      navigate(isSavedPractice ? '/dashboard?tab=practice-again' : '/dashboard');
     } else if (effectiveMode === 'practice' && setNumber === 3) {
       navigate('/results?mode=practice');
     } else if (setNumber === 3) {
@@ -1076,6 +1181,7 @@ function MainSetsSession() {
     isListening: isRecording,
     isComplete: isSessionComplete,
     isEvaluating,
+    isPreparingFeedbackAudio,
     isBooting: isGenerating,
     isOffline: !preview && !isConnected,
     hasError: Boolean(error),
@@ -1146,6 +1252,14 @@ function MainSetsSession() {
   ]);
 
   const latestFeedback = getLatestFeedback(questionsAsked);
+  const answeredCount = questionsAsked.filter((question) => question.answered).length;
+  const sessionLabel = isSavedPractice
+    ? 'Practice Again'
+    : isDrill
+      ? `${effectiveFocus ? effectiveFocus.charAt(0).toUpperCase() + effectiveFocus.slice(1) : '3C'} Drill`
+      : meta.label;
+  const leaveLabel = isDrill ? 'Leave drill' : 'Pause';
+  const LeaveIcon = isDrill ? LogOut : Pause;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -1174,58 +1288,99 @@ function MainSetsSession() {
         <>
           {/* ── Top Header Bar ── */}
           <header className="ix-topbar">
-            <div
-              className="ix-topbar-left"
-              onClick={() => setShowEndModal(true)}
-              title="Return to Dashboard"
-            >
-              <MascotLogo size={28} />
-              <span className="ix-topbar-brand-name">iTerview.</span>
-            </div>
-
-            <div className="ix-topbar-center">
-              <span className="ix-topbar-progress">
-                Question {activeQuestionIndex} of {totalQuestions}
-              </span>
-            </div>
-
-            <div className="ix-topbar-right">
-              <span
-                className="ix-badge-difficulty"
-                data-difficulty={sessionDifficulty || 'loading'}
-                aria-label={
-                  sessionDifficulty
-                    ? `Difficulty: ${sessionDifficulty}`
-                    : 'Difficulty is being calibrated'
-                }
+            <div className="ix-topbar-inner">
+              <button
+                type="button"
+                className="ix-topbar-brand"
+                onClick={() => setShowEndModal(true)}
+                aria-label="ITerview — return to dashboard"
+                title="Return to dashboard"
               >
-                <span className="ix-pill-dot" />
-                {sessionDifficulty ? sessionDifficulty.toUpperCase() : 'CALIBRATING'}
-              </span>
+                <img className="ix-topbar-logo" src={logoSrc} alt="" width="44" height="32" />
+                <span className="ix-topbar-brand-name">ITerview</span>
+              </button>
 
-              <span className="ix-badge-set">
-                {isDrill
-                  ? `${effectiveFocus ? effectiveFocus.charAt(0).toUpperCase() + effectiveFocus.slice(1) : '3C'} Drill`
-                  : meta.label || 'Set 1: Personalized'}
-              </span>
+              <div className="ix-topbar-session">
+                <h1 className="ix-topbar-session-title">{sessionLabel}</h1>
+                <div className="ix-topbar-session-meta">
+                  <span className="ix-topbar-progress">
+                    {isSessionComplete ? 'Session complete' : `Question ${activeQuestionIndex} of ${totalQuestions}`}
+                  </span>
+                  <div
+                    className="ix-topbar-progress-track"
+                    role="progressbar"
+                    aria-label="Answers completed"
+                    aria-valuemin={0}
+                    aria-valuemax={totalQuestions}
+                    aria-valuenow={answeredCount}
+                  >
+                    {Array.from({ length: totalQuestions }, (_, index) => (
+                      <span key={index} data-state={
+                        questionsAsked.some((question) => question.index === index + 1 && question.answered)
+                          ? 'done'
+                          : !isSessionComplete && index + 1 === activeQuestionIndex ? 'current' : 'upcoming'
+                      } />
+                    ))}
+                  </div>
+                  <span
+                    className="ix-badge-difficulty"
+                    data-difficulty={sessionDifficulty || 'loading'}
+                    aria-label={sessionDifficulty ? `Difficulty: ${sessionDifficulty}` : 'Difficulty is being calibrated'}
+                  >
+                    {sessionDifficulty ? sessionDifficulty.charAt(0).toUpperCase() + sessionDifficulty.slice(1) : 'Calibrating…'}
+                  </span>
+                </div>
+              </div>
 
               <div className="ix-topbar-actions">
-                <button type="button" className="ix-topbar-icon-btn" title="Toggle theme">
-                  <Sun size={15} />
+                <button type="button" className="ix-topbar-icon-btn" title="Toggle theme" aria-label="Toggle theme">
+                  <Sun size={16} aria-hidden="true" />
                 </button>
 
-                <button type="button" className="ix-topbar-icon-btn" title="Settings">
-                  <Settings size={15} />
-                </button>
+                <Popover.Root open={showSessionGuide} onOpenChange={setShowSessionGuide}>
+                  <Popover.Trigger asChild>
+                    <button type="button" className="ix-topbar-guide-btn" aria-label="Session guide" title="Session guide">
+                      <CircleHelp size={18} aria-hidden="true" />
+                      <span>Session guide</span>
+                    </button>
+                  </Popover.Trigger>
+                  <Popover.Content className="ix-session-guide" align="end" sideOffset={12} collisionPadding={16}
+                    aria-labelledby="ix-session-guide-title">
+                    <div className="ix-session-guide-heading">
+                      <h2 id="ix-session-guide-title">Your session, at a glance</h2>
+                      <Popover.Close asChild>
+                        <button type="button" className="ix-session-guide-close" aria-label="Close session guide">
+                          <X size={18} aria-hidden="true" />
+                        </button>
+                      </Popover.Close>
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>Answer out loud <kbd>Space</kbd></dt>
+                        <dd>Press once to start recording. Press again to stop and submit your answer.</dd>
+                      </div>
+                      <div>
+                        <dt>Review as you go</dt>
+                        <dd>Switch between Questions and Transcript to revisit the conversation and your feedback.</dd>
+                      </div>
+                      <div>
+                        <dt>{isDrill ? 'Leaving a drill' : 'Pick up where you left off'}</dt>
+                        <dd>{isDrill
+                          ? 'Drill answers are temporary. Leaving discards this drill without changing your main-set progress.'
+                          : 'Submitted answers and feedback are saved automatically. Pause to return to the dashboard and resume later.'}</dd>
+                      </div>
+                    </dl>
+                  </Popover.Content>
+                </Popover.Root>
 
                 <button
                   type="button"
                   className="ix-topbar-end-btn"
                   onClick={() => setShowEndModal(true)}
-                  title="Pause interview"
+                  title={isDrill ? 'Leave drill' : 'Pause interview session'}
                 >
-                  <Phone size={13} />
-                  <span>Pause</span>
+                  <LeaveIcon size={16} aria-hidden="true" />
+                  <span>{leaveLabel}</span>
                 </button>
               </div>
             </div>
@@ -1241,7 +1396,7 @@ function MainSetsSession() {
                 data-state={stageState}
                 aria-label="AI interviewer stage"
               >
-                <StageAtmosphere />
+                <StageAtmosphere isSpeaking={stageState === 'speaking'} volume={ttsAudioLevel} />
 
                 {/* Header row: AI Interviewer pill, LIVE + Timer, PIP avatar */}
                 <div className="ix-stage-header-row">
@@ -1260,9 +1415,6 @@ function MainSetsSession() {
                   </div>
 
                   <div className="ix-pip-card">
-                    <button type="button" className="ix-pip-menu-btn" title="Options">
-                      <MoreHorizontal size={14} />
-                    </button>
                     <div className="ix-pip-avatar-circle">{userInitials || 'ME'}</div>
                     <span className="ix-pip-user-label">You</span>
                   </div>
@@ -1317,9 +1469,21 @@ function MainSetsSession() {
                       <span className="ix-q-pill">Q{activeQuestionIndex}</span>
                       <span className="ix-q-sublabel">CURRENT QUESTION</span>
                     </div>
-                    <span className="ix-focus-tag">
-                      {effectiveFocus || (meta.category ? meta.category.toLowerCase() : 'clarity')}
-                    </span>
+                    {!isDrill && <button
+                      type="button"
+                      className="ix-practice-save"
+                      aria-pressed={savedQuestionIndexes.includes(activeQuestionIndex)}
+                      aria-label={savedQuestionIndexes.includes(activeQuestionIndex)
+                        ? `Remove question ${activeQuestionIndex} from practice`
+                        : `Save question ${activeQuestionIndex} for practice`}
+                      title={preview ? 'Preview bookmark' : 'Save to Practice Again'}
+                      disabled={!currentQuestionText || bookmarkBusy}
+                      onClick={() => togglePracticeSave(activeQuestionIndex, currentQuestionText)}
+                    >
+                      <Bookmark size={16} aria-hidden="true"
+                        fill={savedQuestionIndexes.includes(activeQuestionIndex) ? 'currentColor' : 'none'} />
+                      <span>{savedQuestionIndexes.includes(activeQuestionIndex) ? 'Saved' : 'Save for practice'}</span>
+                    </button>}
                   </div>
                   <h2 className="ix-question-title">
                     {currentQuestionText ||
@@ -1457,13 +1621,11 @@ function MainSetsSession() {
                     >
                       <Flag size={15} />
                       <span>
-                        {setNumber === 3
+                        {isSavedPractice ? 'Return to Practice Again' : isDrill ? 'Finish Drill' : setNumber === 3
                           ? effectiveMode === 'practice'
                             ? 'View Practice Summary'
                             : 'Start Graduation Challenge'
-                          : isDrill
-                            ? 'Finish Drill'
-                            : 'Return to Dashboard'}
+                          : 'Return to Dashboard'}
                       </span>
                     </button>
                   ) : (
@@ -1490,13 +1652,31 @@ function MainSetsSession() {
                         onClick={() => setShowEndModal(true)}
                         title={isDrill ? 'Leave drill' : 'Pause interview session'}
                       >
-                        <PhoneOff size={15} />
-                        <span>{isDrill ? 'Leave drill' : 'Pause'}</span>
+                        <LeaveIcon size={16} aria-hidden="true" />
+                        <span>{leaveLabel}</span>
                       </button>
                     </>
                   )}
                 </div>
               </section>
+
+              {bookmarkError && <p role="alert">{bookmarkError}</p>}
+              {practiceToast && (
+                <div className="ix-practice-toast" key={practiceToast.id}>
+                  <CircleCheck size={20} className="ix-practice-toast-icon" aria-hidden="true" />
+                  <div className="ix-practice-toast-copy" role="status" aria-atomic="true">
+                    <span>{practiceToast.wasSaved ? 'Removed from practice' : 'Saved for practice'}</span>
+                    <span className="ix-practice-toast-detail">{preview ? 'Preview only' : 'Your Practice Again library'}</span>
+                  </div>
+                  <button type="button" className="ix-practice-toast-undo" onClick={undoPracticeSave} disabled={bookmarkBusy}>
+                    Undo
+                  </button>
+                  <button type="button" className="ix-practice-toast-dismiss"
+                    aria-label="Dismiss practice notification" onClick={dismissPracticeToast}>
+                    <X size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              )}
             </main>
 
             {/* ════ Right Sidebar ════ */}
@@ -1512,6 +1692,10 @@ function MainSetsSession() {
               coachTip={coachTip}
               whatYouDidWell={latestFeedback?.whatYouDidWell}
               tryImproving={latestFeedback?.tryImproving}
+              savedQuestionIndexes={savedQuestionIndexes}
+              onTogglePracticeSave={isDrill ? undefined : togglePracticeSave}
+              totalQuestions={totalQuestions}
+              bookmarkBusy={bookmarkBusy}
             />
           </div>
 
@@ -1588,10 +1772,12 @@ function MainSetsSession() {
             >
               <div
                 className="ix-modal-card ix-modal-card-sm"
+                ref={endDialogRef}
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="modal-end-title"
+                aria-describedby="modal-end-description"
               >
                 <div className="ix-modal-header">
                   <h3 id="modal-end-title" className="ix-modal-title">
@@ -1607,7 +1793,7 @@ function MainSetsSession() {
                   </button>
                 </div>
                 <div className="ix-modal-body">
-                  <p className="ix-modal-desc">
+                  <p id="modal-end-description" className="ix-modal-desc">
                     {isRecording
                       ? 'Stop and submit your current answer before leaving. The current recording has not been saved yet.'
                       : isEvaluating
@@ -1623,6 +1809,7 @@ function MainSetsSession() {
                   <button
                     type="button"
                     className="ix-btn-secondary-flat"
+                    data-pause-cancel
                     onClick={() => setShowEndModal(false)}
                   >
                     Stay in Session

@@ -1,3 +1,5 @@
+import { schoolSocketProtocols } from '../utils/authenticatedApi';
+import { authenticatedFetch } from '../utils/authenticatedApi';
 // frontend/src/components/FluxDebugger.jsx
 // ─────────────────────────────────────────────────────────────────────────────
 // DEV ONLY — Deepgram Flux STT & EndOfTurn Dev Debugger
@@ -287,12 +289,12 @@ export default function FluxDebugger() {
     try {
       if (mode === 'direct') {
         // Fetch Token from Backend
-        const tokenRes = await fetch(`${BACKEND_URL}/api/deepgram/token`);
+        const tokenRes = await authenticatedFetch(`${BACKEND_URL}/api/deepgram/token`);
         if (!tokenRes.ok) throw new Error('Failed to retrieve Deepgram token from server');
         const { token } = await tokenRes.json();
 
         const url = `wss://api.deepgram.com/v2/listen?model=flux-general-en&eot_threshold=${eotThreshold}&eot_timeout_ms=${eotTimeoutMs}&encoding=linear16&sample_rate=${SAMPLE_RATE}`;
-        const ws = new WebSocket(url, ['token', token]);
+        const ws = new WebSocket(url, ['bearer', token]);
         ws.binaryType = 'arraybuffer';
         wsRef.current = ws;
 
@@ -334,7 +336,7 @@ export default function FluxDebugger() {
         };
       } else {
         // Backend Mode
-        const ws = new WebSocket(WS_BACKEND_URL);
+        const ws = new WebSocket(WS_BACKEND_URL, await schoolSocketProtocols());
         ws.binaryType = 'arraybuffer';
         wsRef.current = ws;
 

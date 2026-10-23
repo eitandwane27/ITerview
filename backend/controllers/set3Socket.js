@@ -1,3 +1,4 @@
+const { hasAttemptIdentity, belongsToAttempt, savedAnswerCount } = require('../utils/practiceAttempt');
 // backend/controllers/set3Socket.js
 // ─────────────────────────────────────────────────────────────────────────────
 // WebSocket traffic controller for Set 3 (Behavioral Interview)
@@ -49,7 +50,7 @@ function handleSet3Socket(ws, request) {
 
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
-  const firebaseUid = url.searchParams.get("uid");
+  const firebaseUid = request.auth?.uid;
   let sessionMode =
     url.searchParams.get("mode") === "practice" ? "practice" : "diagnostic";
 
@@ -73,6 +74,9 @@ function handleSet3Socket(ws, request) {
   let currentQuestionText = "";
   let currentCompetency = "";
   let sessionDoc = null;
+  let attemptId = null;
+  let submissionInFlight = false;
+  let questionReady = false;
 
   // ── Step 1: Upfront question bank (all 5 Qs pre-generated at startup) ─────
   let questions = [];
@@ -191,6 +195,124 @@ function handleSet3Socket(ws, request) {
     return Date.now() - t0;
   }
 
+
+  async function finaliseSavedSession() {
+    if (savedAnswerCount(sessionDoc) !== 5) throw new Error('Cannot finalize an incomplete set.');
+    if (sessionDoc.isCompleted) return sessionDoc;
+    console.time("[Perf] Finalise Session");
+    sessionDoc.finalise();
+    sessionDoc = await Set3Session.findOneAndUpdate(
+      { _id: sessionDoc._id, sessionId, isCompleted: false },
+      {
+        $set: {
+          avg_situation: sessionDoc.avg_situation,
+          avg_action: sessionDoc.avg_action,
+          avg_result: sessionDoc.avg_result,
+          overall_score_percentage: sessionDoc.overall_score_percentage,
+          isCompleted: true,
+          completedAt: sessionDoc.completedAt,
+        },
+      },
+      { returnDocument: "after" },
+    );
+    if (!sessionDoc) {
+      questionReady = false;
+      console.log("[WS] Set 3 finalisation ignored because this socket no longer owns the session.");
+      return;
+    }
+    console.timeEnd("[Perf] Finalise Session");
+    return sessionDoc;
+  }
+
+  function sendCompletion() {
+    questionReady = false;
+    send({ type: 'session_complete', mode: sessionMode,
+      overall_score_percentage: sessionDoc?.overall_score_percentage,
+      avg_situation: sessionDoc?.avg_situation, avg_action: sessionDoc?.avg_action, avg_result: sessionDoc?.avg_result,
+    });
+  }
+
+  async function archiveAttempt() {
+    // Record completed 3-set practice attempt to User rolling 20-session history
+    try {
+      const [set1Doc, set2Doc, userDoc] = await Promise.all([
+        Set1Session.findOne({ firebaseUid }),
+        Set2Session.findOne({ firebaseUid }),
+        User.findOne({ firebaseUid }),
+      ]);
+
+      if (userDoc && !(userDoc.practiceHistory || []).some(item => item.attemptId === sessionDoc.attemptId)) {
+        const practiceScores = calculatePracticeScores(set1Doc, set2Doc, sessionDoc);
+        // Only complete three-set runs belong in completed practice history.
+        if (practiceScores.completedSetCount !== 3) {
+          throw new Error("Cannot archive an incomplete three-set practice attempt.");
+        }
+        const { set1: set1Score, set2: set2Score, set3: set3Score } = practiceScores.setScores;
+        const overallScorePercentage = practiceScores.overallScorePercentage;
+
+        const existingHist = userDoc.practiceHistory || [];
+        const maxAttempt = existingHist.reduce((max, item) => {
+          const num = typeof item.attemptNumber === "number" ? item.attemptNumber : 0;
+          return Math.max(max, num);
+        }, 0);
+        const nextAttempt = maxAttempt > 0 ? maxAttempt + 1 : existingHist.length + 1;
+
+        const avgOutOf5 = set1Doc && set1Doc.avg_clarity !== null
+          ? parseFloat(((set1Doc.avg_clarity + set1Doc.avg_correctness + set1Doc.avg_completeness) / 3).toFixed(1))
+          : null;
+
+        const threeCBreakdown = set1Doc ? {
+          clarity: set1Doc.avg_clarity,
+          correctness: set1Doc.avg_correctness,
+          completeness: set1Doc.avg_completeness,
+          averageOutOf5: avgOutOf5,
+          averageOutOf10: avgOutOf5 !== null
+            ? parseFloat((avgOutOf5 * 2).toFixed(1))
+            : null,
+        } : null;
+
+        await User.findOneAndUpdate(
+          { firebaseUid, 'practiceHistory.attemptId': { $ne: sessionDoc.attemptId } },
+          {
+            $push: {
+              practiceHistory: {
+                $each: [
+                  {
+                    attemptNumber: nextAttempt,
+                    attemptId: sessionDoc.attemptId,
+                    completedAt: new Date(),
+                    role: sessionRole,
+                    difficulty: sessionDifficulty,
+                    focusArea: userDoc.focusArea || "auto",
+                    overallScorePercentage,
+                    setScores: {
+                      set1: set1Score,
+                      set2: set2Score,
+                      set3: set3Score,
+                    },
+                    threeCBreakdown,
+                    starBreakdown: {
+                      situation: sessionDoc.avg_situation,
+                      action: sessionDoc.avg_action,
+                      result: sessionDoc.avg_result,
+                    },
+                    weaknessTag: sessionDoc.final_weakness_tag || "focus_completeness",
+                  },
+                ],
+                $slice: -20,
+              },
+            },
+          }
+        );
+        console.log(`[DB] ⏱️ Appended practice history attempt #${nextAttempt} for user: ${firebaseUid}`);
+      }
+    } catch (errHist) {
+      console.error("[DB] Failed to record practice history:", errHist.message);
+    }
+
+
+  }
+
   // ── Session startup ───────────────────────────────────────────────────────
   // Step 1: Generate all 5 questions upfront during loading.
   // Q1 TTS synthesis fires immediately once Q1 text is ready so LLM
@@ -210,17 +332,39 @@ function handleSet3Socket(ws, request) {
       }
       sessionDifficulty = resolveSetDifficulty('set3', sessionDifficulty);
 
+      // Later sets inherit the run and technical settings from Set 1.
+      const firstSet = await Set1Session.findOne({ firebaseUid });
+      if (!firstSet?.isCompleted || !hasAttemptIdentity(firstSet)) {
+        send({ type: 'error', message: 'Complete Set 1 of a new practice run first.' });
+        return;
+      }
+      const secondSet = await Set2Session.findOne({ firebaseUid });
+      if (!secondSet?.isCompleted || !belongsToAttempt(firstSet, secondSet, 2)) {
+        send({ type: 'error', message: 'Complete Set 2 of this practice run first.' });
+        return;
+      }
+      attemptId = firstSet.attemptId;
+      sessionRole = firstSet.role;
+      sessionDifficulty = 'easy';
+      sessionMode = firstSet.mode || sessionMode;
+
       // Check if user requested a reset via URL
       const isResetRequested = url.searchParams.get("reset") === "true";
 
       // 2. Check if an in-progress session doc already exists in DB
       const existingDoc = await Set3Session.findOne({ firebaseUid });
       const isResuming =
-        !isResetRequested &&
         existingDoc &&
-        !existingDoc.isCompleted;
+        (!isResetRequested || existingDoc.isCompleted) &&
+        belongsToAttempt(firstSet, existingDoc, 3);
 
       if (isResuming) {
+        if (existingDoc.isCompleted) {
+          sessionDoc = existingDoc;
+          await archiveAttempt();
+          sendCompletion();
+          return;
+        }
         sessionRole = existingDoc.role || sessionRole;
         // Legacy medium/hard Set 3 banks were also generated at easy level.
         sessionDifficulty = resolveSetDifficulty('set3', existingDoc.difficulty || sessionDifficulty);
@@ -231,7 +375,7 @@ function handleSet3Socket(ws, request) {
             sessionId: existingDoc.sessionId,
             isCompleted: false,
           },
-          { $set: { sessionId, difficulty: sessionDifficulty } },
+          { $set: { sessionId, attemptId, difficulty: sessionDifficulty } },
           { returnDocument: "after" },
         );
         if (!sessionDoc) {
@@ -242,6 +386,13 @@ function handleSet3Socket(ws, request) {
         }
 
         send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS }));
+
+        if (savedAnswerCount(sessionDoc) === 5) {
+          if (!await finaliseSavedSession()) return;
+          await archiveAttempt();
+          sendCompletion();
+          return;
+        }
 
         if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
           questions = existingDoc.questions;
@@ -265,7 +416,7 @@ function handleSet3Socket(ws, request) {
           }
         }
 
-        currentQuestionIndex = existingDoc.answers.length;
+        currentQuestionIndex = savedAnswerCount(sessionDoc);
 
         console.log(
           `[DB] ⏯️ Resuming Set 3 session for user ${firebaseUid} at Question ${currentQuestionIndex + 1} (${currentQuestionIndex} previous answers saved)`
@@ -289,6 +440,8 @@ function handleSet3Socket(ws, request) {
         const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
         send({ type: "tts_audio", data: audioBuffer.toString("base64") });
 
+        questionReady = true;
+
         send({
           type: "status",
           message: "Question ready. Click Unmute to answer.",
@@ -303,6 +456,7 @@ function handleSet3Socket(ws, request) {
         { firebaseUid },
         {
           sessionId,
+          attemptId,
           role: sessionRole,
           difficulty: sessionDifficulty,
           mode: sessionMode,
@@ -337,6 +491,7 @@ function handleSet3Socket(ws, request) {
       for (let i = 0; i < MAX_QUESTIONS; i++) {
         const qGenStart = Date.now();
         const q = await generateSet3Question(askedQuestions, sessionDifficulty);
+        if (ws.readyState !== ws.OPEN) return;
         const qGenDuration = Date.now() - qGenStart;
         metrics.questionGenLatencies.push(qGenDuration);
 
@@ -345,7 +500,10 @@ function handleSet3Socket(ws, request) {
 
         // Fire Q1 TTS synthesis immediately so it runs while Q2-5 generate
         if (i === 0) {
-          q1SynthesisPromise = synthesizeSpeech(q, voiceModel);
+          // Observe rejection immediately, including abandoned startups.
+          q1SynthesisPromise = synthesizeSpeech(q, voiceModel).then(
+            (audio) => ({ audio }), (error) => ({ error })
+          );
         }
       }
       const totalGenDuration = Date.now() - genStart;
@@ -379,8 +537,10 @@ function handleSet3Socket(ws, request) {
       });
 
       // 5. Await Q1 TTS (was running concurrently with Q2-5 generation)
-      const q1AudioBuffer = await q1SynthesisPromise;
+      const q1Synthesis = await q1SynthesisPromise;
       if (ws.readyState !== ws.OPEN) return;
+      if (q1Synthesis.error) throw q1Synthesis.error;
+      const q1AudioBuffer = q1Synthesis.audio;
       const q1TtsLatency = Date.now() - startupStart;
       metrics.ttsLatencies.push(q1TtsLatency);
 
@@ -388,6 +548,8 @@ function handleSet3Socket(ws, request) {
       console.log(
         `[TTS] 🔊 Q1 audio sent in ${(q1TtsLatency / 1000).toFixed(2)}s (total startup)`,
       );
+
+      questionReady = true;
 
       send({
         type: "status",
@@ -413,6 +575,8 @@ function handleSet3Socket(ws, request) {
     } catch {
       return;
     }
+
+    if (!msg || typeof msg !== 'object' || Array.isArray(msg) || typeof msg.type !== 'string') return;
 
     switch (msg.type) {
       // ── User opened the mic ──────────────────────────────────────────────
@@ -469,6 +633,12 @@ function handleSet3Socket(ws, request) {
 
       // ── User confirmed transcript → evaluate, speak feedback, advance ────
       case "submit_answer": {
+        if (submissionInFlight || !questionReady || currentQuestionIndex >= MAX_QUESTIONS) return;
+        if (msg.final_text != null && typeof msg.final_text !== 'string') return;
+        submissionInFlight = true;
+        const answerIndex = currentQuestionIndex;
+        const answerQuestion = currentQuestionText;
+        const answerCompetency = currentCompetency;
         const confirmedText = msg.final_text || fullTranscript;
         console.log(
           `\n--- Set 3 Q${currentQuestionIndex + 1} (${currentCompetency}) Processing ---`,
@@ -484,10 +654,10 @@ function handleSet3Socket(ws, request) {
           console.time("[Perf] AI STAR Evaluation");
           const evalStart = Date.now();
           const evaluation = await evaluateSet3Answer(
-            currentQuestionText,
+            answerQuestion,
             confirmedText,
             sessionDifficulty,
-            currentCompetency,
+            answerCompetency,
           );
           const evalDuration = Date.now() - evalStart;
           metrics.evaluationLatencies.push(evalDuration);
@@ -499,9 +669,9 @@ function handleSet3Socket(ws, request) {
           // 2. Save to DB
           console.time("[Perf] DB Record Save");
           const answerRecord = {
-            questionIndex: currentQuestionIndex,
-            question: currentQuestionText,
-            competency_topic: currentCompetency,
+            questionIndex: answerIndex,
+            question: answerQuestion,
+            competency_topic: answerCompetency,
             transcript: confirmedText,
             situation_score: evaluation.situation_score,
             action_score: evaluation.action_score,
@@ -514,16 +684,22 @@ function handleSet3Socket(ws, request) {
               _id: sessionDoc._id,
               sessionId,
               isCompleted: false,
-              "answers.questionIndex": { $ne: currentQuestionIndex },
+              "answers.questionIndex": { $ne: answerIndex },
             },
             { $push: { answers: answerRecord } },
             { returnDocument: "after" },
           );
           if (!sessionDoc) {
+            questionReady = false;
             console.log("[WS] Set 3 answer ignored because this socket no longer owns the session.");
             return;
           }
           console.timeEnd("[Perf] DB Record Save");
+
+          questionReady = false;
+          if (savedAnswerCount(sessionDoc) === 5) {
+            if (!await finaliseSavedSession()) return;
+          }
 
           if (ws.readyState !== ws.OPEN) {
             console.log("[WS] Client disconnected during evaluation, skipping TTS and next question.");
@@ -598,6 +774,8 @@ function handleSet3Socket(ws, request) {
               send({ type: "tts_audio", data: qAudioBuffer.toString("base64") });
             }
 
+            questionReady = true;
+
             send({
               type: "status",
               message: "Question ready. Click Unmute to answer.",
@@ -606,107 +784,13 @@ function handleSet3Socket(ws, request) {
             // ── All 5 answered — finalise session ─────────────────────────
             send({ type: "status", message: "Finalising Set 3 results..." });
 
-            console.time("[Perf] Finalise Session");
-            sessionDoc.finalise();
-            sessionDoc = await Set3Session.findOneAndUpdate(
-              { _id: sessionDoc._id, sessionId, isCompleted: false },
-              {
-                $set: {
-                  avg_situation: sessionDoc.avg_situation,
-                  avg_action: sessionDoc.avg_action,
-                  avg_result: sessionDoc.avg_result,
-                  overall_score_percentage: sessionDoc.overall_score_percentage,
-                  isCompleted: true,
-                  completedAt: sessionDoc.completedAt,
-                },
-              },
-              { returnDocument: "after" },
-            );
-            if (!sessionDoc) {
-              console.log("[WS] Set 3 finalisation ignored because this socket no longer owns the session.");
-              return;
-            }
-            console.timeEnd("[Perf] Finalise Session");
+            if (!await finaliseSavedSession()) return;
 
             console.log(
               `[Session] 🏁 Set 3 complete. Overall Score: ${sessionDoc.overall_score_percentage}% | Avg Situation: ${sessionDoc.avg_situation} | Avg Action: ${sessionDoc.avg_action} | Avg Result: ${sessionDoc.avg_result}`,
             );
 
-            // Record completed 3-set practice attempt to User rolling 20-session history
-            try {
-              const [set1Doc, set2Doc, userDoc] = await Promise.all([
-                Set1Session.findOne({ firebaseUid }),
-                Set2Session.findOne({ firebaseUid }),
-                User.findOne({ firebaseUid }),
-              ]);
-
-              if (userDoc) {
-                const practiceScores = calculatePracticeScores(set1Doc, set2Doc, sessionDoc);
-                // Only complete three-set runs belong in completed practice history.
-                if (practiceScores.completedSetCount !== 3) {
-                  throw new Error("Cannot archive an incomplete three-set practice attempt.");
-                }
-                const { set1: set1Score, set2: set2Score, set3: set3Score } = practiceScores.setScores;
-                const overallScorePercentage = practiceScores.overallScorePercentage;
-
-                const existingHist = userDoc.practiceHistory || [];
-                const maxAttempt = existingHist.reduce((max, item) => {
-                  const num = typeof item.attemptNumber === "number" ? item.attemptNumber : 0;
-                  return Math.max(max, num);
-                }, 0);
-                const nextAttempt = maxAttempt > 0 ? maxAttempt + 1 : existingHist.length + 1;
-
-                const avgOutOf5 = set1Doc && set1Doc.avg_clarity !== null
-                  ? parseFloat(((set1Doc.avg_clarity + set1Doc.avg_correctness + set1Doc.avg_completeness) / 3).toFixed(1))
-                  : null;
-
-                const threeCBreakdown = set1Doc ? {
-                  clarity: set1Doc.avg_clarity,
-                  correctness: set1Doc.avg_correctness,
-                  completeness: set1Doc.avg_completeness,
-                  averageOutOf5: avgOutOf5,
-                  averageOutOf10: avgOutOf5 !== null
-                    ? parseFloat((avgOutOf5 * 2).toFixed(1))
-                    : null,
-                } : null;
-
-                await User.findOneAndUpdate(
-                  { firebaseUid },
-                  {
-                    $push: {
-                      practiceHistory: {
-                        $each: [
-                          {
-                            attemptNumber: nextAttempt,
-                            completedAt: new Date(),
-                            role: sessionRole,
-                            difficulty: sessionDifficulty,
-                            focusArea: userDoc.focusArea || "auto",
-                            overallScorePercentage,
-                            setScores: {
-                              set1: set1Score,
-                              set2: set2Score,
-                              set3: set3Score,
-                            },
-                            threeCBreakdown,
-                            starBreakdown: {
-                              situation: sessionDoc.avg_situation,
-                              action: sessionDoc.avg_action,
-                              result: sessionDoc.avg_result,
-                            },
-                            weaknessTag: sessionDoc.final_weakness_tag || "focus_completeness",
-                          },
-                        ],
-                        $slice: -20,
-                      },
-                    },
-                  }
-                );
-                console.log(`[DB] ⏱️ Appended practice history attempt #${nextAttempt} for user: ${firebaseUid}`);
-              }
-            } catch (errHist) {
-              console.error("[DB] Failed to record practice history:", errHist.message);
-            }
+            await archiveAttempt();
 
             // Step 6: Concurrent sentence TTS for final closing speech
             const finalSpeech = `${evaluation.interviewer_reply} That concludes our behavioral round. Excellent effort!`;
@@ -798,6 +882,8 @@ function handleSet3Socket(ws, request) {
         } catch (err) {
           console.error("[WS] Set 3 evaluation error:", err);
           send({ type: "error", message: "Failed to evaluate answer." });
+        } finally {
+          submissionInFlight = false;
         }
         console.log(`-------------------------------------\n`);
         break;

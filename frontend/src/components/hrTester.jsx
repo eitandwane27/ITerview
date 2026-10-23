@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../utils/authenticatedApi';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, LoaderCircle, RefreshCw, X } from 'lucide-react';
 import { Button } from './ui/button';
@@ -121,7 +122,7 @@ export default function HrTester() {
     // Five sequential AI calls can take longer than an ordinary REST request.
     const timeout = setTimeout(() => controller.abort('timeout'), 300000);
     try {
-      const response = await fetch(`/api/debug/${questionSet.endpoint}?${params}`, {
+      const response = await authenticatedFetch(`/api/debug/${questionSet.endpoint}?${params}`, {
         signal: controller.signal,
       });
       if (!response.ok)

@@ -148,6 +148,39 @@ test('legacy three-argument evaluation stays supported without guessing a compet
   assert.ok(service.requests[0].messages[0].content.includes('no slot label was supplied'));
 });
 
+test('behavioral evaluation uses dedicated STAR coaching with flexible replies and preserves safeguards', async t => {
+  t.mock.method(console, 'log', () => {});
+  const { BEHAVIORAL_COACHING_PROMPT } = require('../config/behavioralCoachingPrompt');
+  const { PRACTICE_COACHING_PROMPT } = require('../config/practiceCoachingPrompt');
+  const feedback = {
+    situation_score: 5,
+    action_score: 4,
+    result_score: 5,
+    tip: 'Keep connecting your own contribution to the outcome or lesson.',
+    interviewer_reply: "You explained the disagreement and your part in checking the options with the group. Checking the requirements gave you a useful basis for discussing the different ideas. The disagreement didn't need a perfect ending for that lesson to matter. Keep connecting your own contribution to what happened or what you learned.",
+  };
+  const service = harness([JSON.stringify(feedback)]);
+  const competency = BEHAVIORAL_COMPETENCIES[2];
+  const result = await service.evaluateSet3Answer(competency.examples[0],
+    'My group disagreed about two options. I checked both against the requirements with them. We still disagreed, but I learned to check the requirements first.',
+    'easy', competency.topic);
+  const prompt = service.requests[0].messages[0].content;
+
+  assert.ok(prompt.includes(BEHAVIORAL_COACHING_PROMPT));
+  assert.equal(prompt.includes(PRACTICE_COACHING_PROMPT), false);
+  assert.match(prompt, /usually 3–5 sentences/);
+  assert.doesNotMatch(prompt, /EXACTLY TWO|<two sentences>/i);
+  for (const rule of ['RESPECTFUL PRACTICE GUARDRAIL', '1–2 sentence boundary',
+    'profanity alone must not cause an automatic minimum',
+    'Never praise harmful behavior', 'Never ask the candidate to claim actions they did not take',
+    'When all three scores are 4 or 5', 'illustrative, not the candidate\'s experience',
+    'Situation includes the task or responsibility', 'Collaborative we wording is valid',
+    'choose a small real event', 'do not require behaviors from other competencies']) {
+    assert.ok(prompt.includes(rule), rule);
+  }
+  assert.deepEqual(result, feedback);
+});
+
 test('malformed, absent, coerced, fractional, and out-of-range scores produce retryable failure instead of average marks', async () => {
   for (const output of ['', 'not json', '{}', '[]', 'null',
     JSON.stringify({ situation_score: '5', action_score: 3, result_score: 3 }),

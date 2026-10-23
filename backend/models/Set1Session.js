@@ -50,6 +50,11 @@ const set1SessionSchema = new mongoose.Schema({
   // Active WebSocket session ID (generated on connect, like the Pre-Test)
   sessionId: { type: String, required: true },
 
+  // Stable across reconnects and shared by this run's three sets.
+  attemptId: { type: String, default: null },
+  // Idempotency marker for an intentional new run from the browser.
+  launchId: { type: String, default: null },
+
   // Distinguishes the one-time research journey from repeat practice.
   mode: {
     type: String,

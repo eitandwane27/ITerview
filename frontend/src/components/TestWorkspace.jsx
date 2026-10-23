@@ -65,6 +65,7 @@ const AnswerEditor = forwardRef(function AnswerEditor({ value, ...props }, ref) 
 
 export default function TestWorkspace({
   variant = 'pre',
+  enterFromSetup = false,
   showBriefing = false,
   authLoading = false,
   isConnected = false,
@@ -151,8 +152,11 @@ export default function TestWorkspace({
           : 'Start recording';
 
   return (
-    <div
+    <Motion.div
       className={`test-page test-page--${variant}${intro ? ' test-page--briefing' : ''}${isRecording ? ' test-page--recording' : ''}${isPlayingAudio ? ' test-page--speaking' : ''}`}
+      initial={enterFromSetup ? { opacity: 0, scale: reduced ? 1 : 0.99 } : false}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: reduced ? 0.1 : 0.3, ease: SWAP_EASE }}
     >
       {children}
       <header className="test-topbar">
@@ -521,6 +525,6 @@ export default function TestWorkspace({
           </Motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </Motion.div>
   );
 }

@@ -5,8 +5,9 @@ const {
 } = require("../services/voiceAgentAiService");
 
 const router = express.Router();
+const { requireSchoolUser } = require('../middleware/schoolAuth');
 
-router.get("/health", (req, res) => {
+router.get("/health", requireSchoolUser, (req, res) => {
   const usesLlmProxy = Boolean(process.env.VOICE_AGENT_LLM_ENDPOINT_URL);
   const configured = Boolean(
     process.env.DEEPGRAM_API_KEY &&

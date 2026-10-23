@@ -16,6 +16,7 @@ lint_out.txt
 node_modules
 dist
 dist-ssr
+.vite/
 *.local
 
 # Environment variables
@@ -78,7 +79,9 @@ PRODUCT.md
 # Tool state & artifacts
 .codex/
 .impeccable/
+.taste-skill/
 .zcode/
 artifacts/
 tmp/
 skills-lock.json
+/design-qa.md

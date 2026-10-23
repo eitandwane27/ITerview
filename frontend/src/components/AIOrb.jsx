@@ -600,9 +600,9 @@ function resolveState({
 }) {
   if (expressionState && STATE_VISUAL[expressionState]) return expressionState;
   if (hasError) return 'error';
-  if (isComplete) return 'complete';
   if (isListening) return 'listening';
   if (isSpeaking) return 'speaking';
+  if (isComplete) return 'complete';
   if (isEvaluating) return 'evaluating';
   if (isBooting) return 'booting';
   if (isOffline) return 'offline';
@@ -672,6 +672,7 @@ function AIOrbBase({
   expressiveMotion = false,
   expressionState = null,
   followPointer = false,
+  onReady = null,
   className = '',
 }) {
   const containerRef = useRef(null);
@@ -679,6 +680,8 @@ function AIOrbBase({
   const drawRef = useRef(null);
   const gazeRef = useRef({ targetX: 0, targetY: 0, x: 0, y: 0 });
   const [rendererState, setRendererState] = useState('checking');
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   const state = resolveState({
     expressionState,
@@ -709,6 +712,7 @@ function AIOrbBase({
 
     if (!gl) {
       setRendererState('fallback');
+      onReadyRef.current?.();
       return undefined;
     }
 
@@ -718,6 +722,7 @@ function AIOrbBase({
     } catch (error) {
       console.error('AI orb WebGL renderer could not start:', error);
       setRendererState('fallback');
+      onReadyRef.current?.();
       return undefined;
     }
 
@@ -786,6 +791,7 @@ function AIOrbBase({
     let lastVisualState = visualRef.current.state;
     let listeningTime = 0;
     let orbitPhase = 0;
+    let firstFrameDrawn = false;
 
     function resizeCanvas() {
       const bounds = canvas.getBoundingClientRect();
@@ -877,6 +883,10 @@ function AIOrbBase({
       gl.uniform3fv(uniforms.secondary, current.secondary);
       gl.uniform3fv(uniforms.accent, current.accent);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+      if (!firstFrameDrawn) {
+        firstFrameDrawn = true;
+        onReadyRef.current?.();
+      }
     }
 
     function frame(now) {

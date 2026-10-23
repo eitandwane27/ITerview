@@ -7,6 +7,7 @@
 const { OpenAI } = require("openai");
 const { getRoleConfig, getRoleSetConfig, getRoleRestrictions } = require("../config/roleConfig");
 const { getEvaluatorRubric, HARD_SET1_SCORING, SET1_ITEM_LIST_SCORING } = require("../config/evaluatorRubrics");
+const { PRACTICE_COACHING_PROMPT } = require("../config/practiceCoachingPrompt");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
 const { getEasySet1QuestionIssue } = require("../utils/easySet1QuestionGuard");
 const { getMediumSet1QuestionIssue } = require("../utils/mediumQuestionGuard");
@@ -257,7 +258,7 @@ OUTPUT RULE:
   }
 }
 
-const SET1_SCORING_SYSTEM_PROMPT = `You are a strict, objective IT interview scoring engine and coach.
+const SET1_SCORING_SYSTEM_PROMPT = `You are an objective IT interview evaluator and a friendly student practice coach.
 Your task is to evaluate a student's spoken answer against the specific interview question.
 You must respond with ONLY a valid JSON object.
 
@@ -267,16 +268,7 @@ Score each dimension from 1 to 5:
 - correctness_score: Are the claims and supplied items relevant and factually accurate? Judge missing requested coverage separately under completeness.
 - completeness_score: How thoroughly does the answer cover the specific points the question is asking about?
 
-### STEP 2 — COACHING TIP & INTERVIEWER REPLY
-Based on the answer, provide two separate strings:
-1. "tip": Exactly ONE SENTENCE of actionable feedback for the AI Coach panel (e.g. "Next time, try to explain the trade-offs more clearly.").
-2. "interviewer_reply": A warm, welcoming, and encouraging response from the interviewer. It must consist of exactly two sentences:
-   - Sentence 1: A supportive and conversational acknowledgment validating their response (e.g. "That is a really clear and well-structured explanation!").
-   - Sentence 2: A brief, positive piece of coaching advice or reinforcement based on their answer (e.g. "Next time, try adding a quick real-world example to make it even stronger.").
-   - STRICT RULES:
-     - It MUST NOT end with a question or ask any questions.
-     - It MUST NOT introduce the next topic or mention the next question.
-     - Keep the tone warm, friendly, encouraging, and supportive.
+${PRACTICE_COACHING_PROMPT}
 
 Return exactly this shape:
 {
@@ -284,7 +276,7 @@ Return exactly this shape:
   "correctness_score": <integer 1-5>,
   "completeness_score": <integer 1-5>,
   "tip": "<1-sentence string>",
-  "interviewer_reply": "<exactly two sentences warm reply>"
+  "interviewer_reply": "<friendly, specific coaching response ending with one practical takeaway>"
 }`;
 
 const SET1_SCORING_RESPONSE_FORMAT = {
@@ -311,7 +303,7 @@ const SET1_SCORING_RESPONSE_FORMAT = {
         interviewer_reply: {
           type: "string",
           description:
-            "Exactly two sentences warm interviewer reply, no questions, no next topic mentions",
+            "Friendly coaching reply, usually 3–5 sentences and 45–85 words; simple sufficient answers may be shorter; end with one practical takeaway, no questions or next-topic mentions",
         },
       },
       required: [
@@ -399,7 +391,7 @@ Do not demand extra reasoning, trade-offs, syntax, or implementation beyond the 
       fallbackTip,
     interviewer_reply:
       typeof parsed.interviewer_reply === "string" && parsed.interviewer_reply.trim() ? parsed.interviewer_reply.trim() :
-      "That was a solid start. Let's build on that in the next parts.",
+      "Thanks for sharing your answer. When you practice, keep your response focused on what the question asks.",
   };
 }
 

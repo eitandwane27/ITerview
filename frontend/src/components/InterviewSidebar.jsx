@@ -17,6 +17,7 @@ import {
   ArrowDown,
   ThumbsUp,
   Lightbulb,
+  Bookmark,
 } from 'lucide-react';
 import mascotHeadSrc from '../assets/mascot-head.png';
 
@@ -38,6 +39,10 @@ export function QuestionListCard({
   userInitials = 'ME',
   activeTab: controlledTab,
   onTabChange,
+  savedQuestionIndexes = [],
+  onTogglePracticeSave,
+  totalQuestions = 5,
+  bookmarkBusy = false,
 }) {
   const [internalTab, setInternalTab] = useState('questions');
   const activeTab = controlledTab !== undefined ? controlledTab : internalTab;
@@ -55,7 +60,7 @@ export function QuestionListCard({
           className={`ix-sidebar-tab ${activeTab === 'questions' ? 'active' : ''}`}
           onClick={() => setTab('questions')}
         >
-          Questions (5)
+          Questions ({totalQuestions})
         </button>
         <button
           type="button"
@@ -86,11 +91,13 @@ export function QuestionListCard({
           aria-labelledby="ix-sidebar-tab-questions"
           className="ix-question-list"
         >
-          {[1, 2, 3, 4, 5].map((i) => {
+          {Array.from({ length: totalQuestions }, (_, index) => index + 1).map((i) => {
             const isCurrent = i === activeQuestionIndex;
             const asked = questionsAsked.find((q) => q.index === i);
             const isAnswered = asked ? asked.answered : i < activeQuestionIndex;
             const qText = asked ? asked.text : titleFor(i);
+            const revealedText = isCurrent ? currentQuestionText || asked?.text : asked?.text;
+            const isSaved = savedQuestionIndexes.includes(i);
 
             const stateClass = isCurrent ? 'active' : isAnswered ? 'answered' : 'pending';
 
@@ -104,7 +111,19 @@ export function QuestionListCard({
                       ? qText || `Question ${i}`
                       : 'Waiting for the interviewer...'}
                 </span>
-                {isCurrent ? (
+                {onTogglePracticeSave && revealedText ? (
+                  <button
+                    type="button"
+                    className="ix-question-bookmark"
+                    disabled={bookmarkBusy}
+                    aria-pressed={isSaved}
+                    aria-label={isSaved ? `Remove question ${i} from practice` : `Save question ${i} for practice`}
+                    title={isSaved ? 'Remove from practice' : 'Save for practice'}
+                    onClick={() => onTogglePracticeSave(i, revealedText)}
+                  >
+                    <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} aria-hidden="true" />
+                  </button>
+                ) : isCurrent ? (
                   <Activity size={15} className="ix-q-list-icon-active" />
                 ) : isAnswered ? (
                   <Check size={15} className="ix-q-list-icon-answered" />
@@ -342,6 +361,10 @@ export default function InterviewSidebar({
   coachTip,
   whatYouDidWell,
   tryImproving,
+  savedQuestionIndexes,
+  onTogglePracticeSave,
+  totalQuestions,
+  bookmarkBusy,
 }) {
   return (
     <aside className="ix-sidebar-column">
@@ -354,6 +377,10 @@ export default function InterviewSidebar({
         userInitials={userInitials}
         activeTab={activeTab}
         onTabChange={onTabChange}
+        savedQuestionIndexes={savedQuestionIndexes}
+        onTogglePracticeSave={onTogglePracticeSave}
+        totalQuestions={totalQuestions}
+        bookmarkBusy={bookmarkBusy}
       />
       <AICoachCard coachTip={coachTip} />
       <AIFeedbackCard whatYouDidWell={whatYouDidWell} tryImproving={tryImproving} />

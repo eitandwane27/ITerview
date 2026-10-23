@@ -20,6 +20,7 @@
 const { OpenAI } = require("openai");
 const { getRoleConfig, getRoleSetConfig, getRoleRestrictions } = require("../config/roleConfig");
 const { getEvaluatorRubric, HARD_TECHNICAL_SCORING } = require("../config/evaluatorRubrics");
+const { PRACTICE_COACHING_PROMPT } = require("../config/practiceCoachingPrompt");
 const { sanitizeTTS } = require("../utils/ttsSanitizer");
 const { getEasySet2QuestionIssue } = require("../utils/easySet2QuestionGuard");
 const { getMediumSet2QuestionIssue } = require("../utils/mediumQuestionGuard");
@@ -270,7 +271,7 @@ OUTPUT RULE:
 // ─────────────────────────────────────────────────────────────────────────────
 // SCORING PROMPT
 // ─────────────────────────────────────────────────────────────────────────────
-const SET2_SCORING_SYSTEM_PROMPT = `You are a strict, objective IT interview scoring engine and coach.
+const SET2_SCORING_SYSTEM_PROMPT = `You are an objective IT interview evaluator and a friendly student practice coach.
 Your task is to evaluate a student's spoken answer to a TECHNICAL interview question.
 You must respond with ONLY a valid JSON object.
 
@@ -280,12 +281,7 @@ Score each dimension from 1 to 5:
 - accuracy_score: Is the technical content of the answer correct? Are there factual errors or misconceptions?
 - depth_score: How much technical detail and understanding does the answer demonstrate beyond a surface-level response?
 
-### STEP 2 — COACHING TIP & INTERVIEWER REPLY
-1. "tip": Exactly ONE SENTENCE of actionable technical coaching matched to the task and difficulty (e.g. "Connect your choice to the situation described in the question.").
-2. "interviewer_reply": A warm and encouraging conversational reply from the interviewer consisting of EXACTLY TWO SENTENCES:
-   - Sentence 1: A warm, supportive acknowledgment validating the candidate's response (e.g. "That is a really solid approach to the problem!").
-   - Sentence 2: A brief, positive piece of coaching reinforcement or encouragement matched to the task (e.g. "Keep matching your choice to what the application needs.").
-   - STRICT CONSTRAINT: Do NOT end with a question, do NOT ask any questions, and do NOT mention or introduce the next question or topic.
+${PRACTICE_COACHING_PROMPT}
 
 Return exactly this shape:
 {
@@ -293,7 +289,7 @@ Return exactly this shape:
   "accuracy_score": <integer 1-5>,
   "depth_score": <integer 1-5>,
   "tip": "<1-sentence string>",
-  "interviewer_reply": "<exactly two sentences, no questions, no next-topic mentions>"
+  "interviewer_reply": "<friendly, specific coaching response ending with one practical takeaway>"
 }`;
 
 const SET2_SCORING_RESPONSE_FORMAT = {
@@ -323,7 +319,7 @@ const SET2_SCORING_RESPONSE_FORMAT = {
         interviewer_reply: {
           type: "string",
           description:
-            "Exactly two sentences warm interviewer reply, no questions, no next topic mentions",
+            "Friendly coaching reply, usually 3–5 sentences and 45–85 words; simple sufficient answers may be shorter; end with one practical takeaway, no questions or next-topic mentions",
         },
       },
       required: [
@@ -435,7 +431,7 @@ If the question has a contradictory or underspecified premise, acknowledge the l
       typeof parsed.tip === "string" && parsed.tip.trim() ? parsed.tip.trim() :
       fallbackTip,
     interviewer_reply:
-      typeof parsed.interviewer_reply === "string" && parsed.interviewer_reply.trim() ? parsed.interviewer_reply.trim() : "Alright, thank you for that.",
+      typeof parsed.interviewer_reply === "string" && parsed.interviewer_reply.trim() ? parsed.interviewer_reply.trim() : "Thanks for sharing your answer. When you practice, keep your response focused on what the question asks.",
   };
 }
 

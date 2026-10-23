@@ -1,3 +1,4 @@
+import { schoolSocketProtocols } from '../../utils/authenticatedApi';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   buildAudioInputConstraints,
@@ -121,6 +122,15 @@ export function useVoiceAgentSession() {
   const [caption, setCaption] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [voiceLevel, setVoiceLevel] = useState(0);
+  const [workspace, setWorkspace] = useState(null);
+  const [workspacePending, setWorkspacePending] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState('');
+  const [workspaceClarification, setWorkspaceClarification] = useState('');
+  const lastWorkspacePromptRef = useRef('Show me my technical scores');
+  const pendingWorkspaceIdRef = useRef(null);
+  const dismissedWorkspaceIdsRef = useRef(new Set());
+  const dismissNextWorkspaceRef = useRef(false);
+  const queuedPromptRef = useRef('');
 
   const mountedRef = useRef(true);
   const socketRef = useRef(null);
@@ -235,6 +245,16 @@ export function useVoiceAgentSession() {
   const stopSession = useCallback(
     ({ keepUi = false } = {}) => {
       closingRef.current = true;
+      queuedPromptRef.current = '';
+      pendingWorkspaceIdRef.current = null;
+      dismissedWorkspaceIdsRef.current.clear();
+      dismissNextWorkspaceRef.current = false;
+      if (mountedRef.current) {
+        setWorkspace(null);
+        setWorkspacePending(false);
+        setWorkspaceError('');
+        setWorkspaceClarification('');
+      }
       clearConnectTimeout();
       stopInput();
       clearPlayback();
@@ -423,13 +443,64 @@ export function useVoiceAgentSession() {
         setErrorMessage('');
         startedAtRef.current = Date.now();
         startInput();
+        if (queuedPromptRef.current && socketRef.current?.readyState === WebSocket.OPEN) {
+          socketRef.current.send(
+            JSON.stringify({ type: 'inject_user_message', content: queuedPromptRef.current })
+          );
+          queuedPromptRef.current = '';
+          setWorkspacePending(true);
+        }
+        return;
+      }
+
+      if (message.type === 'voice_agent_workspace_pending') {
+        pendingWorkspaceIdRef.current = message.id;
+        if (dismissNextWorkspaceRef.current) {
+          dismissedWorkspaceIdsRef.current.add(message.id);
+          dismissNextWorkspaceRef.current = false;
+          return;
+        }
+        setWorkspacePending(true);
+        setWorkspaceError('');
+        return;
+      }
+      if (message.type === 'voice_agent_workspace_error') {
+        if (dismissedWorkspaceIdsRef.current.delete(message.id)) return;
+        setWorkspacePending(false);
+        setWorkspaceError(
+          message.message || 'The workspace could not be updated. Please try again.'
+        );
+        return;
+      }
+      if (message.type === 'voice_agent_workspace_clarification') {
+        if (dismissedWorkspaceIdsRef.current.delete(message.id)) return;
+        pendingWorkspaceIdRef.current = null;
+        setWorkspacePending(false);
+        setWorkspaceError('');
+        setWorkspaceClarification(message.question || 'Which result would you like to see?');
+        return;
+      }
+      if (message.type === 'voice_agent_workspace') {
+        if (dismissedWorkspaceIdsRef.current.delete(message.workspace?.id)) return;
+        pendingWorkspaceIdRef.current = null;
+        setWorkspace(message.workspace || null);
+        setWorkspacePending(false);
+        setWorkspaceError('');
+        setWorkspaceClarification('');
+        return;
+      }
+      if (message.type === 'voice_agent_workspace_cancel') {
+        setWorkspace((current) => (current?.id === message.id ? null : current));
+        setWorkspacePending(false);
         return;
       }
 
       if (message.type === 'voice_agent_event') {
         const event = message.event;
         if (event?.type === 'ConversationText') {
+          if (event.role === 'assistant') setWorkspacePending(false);
           const content = (event.content || event.text || '').trim();
+          if (event.role === 'user' && content) setWorkspaceClarification('');
           if (content) {
             setCaption(`${event.role === 'user' ? 'You' : 'Coach'}: ${content}`);
           }
@@ -457,6 +528,10 @@ export function useVoiceAgentSession() {
     setAgentState('connecting');
     setErrorMessage('');
     setCaption('');
+    setWorkspace(null);
+    setWorkspacePending(false);
+    setWorkspaceError('');
+    setWorkspaceClarification('');
     setElapsedSeconds(0);
     setMicEnabled(true);
 
@@ -475,7 +550,9 @@ export function useVoiceAgentSession() {
 
       mediaStreamRef.current = stream;
       await refreshMicrophones();
-      const socket = new WebSocket(getVoiceAgentSocketUrl());
+      const protocols = await schoolSocketProtocols();
+      if (!mountedRef.current || closingRef.current) return;
+      const socket = new WebSocket(getVoiceAgentSocketUrl(), protocols);
       socket.binaryType = 'arraybuffer';
       socketRef.current = socket;
 
@@ -639,7 +716,59 @@ export function useVoiceAgentSession() {
     };
   }, [closeOutput, stopSession]);
 
+  const askNikki = useCallback(
+    async (content, { expectWorkspace = true } = {}) => {
+      if (!content || connectionStatus === 'connecting') return;
+      setWorkspaceClarification('');
+      if (expectWorkspace) {
+        lastWorkspacePromptRef.current = content;
+        dismissNextWorkspaceRef.current = false;
+        pendingWorkspaceIdRef.current = null;
+        setWorkspaceError('');
+      }
+      clearPlayback();
+      if (socketRef.current?.readyState === WebSocket.OPEN && connectionStatus === 'live') {
+        if (expectWorkspace) setWorkspacePending(true);
+        socketRef.current.send(JSON.stringify({ type: 'inject_user_message', content }));
+      } else {
+        queuedPromptRef.current = content;
+        await startSession();
+      }
+    },
+    [clearPlayback, connectionStatus, startSession]
+  );
+
+  useEffect(() => {
+    if (!workspacePending) return undefined;
+    const timeout = window.setTimeout(() => {
+      setWorkspacePending(false);
+      setWorkspaceError('This is taking longer than expected. Try asking for the view again.');
+    }, 20_000);
+    return () => window.clearTimeout(timeout);
+  }, [workspacePending]);
+
   return {
+    workspace,
+    workspacePending,
+    workspaceError,
+    workspaceClarification,
+    retryWorkspace: () => askNikki(lastWorkspacePromptRef.current),
+    askNikki,
+    dismissWorkspace: () => {
+      if (workspacePending) {
+        if (pendingWorkspaceIdRef.current) {
+          dismissedWorkspaceIdsRef.current.add(pendingWorkspaceIdRef.current);
+          if (dismissedWorkspaceIdsRef.current.size > 16)
+            dismissedWorkspaceIdsRef.current.delete(
+              dismissedWorkspaceIdsRef.current.values().next().value
+            );
+        } else dismissNextWorkspaceRef.current = true;
+      }
+      setWorkspace(null);
+      setWorkspacePending(false);
+      setWorkspaceError('');
+      setWorkspaceClarification('');
+    },
     agentState,
     connectionStatus,
     elapsedSeconds,

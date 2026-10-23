@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../utils/authenticatedApi';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion as Motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { Sparkles, Check, AlertCircle, RefreshCw, ArrowRight, Lock, X, Target, BadgeCheck, ListChecks } from 'lucide-react';
@@ -100,7 +101,7 @@ export default function AiAnalysisLoader({
     if (role || !auth.currentUser) return;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
-    fetch(`/api/users/${encodeURIComponent(auth.currentUser.uid)}`, { signal: controller.signal })
+    authenticatedFetch(`/api/users/${encodeURIComponent(auth.currentUser.uid)}`, { signal: controller.signal })
       .then(response => response.ok ? response.json() : null)
       .then(data => { if (!controller.signal.aborted) setProfileRole(data?.user?.role || ''); })
       .catch(() => {})

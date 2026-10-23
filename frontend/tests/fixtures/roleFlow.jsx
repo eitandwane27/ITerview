@@ -11,12 +11,15 @@ import '../../src/App.css';
 const query = new URLSearchParams(window.location.search);
 const view = query.get('view') || 'main';
 const role = query.get('role') || 'qa-test';
-const confirmed = () => { document.documentElement.dataset.confirmed = 'true'; };
+const confirmed = (_focus, launchId) => {
+  document.documentElement.dataset.confirmed = 'true';
+  document.documentElement.dataset.launchId = launchId || '';
+};
 const diagnosticData = { threeCBreakdown: { clarity: 3, correctness: 4, completeness: 4, lowestMetric: 'clarity' } };
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <MemoryRouter initialEntries={[`/interview?set=${query.get('set') || 1}&mode=practice&autostart=true`]}>
+    <MemoryRouter initialEntries={[`/interview?set=${query.get('set') || 1}&mode=practice&autostart=true&launch=${encodeURIComponent(query.get('launch') || '')}`]}>
       {view === 'main' && <MainSets />}
       {view === 'loader' && <AiAnalysisLoader role={role} setNumber={2} timeoutMs={60000} />}
       {view === 'transition' && <Set2TransitionOverlay role={role} onReady={confirmed} />}

@@ -1,3 +1,4 @@
+import { schoolSocketProtocols } from '../utils/authenticatedApi';
 // frontend/src/pages/PreTest.jsx
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase 1: STT & TTS Core Integration — Pre-Test Diagnostic Arena
@@ -367,8 +368,9 @@ export default function PreTest() {
   );
 
   // ── WebSocket connection (reconnectable) ───────────────────────────────────
+  const connectionAttemptRef = useRef(0);
   const connect = useCallback(
-    (explicitUid) => {
+    async (explicitUid) => {
       if (
         wsRef.current &&
         (wsRef.current.readyState === WebSocket.OPEN ||
@@ -389,8 +391,13 @@ export default function PreTest() {
       const searchParams = new URLSearchParams(location.search);
       const resetParam = searchParams.get('reset') === 'true' ? '&reset=true' : '';
 
+      const attempt = ++connectionAttemptRef.current;
+      let protocols;
+      try { protocols = await schoolSocketProtocols(); }
+      catch (error) { setError(error.message); return; }
+      if (attempt !== connectionAttemptRef.current || !isMountedRef.current) return;
       const ws = new WebSocket(
-        `${WS_BASE}/ws/interview?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}${resetParam}`
+        `${WS_BASE}/ws/interview?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}${resetParam}`, protocols
       );
       ws.binaryType = 'arraybuffer'; // receive binary chunks as ArrayBuffers
       wsRef.current = ws;
@@ -436,6 +443,7 @@ export default function PreTest() {
 
     return () => {
       window.clearTimeout(connectTimer);
+      connectionAttemptRef.current += 1;
       intentionalCloseRef.current = true;
       wsRef.current?.close();
       cleanupAudio();
@@ -627,6 +635,7 @@ export default function PreTest() {
   return (
     <TestWorkspace
       variant="pre"
+      enterFromSetup={Boolean(location.state?.fromMicSetup)}
       showBriefing={showBriefing}
       authLoading={authLoading}
       isConnected={isConnected}

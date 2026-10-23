@@ -4,6 +4,9 @@ const { VALID_ROLES } = require("../config/roleConfig");
 const { getRoleCatalogue } = require("./chatbotKnowledgeService");
 const { buildSystemPrompt } = require("./chatbotPrompt");
 const {
+  isWebSearchConfigured, isSafeSearchQuery, normalizeSearchResults, searchWeb, WebSearchError,
+} = require("./chatbotWebSearchService");
+const {
   containsSensitiveContent,
   getRefusalReply,
   isBlockedRequest,
@@ -18,17 +21,36 @@ const AI_TIMEOUT_MS = 60000;
 const MAX_AI_ATTEMPTS = 2;
 const RETRY_DELAY_MS = 250;
 const MIN_RETRY_BUDGET_MS = 1000;
+const MAX_WEB_SEARCH_CALLS = 1;
+// A model may propose parallel calls. Answer each, but execute only one search.
+const MAX_TOOL_CALLS_PER_ROUND = 2;
+const WEB_SEARCH_TOOL = {
+  type: "function",
+  function: {
+    name: "web_search",
+    description: "Use only when an answer needs current external information (such as salary figures, job demand, or recent changes), or the user explicitly asks for a web search or source verification. Do not use for greetings, ITerview help, stable explanations, writing help, or ordinary track guidance. At most one search per reply. Ask for country and experience level before comparing salaries. Never send personal details.",
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string", description: "A concise public search query, at most 300 characters. Never include emails, phone numbers, credentials, or full conversation text." } },
+      required: ["query"], additionalProperties: false,
+    },
+  },
+};
 const RETRYABLE_FAILURES = new Set([
   "empty_reply", "invalid_reply", "provider_interrupted", "provider_connection", "provider_temporary",
 ]);
 const OUTPUT_RECOVERY_FAILURES = new Set(["empty_reply", "invalid_reply"]);
+const VALIDATION_FAILURES = new Set([
+  "malformed_json", "invalid_object", "missing_reply", "invalid_reply_type",
+  "empty_reply", "invalid_role_id_type", "unsupported_role_id",
+]);
 const FINISH_REASONS = new Set([
   "stop", "length", "content_filter", "tool_calls", "insufficient_system_resource", "aborted",
 ]);
 const OUTPUT_RECOVERY_INSTRUCTIONS = `Output requirements for this response:
-Return one complete JSON object with a nonempty reply, a valid recommendedRoleId or null, and confidence.
+Return one complete JSON object with a nonempty reply, a valid recommendedRoleId or null, confidence, and sourceIds.
 Example of the required format (format only; answer the current student message):
-{"reply":"What part of an IT project do you enjoy working on?","recommendedRoleId":null,"confidence":"low"}
+{"reply":"What part of an IT project do you enjoy working on?","recommendedRoleId":null,"confidence":"low","sourceIds":[]}
 Do not output Markdown fences, commentary outside the JSON object, or an empty response. All preceding factual and safety rules still apply.`;
 
 class AssistantUnavailableError extends Error {
@@ -87,7 +109,7 @@ function outputRecoveryPayload(payload) {
   };
 }
 
-function readCompletion(completion) {
+function readCompletion(completion, availableSources = []) {
   const choice = completion?.choices?.[0];
   if (choice?.finish_reason && choice.finish_reason !== "stop") {
     const reason = choice.finish_reason === "content_filter"
@@ -103,9 +125,16 @@ function readCompletion(completion) {
   if (typeof choice?.message?.content !== "string" || !choice.message.content.trim()) {
     throw new AssistantUnavailableError("empty_reply");
   }
-  const normalized = normalizeModelReply(choice.message.content);
-  if (!normalized) throw new AssistantUnavailableError("invalid_reply");
-  return normalized;
+  const { normalized, validationFailure, sourceIds = [] } = validateModelReply(choice.message.content);
+  if (!normalized) {
+    const error = new AssistantUnavailableError("invalid_reply");
+    error.validationFailure = validationFailure;
+    throw error;
+  }
+  if (normalized.mode === "guarded") return normalized;
+  const sources = availableSources.filter(source => sourceIds.includes(source.id))
+    .slice(0, 5).map(({ id, title, url }) => ({ id, title, url }));
+  return sources.length ? { ...normalized, sources } : normalized;
 }
 
 function sanitizeHistory(history) {
@@ -126,25 +155,35 @@ function sanitizeHistory(history) {
     .slice(-MAX_HISTORY_MESSAGES)
     .map((item) => ({
       role: item.role,
-      content: item.content.trim().slice(0, MAX_MESSAGE_LENGTH),
+      content: item.content.trim().slice(0, item.role === "assistant" ? 900 : MAX_MESSAGE_LENGTH),
     }));
 }
 
-function normalizeModelReply(raw) {
-  if (containsSensitiveContent(raw || "")) return getRefusalReply();
+function validateModelReply(raw) {
+  if (containsSensitiveContent(raw || "")) return { normalized: getRefusalReply() };
+  const invalid = (validationFailure) => ({ normalized: null, validationFailure });
+  // Accept only a complete JSON fence, not JSON extracted from surrounding prose.
+  const content = typeof raw === "string" ? raw.trim() : "";
+  const fenced = content.match(/^```(?:json)?\s*\r?\n([\s\S]*?)\r?\n```$/i);
   let parsed;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(fenced ? fenced[1] : content);
   } catch {
-    return null;
+    return invalid("malformed_json");
   }
-  if (!parsed || typeof parsed.reply !== "string" || !parsed.reply.trim()) return null;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return invalid("invalid_object");
+  if (!Object.hasOwn(parsed, "reply")) return invalid("missing_reply");
+  if (typeof parsed.reply !== "string") return invalid("invalid_reply_type");
+  if (!parsed.reply.trim()) return invalid("empty_reply");
   // Request-attack keywords are not an output classifier: a safe explanation may mention them.
-  if (containsSensitiveContent(parsed.reply)) return getRefusalReply();
-  if (parsed.recommendedRoleId != null && !VALID_ROLES.includes(parsed.recommendedRoleId)) return null;
+  if (containsSensitiveContent(parsed.reply)) return { normalized: getRefusalReply() };
+  // A quoted null means no recommendation; never guess or map unsupported IDs.
+  const roleId = parsed.recommendedRoleId === "null" ? null : parsed.recommendedRoleId;
+  if (roleId != null && typeof roleId !== "string") return invalid("invalid_role_id_type");
+  if (roleId != null && !VALID_ROLES.includes(roleId)) return invalid("unsupported_role_id");
 
-  const recommendedRoleId = VALID_ROLES.includes(parsed.recommendedRoleId)
-    ? parsed.recommendedRoleId
+  const recommendedRoleId = VALID_ROLES.includes(roleId)
+    ? roleId
     : null;
   const confidence = ["low", "medium", "high"].includes(parsed.confidence)
     ? parsed.confidence
@@ -152,21 +191,28 @@ function normalizeModelReply(raw) {
       ? "medium"
       : "low";
 
-  return {
-    reply: parsed.reply.trim().replace(/[—–]/g, "-").slice(0, 900),
+  return { sourceIds: Array.isArray(parsed.sourceIds)
+    ? parsed.sourceIds.filter(id => typeof id === "string").slice(0, 5) : [], normalized: {
+    reply: parsed.reply.trim().replace(/[—–]/g, "-").slice(0, 2400),
     recommendedRoleId,
     confidence,
     mode: "ai-thinking",
-  };
+  } };
 }
 
-async function createRecommendationReply({ message, history = [] }, { client: suppliedClient } = {}) {
+function normalizeModelReply(raw) {
+  return validateModelReply(raw).normalized;
+}
+
+async function createRecommendationReply({ message, history = [] }, { client: suppliedClient, search: suppliedSearch,
+  progressContext = null, allowWebSearch = true } = {}) {
   if (isBlockedRequest(message) || containsSensitiveContent(message)) return getRefusalReply();
   const cleanMessage = String(message || "")
     .trim()
     .slice(0, MAX_MESSAGE_LENGTH);
   const cleanHistory = sanitizeHistory(history);
-  const systemPrompt = buildSystemPrompt();
+  const search = allowWebSearch ? suppliedSearch || (isWebSearchConfigured() ? searchWeb : null) : null;
+  const systemPrompt = buildSystemPrompt(undefined, { webSearchEnabled: Boolean(search), progressContext });
   if (!systemPrompt || (!process.env.DEEPSEEK_API_KEY && !suppliedClient)) {
     const reason = !systemPrompt ? "knowledge_unavailable" : "configuration_missing";
     console.error("[RoleRecommendation] AI unavailable", { reason });
@@ -189,19 +235,98 @@ async function createRecommendationReply({ message, history = [] }, { client: su
     ],
     response_format: { type: "json_object" },
     max_tokens: THINKING_TOKEN_BUDGET,
+    ...(search ? { tools: [WEB_SEARCH_TOOL], tool_choice: "auto" } : {}),
   };
   const startedAt = Date.now();
   let recoverOutput = false;
+  let conversationMessages = [...payload.messages];
+  let searchCalls = 0;
+  let modelCalls = 0;
+  let searchStatus;
+  const availableSources = [];
 
   for (let attempt = 1; attempt <= MAX_AI_ATTEMPTS; attempt += 1) {
-    const attemptPayload = recoverOutput ? outputRecoveryPayload(payload) : payload;
+    let attemptPayload = { ...payload, messages: conversationMessages };
+    if (recoverOutput) attemptPayload = outputRecoveryPayload(attemptPayload);
     let completion;
     try {
-      // Retries share the original deadline; SDK retries stay disabled.
-      const remainingMs = AI_TIMEOUT_MS - (Date.now() - startedAt);
-      if (remainingMs <= 0) throw new AssistantUnavailableError("provider_timeout");
-      completion = await client.chat.completions.create(attemptPayload, { timeout: remainingMs });
-      return readCompletion(completion);
+      while (true) {
+        // Tool rounds and output retries share the original deadline and call limits.
+        const remainingMs = AI_TIMEOUT_MS - (Date.now() - startedAt);
+        if (remainingMs <= 0) throw new AssistantUnavailableError("provider_timeout");
+        if (modelCalls >= MAX_AI_ATTEMPTS + MAX_WEB_SEARCH_CALLS) {
+          throw new AssistantUnavailableError("tool_limit");
+        }
+        if (search && searchCalls >= MAX_WEB_SEARCH_CALLS) {
+          // Keep tool definitions so DeepSeek preserves reasoning in the exchange;
+          // disable further calls through tool_choice instead of dropping tools.
+          attemptPayload = { ...attemptPayload, tool_choice: "none" };
+        }
+        modelCalls += 1;
+        completion = await client.chat.completions.create(attemptPayload, { timeout: remainingMs });
+        const choice = completion?.choices?.[0];
+        if (choice?.finish_reason !== "tool_calls") {
+          const result = readCompletion(completion, availableSources);
+          return result.mode !== "guarded" && searchStatus ? { ...result, searchStatus } : result;
+        }
+        if (!search || searchCalls >= MAX_WEB_SEARCH_CALLS) {
+          throw new AssistantUnavailableError("tool_limit");
+        }
+        const toolCalls = choice.message?.tool_calls;
+        if (!Array.isArray(toolCalls) || !toolCalls.length || toolCalls.length > MAX_TOOL_CALLS_PER_ROUND
+          || new Set(toolCalls.map(tool => tool?.id)).size !== toolCalls.length
+          || toolCalls.some(tool => typeof tool?.id !== "string" || !tool.id || tool.id.length > 200
+            || tool.type !== "function" || tool.function?.name !== "web_search"
+            || typeof tool.function.arguments !== "string" || tool.function.arguments.length > 2000)) {
+          throw new AssistantUnavailableError("invalid_tool_call");
+        }
+        // DeepSeek needs its reasoning in the tool exchange. Keep it request-local,
+        // never client-visible, in conversation history, or in logs.
+        conversationMessages = [...attemptPayload.messages, {
+          role: "assistant", content: null, tool_calls: toolCalls,
+          ...(typeof choice.message.reasoning_content === "string"
+            ? { reasoning_content: choice.message.reasoning_content } : {}),
+        }];
+        for (const tool of toolCalls) {
+          let toolResult;
+          if (searchCalls >= MAX_WEB_SEARCH_CALLS) {
+            toolResult = { status: "limit_reached", results: [] };
+          } else {
+            searchCalls += 1;
+            let query;
+            try { query = JSON.parse(tool.function.arguments)?.query; } catch { /* invalid query below */ }
+            if (!isSafeSearchQuery(query)) {
+              searchStatus ||= "unavailable";
+              toolResult = { status: "invalid_query", results: [] };
+            } else {
+              try {
+                const timeoutMs = AI_TIMEOUT_MS - (Date.now() - startedAt) - MIN_RETRY_BUDGET_MS;
+                if (timeoutMs <= 0) throw new WebSearchError("timeout");
+                const results = await search(query.trim(), { timeoutMs: Math.min(10000, timeoutMs) });
+                // Validate every provider, including injected implementations, at the boundary.
+                const safeResults = normalizeSearchResults(Array.isArray(results)
+                  ? results.map(result => ({ ...result, content: result?.snippet ?? result?.content })) : []);
+                const sources = safeResults.map(result => {
+                  const existing = availableSources.find(source => source.url === result.url);
+                  if (existing) return existing;
+                  const source = { ...result, id: `s${availableSources.length + 1}` };
+                  availableSources.push(source);
+                  return source;
+                });
+                searchStatus = availableSources.length ? "used" : "unavailable";
+                toolResult = { status: sources.length ? "ok" : "no_results", results: sources };
+              } catch (error) {
+                const reason = error instanceof WebSearchError ? error.reason : "provider_error";
+                console.warn("[RoleRecommendation] Web search unavailable", { reason });
+                searchStatus = availableSources.length ? "used" : "unavailable";
+                toolResult = { status: "unavailable", results: [] };
+              }
+            }
+          }
+          conversationMessages.push({ role: "tool", tool_call_id: tool.id, content: JSON.stringify(toolResult) });
+        }
+        attemptPayload = { ...attemptPayload, messages: conversationMessages };
+      }
     } catch (error) {
       const reason = classifyFailure(error);
       const elapsedMs = Date.now() - startedAt;
@@ -211,6 +336,8 @@ async function createRecommendationReply({ message, history = [] }, { client: su
       console.error("[RoleRecommendation] AI request failed", {
         reason, status: safeProviderStatus(error), attempt, elapsedMs, retrying,
         requestFormat: attemptPayload.response_format.type,
+        ...(reason === "invalid_reply" && VALIDATION_FAILURES.has(error?.validationFailure)
+          ? { validationFailure: error.validationFailure } : {}),
         ...completionMetadata(completion),
       });
       if (!retrying) throw new AssistantUnavailableError(reason);
@@ -222,6 +349,7 @@ async function createRecommendationReply({ message, history = [] }, { client: su
 
 module.exports = {
   MAX_MESSAGE_LENGTH,
+  MAX_WEB_SEARCH_CALLS,
   AssistantUnavailableError,
   buildSystemPrompt,
   createRecommendationReply,

@@ -94,7 +94,8 @@ function handlePostTestSocket(ws, request) {
 
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
-  const firebaseUid = url.searchParams.get("uid") || "anonymous_user";
+  const firebaseUid = request.auth?.uid;
+  if (!firebaseUid) { ws.close(1008, 'Authentication required'); return; }
 
   // ── Session state ────────────────────────────────────────────────────────
   const sessionId = `post_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;

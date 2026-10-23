@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../utils/authenticatedApi';
 import React, { useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, LoaderCircle, Sparkles } from 'lucide-react';
@@ -93,7 +94,7 @@ export default function LikertScale({ phase = 'pre' }) {
       const user = auth.currentUser;
       if (!user) throw new Error('Your session has expired. Please sign in again.');
 
-      const response = await fetch(endpoint, {
+      const response = await authenticatedFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

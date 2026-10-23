@@ -1,3 +1,4 @@
+const { hasAttemptIdentity, belongsToAttempt, savedAnswerCount } = require('../utils/practiceAttempt');
 // backend/controllers/set2Socket.js
 // ─────────────────────────────────────────────────────────────────────────────
 // WebSocket traffic controller for Set 2 (Technical Mastery)
@@ -11,7 +12,7 @@
 //      Background: next-question TTS pre-synthesis fires (fire-and-forget).
 //   5. User stops recording → submits answer.
 //   6. Server evaluates answer → returns Technical Mastery scores, tip,
-//      and a 2-sentence interviewer_reply (no question, no next-topic).
+//      and a friendly coaching reply (no question, no next-topic).
 //   7. Server sends coaching tip to frontend.
 //   8. Reply is split by sentence → all sentences synthesized concurrently →
 //      streamed sequentially to client for instant queue playback.
@@ -22,10 +23,12 @@
 
 const { createDeepgramLiveSession } = require("../services/sttService");
 const { synthesizeSpeech } = require("../services/ttsService");
+const { createNextQuestionTransition } = require('../utils/interviewTransition');
 const {
   generateSet2Question,
   evaluateSet2Answer,
 } = require("../services/aiSet2Generator");
+const Set1Session = require('../models/Set1Session');
 const Set2Session = require("../models/Set2Session");
 const User = require("../models/User");
 const { resolveUserDifficulty, requireRegisteredRole, sessionMetadata } = require('../services/interviewSettings');
@@ -42,7 +45,7 @@ function handleSet2Socket(ws, request) {
 
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
-  const firebaseUid = url.searchParams.get("uid");
+  const firebaseUid = request.auth?.uid;
   let sessionMode =
     url.searchParams.get("mode") === "practice" ? "practice" : "diagnostic";
 
@@ -65,6 +68,10 @@ function handleSet2Socket(ws, request) {
   let sessionDifficulty = "easy";
   let currentQuestionText = "";
   let sessionDoc = null;
+  let attemptId = null;
+  let submissionInFlight = false;
+  let questionReady = false;
+  const nextQuestionTransition = createNextQuestionTransition();
 
   // ── Pre-fetching & caching (Step 1 & 2) ──────────────────────────────────
   let questions = [];
@@ -134,6 +141,43 @@ function handleSet2Socket(ws, request) {
     isRecording = false;
   }
 
+
+  async function finaliseSavedSession() {
+    if (savedAnswerCount(sessionDoc) !== 5) throw new Error('Cannot finalize an incomplete set.');
+    if (sessionDoc.isCompleted) return sessionDoc;
+    console.time("[Perf] Finalise Session");
+    sessionDoc.finalise();
+    sessionDoc = await Set2Session.findOneAndUpdate(
+      { _id: sessionDoc._id, sessionId, isCompleted: false },
+      {
+        $set: {
+          avg_problem_solving: sessionDoc.avg_problem_solving,
+          avg_accuracy: sessionDoc.avg_accuracy,
+          avg_depth: sessionDoc.avg_depth,
+          overall_score_percentage: sessionDoc.overall_score_percentage,
+          isCompleted: true,
+          completedAt: sessionDoc.completedAt,
+        },
+      },
+      { returnDocument: "after" },
+    );
+    if (!sessionDoc) {
+      questionReady = false;
+      console.log("[WS] Set 2 finalisation ignored because this socket no longer owns the session.");
+      return;
+    }
+    console.timeEnd("[Perf] Finalise Session");
+    return sessionDoc;
+  }
+
+  function sendCompletion() {
+    questionReady = false;
+    send({ type: 'session_complete', mode: sessionMode,
+      overall_score_percentage: sessionDoc?.overall_score_percentage,
+      avg_problem_solving: sessionDoc?.avg_problem_solving, avg_accuracy: sessionDoc?.avg_accuracy, avg_depth: sessionDoc?.avg_depth,
+    });
+  }
+
   // ── Session startup (Steps 1 & 2 — Upfront Question Generation) ──────────
   (async () => {
     try {
@@ -149,17 +193,33 @@ function handleSet2Socket(ws, request) {
         sessionDifficulty = resolveUserDifficulty(user);
       }
 
+      // Later sets inherit the run and technical settings from Set 1.
+      const firstSet = await Set1Session.findOne({ firebaseUid });
+      if (!firstSet?.isCompleted || !hasAttemptIdentity(firstSet)) {
+        send({ type: 'error', message: 'Complete Set 1 of a new practice run first.' });
+        return;
+      }
+      attemptId = firstSet.attemptId;
+      sessionRole = firstSet.role;
+      sessionDifficulty = firstSet.difficulty;
+      sessionMode = firstSet.mode || sessionMode;
+
       // Check if user requested a reset via URL
       const isResetRequested = url.searchParams.get("reset") === "true";
 
       // 2. Check if an in-progress session doc already exists in DB
       const existingDoc = await Set2Session.findOne({ firebaseUid });
       const isResuming =
-        !isResetRequested &&
         existingDoc &&
-        !existingDoc.isCompleted;
+        (!isResetRequested || existingDoc.isCompleted) &&
+        belongsToAttempt(firstSet, existingDoc, 2);
 
       if (isResuming) {
+        if (existingDoc.isCompleted) {
+          sessionDoc = existingDoc;
+          sendCompletion();
+          return;
+        }
         sessionRole = existingDoc.role || sessionRole;
         sessionDifficulty = existingDoc.difficulty || sessionDifficulty;
         sessionMode = existingDoc.mode || sessionMode;
@@ -169,7 +229,7 @@ function handleSet2Socket(ws, request) {
             sessionId: existingDoc.sessionId,
             isCompleted: false,
           },
-          { $set: { sessionId } },
+          { $set: { sessionId, attemptId } },
           { returnDocument: "after" },
         );
         if (!sessionDoc) {
@@ -180,6 +240,12 @@ function handleSet2Socket(ws, request) {
         }
 
         send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS }));
+
+        if (savedAnswerCount(sessionDoc) === 5) {
+          if (!await finaliseSavedSession()) return;
+          sendCompletion();
+          return;
+        }
 
         if (existingDoc.questions && existingDoc.questions.length === MAX_QUESTIONS) {
           questions = existingDoc.questions;
@@ -207,7 +273,7 @@ function handleSet2Socket(ws, request) {
           }
         }
 
-        currentQuestionIndex = existingDoc.answers.length;
+        currentQuestionIndex = savedAnswerCount(sessionDoc);
 
         console.log(
           `[DB] ⏯️ Resuming Set 2 session for user ${firebaseUid} at Question ${currentQuestionIndex + 1} (${currentQuestionIndex} previous answers saved)`
@@ -229,6 +295,8 @@ function handleSet2Socket(ws, request) {
         const audioBuffer = await synthesizeSpeech(currentQuestionText, voiceModel);
         send({ type: "tts_audio", data: audioBuffer.toString("base64") });
 
+        questionReady = true;
+
         send({
           type: "status",
           message: "Question ready. Click Unmute to answer.",
@@ -243,6 +311,7 @@ function handleSet2Socket(ws, request) {
         { firebaseUid },
         {
           sessionId,
+          attemptId,
           role: sessionRole,
           difficulty: sessionDifficulty,
           mode: sessionMode,
@@ -295,13 +364,17 @@ function handleSet2Socket(ws, request) {
           sessionDifficulty,
           questions,
         );
+        if (ws.readyState !== ws.OPEN) return;
         const qGenDuration = Date.now() - qGenStart;
         metrics.questionGenLatencies.push(qGenDuration);
         questions.push(q);
 
         // Fire Q1 TTS concurrently with LLM generation of Q2-5
         if (i === 0) {
-          q1SynthesisPromise = synthesizeSpeech(q, voiceModel);
+          // Observe rejection immediately, including abandoned startups.
+          q1SynthesisPromise = synthesizeSpeech(q, voiceModel).then(
+            (audio) => ({ audio }), (error) => ({ error })
+          );
         }
       }
       const totalGenDuration = Date.now() - genStart;
@@ -333,8 +406,10 @@ function handleSet2Socket(ws, request) {
       });
 
       // 5. Await Q1 audio (should already be resolved or very close)
-      const q1AudioBuffer = await q1SynthesisPromise;
+      const q1Synthesis = await q1SynthesisPromise;
       if (ws.readyState !== ws.OPEN) return;
+      if (q1Synthesis.error) throw q1Synthesis.error;
+      const q1AudioBuffer = q1Synthesis.audio;
       const q1TtsLatency = Date.now() - startupStart;
       metrics.ttsLatencies.push(q1TtsLatency);
 
@@ -345,6 +420,8 @@ function handleSet2Socket(ws, request) {
 
       send({ type: "tts_audio", data: q1AudioBuffer.toString("base64") });
       console.log(`[TTS] 🔊 Q1 audio sent in ${(q1TtsLatency / 1000).toFixed(2)}s (total startup)`);
+
+      questionReady = true;
 
       send({
         type: "status",
@@ -370,6 +447,8 @@ function handleSet2Socket(ws, request) {
     } catch {
       return;
     }
+
+    if (!msg || typeof msg !== 'object' || Array.isArray(msg) || typeof msg.type !== 'string') return;
 
     switch (msg.type) {
       // ── User opened the mic ──────────────────────────────────────────────
@@ -416,6 +495,11 @@ function handleSet2Socket(ws, request) {
 
       // ── User confirmed transcript → evaluate, speak feedback, advance ────
       case "submit_answer": {
+        if (submissionInFlight || !questionReady || currentQuestionIndex >= MAX_QUESTIONS) return;
+        if (msg.final_text != null && typeof msg.final_text !== 'string') return;
+        submissionInFlight = true;
+        const answerIndex = currentQuestionIndex;
+        const answerQuestion = currentQuestionText;
         const confirmedText = msg.final_text || fullTranscript;
         console.log(`\n--- Set 2 Q${currentQuestionIndex + 1} Processing ---`);
         console.log(`[WS] Transcript: "${confirmedText.substring(0, 80)}..."`);
@@ -430,7 +514,7 @@ function handleSet2Socket(ws, request) {
           console.time("[Perf] AI Technical Evaluation");
           const evalStart = Date.now();
           const evaluation = await evaluateSet2Answer(
-            currentQuestionText,
+            answerQuestion,
             confirmedText,
             sessionDifficulty,
           );
@@ -445,8 +529,8 @@ function handleSet2Socket(ws, request) {
           // 2. Save to DB
           console.time("[Perf] DB Record Save");
           const answerRecord = {
-            questionIndex: currentQuestionIndex,
-            question: currentQuestionText,
+            questionIndex: answerIndex,
+            question: answerQuestion,
             transcript: confirmedText,
             problem_solving_score: evaluation.problem_solving_score,
             accuracy_score: evaluation.accuracy_score,
@@ -459,16 +543,22 @@ function handleSet2Socket(ws, request) {
               _id: sessionDoc._id,
               sessionId,
               isCompleted: false,
-              "answers.questionIndex": { $ne: currentQuestionIndex },
+              "answers.questionIndex": { $ne: answerIndex },
             },
             { $push: { answers: answerRecord } },
             { returnDocument: "after" },
           );
           if (!sessionDoc) {
+            questionReady = false;
             console.log("[WS] Set 2 answer ignored because this socket no longer owns the session.");
             return;
           }
           console.timeEnd("[Perf] DB Record Save");
+
+          questionReady = false;
+          if (savedAnswerCount(sessionDoc) === 5) {
+            if (!await finaliseSavedSession()) return;
+          }
 
           if (ws.readyState !== ws.OPEN) {
             console.log("[WS] Client disconnected during evaluation, skipping TTS and next question.");
@@ -501,12 +591,12 @@ function handleSet2Socket(ws, request) {
             });
 
             // Step 3 — Sentence-level concurrent reply synthesis
-            // Split the interviewer_reply into sentences and synthesize all concurrently.
+            // Split the coaching reply and connector into sentences and synthesize concurrently.
             // Deliver sequentially so the browser queues them back-to-back.
             console.time("[Perf] Reply TTS Synthesis");
             const replyTtsStart = Date.now();
 
-            const replyText = evaluation.interviewer_reply;
+            const replyText = `${evaluation.interviewer_reply} ${nextQuestionTransition()}`;
             const replySentences = (replyText.match(/[^.!?]+[.!?]*/g) || [replyText])
               .map((s) => s.trim())
               .filter(Boolean);
@@ -590,6 +680,8 @@ function handleSet2Socket(ws, request) {
                 });
             }
 
+            questionReady = true;
+
             send({
               type: "status",
               message: "Question ready. Click Unmute to answer.",
@@ -598,27 +690,7 @@ function handleSet2Socket(ws, request) {
             // ── All 5 answered — finalise session ─────────────────────────
             send({ type: "status", message: "Finalising Set 2 results..." });
 
-            console.time("[Perf] Finalise Session");
-            sessionDoc.finalise();
-            sessionDoc = await Set2Session.findOneAndUpdate(
-              { _id: sessionDoc._id, sessionId, isCompleted: false },
-              {
-                $set: {
-                  avg_problem_solving: sessionDoc.avg_problem_solving,
-                  avg_accuracy: sessionDoc.avg_accuracy,
-                  avg_depth: sessionDoc.avg_depth,
-                  overall_score_percentage: sessionDoc.overall_score_percentage,
-                  isCompleted: true,
-                  completedAt: sessionDoc.completedAt,
-                },
-              },
-              { returnDocument: "after" },
-            );
-            if (!sessionDoc) {
-              console.log("[WS] Set 2 finalisation ignored because this socket no longer owns the session.");
-              return;
-            }
-            console.timeEnd("[Perf] Finalise Session");
+            if (!await finaliseSavedSession()) return;
 
             console.log(
               `[Session] 🏁 Set 2 complete. Overall Score: ${sessionDoc.overall_score_percentage}% | Avg Problem Solving: ${sessionDoc.avg_problem_solving} | Avg Accuracy: ${sessionDoc.avg_accuracy} | Avg Depth: ${sessionDoc.avg_depth}`,
@@ -719,6 +791,8 @@ function handleSet2Socket(ws, request) {
               ? "Could not finish processing your answer. Please reconnect to resume your session."
               : "Could not score your answer. Retry evaluation to submit the same answer again.",
           });
+        } finally {
+          submissionInFlight = false;
         }
         console.log(`-------------------------------------\n`);
         break;

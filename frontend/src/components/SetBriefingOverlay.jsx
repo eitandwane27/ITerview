@@ -1,3 +1,5 @@
+import { schoolSocketProtocols } from '../utils/authenticatedApi';
+import { authenticatedFetch } from '../utils/authenticatedApi';
 // frontend/src/components/SetBriefingOverlay.jsx
 // ─────────────────────────────────────────────────────────────────────────────
 // Set 1 Session Briefing - Technical Practice Studio (ITerview)
@@ -136,7 +138,7 @@ export default function SetBriefingOverlay({
         return;
       }
       try {
-        const res = await fetch(`/api/users/results-summary?uid=${encodeURIComponent(user.uid)}`, {
+        const res = await authenticatedFetch(`/api/users/results-summary?uid=${encodeURIComponent(user.uid)}`, {
           signal: controller.signal,
         });
         if (res.ok) {
@@ -220,6 +222,7 @@ export default function SetBriefingOverlay({
   const [preparationError, setPreparationError] = useState('');
   const prepTimersRef = useRef([]);
   const wsRef = useRef(null);
+  const launchIdRef = useRef(null);
   const preparationAbortRef = useRef(null);
 
   // Clean up timers & socket on unmount
@@ -287,9 +290,9 @@ export default function SetBriefingOverlay({
     if (isDrill) {
       isTriggeredRef.current = true;
       if (typeof onConfirm === 'function') {
-        onConfirm(selectedFocus);
+        onConfirm(selectedFocus, launchIdRef.current);
       } else if (typeof onReady === 'function') {
-        onReady(selectedFocus);
+        onReady(selectedFocus, launchIdRef.current);
       }
       return;
     }
@@ -302,9 +305,9 @@ export default function SetBriefingOverlay({
         wsRef.current = null;
       }
       if (typeof onConfirm === 'function') {
-        onConfirm(selectedFocus);
+        onConfirm(selectedFocus, launchIdRef.current);
       } else if (typeof onReady === 'function') {
-        onReady(selectedFocus);
+        onReady(selectedFocus, launchIdRef.current);
       }
       return;
     }
@@ -338,7 +341,7 @@ export default function SetBriefingOverlay({
     // 1. Persist the exact role, difficulty, and focus before generating.
     if (user) {
       try {
-        const response = await fetch('/api/users/role', {
+        const response = await authenticatedFetch('/api/users/role', {
           signal: controller.signal,
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -366,8 +369,11 @@ export default function SetBriefingOverlay({
 
     try {
       const focusParam = selectedFocus ? `&focusArea=${encodeURIComponent(selectedFocus)}` : '';
+      launchIdRef.current ||= crypto.randomUUID();
+      const protocols = await schoolSocketProtocols();
+      if (controller.signal.aborted) return;
       const ws = new WebSocket(
-        `${BACKEND_URL.replace(/^http/, 'ws')}/ws/set1?voice=aura-2-luna-en&uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(sessionMode)}${focusParam}`
+        `${BACKEND_URL.replace(/^http/, 'ws')}/ws/set1?voice=aura-2-luna-en&uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(sessionMode)}${focusParam}&launch=${encodeURIComponent(launchIdRef.current)}`, protocols
       );
       wsRef.current = ws;
 

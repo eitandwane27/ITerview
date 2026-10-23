@@ -1,3 +1,5 @@
+const { getAttemptSets } = require('./practiceAttempt');
+
 const DIMENSIONS = [
   ['clarity', 'correctness', 'completeness'],
   ['problem_solving', 'accuracy', 'depth'],
@@ -24,7 +26,7 @@ function getSetScore(session, dimensions) {
 }
 
 function calculatePracticeScores(set1, set2, set3) {
-  const scores = [set1, set2, set3].map((session, index) => getSetScore(session, DIMENSIONS[index]));
+  const scores = getAttemptSets(set1, set2, set3).map((session, index) => getSetScore(session, DIMENSIONS[index]));
   const completed = scores.filter(score => score !== null);
   return {
     setScores: { set1: scores[0], set2: scores[1], set3: scores[2] },

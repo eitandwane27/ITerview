@@ -43,6 +43,9 @@ const set2SessionSchema = new mongoose.Schema({
   // Active WebSocket session ID (generated on connect)
   sessionId: { type: String, required: true },
 
+  // Stable across reconnects and shared by this run's three sets.
+  attemptId: { type: String, default: null },
+
   mode: {
     type: String,
     enum: ["diagnostic", "practice"],

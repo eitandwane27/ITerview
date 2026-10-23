@@ -1,3 +1,5 @@
+import { schoolSocketProtocols } from '../utils/authenticatedApi';
+import { authenticatedFetch } from '../utils/authenticatedApi';
 // frontend/src/pages/PostTest.jsx
 // ─────────────────────────────────────────────────────────────────────────────
 // Progress check: repeat the five starting questions after practice.
@@ -121,7 +123,7 @@ export default function PostTest() {
   useEffect(() => {
     if (authLoading || !currentUser) return undefined;
     const controller = new AbortController();
-    fetch(`${BACKEND_URL}/api/users/${encodeURIComponent(currentUser.uid)}`, {
+    authenticatedFetch(`${BACKEND_URL}/api/users/${encodeURIComponent(currentUser.uid)}`, {
       signal: controller.signal,
     })
       .then((response) => {
@@ -389,8 +391,9 @@ export default function PostTest() {
   );
 
   // ── WebSocket connection (reconnectable) ───────────────────────────────────
+  const connectionAttemptRef = useRef(0);
   const connect = useCallback(
-    (explicitUid) => {
+    async (explicitUid) => {
       if (
         wsRef.current &&
         (wsRef.current.readyState === WebSocket.OPEN ||
@@ -411,8 +414,13 @@ export default function PostTest() {
       const searchParams = new URLSearchParams(location.search);
       const resetParam = searchParams.get('reset') === 'true' ? '&reset=true' : '';
 
+      const attempt = ++connectionAttemptRef.current;
+      let protocols;
+      try { protocols = await schoolSocketProtocols(); }
+      catch (error) { setError(error.message); return; }
+      if (attempt !== connectionAttemptRef.current || !isMountedRef.current) return;
       const ws = new WebSocket(
-        `${WS_BASE}/ws/posttest?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}${resetParam}`
+        `${WS_BASE}/ws/posttest?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}${resetParam}`, protocols
       );
       ws.binaryType = 'arraybuffer'; // receive binary chunks as ArrayBuffers
       wsRef.current = ws;
@@ -459,6 +467,7 @@ export default function PostTest() {
 
     return () => {
       window.clearTimeout(connectTimer);
+      connectionAttemptRef.current += 1;
       intentionalCloseRef.current = true;
       wsRef.current?.close();
       cleanupAudio();

@@ -602,9 +602,14 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
+  width: 100%;
   max-width: 820px;
   margin: 0 auto;
   gap: 20px;
+}
+
+.lp-hero-intro > div {
+  max-width: 100%;
 }
 
 /* ── Eyebrow Badge (Static Sentence-Case Micro-Promise) ── */
@@ -616,12 +621,6 @@
   background: var(--canvas-subtle);
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  transition: border-color var(--fast) ease;
-}
-
-.lp-hero-pill-badge:hover {
-  border-color: var(--border-strong);
 }
 
 .lp-hero-pill-icon {
@@ -645,35 +644,35 @@
   font-weight: 600;
   letter-spacing: -0.018em;
   line-height: 1.14;
-  color: var(--ink) !important;
+  color: var(--ink);
   text-align: center;
   margin: 0;
 }
 
+.lp-hero-headline > span {
+  display: block;
+}
+
 .lp-hero-accent {
   color: var(--blue);
-  display: inline-block;
-}
-
-/* Headline line break — desktop-only (replaces the inert Tailwind artifact) */
-.lp-hero-br {
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .lp-hero-br {
-    display: inline;
-  }
 }
 
 /* ── Supporting Copy ── */
-.lp-hero-subhead {
+.lp-hero-intro .lp-hero-subhead {
   font-size: clamp(1.03rem, 1.8vw, 1.15rem);
   line-height: 1.6;
   color: var(--ink-secondary);
   max-width: 580px;
   margin: 0 auto;
   font-weight: 500;
+}
+
+.lp-hero-subhead > span {
+  display: block;
+}
+
+.lp-hero-action-wrap {
+  width: 100%;
 }
 
 /* ── Single Primary CTA ── */
@@ -720,33 +719,84 @@
   box-shadow: 0 1px 0px #1e40af;
 }
 
-/* ── Honest Capstone Platform Note ── */
-.lp-hero-capstone-strip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  color: var(--ink-secondary);
-  font-weight: 500;
-  margin-top: 4px;
-  text-align: center;
+.lp-hero-intro .lp-btn-hero-primary {
+  min-height: 44px;
+  max-width: 100%;
 }
 
-.lp-hero-capstone-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--mint);
+.lp-hero-intro .lp-btn-hero-primary:focus-visible {
+  outline: 3px solid var(--blue-active);
+  outline-offset: 5px;
+}
+
+/* Role names are informational, so they don't look or behave like tabs. */
+.lp-hero-roles-wrap {
+  margin-top: 4px;
+}
+
+.lp-hero-roles {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+}
+
+.lp-hero-roles .lp-hero-roles-label {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.lp-hero-role-list {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lp-hero-role-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 16px;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.lp-hero-role-list li:first-child {
+  padding-left: 0;
+}
+
+.lp-hero-role-list li:last-child {
+  padding-right: 0;
+}
+
+.lp-hero-role-list li + li {
+  border-left: 1px solid #d6e3f4;
+}
+
+.lp-hero-role-list svg {
+  color: var(--blue);
   flex-shrink: 0;
 }
 
-/* ── Streamlined Benefit Strip (Replaces Bulky Stacked Cards) ── */
+.lp-hero-benefits-wrap {
+  margin-top: 6px;
+}
+
 .lp-hero-benefits-strip {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-top: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
   flex-wrap: wrap;
   font-size: 0.875rem;
   color: var(--ink-secondary);
@@ -759,14 +809,49 @@
   gap: 6px;
 }
 
+.lp-hero-benefit-item + .lp-hero-benefit-item::before {
+  content: '';
+  width: 3px;
+  height: 3px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background-color: var(--ink-muted);
+}
+
 .lp-hero-benefit-icon {
   color: var(--blue);
   flex-shrink: 0;
 }
 
-.lp-hero-benefit-sep {
-  color: var(--ink-faint);
-  user-select: none;
+@media (max-width: 768px) {
+  .lp-root .lp-hero-headline {
+    text-wrap: balance;
+  }
+
+  .lp-hero-roles-label {
+    flex-basis: 100%;
+  }
+
+}
+
+@media (max-width: 480px) {
+  .lp-hero-subhead > span {
+    display: inline;
+  }
+
+  .lp-hero-role-list li {
+    padding-inline: 10px;
+    gap: 6px;
+    font-size: 0.8125rem;
+  }
+
+  .lp-hero-benefits-strip {
+    gap: 10px 16px;
+  }
+
+  .lp-hero-benefit-item + .lp-hero-benefit-item::before {
+    content: none;
+  }
 }
 
 /* ── Grand Showcase Stage (Exact AI Studio Console Layout) ───────────────── */
@@ -2322,187 +2407,6 @@
   color: var(--ink-secondary);
 }
 
-/* ── Diagnostic & Growth Pathway Section (Beautiful UI Steps) ────────────── */
-.lp-pathway-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
-  align-items: center;
-}
-
-.lp-pathway-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  position: relative;
-}
-
-.lp-pathway-timeline::before {
-  content: '';
-  position: absolute;
-  left: 41px;
-  top: 36px;
-  bottom: 36px;
-  width: 2px;
-  background: var(--blue-border);
-  z-index: 0;
-}
-
-.lp-path-step {
-  position: relative;
-  z-index: 1;
-  background-color: var(--card-bg);
-  border: 1.5px solid var(--border);
-  border-radius: var(--r-xl);
-  padding: 20px 24px;
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  box-shadow: var(--shadow-sm);
-  transition: border-color var(--fast) ease;
-}
-
-.lp-path-step:hover {
-  border-color: var(--border-strong);
-}
-
-.lp-path-step-num {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-pill);
-  background-color: var(--blue-light);
-  border: 1.5px solid var(--blue-border);
-  color: var(--blue);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 0.9375rem;
-  flex-shrink: 0;
-}
-
-.lp-path-step-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.lp-path-step-title {
-  font-size: 1.0625rem;
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.lp-path-step-desc {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--ink-secondary);
-}
-
-/* Growth Delta Card (Insight Card Pattern) */
-.lp-growth-card {
-  background-color: var(--card-bg);
-  border: 1.5px solid var(--border);
-  border-radius: var(--r-xl);
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  box-shadow: var(--shadow-card-hover);
-}
-
-.lp-growth-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.lp-growth-badge {
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 4px 10px;
-  border-radius: var(--r-pill);
-  background-color: var(--mint-light);
-  color: var(--mint-hover);
-  border: 1px solid var(--mint-border);
-}
-
-.lp-growth-delta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: var(--canvas-subtle);
-  border: 1.5px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 20px;
-}
-
-.lp-growth-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.lp-growth-stat-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--ink-muted);
-}
-
-.lp-growth-stat-val {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.lp-growth-arrow {
-  color: var(--blue);
-  font-weight: 800;
-  font-size: 1.25rem;
-}
-
-.lp-growth-jump {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 14px;
-  border-radius: var(--r-pill);
-  background-color: var(--mint);
-  color: var(--mint-ink);
-  font-weight: 800;
-  font-size: 1rem;
-}
-
-.lp-growth-facts {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.lp-growth-fact-item {
-  background-color: var(--canvas-subtle);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 12px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.lp-growth-fact-strong {
-  font-size: 0.875rem;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.lp-growth-fact-sub {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--ink-muted);
-}
-
 /* ── Bento Grid Section (shadcn Badge & Tag Layout) ─────────────────────── */
 .lp-bento-grid {
   display: grid;
@@ -2923,10 +2827,6 @@
     padding-left: 255px;
   }
 
-  .lp-pathway-layout {
-    grid-template-columns: 1fr;
-  }
-
   .lp-bento-grid {
     grid-template-columns: 1fr;
   }
@@ -2988,10 +2888,6 @@
   /* Touch floor for the gap chips on tablets, matching the .lp-exact-* controls. */
   .lp-bench-gap-chip {
     min-height: 44px;
-  }
-
-  .lp-growth-facts {
-    grid-template-columns: 1fr;
   }
 
   .lp-scenarios-grid {

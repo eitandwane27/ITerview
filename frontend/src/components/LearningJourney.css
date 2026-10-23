@@ -1,0 +1,676 @@
+.lp-root .lj-section {
+  --lj-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --lj-feedback: 180ms;
+}
+.lp-root .lj-inner {
+  gap: 40px;
+}
+.lp-root .lj-heading {
+  max-width: 780px;
+}
+.lp-root .lj-heading .lp-section-title {
+  max-width: 24ch;
+  font-size: clamp(1.75rem, 3.7vw, 3.25rem);
+  line-height: 1.12;
+}
+.lp-root .lj-unbroken {
+  white-space: nowrap;
+}
+.lp-root .lj-heading .lp-section-subtitle {
+  max-width: 65ch;
+  margin-top: 20px;
+}
+.lp-root .lj-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: center;
+  gap: clamp(32px, 5vw, 80px);
+}
+.lp-root .lj-stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lp-root .lj-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 18px;
+  padding: 22px 0;
+}
+/* Stops share the first heading line's centre, including wrapped titles. */
+.lp-root .lj-stage:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  background: var(--blue-subtle);
+  left: 12.5px;
+  top: 50px;
+  bottom: -28px;
+}
+.lp-root .lj-stop {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 8px;
+  color: var(--blue);
+  background: var(--blue-light);
+  border-radius: 50%;
+  transition: color var(--lj-feedback) ease;
+}
+.lp-root .lj-stop-active {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--blue);
+}
+.lp-root .lj-stop > i,
+.lp-root .lj-stop > svg {
+  position: relative;
+  z-index: 1;
+}
+.lp-root .lj-stop > i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.lp-root .lj-stage--active .lj-stop {
+  color: var(--canvas);
+}
+.lp-root .lj-stage-body {
+  min-width: 0;
+}
+.lp-root .lj-stage-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color var(--lj-feedback) ease,
+    transform var(--lj-feedback) var(--lj-ease);
+}
+.lp-root .lj-stage--active .lj-stage-button,
+.lp-root .lj-stage-button:hover {
+  color: var(--blue);
+}
+.lp-root .lj-stage-button:active {
+  transform: translateX(2px);
+}
+.lp-root .lj-stage-button:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.lp-root .lj-stage-body > p {
+  margin-top: 4px;
+  max-width: 47ch;
+  color: var(--ink-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+.lp-root .lj-example {
+  position: relative;
+  container-type: inline-size;
+  min-width: 0;
+  border-radius: var(--r-xl);
+  background: var(--blue-light);
+  overflow: hidden;
+}
+.lp-root .lj-example-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 26px 32px 0;
+}
+.lp-root .lj-example-name {
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+.lp-root .lj-example-track {
+  color: var(--ink-secondary);
+  font-size: 0.8125rem;
+}
+.lp-root .lj-visual {
+  padding-top: 24px;
+}
+/* Texts-reveal motion stays on content so the illustrated path keeps its anchor. */
+.lp-root .lj-scene :is(.lj-scene-content, .lj-takeaway, .lj-path-intro, .lj-path-round) {
+  animation: lj-scene-reveal 420ms var(--lj-ease) both;
+}
+.lp-root .lj-scene .lj-takeaway,
+.lp-root .lj-scene .lj-path-round:nth-child(1) {
+  animation-delay: 80ms;
+}
+.lp-root .lj-scene .lj-path-round:nth-child(2) {
+  animation-delay: 140ms;
+}
+.lp-root .lj-scene .lj-path-round:nth-child(3) {
+  animation-delay: 200ms;
+}
+@keyframes lj-scene-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.lp-root .lj-scene-content {
+  padding: 0 32px;
+}
+.lp-root .lj-visual-title {
+  min-height: 2.4em;
+  max-width: 19ch;
+  font-family: var(--font-display);
+  color: var(--ink);
+  font-size: clamp(1.5rem, 2vw, 1.875rem);
+  font-weight: 500;
+  line-height: 1.2;
+}
+/* Reserve one canvas so stage changes never move the footer. */
+.lp-root .lj-scene-body {
+  min-height: 224px;
+  padding-top: 8px;
+}
+.lp-root .lj-comparison {
+  margin: 0;
+}
+.lp-root .lj-score-row + .lj-score-row {
+  margin-top: 22px;
+}
+.lp-root .lj-score-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+.lp-root .lj-score-heading > span {
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.lp-root .lj-score-value {
+  color: var(--blue);
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.lp-root .lj-score-value > span {
+  font-size: 0.55em;
+  margin-left: 2px;
+}
+.lp-root .lj-score-track {
+  margin-top: 10px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--blue-subtle);
+  overflow: hidden;
+}
+.lp-root .lj-score-fill {
+  width: 100%;
+  height: 100%;
+  background: var(--blue);
+  border-radius: inherit;
+  transform-origin: left center;
+}
+.lp-root .lj-score-row--muted .lj-score-fill {
+  background: var(--ink-secondary);
+}
+.lp-root .lj-score-row--muted .lj-score-value {
+  color: var(--ink-secondary);
+}
+.lp-root .lj-comparison-caption {
+  margin-top: 24px;
+  color: var(--ink-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.lp-root .lj-baseline-note {
+  margin-top: 24px;
+  color: var(--ink-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+.lp-root .lj-takeaway {
+  margin: 8px 32px 0;
+  padding: 20px 0 26px;
+  min-height: 112px;
+  border-top: 1px solid var(--blue-border);
+}
+.lp-root .lj-takeaway-value {
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--blue);
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lp-root .lj-takeaway-label {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.lp-root .lj-takeaway-note {
+  margin-top: 8px;
+  color: var(--ink-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+/* The illustrated path uses the selected artwork; all copy remains real text. */
+.lp-root .lj-example--practice {
+  background: #eff6ff;
+}
+.lp-root .lj-example--practice .lj-scene {
+  min-height: calc(72.672cqw - 1.4rem);
+}
+.lp-root .lj-path-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+.lp-root .lj-example--practice .lj-example-heading,
+.lp-root .lj-example--practice .lj-visual {
+  position: relative;
+  z-index: 1;
+}
+.lp-root .lj-example--practice .lj-example-heading {
+  padding: 4.1cqw 5.4cqw 0;
+}
+.lp-root .lj-example--practice .lj-visual {
+  position: static;
+  padding-top: 3cqw;
+}
+.lp-root .lj-path-intro {
+  position: relative;
+  padding-inline: 5.4cqw;
+}
+.lp-root .lj-path-title {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 6.1cqw;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+.lp-root .lj-path-stats {
+  display: flex;
+  align-items: center;
+  gap: 2.5cqw;
+  margin-top: 1.4cqw;
+}
+.lp-root .lj-path-stats > p {
+  display: flex;
+  align-items: center;
+  gap: 1.1cqw;
+  color: #53627f;
+  font-size: 2.3cqw;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.lp-root .lj-path-stats > p + p {
+  border-left: 1px solid #afc7ee;
+  padding-left: 2.5cqw;
+}
+.lp-root .lj-path-stats strong {
+  color: var(--blue);
+  font-family: var(--font-display);
+  font-size: 6cqw;
+  font-weight: 500;
+  line-height: 1;
+}
+.lp-root .lj-path-feedback {
+  margin-top: 0.8cqw;
+  color: #53627f;
+  font-size: 2.2cqw;
+  line-height: 1.5;
+}
+.lp-root .lj-path-map {
+  display: contents;
+}
+.lp-root .lj-path-mobile-art {
+  display: none;
+}
+.lp-root .lj-path-rounds {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-root .lj-path-round {
+  position: absolute;
+  z-index: 1;
+  top: 54.3%;
+  left: 12.4%;
+  width: 20.6%;
+  color: #53627f;
+}
+.lp-root .lj-path-round:nth-child(2) {
+  top: 45.1%;
+  left: 41.4%;
+}
+.lp-root .lj-path-round:nth-child(3) {
+  top: 31.25%;
+  left: 69.9%;
+}
+.lp-root .lj-path-icon {
+  display: grid;
+  place-items: center;
+  width: 9.2cqw;
+  aspect-ratio: 1;
+  margin-inline: auto;
+  border: 1px solid #f8fcff;
+  border-radius: 50%;
+  background: #f5faff;
+  color: #2873ff;
+  box-shadow: 0 8px 18px #75b3f52b;
+}
+.lp-root .lj-path-icon > svg {
+  width: 4.6cqw;
+  height: 4.6cqw;
+}
+.lp-root .lj-path-copy > h4 {
+  margin: 1.25cqw 0 0;
+  padding: 0.75cqw 0;
+  border-radius: var(--r-pill);
+  background: #d9eaff;
+  color: var(--ink);
+  font-size: 2.35cqw;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+}
+.lp-root .lj-path-description {
+  margin-top: 1cqw;
+  margin-left: 1.3cqw;
+  width: calc(100% + 1cqw);
+  font-size: max(0.6875rem, 1.85cqw);
+  line-height: 1.4;
+}
+.lp-root .lj-path-example {
+  margin: 1.2cqw -0.2cqw 0 1.3cqw;
+  width: 100%;
+  padding: 0.75cqw 1.4cqw;
+  border-radius: 1.5cqw;
+  background: #dfebfc;
+  font-size: max(0.625rem, 1.65cqw);
+  line-height: 1.4;
+}
+/* A narrow card becomes a readable vertical route rather than tiny columns. */
+@container (max-width: 520px) {
+  .lp-root .lj-example--practice .lj-scene {
+    min-height: 0;
+  }
+  .lp-root .lj-example--practice .lj-example-heading {
+    padding: 24px 24px 0;
+  }
+  .lp-root .lj-example--practice .lj-visual {
+    padding-top: 22px;
+  }
+  .lp-root .lj-path-art {
+    display: none;
+  }
+  .lp-root .lj-path-intro {
+    padding-inline: 24px;
+  }
+  .lp-root .lj-path-title {
+    font-size: clamp(1.65rem, 7cqw, 2.1rem);
+    letter-spacing: -0.02em;
+  }
+  .lp-root .lj-path-stats {
+    gap: 14px;
+    margin-top: 18px;
+  }
+  .lp-root .lj-path-stats > p {
+    gap: 8px;
+    font-size: 0.75rem;
+  }
+  .lp-root .lj-path-stats > p:first-child {
+    flex: 0 0 39%;
+  }
+  .lp-root .lj-path-stats > p + p {
+    padding-left: 14px;
+  }
+  .lp-root .lj-path-stats strong {
+    font-size: 2.25rem;
+  }
+  .lp-root .lj-path-feedback {
+    margin-top: 12px;
+    font-size: 0.8125rem;
+  }
+  .lp-root .lj-path-map {
+    position: relative;
+    display: block;
+    margin-top: 24px;
+    padding: 0 24px 70px;
+    overflow: hidden;
+  }
+  .lp-root .lj-path-mobile-art {
+    position: absolute;
+    top: -156px;
+    left: calc(48px - 9.375cqw);
+    display: block;
+    width: 100%;
+    height: calc(100% + 156px);
+    object-fit: fill;
+    pointer-events: none;
+  }
+  .lp-root .lj-path-rounds {
+    position: relative;
+    display: grid;
+    gap: 26px;
+  }
+  .lp-root .lj-path-round,
+  .lp-root .lj-path-round:nth-child(2),
+  .lp-root .lj-path-round:nth-child(3) {
+    position: relative;
+    top: auto;
+    left: auto;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+    width: auto;
+  }
+  .lp-root .lj-path-icon {
+    width: 48px;
+    margin-top: 0;
+  }
+  .lp-root .lj-path-icon > svg {
+    width: 25px;
+    height: 25px;
+  }
+  .lp-root .lj-path-copy > h4 {
+    display: table;
+    margin: 0;
+    padding: 5px 12px;
+    font-size: 0.875rem;
+  }
+  .lp-root .lj-path-description {
+    margin-top: 8px;
+    margin-left: 0;
+    width: auto;
+    padding: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .lp-root .lj-path-example {
+    margin: 8px 0 0;
+    padding: 6px 10px;
+    border-radius: 9px;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    width: auto;
+  }
+}
+@media (max-width: 1080px) {
+  .lp-root .lj-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+  .lp-root .lj-example {
+    width: 100%;
+    max-width: 680px;
+    margin-inline: auto;
+  }
+}
+.lp-root .lj-footnotes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 20px 40px;
+}
+.lp-root .lj-footnotes > p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+}
+.lp-root .lj-footnotes strong {
+  color: var(--ink);
+  font-weight: 800;
+}
+.lp-root .lj-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 1000px) and (min-width: 768px) {
+  .lp-root .lj-layout {
+    gap: 28px;
+  }
+  .lp-root .lj-stage {
+    gap: 12px;
+  }
+  .lp-root .lj-example-heading {
+    padding-inline: 24px;
+  }
+  .lp-root .lj-scene-content {
+    padding-inline: 24px;
+  }
+  .lp-root .lj-takeaway {
+    margin-inline: 24px;
+    min-height: 132px;
+  }
+}
+@media (max-width: 767px) {
+  .lp-root .lj-inner {
+    gap: 28px;
+  }
+  .lp-root .lj-heading .lp-section-subtitle {
+    margin-top: 16px;
+    font-size: 1rem;
+  }
+  .lp-root .lj-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .lp-root .lj-stage {
+    padding-block: 14px 18px;
+    gap: 14px;
+  }
+  .lp-root .lj-stage:not(:last-child)::after {
+    top: 42px;
+    bottom: -22px;
+  }
+  .lp-root .lj-stage-button {
+    font-size: 1.0625rem;
+  }
+  .lp-root .lj-stage-body > p {
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+  .lp-root .lj-example {
+    border-radius: var(--r-lg);
+  }
+  .lp-root .lj-example-heading {
+    padding: 24px 24px 0;
+  }
+  .lp-root .lj-scene-content {
+    padding-inline: 24px;
+  }
+  .lp-root .lj-visual-title {
+    font-size: 1.5rem;
+  }
+  .lp-root .lj-scene-body {
+    min-height: 244px;
+  }
+  .lp-root .lj-takeaway {
+    margin-inline: 24px;
+    min-height: 132px;
+  }
+  .lp-root .lj-takeaway-label {
+    font-size: 0.9375rem;
+  }
+  .lp-root .lj-footnotes {
+    gap: 12px;
+  }
+  .lp-root .lj-footnotes > p {
+    width: 100%;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+  }
+}
+@media (max-width: 359px) {
+  .lp-root .lj-scene-body {
+    min-height: 264px;
+  }
+
+  .lp-root .lj-example-heading {
+    padding-inline: 20px;
+  }
+  .lp-root .lj-scene-content {
+    padding-inline: 20px;
+  }
+  .lp-root .lj-takeaway {
+    margin-inline: 20px;
+    min-height: 152px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-root .lj-scene :is(.lj-scene-content, .lj-takeaway, .lj-path-intro, .lj-path-round) {
+    animation: none;
+  }
+  .lp-root .lj-stage-button,
+  .lp-root .lj-stop {
+    transition: none;
+  }
+  .lp-root .lj-stage-button:active {
+    transform: none;
+  }
+}

@@ -833,16 +833,20 @@
     background-color var(--mt-fast) ease;
 }
 
-.mictest-proceed-btn:hover {
+.mictest-proceed-btn:hover:not(:disabled) {
   background: var(--mt-blue-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.35);
 }
 
-.mictest-proceed-btn:active {
+.mictest-proceed-btn:active:not(:disabled) {
   background: var(--mt-blue-active);
   transform: translateY(0);
   box-shadow: var(--mt-shadow-tactile-primary);
+}
+
+.mictest-proceed-btn:disabled {
+  cursor: wait;
 }
 
 /* Privacy footnote — echoes the landing page trust language */

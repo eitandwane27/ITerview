@@ -75,6 +75,7 @@ const userSchema = new mongoose.Schema({
     type: [
       {
         attemptNumber: { type: Number },
+        attemptId: { type: String },
         completedAt: { type: Date, default: Date.now },
         role: { type: String },
         difficulty: { type: String },

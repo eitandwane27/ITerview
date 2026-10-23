@@ -31,6 +31,7 @@
 
   /* Errors: Coral Rose */
   --am-coral: #ef4444;
+  --am-error-ink: #b91c1c;
   --am-coral-light: #fef2f2;
   --am-coral-border: #fecaca;
 
@@ -49,8 +50,14 @@
   /* Radii (Rare UI squircle scale) */
   --am-radius-card: 24px;
   --am-radius-btn: 9999px;
-  --am-radius-sso: 12px;
   --am-radius-input: 12px;
+}
+
+.am-card,
+.am-card *,
+.am-card *::before,
+.am-card *::after {
+  box-sizing: border-box;
 }
 
 /* -- Modal Backdrop (slate-tinted frost for crisp white card elevation) -- */
@@ -59,14 +66,19 @@
   inset: 0;
   z-index: 9999;
   background-color: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
   overflow-y: auto;
   animation: amBackdropFadeIn 0.2s ease-out forwards;
+}
+
+.am-backdrop .am-card {
+  margin: auto;
+  flex-shrink: 0;
 }
 
 @keyframes amBackdropFadeIn {
@@ -84,10 +96,12 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--am-bg-page);
   font-family: var(--am-font);
   color: var(--am-text-1);
-  overflow: hidden;
+  /* Decorative glows must not create a container that scrolls on field focus. */
+  overflow: clip;
 }
 
 .am-bg-glow {
@@ -216,16 +230,12 @@
 .am-card {
   position: relative;
   width: 100%;
-  max-width: 480px;
+  max-width: 460px;
   background-color: var(--am-bg-card);
   border: 1px solid rgba(226, 232, 240, 0.9);
   border-radius: var(--am-radius-card);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 4px 16px -2px rgba(15, 23, 42, 0.06),
-    0 24px 64px -12px rgba(15, 23, 42, 0.22),
-    0 0 0 1px rgba(37, 99, 235, 0.04);
-  padding: 50px 44px 44px 44px;
+  box-shadow: 0 16px 48px -16px rgba(15, 23, 42, 0.2);
+  padding: 48px 36px 28px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -246,56 +256,50 @@
 
 @media (max-width: 520px) {
   .am-card {
-    padding: 38px 26px 32px 26px;
+    padding: 48px 24px 24px;
     border-radius: 20px;
   }
 }
 
-/* -- Close & Back Buttons (sleek circular ghost controls) -- */
+/* -- Quiet utility controls with stable touch targets -- */
 .am-close-btn,
 .am-back-btn {
   position: absolute;
-  top: 22px;
-  background: #ffffff;
-  border: 1px solid var(--am-border);
-  border-radius: 50%;
+  top: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
   color: var(--am-text-3);
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   transition:
-    background 0.15s var(--am-ease),
-    color 0.15s var(--am-ease),
-    border-color 0.15s var(--am-ease),
-    transform 0.15s var(--am-ease),
-    box-shadow 0.15s var(--am-ease);
+    background-color 0.15s ease-out,
+    color 0.15s ease-out;
   z-index: 2;
 }
 
 .am-close-btn {
-  right: 22px;
+  right: 12px;
 }
 
 .am-back-btn {
-  left: 22px;
+  left: 12px;
 }
 
 .am-close-btn:hover:not(:disabled),
 .am-back-btn:hover:not(:disabled) {
   color: var(--am-text-1);
-  background: var(--am-bg-ice);
-  border-color: var(--am-border-md);
-  transform: scale(1.06);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  background-color: var(--am-bg-page);
 }
 
 .am-close-btn:active:not(:disabled),
 .am-back-btn:active:not(:disabled) {
-  transform: scale(0.95);
+  background-color: var(--am-border);
 }
 
 .am-close-btn:focus-visible,
@@ -343,7 +347,7 @@
 .am-title {
   font-family: var(--am-font-display);
   font-size: 27px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--am-text-1);
   letter-spacing: -0.025em;
   line-height: 1.25;
@@ -361,100 +365,6 @@
   letter-spacing: -0.01em;
 }
 
-/* -- SSO Buttons (white ghost pills with tactile shadow) -- */
-.am-sso-row {
-  display: flex;
-  flex-direction: row;
-  gap: 12px;
-  width: 100%;
-  margin-bottom: 22px;
-}
-
-.am-sso-btn {
-  flex: 1 1 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  padding: 11px 0;
-  background-color: var(--am-bg-card);
-  border: 1.5px solid var(--am-border-md);
-  border-radius: var(--am-radius-sso);
-  cursor: pointer;
-  color: var(--am-text-1);
-  font-family: var(--am-font);
-  font-size: 13.5px;
-  font-weight: 600;
-  box-shadow: 0 2px 0 var(--am-border-md);
-  transition:
-    background 0.15s var(--am-ease),
-    border-color 0.15s var(--am-ease),
-    transform 0.12s var(--am-ease),
-    box-shadow 0.12s var(--am-ease);
-}
-
-.am-sso-btn:hover:not(:disabled) {
-  background-color: var(--am-bg-ice);
-  border-color: var(--am-accent);
-  transform: translateY(-2px);
-  box-shadow: 0 3px 0 var(--am-accent-active);
-}
-
-.am-sso-btn:active:not(:disabled) {
-  transform: translateY(1px);
-  box-shadow: 0 0px 0 var(--am-accent-active);
-}
-
-.am-sso-btn:focus-visible {
-  outline: 2px solid var(--am-accent);
-  outline-offset: 2px;
-}
-
-.am-sso-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: 0 2px 0 var(--am-border-md);
-}
-
-.am-google-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.am-sso-label {
-  font-family: var(--am-font);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--am-text-1);
-}
-
-/* -- Divider ("or continue with email") -- */
-.am-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  margin-bottom: 18px;
-}
-
-.am-divider-line {
-  flex: 1 1 0;
-  height: 1px;
-  background-color: var(--am-border);
-}
-
-.am-divider-text {
-  font-family: var(--am-font);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--am-text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
 /* -- Error Banner (coral alert) -- */
 .am-error {
   width: 100%;
@@ -468,7 +378,7 @@
   font-family: var(--am-font);
   font-size: 13px;
   line-height: 1.45;
-  color: var(--am-coral);
+  color: var(--am-error-ink);
   margin-bottom: 14px;
   animation: amErrorFadeIn 0.16s var(--am-ease) forwards;
 }
@@ -487,7 +397,7 @@
 .am-error-icon {
   flex-shrink: 0;
   margin-top: 1px;
-  color: var(--am-coral);
+  color: var(--am-error-ink);
 }
 
 .am-error-msg {
@@ -498,7 +408,7 @@
 .am-form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 16px;
   width: 100%;
 }
 
@@ -554,12 +464,13 @@
 
 .am-input {
   width: 100%;
-  padding: 12px 40px 12px 42px;
+  padding: 12px 50px 12px 42px;
   background-color: var(--am-bg-input);
-  border: 1.5px solid var(--am-border);
+  border: 1px solid var(--am-border-md);
   border-radius: var(--am-radius-input);
   font-family: var(--am-font);
-  font-size: 14px;
+  font-size: 16px;
+  min-height: 50px;
   font-weight: 500;
   color: var(--am-text-1);
   outline: none;
@@ -571,7 +482,7 @@
 }
 
 .am-input::placeholder {
-  color: var(--am-text-faint);
+  color: var(--am-text-3);
   font-weight: 400;
 }
 
@@ -587,25 +498,36 @@
 
 .am-eye-btn {
   position: absolute;
-  right: 12px;
+  right: 3px;
   background: none;
   border: none;
-  padding: 4px;
+  padding: 0;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--am-text-faint);
+  color: var(--am-text-3);
   cursor: pointer;
-  transition: color 0.15s var(--am-ease);
-  border-radius: 4px;
+  transition:
+    color 0.15s ease-out,
+    background-color 0.15s ease-out;
+  border-radius: 9px;
 }
 
 .am-eye-btn:hover:not(:disabled) {
   color: var(--am-text-1);
+  background-color: var(--am-bg-page);
 }
 
 .am-eye-btn:focus-visible {
   outline: 2px solid var(--am-accent);
+  outline-offset: -2px;
+}
+
+.am-eye-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* -- Forgot Password Link -- */
@@ -619,7 +541,8 @@
 .am-forgot-link {
   background: none;
   border: none;
-  padding: 2px 0;
+  padding: 0;
+  min-height: 44px;
   font-family: var(--am-font);
   font-size: 12.5px;
   font-weight: 600;
@@ -670,7 +593,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .am-submit-btn--return {
@@ -681,10 +604,10 @@
 
 .am-submit-btn:hover:not(:disabled) {
   background-color: var(--am-accent-hover);
-  transform: translateY(-2px);
+  transform: none;
   box-shadow:
-    0 5px 0 var(--am-accent-active),
-    0 6px 18px rgba(37, 99, 235, 0.26);
+    0 3px 0 var(--am-accent-active),
+    0 4px 14px rgba(37, 99, 235, 0.18);
 }
 
 .am-submit-btn:active:not(:disabled) {
@@ -728,6 +651,14 @@
 }
 
 /* -- Reset Password Success Screen -- */
+.am-reset-hint {
+  margin: 8px 0 0;
+  color: var(--am-text-2);
+  font-family: var(--am-font);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .am-success-view {
   display: flex;
   flex-direction: column;
@@ -846,6 +777,80 @@
   flex-shrink: 0;
 }
 
+/* -- Registration terms and explicit agreement -- */
+.am-agreement {
+  display: grid;
+  gap: 8px;
+  color: var(--am-text-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.am-terms-link {
+  color: var(--am-accent-hover);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.am-terms-link:hover {
+  color: var(--am-accent-active);
+}
+
+.am-terms-link svg {
+  display: inline;
+  vertical-align: -1px;
+}
+
+.am-terms-link:focus-visible,
+.am-agreement-label input:focus-visible {
+  outline: 2px solid var(--am-accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.am-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.am-agreement-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.am-agreement-label label {
+  cursor: pointer;
+}
+
+.am-agreement-label input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 3px 0 0;
+  accent-color: var(--am-accent);
+  cursor: pointer;
+}
+
+.am-agreement-label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.am-agreement-error {
+  margin: 0;
+  color: var(--am-error-ink);
+}
+
 /* -- Footer -- */
 .am-footer {
   display: flex;
@@ -853,6 +858,7 @@
   justify-content: center;
   gap: 6px;
   width: 100%;
+  flex-wrap: wrap;
 }
 
 .am-footer-text {
@@ -867,6 +873,7 @@
   background: none;
   border: none;
   padding: 0;
+  min-height: 44px;
   font-family: var(--am-font);
   font-size: 13.5px;
   font-weight: 600;
@@ -893,6 +900,50 @@
   cursor: not-allowed;
 }
 
+.am-access-status {
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+.am-verification-card {
+  position: relative;
+  width: min(100%, 460px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.am-verification-icon {
+  color: var(--am-accent);
+}
+.am-verification-card .am-title {
+  margin: 0;
+}
+.am-verification-card .am-subheading,
+.am-verification-card .am-subtext-secondary {
+  margin: 0;
+}
+.am-verification-notice {
+  color: var(--am-text-2);
+  font-size: 14px;
+  margin: 0;
+}
+.am-verification-secondary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.am-verification-card .am-email-chip {
+  max-width: 100%;
+}
+.am-verification-card .am-email-chip-address {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 /* -- Reduced Motion Accessibility -- */
 @media (prefers-reduced-motion: reduce) {
   .am-backdrop,
@@ -904,10 +955,10 @@
     transform: none;
   }
 
-  .am-sso-btn,
-  .am-submit-btn {
+  .am-card button,
+  .am-input,
+  .am-input-icon {
     transition: none;
     transform: none;
-    box-shadow: none;
   }
 }

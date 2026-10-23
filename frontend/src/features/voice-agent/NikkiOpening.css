@@ -1,0 +1,179 @@
+.nikki-opening {
+  --nikki-surface: #ffffff;
+  --nikki-ground: #f0f4fc;
+  --nikki-ink: #101b3e;
+  --nikki-muted: #596982;
+  --nikki-blue: #1456e8;
+  --nikki-track: #e3eaf6;
+  --nikki-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --nikki-ease-exit: cubic-bezier(.4, 0, 1, 1);
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: var(--nikki-ink);
+  animation: nikki-appear 240ms ease-out both;
+}
+
+.nikki-opening__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(222 231 247 / 82%);
+  backdrop-filter: blur(7px);
+  transition: background-color 200ms ease-out;
+}
+
+.nikki-opening:is([data-phase='covering'], [data-phase='ready'], [data-phase='leaving'], [data-phase='error']) .nikki-opening__scrim {
+  background: var(--nikki-ground);
+}
+
+.nikki-opening__dialog {
+  position: relative;
+  width: min(100%, 460px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  padding: 16px 32px 20px;
+  border-radius: 28px;
+  background: var(--nikki-surface);
+  box-shadow: 0 24px 80px rgb(28 50 98 / 12%);
+  text-align: center;
+  animation: nikki-arrive 420ms var(--nikki-ease-out) both;
+}
+
+.nikki-opening__character {
+  width: fit-content;
+  margin: 0 auto;
+  transform-origin: 50% 70%;
+  transition: transform 500ms var(--nikki-ease-out);
+}
+
+.nikki-opening .nikki-opening__orb {
+  width: 256px;
+  height: 256px;
+  max-width: 100%;
+}
+
+.nikki-opening[data-phase='waking'] .nikki-opening__character {
+  animation: nikki-wake 450ms cubic-bezier(.23, 1, .32, 1) both;
+}
+
+.nikki-opening[data-phase='noticing'] .nikki-opening__character { transform: translateY(-5px) rotate(3deg); }
+.nikki-opening:is([data-phase='curious'], [data-phase='covering']) .nikki-opening__character { transform: rotate(-5deg); }
+.nikki-opening[data-phase='ready'] .nikki-opening__character { animation: nikki-hello 500ms var(--nikki-ease-out) both; }
+
+/* Scale/fade dialog and short text-state reveal inspired by transitions.dev. */
+.nikki-opening__message { animation: nikki-message 260ms var(--nikki-ease-out) both; }
+
+.nikki-opening__copy h2 {
+  margin: 0;
+  color: var(--nikki-ink);
+  font-family: 'Fredoka', 'Plus Jakarta Sans', sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -.02em;
+}
+
+.nikki-opening__copy p {
+  min-height: 44px;
+  margin: 12px 0 0;
+  color: var(--nikki-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  text-wrap: balance;
+}
+
+.nikki-opening__progress {
+  height: 7px;
+  margin: 24px 8px 28px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--nikki-track);
+}
+
+.nikki-opening__progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--nikki-blue);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 100ms linear;
+  will-change: transform;
+}
+
+.nikki-opening:is([data-phase='ready'], [data-phase='leaving']) .nikki-opening__progress span {
+  transition: transform 300ms var(--nikki-ease-out);
+}
+
+.nikki-opening__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+}
+
+.nikki-opening__footer > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--nikki-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.nikki-opening__footer svg { flex-shrink: 0; }
+.nikki-opening__footer button {
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--nikki-blue);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms, transform 140ms;
+}
+
+.nikki-opening__footer button:hover { background: var(--nikki-ground); }
+.nikki-opening__footer button:active { transform: scale(.97); }
+.nikki-opening__footer button:focus-visible { outline: 2px solid var(--nikki-blue); outline-offset: 2px; }
+.nikki-opening[data-phase='leaving'] { animation: nikki-leave 300ms ease-out both; }
+.nikki-opening[data-phase='leaving'] .nikki-opening__dialog { animation: nikki-depart 240ms var(--nikki-ease-exit) both; }
+
+@keyframes nikki-appear { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nikki-arrive { from { opacity: 0; transform: translateY(12px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes nikki-wake { from { transform: translateY(8px) scale(.95); } to { transform: none; } }
+@keyframes nikki-hello { 0%, 100% { transform: none; } 45% { transform: translateY(-10px) rotate(4deg) scale(1.025); } }
+@keyframes nikki-message { from { opacity: 0; filter: blur(2px); transform: translateY(4px); } to { opacity: 1; filter: blur(0); transform: none; } }
+@keyframes nikki-depart { to { opacity: 0; transform: translateY(5px) scale(.98); } }
+@keyframes nikki-leave { to { opacity: 0; } }
+
+@media (max-width: 480px) {
+  .nikki-opening { padding: 20px; }
+  .nikki-opening__dialog { padding: 12px 24px 16px; border-radius: 24px; }
+  .nikki-opening .nikki-opening__orb { width: 228px; height: 228px; }
+  .nikki-opening__copy h2 { font-size: 25px; }
+  .nikki-opening__footer > span { max-width: 192px; }
+}
+
+@media (max-height: 600px) {
+  .nikki-opening .nikki-opening__orb { width: 168px; height: 168px; }
+  .nikki-opening__progress { margin-block: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nikki-opening, .nikki-opening *, .nikki-opening[data-phase='leaving'] {
+    animation: none !important;
+    transition: none !important;
+  }
+  .nikki-opening .nikki-opening__character { transform: none; }
+}

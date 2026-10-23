@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -14,8 +15,10 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { AIOrb } from '../../components/AIOrb';
+import { useNikkiOpening } from './nikkiOpeningContext';
 import logoSrc from '../../assets/logo';
 import VoiceAgentBackdrop from './VoiceAgentBackdrop';
+import VoiceAgentWorkspace from './VoiceAgentWorkspace';
 import { useVoiceAgentSession } from './useVoiceAgentSession';
 import { getAudioInputLabel } from '../../utils/audioInputDevices';
 import './VoiceAgentPlayground.css';
@@ -58,6 +61,14 @@ const STATE_COPY = {
   },
 };
 
+const SHOW_ME_EXAMPLES = [
+  ['My scores', 'Show me my technical scores'],
+  ['My feedback', 'Show me my Set 2 feedback'],
+  ['Compare attempts', 'Show me my last two attempts for my selected role'],
+  ['A STAR outline', 'Show me a STAR outline'],
+  ['A focused drill', 'Show me how to improve completeness'],
+];
+
 function formatSessionTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -66,8 +77,17 @@ function formatSessionTime(totalSeconds) {
 
 export default function VoiceAgentPlayground() {
   const navigate = useNavigate();
+  const nikkiOpening = useNikkiOpening();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const lastExampleRef = useRef(null);
   const {
+    workspace,
+    workspacePending,
+    workspaceError,
+    workspaceClarification,
+    retryWorkspace,
+    askNikki,
+    dismissWorkspace,
     agentState,
     connectionStatus,
     elapsedSeconds,
@@ -90,6 +110,26 @@ export default function VoiceAgentPlayground() {
     toggleCaptions,
   } = useVoiceAgentSession();
 
+  const showWorkspace = Boolean(workspace) || workspacePending || Boolean(workspaceError);
+  const requestWorkspace = (view) => {
+    const role = workspace?.roleId ? ` for ${workspace.role}` : ' for my selected role';
+    const assessment = workspace?.section ? `${workspace.title} ` : '';
+    const difficulty = workspace?.difficulty ? ` at ${workspace.difficulty} difficulty` : '';
+    const prompts = {
+      scores: `Show me my ${assessment}scores${role}`,
+      feedback: `Show me my ${assessment}feedback${role}`,
+      comparison: `Show me my last two attempts${role}${difficulty}`,
+      star: 'Show me a STAR outline using the story I shared in this conversation',
+      drill: `Show me a focused drill${role}`,
+    };
+    askNikki(prompts[view]);
+  };
+
+  const closeWorkspace = () => {
+    dismissWorkspace();
+    (lastExampleRef.current || document.querySelector('.va-session-control--primary'))?.focus();
+  };
+
   const energy = agentState === 'speaking' ? voiceLevel / 100 : 0;
   const copy = STATE_COPY[agentState] || STATE_COPY.ready;
   const sessionStarted = isLive || isConnecting;
@@ -104,6 +144,7 @@ export default function VoiceAgentPlayground() {
           : 'READY';
   const statusDetail =
     errorMessage ||
+    workspaceClarification ||
     (!isLive && connectionStatus === 'idle'
       ? 'Start a conversation when you’re ready.'
       : captionsEnabled && caption
@@ -190,7 +231,7 @@ export default function VoiceAgentPlayground() {
   );
 
   return (
-    <main className="voice-agent-playground" data-state={agentState}>
+    <main className="voice-agent-playground" data-state={agentState} data-workspace={showWorkspace}>
       <VoiceAgentBackdrop />
 
       <header className="va-topbar">
@@ -237,135 +278,185 @@ export default function VoiceAgentPlayground() {
         </button>
       </header>
 
-      <section
-        className="va-stage"
-        aria-labelledby="voice-agent-status"
-        style={{ '--va-energy': energy.toFixed(3) }}
-      >
-        <div className="va-orb-field">
-          <span className="va-orb-field__halo" aria-hidden="true" />
-          <AIOrb
-            {...orbStateProps}
-            volume={voiceLevel}
-            ariaLabel={copy.ariaLabel}
-            expressiveMotion
-            expressionState={agentState}
-          />
-        </div>
-
-        <div className="va-status" aria-live="polite" aria-atomic="true">
-          {sessionStarted && (
-            <span className="va-status__wave" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
-          )}
-          <h1 id="voice-agent-status">{copy.title}</h1>
-          <p>{statusDetail}</p>
-        </div>
-
-        <div
-          className="va-session-controls"
-          data-session-started={sessionStarted}
-          aria-label="Voice session controls"
+      <div className="va-experience" data-workspace={showWorkspace}>
+        <section
+          className="va-stage"
+          aria-labelledby="voice-agent-status"
+          style={{ '--va-energy': energy.toFixed(3) }}
         >
-          <button
-            type="button"
-            className="va-session-control va-session-control--primary"
-            data-active={micEnabled && connectionStatus !== 'error'}
-            onClick={handleMicControl}
-            disabled={isConnecting}
-            aria-pressed={isLive ? micEnabled : undefined}
-            aria-label={micLabel}
-          >
-            <span className="va-session-control__icon" aria-hidden="true">
-              {connectionStatus === 'error' ? (
-                <RotateCcw size={21} />
-              ) : isConnecting ? (
-                <LoaderCircle size={22} className="va-control-spinner" />
-              ) : micEnabled ? (
-                <Mic size={22} />
-              ) : (
-                <MicOff size={22} />
-              )}
-            </span>
-            <span className="va-session-control__copy">
-              <strong>{micControlCopy.title}</strong>
-              <small>{micControlCopy.detail}</small>
-            </span>
-          </button>
-
-          <div className="va-session-controls__toolbar" data-session-started={sessionStarted}>
-            {sessionStarted && secondaryControls}
-            <button
-              type="button"
-              className="va-audio-settings-trigger"
-              onClick={() => setSettingsOpen((open) => !open)}
-              aria-expanded={settingsOpen}
-              aria-controls="voice-agent-audio-settings"
-            >
-              <Settings2 size={17} aria-hidden="true" />
-              <span>Audio settings</span>
-              <ChevronDown
-                size={15}
-                className="va-audio-settings-trigger__chevron"
-                aria-hidden="true"
-              />
-            </button>
+          <div className="va-orb-field">
+            <span className="va-orb-field__halo" aria-hidden="true" />
+            <AIOrb
+              {...orbStateProps}
+              onReady={nikkiOpening?.destinationReady}
+              volume={voiceLevel}
+              ariaLabel={copy.ariaLabel}
+              expressiveMotion
+              expressionState={agentState}
+            />
           </div>
 
-          {settingsOpen && (
-            <div
-              id="voice-agent-audio-settings"
-              className="va-audio-settings-panel"
-              aria-label="Audio settings"
-            >
-              <div className="va-device-picker" data-switching={isSwitchingMicrophone}>
-                <Mic size={17} className="va-device-picker__icon" aria-hidden="true" />
-                <label className="va-sr-only" htmlFor="voice-agent-microphone">
-                  Microphone input
-                </label>
-                <select
-                  id="voice-agent-microphone"
-                  value={selectedMicrophoneId}
-                  onChange={(event) => selectMicrophone(event.target.value)}
-                  disabled={isConnecting || isSwitchingMicrophone}
-                  aria-describedby={microphoneError ? 'voice-agent-microphone-error' : undefined}
+          <div className="va-status" aria-live="polite" aria-atomic="true">
+            {sessionStarted && (
+              <span className="va-status__wave" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
+            )}
+            <h1 id="voice-agent-status">{copy.title}</h1>
+            <p>{statusDetail}</p>
+          </div>
+          <div className="va-show-me" aria-label="Try a visual conversation">
+            <span>{workspacePending ? 'Nikki is putting it together…' : 'Try “show me…”'}</span>
+            <div>
+              {SHOW_ME_EXAMPLES.map(([label, prompt]) => (
+                <button
+                  key={label}
+                  type="button"
+                  disabled={isConnecting || workspacePending}
+                  aria-label={prompt}
+                  title={isLive ? prompt : `Start a voice conversation: ${prompt}`}
+                  onClick={(event) => {
+                    lastExampleRef.current = event.currentTarget;
+                    setSettingsOpen(false);
+                    askNikki(prompt);
+                  }}
                 >
-                  <option value="">System default microphone</option>
-                  {microphones.map((device, index) => (
-                    <option key={device.deviceId} value={device.deviceId}>
-                      {getAudioInputLabel(device, index)}
-                    </option>
-                  ))}
-                </select>
-                {isSwitchingMicrophone ? (
-                  <LoaderCircle
-                    size={17}
-                    className="va-device-picker__chevron va-control-spinner"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <ChevronDown size={17} className="va-device-picker__chevron" aria-hidden="true" />
-                )}
-              </div>
-              {microphoneError && (
-                <p
-                  id="voice-agent-microphone-error"
-                  className="va-device-picker__error"
-                  role="alert"
-                >
-                  {microphoneError}
-                </p>
-              )}
-              {!sessionStarted && secondaryControls}
+                  {label}
+                </button>
+              ))}
             </div>
+            {!sessionStarted && <small>Choose an example to start talking with Nikki.</small>}
+          </div>
+
+          <div
+            className="va-session-controls"
+            data-session-started={sessionStarted}
+            aria-label="Voice session controls"
+          >
+            <button
+              type="button"
+              className="va-session-control va-session-control--primary"
+              data-active={micEnabled && connectionStatus !== 'error'}
+              onClick={handleMicControl}
+              disabled={isConnecting}
+              aria-pressed={isLive ? micEnabled : undefined}
+              aria-label={micLabel}
+            >
+              <span className="va-session-control__icon" aria-hidden="true">
+                {connectionStatus === 'error' ? (
+                  <RotateCcw size={21} />
+                ) : isConnecting ? (
+                  <LoaderCircle size={22} className="va-control-spinner" />
+                ) : micEnabled ? (
+                  <Mic size={22} />
+                ) : (
+                  <MicOff size={22} />
+                )}
+              </span>
+              <span className="va-session-control__copy">
+                <strong>{micControlCopy.title}</strong>
+                <small>{micControlCopy.detail}</small>
+              </span>
+            </button>
+
+            <div className="va-session-controls__toolbar" data-session-started={sessionStarted}>
+              {sessionStarted && secondaryControls}
+              <button
+                type="button"
+                className="va-audio-settings-trigger"
+                onClick={() => setSettingsOpen((open) => !open)}
+                aria-expanded={settingsOpen}
+                aria-controls="voice-agent-audio-settings"
+              >
+                <Settings2 size={17} aria-hidden="true" />
+                <span>Audio settings</span>
+                <ChevronDown
+                  size={15}
+                  className="va-audio-settings-trigger__chevron"
+                  aria-hidden="true"
+                />
+              </button>
+            </div>
+
+            {settingsOpen && (
+              <div
+                id="voice-agent-audio-settings"
+                className="va-audio-settings-panel"
+                aria-label="Audio settings"
+              >
+                <div className="va-device-picker" data-switching={isSwitchingMicrophone}>
+                  <Mic size={17} className="va-device-picker__icon" aria-hidden="true" />
+                  <label className="va-sr-only" htmlFor="voice-agent-microphone">
+                    Microphone input
+                  </label>
+                  <select
+                    id="voice-agent-microphone"
+                    value={selectedMicrophoneId}
+                    onChange={(event) => selectMicrophone(event.target.value)}
+                    disabled={isConnecting || isSwitchingMicrophone}
+                    aria-describedby={microphoneError ? 'voice-agent-microphone-error' : undefined}
+                  >
+                    <option value="">System default microphone</option>
+                    {microphones.map((device, index) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {getAudioInputLabel(device, index)}
+                      </option>
+                    ))}
+                  </select>
+                  {isSwitchingMicrophone ? (
+                    <LoaderCircle
+                      size={17}
+                      className="va-device-picker__chevron va-control-spinner"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <ChevronDown
+                      size={17}
+                      className="va-device-picker__chevron"
+                      aria-hidden="true"
+                    />
+                  )}
+                </div>
+                {microphoneError && (
+                  <p
+                    id="voice-agent-microphone-error"
+                    className="va-device-picker__error"
+                    role="alert"
+                  >
+                    {microphoneError}
+                  </p>
+                )}
+                {!sessionStarted && secondaryControls}
+              </div>
+            )}
+          </div>
+        </section>
+        <AnimatePresence>
+          {showWorkspace && (
+            <VoiceAgentWorkspace
+              key="nikki-workspace"
+              workspace={workspace}
+              pending={workspacePending}
+              error={workspaceError}
+              onRetry={retryWorkspace}
+              onRequest={requestWorkspace}
+              onAsk={askNikki}
+              onDismiss={closeWorkspace}
+              onPractice={(url) => {
+                stopSession();
+                navigate(url);
+              }}
+            />
           )}
-        </div>
-      </section>
+        </AnimatePresence>
+      </div>
+      <span className="va-workspace-announcement" aria-live="polite" aria-atomic="true">
+        {workspace ? `${workspace.title} is now in Nikki’s workspace.` : ''}
+      </span>
     </main>
   );
 }

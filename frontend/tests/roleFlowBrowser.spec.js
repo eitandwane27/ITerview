@@ -2,6 +2,7 @@ import { expect, test } from 'playwright/test';
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { speechAudioBase64 } from './fixtures/speechAudio';
 
 const require = createRequire(import.meta.url);
 const { getRoleCatalogue } = require('../../backend/config/roleConfig');
@@ -23,8 +24,8 @@ test.beforeAll(async () => {
       resolveId(id) { if (id === '../firebase' || id === 'firebase/auth') return authModule; },
       load(id) {
         if (id === authModule) return `
-          const user = { uid: 'role-flow-user', displayName: 'Test User', email: 'test@example.test' };
-          export const auth = { currentUser: user };
+          const user = { uid: 'role-flow-user', displayName: 'Test User', email: 'test@spcba.edu.ph', emailVerified: true, getIdToken: async () => 'synthetic-token' };
+          export const auth = { currentUser: user, authStateReady: async () => {} };
           export function onAuthStateChanged(_auth, callback) { queueMicrotask(() => callback(user)); return () => {}; }
         `;
       },
@@ -49,6 +50,7 @@ async function mockApi(page, { saveStatus = 200, onSave = () => {}, profileDelay
   await page.route('**/api/**', async route => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/recommendations/roles') return route.fulfill({ json: { roles: catalogue } });
+    if (url.pathname === '/api/practice-again/questions') return route.fulfill({ json: { questions: [] } });
     if (url.pathname === '/api/users/role') {
       onSave(route.request().postDataJSON());
       return route.fulfill({ status: saveStatus, json: {} });
@@ -72,6 +74,41 @@ for (const role of catalogue) {
       if (view === 'loader') await expect(page.getByText(`Focusing on ${role.setTopics.set2.slice(0, 3).join(', ')}`, { exact: true })).toBeVisible();
     }
     expect(errors).toEqual([]);
+  });
+}
+
+for (const set of [1, 2, 3]) {
+  test(`MainSets orb keeps speaking through Set ${set} completion and reacts to playback`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await mockApi(page);
+    let socket;
+    await page.routeWebSocket(/\/ws\/set[123]/, ws => {
+      socket = ws;
+      ws.send(JSON.stringify({ type: 'session_meta', role: 'backend', difficulty: 'easy', totalQuestions: 5, mode: 'practice' }));
+      ws.send(JSON.stringify({ type: 'question_text', text: 'Describe your contribution to a project.', index: 5 }));
+      ws.send(JSON.stringify({ type: 'audio_unavailable' }));
+    });
+    await page.goto(`${baseURL}/__role-flow__?view=main&set=${set}`);
+    await page.locator('.ix-question-title').click();
+    socket.send(JSON.stringify({ type: 'tts_audio', data: speechAudioBase64() }));
+    const orb = page.locator('.ix-orb-container');
+    await expect(orb).toHaveAttribute('data-state', 'speaking');
+    socket.send(JSON.stringify({ type: 'session_complete' }));
+    await expect(page.locator('.ix-stage-card')).toHaveAttribute('data-state', 'speaking');
+    await expect(orb).toHaveAttribute('data-state', 'speaking');
+    await expect(orb).toHaveAttribute('data-expressive', 'true');
+    await expect(orb).toHaveAttribute('aria-label', 'AI interviewer is speaking');
+    await expect.poll(() => orb.evaluate(element => Number(element.style.getPropertyValue('--ix-orb-fallback-level')))).toBeGreaterThan(0.03);
+    if (set === 3) {
+      await expect(orb).toHaveAttribute('data-renderer', 'active');
+      const canvas = orb.locator('canvas');
+      const frame = await canvas.evaluate(element => element.toDataURL());
+      await expect.poll(() => canvas.evaluate(element => element.toDataURL())).not.toBe(frame);
+      await page.locator('.ix-stage-card').screenshot({ path: 'test-results/mainsets-orb-speaking-desktop.png' });
+    }
+    await expect(orb).toHaveAttribute('data-state', 'complete', { timeout: 10000 });
+    await expect(page.locator('.ix-stage-card')).toHaveAttribute('data-state', 'complete');
   });
 }
 
@@ -102,6 +139,21 @@ test('briefing saves canonical settings and waits for real readiness', async ({ 
   socket.send(JSON.stringify({ type: 'generation_complete', role: 'qa-test' }));
   await page.getByRole('button', { name: 'Enter Studio' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-confirmed', 'true');
+  expect(socketUrl.searchParams.get('launch')).toMatch(/^[a-z0-9-]{36}$/);
+  await expect(page.locator('html')).toHaveAttribute('data-launch-id', socketUrl.searchParams.get('launch'));
+});
+
+test('MainSets keeps its launch marker when reopening the same practice URL', async ({ page }) => {
+  const urls = [];
+  await mockApi(page);
+  await page.routeWebSocket(/\/ws\/set1/, ws => { urls.push(new URL(ws.url())); });
+  const url = `${baseURL}/__role-flow__?view=main&launch=repeatable-browser-launch`;
+  await page.goto(url);
+  await expect.poll(() => urls.length).toBe(1);
+  expect(urls[0].searchParams.get('launch')).toBe('repeatable-browser-launch');
+  await page.reload();
+  await expect.poll(() => urls.length).toBe(2);
+  expect(urls[1].searchParams.get('launch')).toBe('repeatable-browser-launch');
 });
 
 test('briefing reports socket failure and keeps readiness disabled', async ({ page }) => {

@@ -39,6 +39,68 @@ test("chat uses native thinking and returns only the final answer", async () => 
   assert.equal(JSON.stringify(result).includes("private reasoning marker"), false);
 });
 
+test("complete JSON fences and quoted null recover without a second AI request", async (t) => {
+  const logged = [];
+  t.mock.method(console, "error", (...args) => logged.push(args));
+  for (const content of [
+    JSON.stringify({ reply: "What do you enjoy building?", recommendedRoleId: "null", confidence: "low" }),
+    '```json\n{"reply":"What do you enjoy building?","recommendedRoleId":null,"confidence":"low"}\n```',
+    '```\r\n{"reply":"What do you enjoy building?","recommendedRoleId":null,"confidence":"low"}\r\n```',
+  ]) {
+    let calls = 0;
+    const client = { chat: { completions: { create: async () => {
+      calls += 1;
+      return { choices: [{ finish_reason: "stop", message: { content } }] };
+    } } } };
+    const result = await createRecommendationReply({ message: "Help me pick a track" }, { client });
+    assert.equal(result.recommendedRoleId, null);
+    assert.equal(result.reply, "What do you enjoy building?");
+    assert.equal(calls, 1);
+  }
+  assert.equal(logged.length, 0);
+});
+
+test("invalid output logs the exact validation category without generated text", async (t) => {
+  const logged = [];
+  t.mock.method(console, "error", (...args) => logged.push(args));
+  const marker = "Synthetic private answer marker";
+  for (const [content, validationFailure] of [
+    [`${marker}: {"reply":"Hello"}`, "malformed_json"],
+    [JSON.stringify([{ reply: marker }]), "invalid_object"],
+    [JSON.stringify({ text: marker }), "missing_reply"],
+    [JSON.stringify({ reply: 123 }), "invalid_reply_type"],
+    [JSON.stringify({ reply: " " }), "empty_reply"],
+    [JSON.stringify({ reply: marker, recommendedRoleId: {} }), "invalid_role_id_type"],
+    [JSON.stringify({ reply: marker, recommendedRoleId: "Backend Developer" }), "unsupported_role_id"],
+    ['Here is JSON:\n```json\n' + JSON.stringify({ reply: marker }) + '\n```', "malformed_json"],
+  ]) {
+    const client = { chat: { completions: { create: async () => ({
+      choices: [{ finish_reason: "stop", message: { content } }],
+    }) } } };
+    const before = logged.length;
+    await assert.rejects(createRecommendationReply({ message: "Hello" }, { client }),
+      error => error.reason === "invalid_reply");
+    assert.equal(logged.length - before, 2);
+    for (const [, metadata] of logged.slice(before)) {
+      assert.equal(metadata.validationFailure, validationFailure);
+    }
+  }
+  assert.equal(JSON.stringify(logged).includes(marker), false);
+});
+
+test("quoted-null recovery still screens decoded reply secrets", async (t) => {
+  const logged = [];
+  t.mock.method(console, "error", (...args) => logged.push(args));
+  const content = '```json\n{"reply":"\\u0073k-synthetic0123456789","recommendedRoleId":"null"}\n```';
+  const client = { chat: { completions: { create: async () => ({
+    choices: [{ finish_reason: "stop", message: { content } }],
+  }) } } };
+  const result = await createRecommendationReply({ message: "Hello" }, { client });
+  assert.equal(result.mode, "guarded");
+  assert.equal(result.recommendedRoleId, null);
+  assert.equal(JSON.stringify([result, logged]).includes("synthetic"), false);
+});
+
 test("truncated or malformed thinking responses never become scripted recommendations", async (t) => {
   t.mock.method(console, "error", () => {});
   for (const choice of [

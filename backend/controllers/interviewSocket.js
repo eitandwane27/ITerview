@@ -120,10 +120,11 @@ const PRE_TEST_QUESTIONS = [
 function handleInterviewSocket(ws, request) {
   console.log("[WS] 🔌 New interview session connected");
 
-  // Parse requested voice and uid from the URL query string
+  // The upgrade gate supplies the verified identity; the URL chooses the voice.
   const url = new URL(request.url, `http://${request.headers.host}`);
   const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
-  const firebaseUid = url.searchParams.get("uid") || "anonymous_user";
+  const firebaseUid = request.auth?.uid;
+  if (!firebaseUid) { ws.close(1008, 'Authentication required'); return; }
   const isResetRequested = url.searchParams.get("reset") === "true";
 
   // ── Session state ─────────────────────────────────────────────────────────

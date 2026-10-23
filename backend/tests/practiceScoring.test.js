@@ -2,10 +2,11 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { calculatePracticeScores } = require('../utils/practiceScoring');
 
+const metadata = { attemptId: 'scoring-run', role: 'backend', difficulty: 'easy' };
 const completedSets = () => [
-  { isCompleted: true, avg_clarity: 3.6, avg_correctness: 3.6, avg_completeness: 3.8 },
-  { isCompleted: true, avg_problem_solving: 3.8, avg_accuracy: 3.8, avg_depth: 4 },
-  { isCompleted: true, avg_situation: 3.6, avg_action: 3.6, avg_result: 3.8 },
+  { ...metadata, isCompleted: true, avg_clarity: 3.6, avg_correctness: 3.6, avg_completeness: 3.8 },
+  { ...metadata, isCompleted: true, avg_problem_solving: 3.8, avg_accuracy: 3.8, avg_depth: 4 },
+  { ...metadata, isCompleted: true, avg_situation: 3.6, avg_action: 3.6, avg_result: 3.8 },
 ];
 
 test('74.67% stays below the threshold through the live and archive calculation', () => {

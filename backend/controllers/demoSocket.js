@@ -206,6 +206,12 @@ function handleDemoSocket(ws, request) {
       return;
     }
 
+    // Valid JSON can still be null, an array, or a primitive. Demo controls
+    // require an object with a string type before they can be dispatched.
+    if (!msg || typeof msg !== "object" || Array.isArray(msg) || typeof msg.type !== "string") {
+      return;
+    }
+
     switch (msg.type) {
       case "start_recording":
         if (!isRecording) {

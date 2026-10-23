@@ -24,7 +24,7 @@ async function getRoute(t, path, records, { method = 'get', body: requestBody = 
   let status;
   let body;
   await handler(
-    { query: { uid: 'test-user' }, params: { firebaseUid: 'test-user' }, body: requestBody },
+    { auth: { uid: 'test-user' }, query: { uid: 'test-user' }, params: { firebaseUid: 'test-user' }, body: requestBody },
     {
       status(code) {
         status = code;
@@ -44,7 +44,8 @@ const completedPreTest = {
   completedAt: new Date('2026-09-01'),
   baseline_score_percentage: 0,
 };
-const completedSet = { isCompleted: true, mode: 'diagnostic' };
+const attemptMetadata = { attemptId: 'route-run', role: 'backend', difficulty: 'easy' };
+const completedSet = { ...attemptMetadata, isCompleted: true, mode: 'diagnostic' };
 const completedPostTest = { completedAt: new Date('2026-09-02') };
 const completedInterview = {
   PreTestSession: completedPreTest,
@@ -79,7 +80,7 @@ const journeyCases = [
   {
     name: 'completed pre-test unlocks Set 1 even with a zero baseline',
     records: { PreTestSession: completedPreTest },
-    expected: ['mainsets', true, false],
+    expected: ['mainsets', false, false],
     activeSet: 1,
   },
   {
@@ -91,7 +92,7 @@ const journeyCases = [
   {
     name: 'explicitly started MainSets session keeps its existing resume state',
     records: {
-      Set1Session: { isCompleted: false, answers: [{}], mode: 'practice' },
+      Set1Session: { ...attemptMetadata, isCompleted: false, answers: [{}], mode: 'practice' },
     },
     expected: ['mainsets', true, true],
     activeSet: 1,
@@ -112,7 +113,7 @@ const journeyCases = [
     records: {
       ...completedInterview,
       User: { postConfidenceScore: 0 },
-      Set1Session: { isCompleted: false, answers: [{}], mode: 'drill' },
+      Set1Session: { ...attemptMetadata, isCompleted: false, answers: [{}], mode: 'drill' },
     },
     expected: ['complete', false, false],
   },
@@ -127,6 +128,40 @@ for (const { name, records, expected, activeSet, answersCount } of journeyCases)
     );
     if (activeSet !== undefined) assert.equal(result.activeSet, activeSet);
     if (answersCount !== undefined) assert.equal(result.answersCount, answersCount);
+  });
+}
+
+for (const researchComplete of [false, true]) {
+  test(`discard persists across dashboard reads, research complete=${researchComplete}`, async (t) => {
+    const records = {
+      User: { confidenceScore: 20, postConfidenceScore: researchComplete ? 20 : null,
+        practiceHistory: [{ attemptId: 'archived-run', overallScorePercentage: 80 }] },
+      PreTestSession: completedPreTest,
+      PostTestSession: researchComplete ? completedPostTest : null,
+      Set1Session: { ...completedSet, mode: researchComplete ? 'practice' : 'diagnostic' },
+      Set2Session: { ...completedSet, isCompleted: false, answers: [{ questionIndex: 0 }] },
+      Set3Session: { ...completedSet, attemptId: 'older-run' },
+    };
+    for (const model of models.filter(model => /^Set[123]Session$/.test(model.modelName))) {
+      t.mock.method(model, 'deleteMany', async filter => {
+        assert.deepEqual(filter, { firebaseUid: 'test-user' });
+        delete records[model.modelName];
+        return { deletedCount: 1 };
+      });
+    }
+    const reset = await getRoute(t, '/reset-practice-session', records, {
+      method: 'post', body: { firebaseUid: 'test-user' },
+    });
+    const refreshed = await getRoute(t, '/active-practice-session', records);
+    assert.deepEqual(reset.activeSession, refreshed);
+    assert.equal(refreshed.hasActiveSession, false);
+    assert.equal(refreshed.hasResumableSession, false);
+    assert.equal(refreshed.nextStage, researchComplete ? 'complete' : 'mainsets');
+    assert.equal(records.User.practiceHistory.length, 1);
+    for (const model of models.filter(model => /^Set[123]Session$/.test(model.modelName))) {
+      assert.equal(model.deleteMany.mock.callCount(), 1);
+      assert.equal(records[model.modelName], undefined);
+    }
   });
 }
 
@@ -164,6 +199,8 @@ test('results summary restores difficulty progress from the latest completed att
 
   assert.deepEqual(result.practiceProgress, {
     source: 'latest-completed-attempt',
+    role: null,
+    difficulty: 'easy',
     attemptNumber: 1,
     completedSetCount: 3,
     completedAllSets: true,
@@ -247,9 +284,9 @@ test('high scores in only two live sets cannot unlock a difficulty', async t => 
     User: { difficulty: 'easy', unlockedDifficulty: 'easy' },
     PreTestSession: { baseline_score_percentage: 100 },
     PostTestSession: { final_score_percentage: 100 },
-    Set1Session: { isCompleted: true, avg_clarity: 5, avg_correctness: 5, avg_completeness: 5 },
-    Set2Session: { isCompleted: true, avg_problem_solving: 5, avg_accuracy: 5, avg_depth: 5 },
-    Set3Session: { isCompleted: false },
+    Set1Session: { ...attemptMetadata, isCompleted: true, avg_clarity: 5, avg_correctness: 5, avg_completeness: 5 },
+    Set2Session: { ...attemptMetadata, isCompleted: true, avg_problem_solving: 5, avg_accuracy: 5, avg_depth: 5 },
+    Set3Session: { ...attemptMetadata, isCompleted: false },
   });
   assert.equal(result.unlockThreshold, 75);
   assert.equal(result.unlocked, false);
@@ -263,9 +300,9 @@ for (const [score, expectedUnlock] of [[3.5, false], [3.749, false], [3.75, true
     t.mock.method(console, 'log', () => {});
     const result = await getRoute(t, '/results-summary', {
       User: { difficulty: 'easy', unlockedDifficulty: 'easy' },
-      Set1Session: { isCompleted: true, avg_clarity: score, avg_correctness: score, avg_completeness: score },
-      Set2Session: { isCompleted: true, avg_problem_solving: score, avg_accuracy: score, avg_depth: score },
-      Set3Session: { isCompleted: true, avg_situation: score, avg_action: score, avg_result: score },
+      Set1Session: { ...attemptMetadata, isCompleted: true, difficulty: 'easy', avg_clarity: score, avg_correctness: score, avg_completeness: score },
+      Set2Session: { ...attemptMetadata, isCompleted: true, difficulty: 'easy', avg_problem_solving: score, avg_accuracy: score, avg_depth: score },
+      Set3Session: { ...attemptMetadata, isCompleted: true, avg_situation: score, avg_action: score, avg_result: score },
     });
     assert.equal(result.unlockThreshold, 75);
     assert.equal(result.unlocked, expectedUnlock);
@@ -278,9 +315,9 @@ test('74.67% live practice does not unlock after set-score rounding', async t =>
   const update = t.mock.method(models[0], 'updateOne', async () => ({ modifiedCount: 1 }));
   const result = await getRoute(t, '/results-summary', {
     User: { difficulty: 'easy', unlockedDifficulty: 'easy' },
-    Set1Session: { isCompleted: true, avg_clarity: 3.6, avg_correctness: 3.6, avg_completeness: 3.8 },
-    Set2Session: { isCompleted: true, avg_problem_solving: 3.8, avg_accuracy: 3.8, avg_depth: 4 },
-    Set3Session: { isCompleted: true, avg_situation: 3.6, avg_action: 3.6, avg_result: 3.8 },
+    Set1Session: { ...attemptMetadata, isCompleted: true, avg_clarity: 3.6, avg_correctness: 3.6, avg_completeness: 3.8 },
+    Set2Session: { ...attemptMetadata, isCompleted: true, avg_problem_solving: 3.8, avg_accuracy: 3.8, avg_depth: 4 },
+    Set3Session: { ...attemptMetadata, isCompleted: true, avg_situation: 3.6, avg_action: 3.6, avg_result: 3.8 },
   });
   assert.equal(result.practiceProgress.scorePercentage, 74.7);
   assert.equal(result.unlocked, false);
@@ -300,7 +337,7 @@ test('rounded display of 75% in history cannot unlock a raw result below 75%', a
 });
 
 function historyRecords(score = 4) {
-  const base = { isCompleted: true, role: 'backend', difficulty: 'medium' };
+  const base = { ...attemptMetadata, isCompleted: true, role: 'backend', difficulty: 'medium' };
   return {
     User: { firebaseUid: 'test-user', role: 'frontend', difficulty: 'hard', unlockedDifficulty: 'medium', focusArea: 'clarity', practiceHistory: [{ attemptNumber: 4, overallScorePercentage: 60 }] },
     Set1Session: { ...base, avg_clarity: score, avg_correctness: score, avg_completeness: score },
@@ -321,6 +358,8 @@ for (const [name, change, expectedStatus] of [
   ['invalid stored scores', records => { records.Set2Session.avg_accuracy = null; }, 409],
   ['mixed roles', records => { records.Set3Session.role = 'frontend'; }, 409],
   ['mixed technical difficulties', records => { records.Set2Session.difficulty = 'easy'; }, 409],
+  ['different attempts with the same role and tier', records => { records.Set2Session.attemptId = 'older-run'; }, 409],
+  ['missing shared attempt identity', records => { delete records.Set1Session.attemptId; }, 409],
 ]) {
   test('practice history rejects ' + name + ' without saving caller scores', async t => {
     const records = historyRecords();
@@ -331,6 +370,17 @@ for (const [name, change, expectedStatus] of [
     assert.deepEqual(records.User?.practiceHistory || [], records.User ? [{ attemptNumber: 4, overallScorePercentage: 60 }] : []);
   });
 }
+
+test('practice history retries do not append the same attempt twice', async t => {
+  const records = historyRecords();
+  records.User.practiceHistory.push({ attemptId: records.Set1Session.attemptId, overallScorePercentage: 80 });
+  const save = t.mock.method(models[0], 'findOneAndUpdate', async () => { throw new Error('Unexpected duplicate'); });
+  const result = await getRoute(t, '/practice-history', records, {
+    method: 'post', body: forgedHistoryPayload, expectedStatus: 200,
+  });
+  assert.equal(result.practiceHistory.length, 2);
+  assert.equal(save.mock.callCount(), 0);
+});
 
 for (const [score, shouldUnlock] of [[3, false], [3.749, false], [3.75, true], [4, true]]) {
   test('practice history saves backend score ' + score + '/5 and uses it after live sets are removed', async t => {

@@ -74,6 +74,12 @@ function createHarness(set, { role, difficulty, unlockedDifficulty = difficulty,
   const requests = [];
   const writes = [];
   const historyWrites = [];
+  if (existing) existing = { attemptId: 'generation-run', ...existing, answers: existing.answers.map((answer, questionIndex) => ({ questionIndex, ...answer })) };
+  const parent = { attemptId: 'generation-run', isCompleted: true, role: existing?.role || role,
+    difficulty: existing?.difficulty || require('../services/interviewSettings').resolveUserDifficulty({ difficulty, unlockedDifficulty }),
+    mode: existing?.mode || 'practice' };
+  if (set === 3) parent.difficulty = 'easy';
+  if (completedSets) completedSets = completedSets.map(doc => ({ ...parent, ...doc }));
   let stored = existing && structuredClone(existing);
   const generator = loadWithDependencies(`../services/aiSet${set}Generator.js`, {
     openai: { OpenAI: class {
@@ -140,8 +146,8 @@ function createHarness(set, { role, difficulty, unlockedDifficulty = difficulty,
     '../models/PreTestSession': { findOne: () => ({ sort: async () => ({
       final_weakness_tag: 'focus_clarity', baseline_score_percentage: 60,
     }) }) },
-    '../models/Set1Session': completedSets ? { findOne: async () => completedSets[0] } : sessionModel,
-    '../models/Set2Session': completedSets ? { findOne: async () => completedSets[1] } : sessionModel,
+    '../models/Set1Session': { findOne: async () => completedSets?.[0] || parent, ...(set === 1 ? sessionModel : {}) },
+    '../models/Set2Session': { findOne: async () => completedSets?.[1] || parent, ...(set === 2 ? sessionModel : {}) },
     '../models/Set3Session': sessionModel,
   });
   const socket = new FakeSocket();
@@ -150,6 +156,7 @@ function createHarness(set, { role, difficulty, unlockedDifficulty = difficulty,
     get stored() { return stored; },
     start() {
       controller[`handleSet${set}Socket`](socket, {
+        auth: { uid: 'generation-test-user' },
         url: `/ws/set${set}?uid=generation-test-user&mode=practice`,
         headers: { host: 'localhost:5000' },
       });
@@ -460,20 +467,21 @@ test('Set 1 hard persists repaired questions and evaluates with its independent 
   assert.equal(harness.stored.answers[0].question, questions[0]);
 });
 
-test('legacy Set 3 banks labeled hard resume with easy metadata and scoring without losing answers', async (t) => {
+test('unassociated legacy Set 3 banks start a fresh Easy bank in the current attempt', async (t) => {
   for (const method of ['log', 'time', 'timeEnd']) t.mock.method(console, method, () => {});
   const questions = Array.from({ length: 5 }, (_, index) => `Saved behavioral question ${index + 1}?`);
-  const existing = { _id: 'legacy-set3', sessionId: 'old-owner', role: 'frontend', mode: 'practice',
+  const existing = { _id: 'legacy-set3', attemptId: null, sessionId: 'old-owner', role: 'frontend', mode: 'practice',
     difficulty: 'hard', isCompleted: false, questions, answers: [{ question: questions[0], situation_score: 3 }] };
   const harness = createHarness(3, { role: 'backend', difficulty: 'hard', existing });
   t.after(() => harness.socket.close());
   await harness.start();
   assert.equal(harness.stored.difficulty, 'easy');
-  assert.deepEqual(harness.stored.answers, existing.answers);
-  assert.deepEqual(harness.stored.questions, questions);
+  assert.deepEqual(harness.stored.answers, []);
+  assert.notDeepEqual(harness.stored.questions, questions);
+  assert.equal(harness.stored.attemptId, 'generation-run');
   harness.socket.emit('message', Buffer.from(JSON.stringify({ type: 'submit_answer', final_text: 'A clear answer.' })), false);
-  await harness.socket.waitFor(message => message.type === 'question_text' && message.index === 3);
-  assert.ok(harness.requests[0].messages[0].content.includes('ENTRY-LEVEL BEHAVIORAL EVIDENCE RUBRIC'));
+  await harness.socket.waitFor(message => message.type === 'question_text' && message.index === 2);
+  assert.ok(harness.requests.at(-1).messages[0].content.includes('ENTRY-LEVEL BEHAVIORAL EVIDENCE RUBRIC'));
 });
 
 test('Set 3 completes the bank with checked fallbacks without saving rejected drafts', async t => {
@@ -578,7 +586,7 @@ test('Set 3 completion archives the unrounded combined score for future unlock d
   const questions = BEHAVIORAL_COMPETENCIES.map(item => item.examples[0]);
   const existing = { _id: 'saved-session', sessionId: 'old-owner', role: 'backend', mode: 'practice',
     difficulty: 'easy', isCompleted: false, questions, answers: [[3,3,3],[3,3,4],[4,4,4],[4,4,4]].map((scores, questionIndex) => ({
-      questionIndex, situation_score: scores[0], action_score: scores[1], result_score: scores[2],
+      questionIndex, question: questions[questionIndex], situation_score: scores[0], action_score: scores[1], result_score: scores[2],
     })) };
   const harness = createHarness(3, { role: 'backend', difficulty: 'easy', existing, completedSets: [
     { isCompleted: true, avg_clarity: 3.6, avg_correctness: 3.6, avg_completeness: 3.8 },

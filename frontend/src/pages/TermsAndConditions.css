@@ -1,0 +1,83 @@
+.tc-page {
+  background: var(--am-bg-card);
+}
+
+.tc-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+
+.tc-content {
+  width: min(100%, 74ch);
+  margin-inline: auto;
+  padding: 64px 24px;
+  color: var(--am-text-2);
+  font-size: 16px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.tc-content h1 {
+  margin: 0 0 12px;
+  color: var(--am-text-1);
+  font-family: var(--am-font-display);
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.tc-content h2 {
+  margin: 32px 0 8px;
+  color: var(--am-text-1);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.tc-content p {
+  margin: 0 0 16px;
+}
+
+.tc-content .tc-updated {
+  margin-bottom: 28px;
+  color: var(--am-text-3);
+  font-size: 14px;
+}
+
+.tc-footer {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--am-border);
+  font-size: 14px;
+}
+
+.tc-footer a {
+  display: inline-block;
+  padding-block: 10px;
+  color: var(--am-accent-hover);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.tc-footer a:hover {
+  color: var(--am-accent-active);
+}
+
+.tc-page a:focus-visible {
+  outline: 2px solid var(--am-accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+@media (max-width: 520px) {
+  .tc-content {
+    padding-block: 40px;
+  }
+
+  .tc-page .am-topbar-inner {
+    padding-inline: 20px;
+  }
+}

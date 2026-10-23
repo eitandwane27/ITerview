@@ -26,6 +26,7 @@
 const { OpenAI } = require("openai");
 const { resolveSetDifficulty } = require("../config/interviewConfig");
 const { BEHAVIORAL_COMPETENCIES, BEHAVIORAL_QUESTION_STANDARD, BEHAVIORAL_SCORING_RUBRIC, BEHAVIORAL_SCORING_CALIBRATION } = require("../config/behavioralInterviewConfig");
+const { BEHAVIORAL_COACHING_PROMPT } = require("../config/behavioralCoachingPrompt");
 const { getBehavioralQuestionIssue } = require("../utils/behavioralQuestionGuard");
 const { normalizeQuestionDraft } = require('../utils/questionWording');
 const { behavioralQuestionVariety } = require("../utils/behavioralQuestionVariety");
@@ -181,13 +182,7 @@ ${BEHAVIORAL_SCORING_RUBRIC}
 
 ${BEHAVIORAL_SCORING_CALIBRATION}
 
-COACHING:
-- tip: Exactly ONE actionable sentence addressing the most useful missing evidence or behavior. If the answer meets the anchors, reinforce demonstrated evidence without inventing a weakness.
-- interviewer_reply: EXACTLY TWO short sentences. Acknowledge the response accurately and warmly, then give grounded reinforcement or coaching. Use neutral thanks when there is no evidence to praise. Never praise harmful behavior or claim the candidate is a proven leader or ideal employee.
-- Do not ask a follow-up question, introduce the next topic, or say let's move on. Do not request a dramatic success, numbers, additional steps, or both a result and a lesson when the anchors are met.
-- Treat 4 and 5 as high scores, not automatic signals of missing detail. If context, a reasonable contribution with purpose, and a concrete outcome or lesson are present, reinforce that evidence instead of prescribing optional elaboration.
-- When all three scores are 4 or 5, the tip must reinforce demonstrated evidence; do not ask for optional extra detail or invent a deficiency.
-- Never ask the candidate to claim actions they did not take. For ineffective behavior, suggest a constructive approach for future situations without rewriting the past. For missing evidence, ask for true details only.
+${BEHAVIORAL_COACHING_PROMPT}
 
 Return exactly this shape:
 {
@@ -195,7 +190,7 @@ Return exactly this shape:
   "action_score": <integer 1-5>,
   "result_score": <integer 1-5>,
   "tip": "<one sentence>",
-  "interviewer_reply": "<two sentences>"
+  "interviewer_reply": "<friendly, specific coaching response ending with one practical takeaway>"
 }`;
 
 /**
