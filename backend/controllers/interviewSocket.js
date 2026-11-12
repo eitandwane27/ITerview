@@ -87,10 +87,6 @@ function computeFinalScores(scores) {
 
   const percentage = Math.round((totalPoints / maxPossiblePoints) * 100);
 
-  console.log(
-    `[AI] 📊 Avg 3C — Clarity: ${avg.clarity.toFixed(2)} | Correctness: ${avg.correctness.toFixed(2)} | Completeness: ${avg.completeness.toFixed(2)} | Overall: ${percentage}%`
-  );
-  
   const min = Math.min(avg.clarity, avg.correctness, avg.completeness);
   let weakness_tag = "focus_correctness";
   if (min === avg.completeness) weakness_tag = "focus_completeness";
@@ -175,11 +171,11 @@ function handleInterviewSocket(ws, request) {
         questionText: PRE_TEST_QUESTIONS[questionIndex] ?? text,
       });
       console.log(
-        `[TTS] 🔊 Sent audio to user in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`,
+        `[TTS] 🔊 Sent audio to user in ${(latency / 1000).toFixed(2)}s`,
       );
     } catch (err) {
       if (ws.readyState !== ws.OPEN) return;
-      console.error("[WS] TTS error:", err.message);
+      console.error("[WS] TTS error");
       send({ type: "error", message: `TTS failed: ${err.message}` });
     }
   }
@@ -256,8 +252,8 @@ function handleInterviewSocket(ws, request) {
         if (user?.difficulty) {
           sessionDifficulty = user.difficulty;
         }
-      } catch (err) {
-        console.error("[WS] Failed to fetch user difficulty:", err.message);
+      } catch {
+        console.error("[WS] Failed to fetch user difficulty");
       }
 
       // ── Once-only gate: a completed Pre-Test can never be retaken ───────────
@@ -271,9 +267,7 @@ function handleInterviewSocket(ws, request) {
             completedAt: { $ne: null },
           });
           if (completedSession) {
-            console.log(
-              `[WS] ⛔ Pre-test already completed for ${firebaseUid} — baseline ${completedSession.baseline_score_percentage ?? "?"}%. Rejecting retake.`
-            );
+            console.log("[WS] ⛔ Pre-test already completed. Rejecting retake.");
             send({
               type: "pretest_completed",
               baseline_score: completedSession.baseline_score_percentage,
@@ -282,8 +276,8 @@ function handleInterviewSocket(ws, request) {
             ws.close();
             return;
           }
-        } catch (err) {
-          console.error("[WS] Failed to check for completed pre-test:", err.message);
+        } catch {
+          console.error("[WS] Failed to check for completed pre-test");
         }
       }
 
@@ -293,8 +287,8 @@ function handleInterviewSocket(ws, request) {
         if (!isResetRequested) {
           activeSession = await PreTestSession.findOne({ firebaseUid, completedAt: null });
         }
-      } catch (err) {
-        console.error("[WS] Failed to check for active pre-test session:", err.message);
+      } catch {
+        console.error("[WS] Failed to check for active pre-test session");
       }
 
       if (activeSession) {
@@ -350,8 +344,8 @@ function handleInterviewSocket(ws, request) {
 
           console.log(`[WS] Resumed session at question index: ${currentQuestionIndex}`);
           send({ type: "session_resumed", currentQuestionIndex });
-        } catch (err) {
-          console.error(`[DB] ❌ Failed to update resumed session document:`, err.message);
+        } catch {
+          console.error(`[DB] ❌ Failed to update resumed session document`);
         }
       } else {
         // Initialise or reset the pre‑test session document in MongoDB
@@ -369,8 +363,8 @@ function handleInterviewSocket(ws, request) {
             { upsert: true, returnDocument: "after" }
           );
           console.log(`[DB] ✅ Pre-test session initialized/reset: ${sessionId} for user: ${firebaseUid}`);
-        } catch (err) {
-          console.error(`[DB] ❌ Failed to initialize/reset session document:`, err.message);
+        } catch {
+          console.error(`[DB] ❌ Failed to initialize/reset session document`);
         }
       }
 
@@ -380,7 +374,7 @@ function handleInterviewSocket(ws, request) {
         send({ type: "status", message: "Question ready. Press the mic button to begin your answer." });
       }
     } catch (fatalErr) {
-      console.error("[WS] Fatal session startup error:", fatalErr);
+      console.error("[WS] Fatal session startup error");
       send({ type: "error", message: `Failed to start session: ${fatalErr.message}` });
       ws.close();
     }
@@ -409,8 +403,6 @@ function handleInterviewSocket(ws, request) {
       return;
     }
 
-    console.log(`[WS] ← ${msg.type}`);
-
     switch (msg.type) {
       // User opened the mic
       case "start_recording":
@@ -434,12 +426,12 @@ function handleInterviewSocket(ws, request) {
                     console.log(`[TTS] ✅ Early background Q${nextIndex + 1} audio ready.`);
                   }
                 })
-                .catch((err) => {
+                .catch(() => {
                   if (preGeneratedNextQuestionIndex === nextIndex) {
                     preGeneratedNextQuestionAudio = null;
                     preGeneratedNextQuestionIndex = -1;
                   }
-                  console.error(`[TTS] ❌ Early background TTS pre-generation failed:`, err.message);
+                  console.error(`[TTS] ❌ Early background TTS pre-generation failed`);
                 });
             }
           }
@@ -484,9 +476,7 @@ function handleInterviewSocket(ws, request) {
         }
         const answeredQuestion = PRE_TEST_QUESTIONS[currentQuestionIndex];
         const questionNumber = currentQuestionIndex + 1;
-        console.log(
-          `[WS] Answer confirmed for Q${questionNumber}: "${confirmedText.substring(0, 80)}…"`,
-        );
+        console.log(`[WS] Answer confirmed for Q${questionNumber}`);
 
         // ── Background 3C Evaluation (fire-and-forget) ───────────────────
         // Runs silently while the user moves to the next question.
@@ -526,11 +516,8 @@ function handleInterviewSocket(ws, request) {
             sessionScores.push({ questionIndex: capturedIndex, ...scores });
             console.log("[DB] Pre-test score saved for Q" + questionNumber);
             return true;
-          } catch (err) {
-            console.error(
-              "[AI] Pre-test evaluation failed for Q" + questionNumber + ":",
-              err.message
-            );
+          } catch {
+            console.error("[AI] Pre-test evaluation failed for Q" + questionNumber);
             metrics.evaluationLatencies.push(0);
             return false;
           }
@@ -567,12 +554,12 @@ function handleInterviewSocket(ws, request) {
                   console.log(`[TTS] ⚠️ Background Q${nextIndex + 1} audio ready, but discarded (user already advanced or disconnected).`);
                 }
               })
-              .catch((err) => {
+              .catch(() => {
                 if (preGeneratedNextQuestionIndex === nextIndex) {
                   preGeneratedNextQuestionAudio = null;
                   preGeneratedNextQuestionIndex = -1;
                 }
-                console.error(`[TTS] ❌ Background TTS pre-generation failed:`, err.message);
+                console.error(`[TTS] ❌ Background TTS pre-generation failed`);
               });
           }
         } else {
@@ -608,7 +595,7 @@ function handleInterviewSocket(ws, request) {
                   questionText: PRE_TEST_QUESTIONS[currentQuestionIndex],
                 });
                 console.log(
-                  `[TTS] 🔊 Sent pre-generated question audio to user — "${PRE_TEST_QUESTIONS[currentQuestionIndex].substring(0, 50)}…"`,
+                  `[TTS] 🔊 Sent pre-generated question audio for Q${currentQuestionIndex + 1}`,
                 );
                 metrics.ttsLatencies.push(0); // 0ms latency since it was pre-cached!
                 preGeneratedNextQuestionAudio = null; // Reset
@@ -627,7 +614,7 @@ function handleInterviewSocket(ws, request) {
               await Promise.allSettled(evaluationPromises);
 
               const { weakness_tag, percentage } = computeFinalScores(sessionScores);
-              console.log(`[Session] 🏁 Pre-test complete. Weakness: ${weakness_tag} | Baseline: ${percentage}%`);
+              console.log("[Session] 🏁 Pre-test complete.");
 
               // Persist final result to MongoDB
               try {
@@ -647,8 +634,8 @@ function handleInterviewSocket(ws, request) {
                   return;
                 }
                 console.log(`[DB] ✅ Session finalised — ${sessionId}`);
-              } catch (err) {
-                console.error(`[DB] ❌ Failed to finalise session:`, err.message);
+              } catch {
+                console.error(`[DB] ❌ Failed to finalise session`);
               }
 
               // ── Print Session Performance Metrics ────────────────────────
@@ -677,7 +664,7 @@ function handleInterviewSocket(ws, request) {
               send({ type: "session_complete", weakness_tag, baseline_score: percentage });
             }
           } catch (err) {
-            console.error("[WS] Error during next_question progression:", err);
+            console.error("[WS] Error during next_question progression");
             send({ type: "error", message: `Question transition failed: ${err?.message || err}` });
           }
         })();
@@ -685,7 +672,7 @@ function handleInterviewSocket(ws, request) {
       }
 
       default:
-        console.warn(`[WS] Unknown message type: ${msg.type}`);
+        console.warn("[WS] Unknown message type");
     }
   });
 
@@ -695,8 +682,8 @@ function handleInterviewSocket(ws, request) {
     closeSttSession();
   });
 
-  ws.on("error", (err) => {
-    console.error("[WS] ❌ WebSocket error:", err.message);
+  ws.on("error", () => {
+    console.error("[WS] ❌ WebSocket error");
     closeSttSession();
   });
 }

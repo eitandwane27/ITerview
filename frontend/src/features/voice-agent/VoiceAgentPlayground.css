@@ -4,12 +4,11 @@
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(min-content, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   width: 100%;
   height: 100dvh;
   min-height: 100dvh;
-  overflow-y: auto;
-  scrollbar-width: thin;
+  overflow: hidden;
   isolation: isolate;
   color: #0f172a;
   background:
@@ -281,9 +280,10 @@
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  align-items: center;
+  align-items: stretch;
   width: min(100%, 1320px);
   min-height: 0;
+  height: 100%;
   margin: 0 auto;
 }
 
@@ -299,12 +299,13 @@
   z-index: 3;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: repeat(4, auto);
-  align-content: center;
+  grid-template-rows: minmax(120px, 1fr) auto auto auto;
   justify-items: center;
   gap: 8px;
   width: min(100%, 1120px);
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   margin: 0 auto;
   padding: 16px 24px 24px;
 }
@@ -314,7 +315,7 @@
 }
 
 .va-experience:has(> .va-workspace) .va-orb-field {
-  width: min(100%, clamp(320px, 46dvh, 420px));
+  width: min(100cqw, 100cqh, 46dvh, 420px);
 }
 
 .va-experience:has(> .va-workspace) .va-status h1 {
@@ -331,7 +332,7 @@
 }
 
 .va-show-me {
-  width: min(560px, 100%);
+  width: min(720px, 100%);
   min-width: 0;
   text-align: center;
 }
@@ -403,12 +404,23 @@
   }
 }
 
+.va-orb-slot {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  container-type: size;
+}
+
 .va-orb-field {
   position: relative;
   align-self: center;
   display: grid;
   place-items: center;
-  width: min(100%, clamp(300px, 42dvh, 460px));
+  width: min(100cqw, 100cqh, 42dvh, 460px);
+  height: auto;
+  max-width: 100%;
   aspect-ratio: 1;
 }
 
@@ -512,6 +524,10 @@
   font-weight: 500;
   line-height: 1.5;
   text-wrap: balance;
+  max-height: 4.5em;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b8c8e0 transparent;
 }
 
 .va-session-controls {
@@ -1018,17 +1034,120 @@
 @media (max-width: 1000px) {
   .va-experience:has(> .va-workspace) {
     grid-template-columns: minmax(0, 1fr);
-    gap: 24px;
+    grid-template-rows: max-content minmax(240px, 1fr);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #b8c8e0 transparent;
+    gap: 16px;
     padding: 16px max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom))
       max(16px, env(safe-area-inset-left));
   }
 
   .va-experience:has(> .va-workspace) .va-stage {
     max-width: 640px;
+    height: auto;
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    column-gap: 16px;
   }
 
+  .va-experience:has(> .va-workspace) .va-orb-slot {
+    height: 72px;
+    grid-column: 1;
+    grid-row: 1;
+  }
   .va-experience:has(> .va-workspace) .va-orb-field {
-    width: min(100%, 340px);
+    width: 72px;
+  }
+  .va-experience:has(> .va-workspace) .va-status {
+    grid-column: 2;
+    grid-row: 1;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .va-experience:has(> .va-workspace) .va-status p {
+    text-wrap: pretty;
+  }
+  .va-experience:has(> .va-workspace) .va-show-me {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .va-experience:has(> .va-workspace) .va-show-me > span {
+    display: none;
+  }
+  .va-experience:has(> .va-workspace) .va-show-me > div {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 4px;
+    scrollbar-width: none;
+  }
+  .va-experience:has(> .va-workspace) .va-show-me button {
+    flex: 0 0 auto;
+  }
+  .va-experience:has(> .va-workspace) .va-session-controls {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
+}
+
+/* Preserve access at high zoom/short landscape heights; regular conversation
+   sizes fit the viewport without a page scrollbar. */
+@media (max-height: 700px) {
+  .va-experience {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #b8c8e0 transparent;
+  }
+}
+
+@media (max-height: 540px) {
+  .voice-agent-playground {
+    height: auto;
+    grid-template-rows: auto auto;
+    overflow: visible;
+  }
+  .va-experience {
+    height: auto;
+    overflow: visible;
+  }
+  .va-stage {
+    height: auto;
+    min-height: 440px;
+    grid-template-rows: 180px auto auto auto;
+  }
+  .va-experience:has(> .va-workspace) .va-stage {
+    min-height: 440px;
+  }
+  .va-experience:has(> .va-workspace) {
+    grid-template-rows: auto;
+    overflow: visible;
+  }
+  .va-workspace {
+    height: 480px;
+    max-height: none;
+  }
+}
+
+@media (max-height: 700px) and (min-width: 1001px) {
+  .va-audio-settings-panel {
+    width: min(640px, 100%);
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .va-device-picker__error {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-height: 540px) and (max-width: 1000px) {
+  .va-experience:has(> .va-workspace) {
+    grid-template-rows: auto auto;
+  }
+  .va-experience:has(> .va-workspace) .va-stage {
+    min-height: 0;
+    grid-template-rows: auto auto auto;
   }
 }
 

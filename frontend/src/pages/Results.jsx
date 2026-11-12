@@ -22,6 +22,7 @@ import {
   Target,
   Code,
   Users,
+  LockKeyhole,
 } from 'lucide-react';
 import logoSrc from '../assets/logo';
 import TestWorkspace from '../components/TestWorkspace';
@@ -863,22 +864,40 @@ export default function Results() {
         )}
 
         {/* ─── 2. The 3C Rubric Diagnostic Breakdown ───────────────────────── */}
-        <section className="rs-card rs-rubric-card" aria-label="3C Rubric Diagnostic Breakdown">
+        <section
+          className={`rs-card rs-rubric-card${isPracticeMode ? ' rs-rubric-card--locked' : ''}`}
+          aria-label="3C Rubric Diagnostic Breakdown"
+          aria-describedby={isPracticeMode ? 'rs-baseline-note' : undefined}
+        >
           <div className="rs-card-header">
             <div className="rs-card-header-left">
               <div className="rs-card-icon-badge rs-card-icon-badge--cyan">
-                <Compass size={20} />
+                {isPracticeMode ? (
+                  <LockKeyhole size={20} aria-hidden="true" />
+                ) : (
+                  <Compass size={20} />
+                )}
               </div>
               <div>
-                <h2 className="rs-card-title">What makes a strong answer</h2>
+                <h2 className="rs-card-title">
+                  {isPracticeMode ? "Your starting-check 3 C's" : 'What makes a strong answer'}
+                </h2>
                 <p className="rs-card-subtitle">
                   {isPracticeMode
-                    ? 'Your practice feedback across three dimensions'
+                    ? 'Your original scores across three dimensions'
                     : 'Your progress-check answers across three dimensions'}
                 </p>
               </div>
             </div>
+            {isPracticeMode && <span className="rs-rubric-lock-badge">Locked baseline</span>}
           </div>
+
+          {isPracticeMode && (
+            <p className="rs-rubric-lock-note" id="rs-baseline-note">
+              Your first starting-check scores stay fixed as a baseline for testing the research
+              group's hypotheses. See Practice Progression below for this attempt's scores.
+            </p>
+          )}
 
           <div className="rs-rubric-grid">
             {/* Clarity */}
@@ -889,7 +908,9 @@ export default function Results() {
                   Clarity
                 </div>
                 {focusKey === 'clarity' && (
-                  <span className="rs-rubric-focus-badge">Focus Area</span>
+                  <span className="rs-rubric-focus-badge">
+                    {isPracticeMode ? 'Starting focus' : 'Focus Area'}
+                  </span>
                 )}
               </div>
               <div className="rs-rubric-score-row">
@@ -915,7 +936,9 @@ export default function Results() {
                   Correctness
                 </div>
                 {focusKey === 'correctness' && (
-                  <span className="rs-rubric-focus-badge">Focus Area</span>
+                  <span className="rs-rubric-focus-badge">
+                    {isPracticeMode ? 'Starting focus' : 'Focus Area'}
+                  </span>
                 )}
               </div>
               <div className="rs-rubric-score-row">
@@ -941,7 +964,9 @@ export default function Results() {
                   Completeness
                 </div>
                 {focusKey === 'completeness' && (
-                  <span className="rs-rubric-focus-badge">Focus Area</span>
+                  <span className="rs-rubric-focus-badge">
+                    {isPracticeMode ? 'Starting focus' : 'Focus Area'}
+                  </span>
                 )}
               </div>
               <div className="rs-rubric-score-row">
@@ -1358,7 +1383,11 @@ export default function Results() {
               id="btn-continue-session"
               className="rs-btn-primary"
               onClick={() =>
-                navigate(isPracticeMode ? `/interview?set=1&mode=practice&launch=${crypto.randomUUID()}` : '/dashboard')
+                navigate(
+                  isPracticeMode
+                    ? `/interview?set=1&mode=practice&launch=${crypto.randomUUID()}`
+                    : '/dashboard'
+                )
               }
             >
               <RotateCcw size={18} />

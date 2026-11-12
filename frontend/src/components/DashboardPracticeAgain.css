@@ -1,4 +1,4 @@
-/* Canvas = flexible question ledger + 24px gutter + 288px coaching column. */
+/* A wider coaching column keeps the selected question and its tip easy to read. */
 .pa-screen {
   color: var(--db-ink);
   font-family: var(--db-font-body);
@@ -38,7 +38,7 @@
 }
 .pa-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 288px;
+  grid-template-columns: minmax(0, 1fr) 336px;
   align-items: start;
   gap: var(--db-space-lg);
 }
@@ -424,118 +424,101 @@
   min-width: 0;
 }
 .pa-focus__content {
-  padding: var(--db-space-lg);
+  padding: var(--db-space-xl);
   background: var(--db-card-bg);
   border: 1px solid var(--db-border);
   border-radius: var(--db-r-lg);
-  box-shadow: var(--db-shadow-card);
 }
 .pa-focus__heading {
   display: flex;
+  justify-content: space-between;
   gap: var(--db-space-sm);
   align-items: center;
-}
-.pa-focus__heading svg {
-  color: var(--db-ink-muted);
+  min-height: 36px;
+  margin-bottom: var(--db-space-lg);
 }
 .pa-focus h2 {
-  font-family: var(--db-font-display);
-  font-size: var(--db-type-headline);
+  font-size: var(--db-type-body);
   font-weight: var(--db-weight-heading);
   line-height: var(--db-leading-title);
-}
-.pa-focus__intro {
-  font-size: var(--db-type-label);
   color: var(--db-ink-muted);
-  margin-top: var(--db-space-sm);
 }
-.pa-focus__question {
-  margin-top: var(--db-space-lg);
+.pa-focus__body {
+  display: grid;
+  gap: var(--db-space-lg);
+  min-width: 0;
 }
-.pa-focus__question > span {
-  color: var(--db-ink-muted);
-  font-size: var(--db-type-label);
-}
-.pa-focus__question > .pa-focus__role {
-  display: block;
-  margin-bottom: var(--db-space-xs);
-  color: var(--db-ink-secondary);
-  font-weight: var(--db-weight-heading);
-}
-.pa-focus__question > p {
+.pa-focus__question h3 {
   font-size: var(--db-type-title);
   font-weight: var(--db-weight-heading);
   line-height: var(--db-leading-body);
-  margin-top: var(--db-space-sm);
+  letter-spacing: var(--db-tracking-title);
+  overflow-wrap: anywhere;
+}
+.pa-focus__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--db-space-xs) var(--db-space-md);
+  margin-top: var(--db-space-md);
+  color: var(--db-ink-muted);
+  font-size: var(--db-type-label);
+}
+.pa-focus__meta span {
+  overflow-wrap: anywhere;
 }
 .pa-focus__tip {
-  margin-block: var(--db-space-lg);
-  padding-left: var(--db-space-md);
-  border-left: 2px solid var(--db-blue-border);
+  padding: var(--db-space-md);
+  border-radius: var(--db-r-md);
+  background: var(--db-canvas-subtle);
 }
-.pa-focus__tip h3 {
+.pa-focus__tip h4 {
   display: flex;
   align-items: center;
   gap: var(--db-space-sm);
   margin-bottom: var(--db-space-sm);
-  font-size: var(--db-type-body);
+  font-size: var(--db-type-label);
   font-weight: var(--db-weight-heading);
+  color: var(--db-ink-secondary);
+}
+.pa-focus__tip h4 svg {
+  flex-shrink: 0;
   color: var(--db-blue);
 }
 .pa-focus__tip p {
   font-size: var(--db-type-body);
   line-height: var(--db-leading-body);
   color: var(--db-ink-muted);
+  overflow-wrap: anywhere;
 }
 .pa-focus .pa-practice-button {
   width: 100%;
+  white-space: nowrap;
 }
-.pa-next-button {
-  width: 100%;
-  margin-top: var(--db-space-sm);
+.pa-focus__heading .pa-next-button {
+  width: 36px;
   color: var(--db-ink-muted);
 }
-.pa-next-button:disabled {
-  cursor: default;
-  background: transparent;
-}
-.pa-next-button:disabled svg {
-  display: none;
-}
-.pa-focus__reassurance {
-  display: flex;
-  gap: var(--db-space-sm);
-  margin-top: var(--db-space-lg);
-  padding-top: var(--db-space-lg);
-  border-top: 1px solid var(--db-border);
-}
-.pa-focus__reassurance svg {
-  flex-shrink: 0;
-  margin-top: calc(var(--db-space-xs) / 2);
-  color: var(--db-mint-text);
-}
-.pa-focus__reassurance p {
-  color: var(--db-ink-muted);
-  font-size: var(--db-type-label);
+.pa-next-button:active {
+  transform: scale(0.97);
 }
 .pa-focus__empty {
-  margin-top: var(--db-space-lg);
+  color: var(--db-ink-muted);
 }
-.pa-save-note {
-  display: flex;
+.pa-focus__loading {
+  display: grid;
   gap: var(--db-space-sm);
-  padding: var(--db-space-lg) var(--db-space-md);
-  font-size: var(--db-type-label);
 }
-.pa-save-note svg {
-  flex-shrink: 0;
-  margin-top: calc(var(--db-space-xs) / 2);
-  color: var(--db-ink-muted);
+.pa-focus__loading > span:not(.pa-sr-only) {
+  height: 16px;
+  border-radius: var(--db-r-sm);
+  background: var(--db-border);
 }
-.pa-save-note span {
-  display: inline-block;
-  color: var(--db-ink-muted);
-  margin-top: var(--db-space-xs);
+.pa-focus__loading > span:last-child {
+  width: 65%;
+}
+.pa-focus__loading > span:nth-last-child(2) {
+  height: 96px;
+  margin-block: var(--db-space-md);
 }
 .pa-focus__toggle {
   display: none;
@@ -765,6 +748,9 @@
   }
   .pa-focus {
     grid-row: 1;
+    background: var(--db-card-bg);
+    border: 1px solid var(--db-border);
+    border-radius: var(--db-r-lg);
   }
   .pa-focus__toggle {
     display: flex;
@@ -775,8 +761,8 @@
     padding: var(--db-space-md) var(--db-space-md);
     background: var(--db-card-bg);
     color: var(--db-ink);
-    border: 1px solid var(--db-border);
-    border-radius: var(--db-r-lg);
+    border: 0;
+    border-radius: inherit;
     font: inherit;
     font-size: var(--db-type-label);
     cursor: pointer;
@@ -793,29 +779,36 @@
   }
   .pa-focus__content {
     display: none;
-    margin-top: var(--db-space-sm);
+    position: relative;
+    padding: var(--db-space-md) var(--db-space-xl) var(--db-space-xl);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
   .pa-focus--expanded .pa-focus__content {
     display: block;
   }
-  .pa-focus__heading,
-  .pa-focus__intro,
-  .pa-save-note {
+  .pa-focus__heading {
+    position: absolute;
+    top: var(--db-space-sm);
+    right: var(--db-space-md);
+    margin: 0;
+  }
+  .pa-focus__heading h2 {
     display: none;
   }
-  .pa-focus__question {
-    margin-top: 0;
+  .pa-focus__heading .pa-next-button {
+    width: 44px;
+    min-height: 44px;
   }
-  .pa-focus .pa-practice-button,
-  .pa-next-button {
+  .pa-focus__question {
+    padding-right: var(--db-space-2xl);
+  }
+  .pa-focus .pa-practice-button {
     width: auto;
   }
-  .pa-next-button {
-    margin-left: var(--db-space-sm);
-  }
-  .pa-focus__reassurance {
-    margin-top: var(--db-space-md);
-    padding-top: var(--db-space-md);
+  .pa-focus__tip {
+    max-width: 65ch;
   }
 }
 @media (max-width: 640px) {
@@ -904,10 +897,6 @@
   }
   .pa-focus .pa-practice-button {
     width: 100%;
-  }
-  .pa-next-button {
-    width: 100%;
-    margin-left: 0;
   }
   .pa-footer {
     align-items: flex-start;

@@ -81,8 +81,8 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
           const chunk = audioQueue.shift();
           try {
             socket.sendMedia(chunk);
-          } catch (e) {
-            console.error('[STT] Error sending buffered chunk:', e.message);
+          } catch {
+            console.error('[STT] Error sending buffered chunk');
           }
         }
       });
@@ -122,19 +122,15 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
         const isFinal = data.is_final === true;
 
         if (!isFinal) {
-          if (process.env.STT_DEBUG === 'true') {
-            console.log(`[STT] interim: "${transcript}"`);
-          }
           onTranscript(transcript, false);
         } else {
-          console.log(`[STT] ✅ FINAL: "${transcript}"`);
           onTranscript(transcript, true);
           currentTurnInterimText = '';
         }
       });
 
       socket.on('error', (err) => {
-        console.error('[STT] ❌ Deepgram error:', err);
+        console.error('[STT] ❌ Deepgram connection error');
         isOpen = false;
         onError(err);
       });
@@ -148,7 +144,7 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
     })
     .catch((err) => {
       isOpen = false;
-      console.error('[STT] ❌ Failed to create Deepgram connection:', err.message);
+      console.error('[STT] ❌ Failed to create Deepgram connection');
       onError(err);
     });
 
@@ -164,8 +160,8 @@ function createDeepgramLiveSession(onTranscript, onError, onEvent) {
       if (socket && isOpen) {
         try {
           socket.sendMedia(chunk);
-        } catch (e) {
-          console.error('[STT] Error sending media chunk:', e.message);
+        } catch {
+          console.error('[STT] Error sending media chunk');
         }
       } else {
         // Enforce cap: evict oldest chunk if queue is full to prevent unbounded growth

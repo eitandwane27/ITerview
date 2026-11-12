@@ -74,8 +74,6 @@ function handleDevSttSocket(ws) {
       return;
     }
 
-    console.log(`[WS-DEV] ← ${msg.type}`);
-
     switch (msg.type) {
       case "start_recording":
         if (!isRecording) {
@@ -90,7 +88,7 @@ function handleDevSttSocket(ws) {
         break;
 
       default:
-        console.warn(`[WS-DEV] Unknown control message: ${msg.type}`);
+        console.warn("[WS-DEV] Unknown message type");
     }
   });
 
@@ -99,8 +97,8 @@ function handleDevSttSocket(ws) {
     closeSttSession();
   });
 
-  ws.on("error", (err) => {
-    console.error("[WS-DEV] WebSocket error:", err.message);
+  ws.on("error", () => {
+    console.error("[WS-DEV] WebSocket error");
     closeSttSession();
   });
 }

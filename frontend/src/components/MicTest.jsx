@@ -23,7 +23,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   Mic,
   AudioLines,
-  AudioWaveform,
   Volume2,
   ChevronDown,
   Play,
@@ -50,6 +49,7 @@ import { EASE } from './motion/motion';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const MIC_TEST_WS_URL = BACKEND_URL.replace(/^http/, 'ws') + '/ws/mic-test';
 const CONNECT_TIMEOUT_MS = 10000;
+const INTERVIEW_VOICE = 'aura-2-luna-en';
 
 // Status chip copy per pipeline state — the state machine lives in
 // startTest()/stopTest() below (idle → requesting → connecting → recording → ok, with
@@ -73,9 +73,6 @@ export default function MicTest() {
   // ── Device list ──────────────────────────────────────────────────────────
   const [devices, setDevices] = useState([]);
   const [selectedMic, setSelectedMic] = useState(readPreferredAudioInput);
-
-  // ── Voice selection ──────────────────────────────────────────────────────
-  const [selectedVoice, setSelectedVoice] = useState('aura-2-luna-en');
 
   // ── Test session state ───────────────────────────────────────────────────
   const [isTesting, setIsTesting] = useState(false);
@@ -348,7 +345,7 @@ export default function MicTest() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: "Hello! I'm your AI interviewer. When you're ready, click Start Interview and we'll begin.",
-          voice: selectedVoice,
+          voice: INTERVIEW_VOICE,
         }),
       });
       if (!res.ok) {
@@ -373,7 +370,7 @@ export default function MicTest() {
   // ── Proceed to interview ──────────────────────────────────────────────────
   const handleProceed = () => {
     if (pendingInterviewRef.current) return;
-    pendingInterviewRef.current = { voice: selectedVoice, fromMicSetup: true };
+    pendingInterviewRef.current = { voice: INTERVIEW_VOICE, fromMicSetup: true };
     stopTest();
     audioRef.current?.pause();
     setIsStarting(true);
@@ -653,31 +650,8 @@ export default function MicTest() {
                 AI interviewer voice
               </h2>
               <p className="mictest-card__sub">
-                Pick the voice that will ask your questions, then hear a sample.
+                Hear the voice that will guide you through your interview.
               </p>
-            </div>
-          </div>
-
-          {/* Voice picker */}
-          <div className="mictest-field">
-            <label htmlFor="voice-select" className="mictest-field__label">
-              Voice model
-            </label>
-            <div className="mictest-select-wrap">
-              <AudioWaveform size={17} className="mictest-select-wrap__icon" aria-hidden="true" />
-              <select
-                id="voice-select"
-                className="mictest-select"
-                value={selectedVoice}
-                onChange={(e) => setSelectedVoice(e.target.value)}
-                disabled={isStarting || ttsLoading}
-              >
-                <option value="aura-2-luna-en">Luna (Female)</option>
-                <option value="aura-2-juno-en">Juno (Female)</option>
-                <option value="aura-2-zeus-en">Zeus (Male)</option>
-                <option value="aura-2-amalthea-en">Amalthea (Female)</option>
-              </select>
-              <ChevronDown size={17} className="mictest-select-wrap__chevron" aria-hidden="true" />
             </div>
           </div>
 

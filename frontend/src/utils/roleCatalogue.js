@@ -1,5 +1,7 @@
+import { apiUrl } from './backendUrl.js';
+
 export async function fetchRoleCatalogue({ signal, fetchImpl = fetch } = {}) {
-  const response = await fetchImpl('/api/recommendations/roles', { signal });
+  const response = await fetchImpl(apiUrl('/api/recommendations/roles'), { signal });
   if (!response.ok) throw new Error('Could not load target roles.');
   const data = await response.json();
   if (!Array.isArray(data.roles) || data.roles.length === 0) {

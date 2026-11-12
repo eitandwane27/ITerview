@@ -141,7 +141,10 @@ function simulatedProvider(callbacks, { failAt = 0, clarifyAt = 0, delayMs = 180
     timers.add(timer);
   };
   queueMicrotask(() => {
-    if (!closed) callbacks.onReady();
+    if (!closed) {
+      callbacks.onReady();
+      callbacks.onEvent({ type: 'AgentAudioDone' }); // Silent greeting in this UI-only provider.
+    }
   });
   return {
     isReady: () => !closed,
@@ -186,7 +189,9 @@ function simulatedProvider(callbacks, { failAt = 0, clarifyAt = 0, delayMs = 180
               ? 'set1'
               : /set\s*3|behavioral/.test(text)
                 ? 'set3'
-                : 'set2';
+                : text.includes('practice-set feedback')
+                  ? undefined
+                  : 'set2';
         later(() =>
           callbacks.onEvent({
             type: 'FunctionCallRequest',

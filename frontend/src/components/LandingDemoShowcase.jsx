@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { Clapperboard, Mic } from 'lucide-react';
-import { Button } from './ui/Button';
+import { Button } from './ui/button';
 
 const TryItLiveDemo = lazy(() => import('./TryItLiveDemo'));
 const LandingDemoVideo = lazy(() => import('./LandingDemoVideo'));

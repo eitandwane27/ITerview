@@ -10,6 +10,13 @@ const catalogue = [
   ...getRoleCatalogue(),
   { id: 'qa-test', label: 'QA Test Engineer', topics: ['Testing'] },
 ];
+async function chooseSetupOption(page, id, value) {
+  const trigger = page.locator('#' + id);
+  if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
+  const menu = page.locator('[role="listbox"]');
+  await menu.locator('[role="option"][data-value="' + value + '"]').click();
+}
+
 let server;
 let baseURL;
 
@@ -144,7 +151,7 @@ for (const viewport of [
   for (const registeredRole of getRoleCatalogue().filter((role) =>
     ['qa-engineer', 'cyber-security', 'network-engineer', 'game-developer', 'ui-ux-developer', 'android', 'ios', 'devops', 'data-analyst', 'ai-engineer', 'it-support'].includes(role.id)
   )) {
-    test(`registered ${registeredRole.label} role can be selected and saved on ${viewport.name}`, async ({
+    test(`profile edits preserve registered ${registeredRole.label} setup on ${viewport.name}`, async ({
       page,
     }) => {
       await page.setViewportSize(viewport);
@@ -156,25 +163,27 @@ for (const viewport of [
         },
       });
       await page.goto(`${baseURL}/__role-test__`);
-      await expect(page.locator('#role-select')).toHaveValue(registeredRole.id);
-      await expect(page.locator(`#role-select option[value="${registeredRole.id}"]`)).toHaveText(
+      await expect(page.locator('#role-select')).toHaveAttribute('data-value', registeredRole.id);
+      await expect(page.locator('#role-select')).toContainText(
         registeredRole.label
       );
       await page
         .getByRole('button', { name: 'Open profile settings' })
         .filter({ visible: true })
         .click();
-      await expect(page.locator('#modal-role')).toHaveValue(registeredRole.id);
+      await expect(page.locator('#modal-role')).toHaveCount(0);
       await page.getByRole('button', { name: 'Save changes' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      expect(saved.role).toBe(registeredRole.id);
+      expect(saved).not.toHaveProperty('role');
+      expect(saved).not.toHaveProperty('focusArea');
+      await expect(page.locator('#role-select')).toHaveAttribute('data-value', registeredRole.id);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true
       );
     });
   }
 
-  test(`dashboard and profile use server roles on ${viewport.name}`, async ({ page }) => {
+  test(`interview prep owns role choices independently of profile on ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     let saved;
     await mockApi(page, {
@@ -185,24 +194,29 @@ for (const viewport of [
     await page.goto(`${baseURL}/__role-test__`);
     const select = page.locator('#role-select');
     await expect(select).toBeEnabled();
-    await expect(select.locator('option')).toHaveText([
-      'Select a role...',
+    await select.click();
+    await expect(page.getByRole('listbox').getByRole('option')).toHaveText([
       ...catalogue.map((role) => role.label),
     ]);
-    await select.selectOption('qa-test');
+    await chooseSetupOption(page, 'role-select', 'qa-test');
     await page
       .getByRole('button', { name: 'Open profile settings' })
       .filter({ visible: true })
       .click();
-    await expect(page.locator('#modal-role')).toHaveValue('qa-test');
-    await expect(page.locator('#modal-role option')).toHaveText([
-      'Select a role...',
-      ...catalogue.map((role) => role.label),
-    ]);
-    await page.locator('#modal-role').selectOption('backend');
+    await expect(page.locator('#modal-role, #modal-focus')).toHaveCount(0);
+    await expect(page.getByRole('definition')).toHaveText('test@spcba.edu.ph');
+    await page.getByRole('textbox', { name: 'Display name' }).fill('Updated name');
+    await page.getByRole('radio', { name: 'Robot avatar' }).check();
     await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page.locator('#role-select')).toHaveValue('backend');
-    expect(saved.role).toBe('backend');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.locator('#role-select')).toHaveAttribute('data-value', 'qa-test');
+    expect(saved).toEqual({ firebaseUid: 'registry-browser-user', displayName: 'Updated name', avatar: 'robot' });
+    await page.getByRole('button', { name: 'Open profile settings' }).filter({ visible: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Display name' })).toHaveValue('Updated name');
+    await expect(page.getByRole('radio', { name: 'Robot avatar' })).toBeChecked();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await chooseSetupOption(page, 'role-select', 'backend');
+    await expect(page.locator('#role-select')).toHaveAttribute('data-value', 'backend');
     await page.screenshot({
       path: `test-results/role-catalogue-${viewport.name}.png`,
       fullPage: true,
@@ -505,11 +519,12 @@ test('dashboard shares its catalogue with Practice Again and retries a failed lo
 test('an unavailable saved role is preserved but cannot launch new practice', async ({ page }) => {
   await mockApi(page, { roles: catalogue.filter((role) => role.id !== 'frontend') });
   await page.goto(`${baseURL}/__role-test__`);
-  await expect(page.locator('#role-select')).toHaveValue('frontend');
-  await expect(page.locator('#role-select option[value="frontend"]')).toBeDisabled();
+  await expect(page.locator('#role-select')).toHaveAttribute('data-value', 'frontend');
+  await page.locator('#role-select').click();
+  await expect(page.locator('[role="option"][data-value="frontend"]')).toHaveAttribute('aria-disabled', 'true');
   await expect(page.locator('#btn-start-pretest')).toBeDisabled();
   await expect(page.getByText(/Your saved target role is unavailable/)).toBeVisible();
-  await page.locator('#role-select').selectOption('qa-test');
+  await chooseSetupOption(page, 'role-select', 'qa-test');
   await expect(page.locator('#btn-start-pretest')).toBeEnabled();
 });
 
@@ -560,7 +575,7 @@ for (const mode of ['diagnostic', 'practice']) {
     await page.reload();
     await expect(page.locator('#role-select')).toBeEnabled();
     await expect(page.locator('.db-resume-banner')).toHaveCount(0);
-    await page.locator('#role-select').selectOption('backend');
+    await chooseSetupOption(page, 'role-select', 'backend');
     await page.locator('#btn-start-pretest').click();
     await expect(page.getByTestId('test-location')).toHaveText('/dashboard');
     await page.getByRole('button', { name: 'Start Practice Studio' }).click();
@@ -710,6 +725,39 @@ test('a rejected role save keeps onboarding on the dashboard', async ({ page }) 
   await expect(page.getByTestId('test-location')).toHaveText('/dashboard');
 });
 
+test('profile edits preserve active session settings', async ({ page }) => {
+  let saved;
+  await mockApi(page, {
+    role: 'backend',
+    active: { hasActiveSession: true, nextStage: 'mainsets', activeSet: 2, answersCount: 1, role: 'backend' },
+    onSave: body => { saved = body; },
+  });
+  await page.goto(`${baseURL}/__role-test__`);
+  await expect(page.locator('#role-select')).toBeDisabled();
+  await page.getByRole('button', { name: 'Open profile settings' }).filter({ visible: true }).click();
+  await page.getByRole('textbox', { name: 'Display name' }).fill('New name');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(saved).not.toHaveProperty('role');
+  expect(saved).not.toHaveProperty('focusArea');
+  expect(saved).not.toHaveProperty('difficulty');
+  await expect(page.locator('#role-select')).toHaveAttribute('data-value', 'backend');
+  await expect(page.locator('#role-select')).toBeDisabled();
+});
+
+test('failed profile save keeps edits available for retry', async ({ page }) => {
+  await mockApi(page, { saveStatus: 500 });
+  await page.goto(`${baseURL}/__role-test__`);
+  await page.getByRole('button', { name: 'Open profile settings' }).filter({ visible: true }).click();
+  await page.getByRole('textbox', { name: 'Display name' }).fill('Retry name');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Please try again');
+  await expect(page.getByRole('textbox', { name: 'Display name' })).toHaveValue('Retry name');
+  await expect(page.getByRole('button', { name: 'Save changes' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.locator('#role-select')).toHaveAttribute('data-value', 'frontend');
+});
+
 test('profile-only edits during an outage preserve the saved role', async ({ page }) => {
   let saved;
   await mockApi(page, {
@@ -724,13 +772,13 @@ test('profile-only edits during an outage preserve the saved role', async ({ pag
     .getByRole('button', { name: 'Open profile settings' })
     .filter({ visible: true })
     .click();
-  await expect(page.locator('#modal-role')).toBeDisabled();
+  await expect(page.locator('#modal-role, #modal-focus')).toHaveCount(0);
   await page.getByRole('textbox', { name: 'Display name' }).fill('Updated test name');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(saved.displayName).toBe('Updated test name');
   expect(saved).not.toHaveProperty('role');
-  await expect(page.locator('#role-select')).toHaveValue('frontend');
+  await expect(page.locator('#role-select')).toHaveAttribute('data-value', 'frontend');
 });
 
 for (const [currentTier, nextTier] of [
@@ -785,11 +833,12 @@ for (const [currentTier, nextTier] of [
     release();
     const difficulty = page.locator('#difficulty-select');
     await expect(difficulty).toBeEnabled();
-    await expect(difficulty.locator(`option[value="${nextTier}"]`)).toBeEnabled();
+    await difficulty.click();
+    await expect(page.locator(`[role="option"][data-value="${nextTier}"]`)).not.toHaveAttribute('aria-disabled', 'true');
     if (nextTier === 'medium')
-      await expect(difficulty.locator('option[value="hard"]')).toBeDisabled();
-    await difficulty.selectOption(nextTier);
-    await expect(difficulty).toHaveValue(nextTier);
+      await expect(page.locator('[role="option"][data-value="hard"]')).toHaveAttribute('aria-disabled', 'true');
+    await chooseSetupOption(page, 'difficulty-select', nextTier);
+    await expect(difficulty).toHaveAttribute('data-value', nextTier);
     expect(profileTiers.length).toBeGreaterThan(0);
     expect(profileTiers.every((value) => value === nextTier)).toBe(true);
   });

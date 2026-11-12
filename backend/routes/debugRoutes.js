@@ -64,11 +64,11 @@ router.get("/generate-question", async (req, res) => {
     try {
       const question = await generateSet1Question(weakness, role, difficulty, previousQuestions);
       const ms = Date.now() - start;
-      console.log(`[DEBUG]   Q${i + 1} (${ms}ms): ${question}`);
+      console.log(`[DEBUG]   Q${i + 1} (${ms}ms)`);
       results.push({ index: i + 1, question, latency_ms: ms, error: null });
       previousQuestions.push(question); // feed into next call to avoid repeats
     } catch (err) {
-      console.error(`[DEBUG]   Q${i + 1} ERROR:`, err.message);
+      console.error(`[DEBUG]   Q${i + 1} ERROR`);
       results.push({ index: i + 1, question: null, latency_ms: Date.now() - start, error: err.message });
     }
   }
@@ -101,11 +101,11 @@ router.get("/generate-question-s2", async (req, res) => {
     try {
       const question = await generateSet2Question(role, difficulty, previousQuestions);
       const ms = Date.now() - start;
-      console.log(`[DEBUG-S2]   Q${i + 1} (${ms}ms): ${question}`);
+      console.log(`[DEBUG-S2]   Q${i + 1} (${ms}ms)`);
       results.push({ index: i + 1, question, latency_ms: ms, error: null });
       previousQuestions.push(question);
     } catch (err) {
-      console.error(`[DEBUG-S2]   Q${i + 1} ERROR:`, err.message);
+      console.error(`[DEBUG-S2]   Q${i + 1} ERROR`);
       results.push({ index: i + 1, question: null, latency_ms: Date.now() - start, error: err.message });
     }
   }
@@ -139,11 +139,11 @@ router.get("/generate-question-s3", async (req, res) => {
     try {
       const question = await generateSet3Question(previousQuestions);
       const ms = Date.now() - start;
-      console.log(`[DEBUG-S3]   Q${startIndex + i + 1} [${competency}] (${ms}ms): ${question}`);
+      console.log(`[DEBUG-S3]   Q${startIndex + i + 1} [${competency}] (${ms}ms)`);
       results.push({ index: startIndex + i + 1, competency, question, latency_ms: ms, error: null });
       previousQuestions.push(question); // advance the pillar mapping for next iteration
     } catch (err) {
-      console.error(`[DEBUG-S3]   Q${startIndex + i + 1} ERROR:`, err.message);
+      console.error(`[DEBUG-S3]   Q${startIndex + i + 1} ERROR`);
       results.push({ index: startIndex + i + 1, competency, question: null, latency_ms: Date.now() - start, error: err.message });
       previousQuestions.push("[error]"); // still advance so pillar mapping stays correct
     }

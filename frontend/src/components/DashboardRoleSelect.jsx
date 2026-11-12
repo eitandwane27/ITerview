@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { createElement, useEffect, useId, useRef, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Briefcase, Check, ChevronDown } from 'lucide-react';
 import './DashboardRoleSelect.css';
@@ -12,6 +12,8 @@ export default function DashboardRoleSelect({
   value,
   onChange,
   disabled = false,
+  icon = Briefcase,
+  title,
 }) {
   const listId = useId();
   const triggerRef = useRef(null);
@@ -21,6 +23,7 @@ export default function DashboardRoleSelect({
   const [activeValue, setActiveValue] = useState('');
   const [activeInput, setActiveInput] = useState('keyboard');
   const [portalContainer, setPortalContainer] = useState(null);
+  const [bottomCollisionPadding, setBottomCollisionPadding] = useState(16);
   const enabledOptions = options.filter((option) => !option.disabled);
   const selectedOption = options.find((option) => option.value === value) || options[0];
   const expanded = open && !disabled;
@@ -32,6 +35,8 @@ export default function DashboardRoleSelect({
       setActiveInput('keyboard');
       // Escape the onboarding card's clipping while inheriting dashboard tokens.
       setPortalContainer(triggerRef.current?.closest('.db-root') || null);
+      const clearance = getComputedStyle(document.body).getPropertyValue('--nikki-companion-clearance');
+      setBottomCollisionPadding(Number.parseFloat(clearance) || 16);
       setActiveValue(enabledOptions.find((option) => option.value === value)?.value ||
         enabledOptions[0]?.value || '');
     }
@@ -121,10 +126,12 @@ export default function DashboardRoleSelect({
           aria-describedby={describedBy}
           aria-invalid={invalid || undefined}
           disabled={disabled}
+          title={title}
+          data-value={value}
           data-placeholder={!value || undefined}
           onKeyDown={handleKeyDown}
         >
-          <Briefcase size={17} className="db-role-select__icon" aria-hidden="true" />
+          {createElement(icon, { size: 17, className: 'db-role-select__icon', 'aria-hidden': true })}
           <span className="db-role-select__value">{selectedOption?.label}</span>
           <ChevronDown size={17} className="db-role-select__chevron" aria-hidden="true" />
         </button>
@@ -138,7 +145,7 @@ export default function DashboardRoleSelect({
           className="db-role-select__menu"
           align="start"
           sideOffset={8}
-          collisionPadding={16}
+          collisionPadding={{ top: 16, right: 16, bottom: bottomCollisionPadding, left: 16 }}
           onOpenAutoFocus={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => event.preventDefault()}
           onMouseDown={(event) => event.preventDefault()}
@@ -150,6 +157,7 @@ export default function DashboardRoleSelect({
               role="option"
               aria-selected={value === option.value}
               aria-disabled={option.disabled || undefined}
+              data-value={option.value}
               className="db-role-select__option"
               data-active={activeValue === option.value}
               onPointerMove={(event) => {

@@ -58,6 +58,7 @@ scripts/
 !/backend/scripts/
 /backend/scripts/*
 !/backend/scripts/calibrate_scoring.js
+!/backend/scripts/checkGuestChatLive.js
 .agents/
 DESIGN.md
 PRODUCT.md

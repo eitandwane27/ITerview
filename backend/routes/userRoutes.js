@@ -37,10 +37,10 @@ router.post('/register', async (req, res) => {
       upsert: true,
     });
 
-    console.log('✅ User synced to MongoDB:', user.email);
+    console.log('✅ User synced to MongoDB');
     res.status(201).json({ message: 'User registered and saved to MongoDB!', user });
   } catch (error) {
-    console.error('❌ Error registering user:', error);
+    console.error('❌ Error registering user');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -66,10 +66,10 @@ router.post('/login', async (req, res) => {
       upsert: true,
     });
 
-    console.log('✅ User login synced to MongoDB:', user.email);
+    console.log('✅ User login synced to MongoDB');
     res.status(200).json({ message: 'Login synced to MongoDB!', user });
   } catch (error) {
-    console.error('❌ Error syncing login:', error);
+    console.error('❌ Error syncing login');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -99,7 +99,7 @@ router.post('/pretest', async (req, res) => {
 
     res.status(200).json({ message: 'Pre-test scores saved successfully!', user });
   } catch (error) {
-    console.error('Error saving pre-test scores:', error);
+    console.error('Error saving pre-test scores');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -131,7 +131,7 @@ router.get('/pretest-profile', async (req, res) => {
       role: user?.role ?? null,
     });
   } catch (error) {
-    console.error('❌ Error fetching pretest profile:', error);
+    console.error('❌ Error fetching pretest profile');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -143,7 +143,7 @@ router.get('/results-summary', async (req, res) => {
   try {
     return res.status(200).json(await getResultsSummary(req.auth.uid));
   } catch (error) {
-    console.error('Error fetching results summary:', error);
+    console.error('Error fetching results summary');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -154,7 +154,7 @@ router.get('/active-practice-session', async (req, res) => {
   try {
     return res.status(200).json(await getActivePracticeSession(req.auth.uid));
   } catch (error) {
-    console.error('Error fetching active journey session:', error);
+    console.error('Error fetching active journey session');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -163,7 +163,7 @@ router.get('/active-practice-session', async (req, res) => {
 // Updates user's target role, difficulty, focus area, and optionally displayName in MongoDB.
 router.put('/role', async (req, res) => {
   try {
-    const { firebaseUid, role, difficulty, focusArea, displayName } = req.body;
+    const { firebaseUid, role, difficulty, focusArea, displayName, avatar } = req.body;
 
     if (!firebaseUid) {
       return res.status(400).json({ message: 'Firebase UID is required' });
@@ -174,12 +174,17 @@ router.put('/role', async (req, res) => {
       return res.status(400).json({ message: 'Select a supported target role.' });
     }
 
+    if (avatar !== undefined && !User.schema.path('avatar').enumValues.includes(avatar)) {
+      return res.status(400).json({ message: 'Select a supported avatar.' });
+    }
+
     const updateFields = {};
     if (role) updateFields.role = role;
     if (difficulty) updateFields.difficulty = difficulty;
     if (focusArea) updateFields.focusArea = focusArea;
     // Allow updating displayName (including empty string to clear it)
     if (displayName !== undefined) updateFields.displayName = displayName;
+    if (avatar !== undefined) updateFields.avatar = avatar;
 
     const user = await User.findOneAndUpdate(
       { firebaseUid },
@@ -187,13 +192,13 @@ router.put('/role', async (req, res) => {
       { returnDocument: 'after', upsert: true, runValidators: true }
     );
 
-    console.log(`✅ Updated profile for user ${firebaseUid}:`, updateFields);
+    console.log(`✅ Updated profile for user ${firebaseUid}`);
     res.status(200).json({ message: 'Profile updated successfully!', user });
   } catch (error) {
     if (error.name === 'ValidationError') {
       return res.status(400).json({ message: 'Invalid profile preferences.' });
     }
-    console.error('❌ Error updating profile:', error);
+    console.error('❌ Error updating profile');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -219,7 +224,7 @@ router.get('/:firebaseUid', async (req, res) => {
 
     res.status(200).json({ user, hasCompletedDiagnostic });
   } catch (error) {
-    console.error('❌ Error fetching user:', error);
+    console.error('❌ Error fetching user');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -245,7 +250,7 @@ router.post('/reset-practice-session', async (req, res) => {
       activeSession: await getActivePracticeSession(firebaseUid),
     });
   } catch (error) {
-    console.error('❌ Error resetting practice session:', error);
+    console.error('❌ Error resetting practice session');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -275,7 +280,7 @@ router.post('/posttest', async (req, res) => {
 
     res.status(200).json({ message: 'Post-test scores saved successfully!', user });
   } catch (error) {
-    console.error('Error saving post-test scores:', error);
+    console.error('Error saving post-test scores');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
@@ -368,7 +373,7 @@ router.post('/practice-history', async (req, res) => {
       practiceHistory: updatedUser?.practiceHistory || (await User.findOne({ firebaseUid })).practiceHistory,
     });
   } catch (error) {
-    console.error('❌ Error saving practice history:', error);
+    console.error('❌ Error saving practice history');
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });

@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { AlertCircle, LoaderCircle, LogOut, X } from 'lucide-react';
+import { NikkiOverlayContext } from '../features/voice-agent/nikkiPageContext';
 import './DashboardSignOutDialog.css';
 
 export default function DashboardSignOutDialog({ pending, error, onCancel, onConfirm }) {
   const dialogRef = useRef(null);
   const cancelRef = useRef(null);
+  const hostCompanion = useContext(NikkiOverlayContext);
   const [closing, setClosing] = useState(false);
   const disabled = pending || closing;
 
@@ -17,14 +19,16 @@ export default function DashboardSignOutDialog({ pending, error, onCancel, onCon
     const trigger = document.activeElement;
     const previousOverflow = document.body.style.overflow;
     dialog.showModal();
+    hostCompanion?.(dialog);
     cancelRef.current?.focus();
     document.body.style.overflow = 'hidden';
     return () => {
+      hostCompanion?.(null);
       dialog.close();
       document.body.style.overflow = previousOverflow;
       if (trigger?.isConnected) trigger.focus();
     };
-  }, []);
+  }, [hostCompanion]);
 
   return (
     <dialog

@@ -918,7 +918,9 @@ function AIOrbBase({
     };
     reducedMotionQuery.addEventListener('change', handleMotionPreference);
 
-    drawRef.current = draw;
+    // The animation loop already paints the latest audio level each frame.
+    // React's level updates only need an extra paint when animation is disabled.
+    drawRef.current = () => { if (reduceMotion) draw(); };
     setRendererState('active');
     startAnimation();
 

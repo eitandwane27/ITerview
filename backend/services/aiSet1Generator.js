@@ -20,6 +20,7 @@ const { safeParseJSON } = require("../utils/jsonParser");
 const { EASY_AVOID_LIST, EASY_QUESTION_STYLE, MEDIUM_AVOID_LIST, MEDIUM_QUESTION_STYLE, HARD_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
+  logLevel: "off",
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com",
 });
@@ -239,7 +240,7 @@ OUTPUT RULE:
       return question;
     }
     console.warn('[aiSet1Generator] Rejected question:', JSON.stringify({
-      role: roleData.id, difficulty, focus: safeWeakness, topic: selectedTopic, attempt: attempt + 1, reason: issue, draft: raw.slice(0, 500),
+      role: roleData.id, difficulty, focus: safeWeakness, topic: selectedTopic, attempt: attempt + 1, reason: issue,
     }));
     if (attempt === maxAttempts - 1) {
       const fallback = selectSet1QuestionFallback(roleData.id, difficulty, safeWeakness,

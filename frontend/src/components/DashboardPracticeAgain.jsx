@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadSavedQuestions, removePracticeQuestion, restorePracticeQuestion } from '../utils/practiceAgainApi';
 import {
@@ -23,12 +23,27 @@ import {
 import './DashboardPracticeAgain.css';
 import { EASE } from './motion/motion';
 import { formatRoleLabel } from '../utils/roleCatalogue';
+import { NikkiOverlayContext, useNikkiPageContext } from '../features/voice-agent/nikkiPageContext';
 
 const setLabel = (set) =>
   `Set ${set} · ${{ 1: 'Personalized', 2: 'Technical', 3: 'Behavioral' }[set] || 'Practice'}`;
 
+// Match the CSS breakpoint: collapsed tips are hidden at 1250px and below.
+const tipsAreWide = () => !window.matchMedia('(max-width: 1250px)').matches;
+const boundedText = (value, limit) => typeof value === 'string' ? value.slice(0, limit) : '';
+const describeQuestion = (question) => question ? {
+  text: boundedText(question.text, 1000), textTruncated: (question.text?.length || 0) > 1000,
+  role: boundedText(question.roleLabel, 100), set: setLabel(question.set),
+  difficulty: boundedText(question.difficulty, 100),
+} : null;
+const describeTip = (question) => question ? {
+  ...describeQuestion(question), tip: boundedText(question.tip, 2000),
+  tipTruncated: (question.tip?.length || 0) > 2000,
+} : null;
+
 function PracticeTipDialog({ question, onDismiss, onStart }) {
   const dialogRef = useRef(null);
+  const hostCompanion = useContext(NikkiOverlayContext);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
@@ -40,13 +55,15 @@ function PracticeTipDialog({ question, onDismiss, onStart }) {
     document.body.style.overflow = 'hidden';
     if (main) main.style.overflowY = 'hidden';
     dialog.showModal();
+    hostCompanion?.(dialog);
     return () => {
+      hostCompanion?.(null);
       dialog.close();
       document.body.style.overflow = previousBodyOverflow;
       if (main) main.style.overflowY = previousMainOverflow;
       if (trigger?.isConnected) trigger.focus();
     };
-  }, []);
+  }, [hostCompanion]);
 
   return (
     <Motion.dialog
@@ -180,20 +197,20 @@ export default function DashboardPracticeAgain({ active, roles }) {
   const [tipExpanded, setTipExpanded] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [removedQuestion, setRemovedQuestion] = useState(null);
-  const labelledQuestions = questions.map((question) => ({
+  const labelledQuestions = useMemo(() => questions.map((question) => ({
     ...question,
     roleLabel:
       roles.find((role) => role.id === question.role)?.label ||
       question.roleLabel ||
       formatRoleLabel(question.role),
-  }));
-  const roleOptions = [...new Set(labelledQuestions.map((question) => question.role))]
+  })), [questions, roles]);
+  const roleOptions = useMemo(() => [...new Set(labelledQuestions.map((question) => question.role))]
     .map((role) => ({
       value: role,
       label: labelledQuestions.find((question) => question.role === role).roleLabel,
       count: questions.filter((question) => question.role === role).length,
     }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .sort((a, b) => a.label.localeCompare(b.label)), [labelledQuestions, questions]);
   // Keep a selected role available after its last question is removed, so the
   // empty state and Undo never silently switch the user's filter.
   const selectedRoleLabel =
@@ -201,17 +218,17 @@ export default function DashboardPracticeAgain({ active, roles }) {
     (removedQuestion?.role === roleFilter ? removedQuestion.roleLabel : null) ||
     formatRoleLabel(roleFilter, roles);
   const query = search.trim().toLowerCase();
-  const matchingQuestions = labelledQuestions.filter(
+  const matchingQuestions = useMemo(() => labelledQuestions.filter(
     (question) =>
       (roleFilter === 'all' || question.role === roleFilter) &&
       (!query ||
         `${question.text} ${setLabel(question.set)} ${question.roleLabel} ${question.difficulty}`
           .toLowerCase()
           .includes(query))
-  );
-  const filteredQuestions = matchingQuestions.filter(
+  ), [labelledQuestions, roleFilter, query]);
+  const filteredQuestions = useMemo(() => matchingQuestions.filter(
     (question) => setFilter === 'all' || String(question.set) === setFilter
-  );
+  ), [matchingQuestions, setFilter]);
 
   const focusedQuestion =
     filteredQuestions.find((question) => question.id === focusedId) || filteredQuestions[0];
@@ -219,14 +236,51 @@ export default function DashboardPracticeAgain({ active, roles }) {
   const transition = reduceMotion
     ? { duration: 0 }
     : { type: 'spring', stiffness: 400, damping: 36, mass: 0.8 };
-  const filters = [
+  const filters = useMemo(() => [
     { value: 'all', label: 'All', count: matchingQuestions.length },
     ...[1, 2, 3].map((set) => ({
       value: String(set),
       label: `Set ${set}`,
       count: matchingQuestions.filter((question) => question.set === set).length,
     })),
-  ];
+  ], [matchingQuestions]);
+  const nikkiContext = useMemo(() => {
+    if (!active) return null;
+    const loaded = status === 'ready';
+    const snapshot = {
+      route: '/dashboard', page: 'practice_again',
+      state: loaded ? (questions.length === 0 ? 'empty' : filteredQuestions.length ? 'ready' : 'no_matches') : status,
+      ...(loaded ? {
+        totalQuestions: questions.length, displayedQuestions: filteredQuestions.length,
+        filteredOutQuestions: questions.length - filteredQuestions.length,
+        filters: {
+          search: boundedText(search, 200), searchTruncated: search.length > 200,
+          role: roleFilter === 'all' ? 'All roles' : selectedRoleLabel,
+          set: setFilter === 'all' ? 'All sets' : `Set ${setFilter}`,
+          // Set counts reflect the role + search, before applying a set filter.
+          sets: filters.map(({ value, label, count }) => ({ label: value === 'all' ? 'All sets' : label, count })),
+          roles: roleOptions.slice(0, 20).map(({ label, count }) => ({ label: boundedText(label, 100), count })),
+          omittedRoles: Math.max(0, roleOptions.length - 20),
+        },
+        questions: filteredQuestions.slice(0, 20).map(describeQuestion),
+      } : {}),
+      dialog: selectedQuestion ? describeTip(selectedQuestion) : null,
+      removalNoticeVisible: Boolean(removedQuestion), updating: isUpdating,
+      errorMessage: boundedText(error, 300),
+    };
+    // Sample the current CSS breakpoint when Nikki actually reads. A read can
+    // arrive immediately after resize, before matchMedia's change event fires.
+    return () => {
+      const contentVisible = tipsAreWide() || tipExpanded;
+      return { ...snapshot, ...(loaded ? { tipPanel: {
+        expanded: tipExpanded, contentVisible,
+        question: contentVisible ? describeTip(focusedQuestion) : null,
+      } } : {}) };
+    };
+  }, [active, status, questions.length, filteredQuestions, search, roleFilter, selectedRoleLabel,
+    setFilter, filters, roleOptions, tipExpanded, focusedQuestion, selectedQuestion,
+    removedQuestion, isUpdating, error]);
+  useNikkiPageContext(nikkiContext);
   const nextQuestion = () => {
     const index = filteredQuestions.findIndex((question) => question.id === focusedQuestion?.id);
     setFocusedId(filteredQuestions[(index + 1) % filteredQuestions.length]?.id);
@@ -333,6 +387,7 @@ export default function DashboardPracticeAgain({ active, roles }) {
                         <button
                           type="button"
                           key={filter.value}
+                          data-practice-set={filter.value}
                           aria-label={`${filter.label === 'all' || filter.value === 'all' ? 'All sets' : filter.label}, ${filter.count} ${filter.count === 1 ? 'question' : 'questions'}`}
                           aria-pressed={setFilter === filter.value}
                           onClick={() => setSetFilter(filter.value)}
@@ -487,46 +542,63 @@ export default function DashboardPracticeAgain({ active, roles }) {
               </button>
               <div className="pa-focus__content" id="pa-focus-content">
                 <div className="pa-focus__heading">
-                  <RotateCcw size={18} aria-hidden="true" />
                   <h2>Your next try</h2>
+                  {status === 'ready' && filteredQuestions.length > 1 && (
+                    <button
+                      className="pa-icon-button pa-next-button"
+                      type="button"
+                      aria-label="Try another question"
+                      title="Try another question"
+                      onClick={nextQuestion}
+                    >
+                      <RotateCcw size={17} aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
-                <p className="pa-focus__intro">Same question. A fresh perspective.</p>
                 <AnimatePresence mode="wait" initial={false}>
                   <Motion.div
-                    key={focusedQuestion?.id || 'empty'}
+                    className="pa-focus__body"
+                    key={status === 'ready' ? focusedQuestion?.id || 'empty' : status}
                     initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: reduceMotion ? 0 : -6 }}
                     transition={{ duration: reduceMotion ? 0 : 0.13 }}
                   >
-                    {focusedQuestion ? (
+                    {status === 'loading' ? (
+                      <div className="pa-focus__loading" role="status">
+                        <span className="pa-sr-only">Loading your next question…</span>
+                        <span aria-hidden="true" />
+                        <span aria-hidden="true" />
+                        <span aria-hidden="true" />
+                      </div>
+                    ) : status === 'error' ? (
+                      <p className="pa-focus__empty">
+                        Your next question will appear once your saved questions load.
+                      </p>
+                    ) : focusedQuestion ? (
                       <>
                         <div className="pa-focus__question">
-                          <span className="pa-focus__role">{focusedQuestion.roleLabel}</span>
-                          <span>{setLabel(focusedQuestion.set)}</span>
-                          <p>{focusedQuestion.text}</p>
+                          <h3>{focusedQuestion.text}</h3>
+                          <div className="pa-focus__meta">
+                            <span>{focusedQuestion.roleLabel}</span>
+                            <span>{setLabel(focusedQuestion.set)}</span>
+                          </div>
                         </div>
                         <div className="pa-focus__tip">
-                          <h3>
+                          <h4>
                             <Lightbulb size={16} aria-hidden="true" /> Try this approach
-                          </h3>
+                          </h4>
                           <p>{focusedQuestion.tip}</p>
                         </div>
-                        <button
-                          className="pa-practice-button pa-practice-button--primary"
-                          type="button"
-                          onClick={() => setSelectedQuestion(focusedQuestion)}
-                        >
-                          Give it another try <ArrowRight size={17} aria-hidden="true" />
-                        </button>
-                        <button
-                          className="pa-next-button"
-                          type="button"
-                          onClick={nextQuestion}
-                          disabled={filteredQuestions.length < 2}
-                        >
-                          Try another question <RotateCcw size={14} aria-hidden="true" />
-                        </button>
+                        <div className="pa-focus__actions">
+                          <button
+                            className="pa-practice-button pa-practice-button--primary"
+                            type="button"
+                            onClick={() => setSelectedQuestion(focusedQuestion)}
+                          >
+                            Give it another try <ArrowRight size={17} aria-hidden="true" />
+                          </button>
+                        </div>
                       </>
                     ) : (
                       <p className="pa-focus__empty">
@@ -537,21 +609,6 @@ export default function DashboardPracticeAgain({ active, roles }) {
                     )}
                   </Motion.div>
                 </AnimatePresence>
-                <div className="pa-focus__reassurance">
-                  <ShieldCheck size={17} aria-hidden="true" />
-                  <p>
-                    Room to practice, without the pressure. Your original interview scores stay the
-                    same.
-                  </p>
-                </div>
-              </div>
-              <div className="pa-save-note">
-                <Bookmark size={17} aria-hidden="true" />
-                <p>
-                  One worth revisiting?
-                  <br />
-                  <span>Bookmark questions during an interview to keep them here.</span>
-                </p>
               </div>
             </aside>
           </div>

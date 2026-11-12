@@ -32,6 +32,9 @@ test("current-information searches return selected server sources and keep reaso
   assert.equal(payloads[1].messages[2].reasoning_content, "Synthetic private reasoning marker");
   assert.equal(payloads[1].messages[3].role, "tool");
   assert.equal(JSON.parse(payloads[1].messages[3].content).results[0].id, "s1");
+  assert.equal(payloads[1].messages.at(-1).role, "system");
+  assert.match(payloads[1].messages.at(-1).content, /Return one complete JSON object/);
+  assert.match(payloads[1].messages.at(-1).content, /All preceding factual and safety rules still apply/);
   assert.equal(JSON.stringify(result).includes("private reasoning"), false);
   assert.equal(JSON.stringify(result).includes("fake.org"), false);
 });
@@ -74,7 +77,7 @@ test("search outages fall back without logging provider text or fabricating sour
   });
   assert.equal(result.searchStatus, "unavailable");
   assert.equal(result.sources, undefined);
-  assert.equal(JSON.parse(payloads[1].messages.at(-1).content).status, "unavailable");
+  assert.equal(JSON.parse(payloads[1].messages.findLast(message => message.role === "tool").content).status, "unavailable");
   assert.equal(logs[0][1].reason, "provider_error");
   assert.equal(JSON.stringify(logs).includes("private provider"), false);
 });
@@ -89,7 +92,7 @@ test("unsafe queries are rejected before the search provider", async () => {
     });
     assert.equal(searches, 0);
     assert.equal(result.searchStatus, "unavailable");
-    assert.equal(JSON.parse(payloads[1].messages.at(-1).content).status, "invalid_query");
+    assert.equal(JSON.parse(payloads[1].messages.findLast(message => message.role === "tool").content).status, "invalid_query");
   }
 });
 
@@ -128,10 +131,48 @@ test("output recovery retains search evidence without repeating the search", asy
     search: async () => { searches += 1; return [publicResult]; },
   });
   assert.equal(searches, 1);
-  assert.equal(payloads[2].response_format.type, "text");
+  assert.equal(payloads[2].response_format.type, "json_object");
   assert.equal(payloads[2].tool_choice, "none");
-  assert.equal(JSON.parse(payloads[2].messages.at(-1).content).results[0].id, "s1");
+  assert.equal(JSON.parse(payloads[2].messages.findLast(message => message.role === "tool").content).results[0].id, "s1");
   assert.equal(result.sources[0].url, publicResult.url);
+});
+
+test("whitespace-only search answers recover with JSON constraints and the original sources", async t => {
+  const logged = [];
+  t.mock.method(console, "error", (...args) => logged.push(args));
+  const payloads = [];
+  let searches = 0;
+  const client = { chat: { completions: { create: async payload => {
+    payloads.push(payload);
+    if (payloads.length === 1) return toolCompletion("junior IT salaries Philippines PHP monthly");
+    if (payloads.length === 2) return { choices: [{ finish_reason: "stop", message: {
+      content: " ".repeat(147), reasoning_content: "Synthetic private reasoning marker",
+    } }] };
+    // A free-text recovery can produce prose that our JSON consumer cannot use.
+    if (payload.response_format.type !== "json_object") return {
+      choices: [{ finish_reason: "stop", message: { content: "Here is the career context." } }],
+    };
+    return finalCompletion({ sourceIds: ["s1"] });
+  } } } };
+  const result = await createRecommendationReply({ message: "Compare junior IT salaries in the Philippines" }, {
+    client,
+    search: async () => { searches += 1; return [publicResult]; },
+  });
+  assert.equal(payloads.length, 3);
+  assert.equal(searches, 1);
+  assert.equal(logged.length, 1);
+  assert.equal(logged[0][1].reason, "empty_reply");
+  assert.equal(logged[0][1].contentCharacters, 147);
+  assert.equal(logged[0][1].trimmedContentCharacters, 0);
+  assert.equal(logged[0][1].retrying, true);
+  assert.equal(payloads[2].tool_choice, "none");
+  assert.deepEqual(payloads[2].thinking, { type: "enabled" });
+  assert.match(payloads[2].messages[0].content, /Output requirements for this response/);
+  assert.equal(payloads[2].messages.findLast(message => message.role === "tool").content,
+    payloads[1].messages.findLast(message => message.role === "tool").content);
+  assert.deepEqual(result.sources, [{ id: "s1", title: publicResult.title, url: publicResult.url }]);
+  assert.equal(result.searchStatus, "used");
+  assert.equal(JSON.stringify([result, logged]).includes("private reasoning marker"), false);
 });
 
 test("search rounds share the deadline with final generation", async t => {
@@ -198,5 +239,5 @@ test("malformed tool arguments return an invalid-query result instead of executi
     search: async () => { searches += 1; return []; },
   });
   assert.equal(searches, 0);
-  assert.equal(JSON.parse(payloads[1].messages.at(-1).content).status, "invalid_query");
+  assert.equal(JSON.parse(payloads[1].messages.findLast(message => message.role === "tool").content).status, "invalid_query");
 });

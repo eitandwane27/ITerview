@@ -190,13 +190,14 @@ for (const scenario of [
   { name: 'mobile', width: 390, height: 844, reduced: false },
   { name: 'reduced motion', width: 1440, height: 1000, reduced: true },
 ]) {
-  test(`start interview hands off to the briefing with the selected voice on ${scenario.name}`, async ({ page }, testInfo) => {
+  test(`start interview hands off to the briefing with the interview voice on ${scenario.name}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: scenario.width, height: scenario.height });
     await page.emulateMedia({ reducedMotion: scenario.reduced ? 'reduce' : 'no-preference' });
     await page.clock.install({ time: new Date('2026-10-16T00:00:00Z') });
     await page.clock.pauseAt(new Date('2026-10-16T00:00:01Z'));
     await page.goto(`${baseURL}?handoff`);
-    await page.locator('#voice-select').selectOption('aura-2-zeus-en');
+    await expect(page.locator('#voice-select')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Hear sample' })).toBeVisible();
     await page.locator('#mictest-proceed-btn').scrollIntoViewIfNeeded();
     if (!scenario.reduced) await page.screenshot({ path: testInfo.outputPath('setup.png'), fullPage: true });
     // Dispatch twice in the same frame to cover accidental repeated activation.
@@ -207,7 +208,7 @@ for (const scenario of [
     await page.clock.runFor(scenario.reduced ? 250 : 650);
     await expect(page.locator('.mictest-root')).toHaveCount(0);
     await expect(page.locator('.test-page')).toBeVisible();
-    await expect(page.getByTestId('selected-voice')).toHaveText('aura-2-zeus-en');
+    await expect(page.getByTestId('selected-voice')).toHaveText('aura-2-luna-en');
     // Opacity-only reduced-motion fades may use native browser animation time.
     await page.clock.resume();
     await expect.poll(() => page.locator('.test-page').evaluate(element => getComputedStyle(element).opacity)).toBe('1');

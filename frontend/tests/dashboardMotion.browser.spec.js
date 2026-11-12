@@ -11,7 +11,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.setViewportSize(viewport);
     await page.goto(preview.baseURL);
-    await expect(page.locator('#role-select')).toHaveValue('frontend');
+    await expect(page.locator('#role-select')).toHaveAttribute('data-value', 'frontend');
     for (const name of ['History', 'AI Coach', 'Practice Again', 'My Progress', 'Interview Prep', 'History']) {
       await page.getByRole('tab', { name, exact: true }).click();
       await expect(page.getByRole('tabpanel')).toHaveCount(1);

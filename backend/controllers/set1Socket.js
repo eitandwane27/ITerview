@@ -104,11 +104,11 @@ function handleSet1Socket(ws, request) {
       const base64Audio = audioBuffer.toString('base64');
       send({ type: 'tts_audio', data: base64Audio });
       console.log(
-        `[TTS] 🔊 Sent audio in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`
+        `[TTS] 🔊 Sent audio in ${(latency / 1000).toFixed(2)}s`
       );
     } catch (err) {
       if (ws.readyState !== ws.OPEN) return;
-      console.error('[WS] TTS error:', err.message);
+      console.error('[WS] TTS error');
       send({ type: 'error', message: `TTS failed: ${err.message}` });
     }
   }
@@ -437,11 +437,8 @@ function handleSet1Socket(ws, request) {
       }
       const totalGenDuration = Date.now() - genStart;
       console.log(
-        `[aiSet1Generator] 🧠 Generated ${questions.length} questions for Set 1 (${sessionRole}, ${sessionDifficulty}, Weakness: ${sessionWeaknessTag}) in ${(totalGenDuration / 1000).toFixed(2)}s:`
+        `[aiSet1Generator] 🧠 Generated ${questions.length} questions for Set 1 (${sessionRole}, ${sessionDifficulty}, Weakness: ${sessionWeaknessTag}) in ${(totalGenDuration / 1000).toFixed(2)}s`
       );
-      questions.forEach((q, idx) => {
-        console.log(`  Q${idx + 1}: "${q}"`);
-      });
 
       // Persistent sessions retain generated questions for resumption. Drills
       // keep them only in this socket's memory and disappear when it closes.
@@ -491,7 +488,7 @@ function handleSet1Socket(ws, request) {
         message: 'Question ready. Click Unmute to answer.',
       });
     } catch (err) {
-      console.error('[WS] Startup error:', err);
+      console.error('[WS] Startup error');
       send({
         type: 'error',
         message: err.code === 'INVALID_ROLE' ? err.message
@@ -540,15 +537,12 @@ function handleSet1Socket(ws, request) {
                       console.log(`[TTS] ✅ Early background Q${nextIndex + 1} audio ready.`);
                     }
                   })
-                  .catch((err) => {
+                  .catch(() => {
                     if (preGeneratedNextQuestionIndex === nextIndex) {
                       preGeneratedNextQuestionAudio = null;
                       preGeneratedNextQuestionIndex = -1;
                     }
-                    console.error(
-                      `[TTS] ❌ Early background TTS pre-generation failed:`,
-                      err.message
-                    );
+                    console.error(`[TTS] ❌ Early background TTS pre-generation failed`);
                   });
               }
             }
@@ -568,7 +562,6 @@ function handleSet1Socket(ws, request) {
         const answerQuestion = currentQuestionText;
         const confirmedText = msg.final_text || fullTranscript;
         console.log(`\n--- Set 1 Q${currentQuestionIndex + 1} Processing ---`);
-        console.log(`[WS] Transcript received: "${confirmedText.substring(0, 60)}..."`);
         send({
           type: 'status',
           message: 'AI Coach is evaluating your answer...',
@@ -673,22 +666,21 @@ function handleSet1Socket(ws, request) {
 
             const replyPromises = replySentences.map((sentence) => {
               if (ws.readyState !== ws.OPEN) {
-                return Promise.resolve({ sentence, buffer: null });
+                return Promise.resolve(null);
               }
               return synthesizeSpeech(sentence, voiceModel)
-                .then((buffer) => ({ sentence, buffer }))
-                .catch((err) => {
-                  console.error(`[TTS] Error synthesizing sentence "${sentence}":`, err.message);
-                  return { sentence, buffer: null };
+                .catch(() => {
+                  console.error('[TTS] Sentence synthesis failed');
+                  return null;
                 });
             });
 
             for (let i = 0; i < replyPromises.length; i++) {
               if (ws.readyState !== ws.OPEN) break;
-              const { sentence, buffer } = await replyPromises[i];
+              const buffer = await replyPromises[i];
               if (buffer && ws.readyState === ws.OPEN) {
                 send({ type: 'tts_audio', data: buffer.toString('base64') });
-                console.log(`[TTS] 🔊 Sent concurrent sentence audio: "${sentence}"`);
+                console.log(`[TTS] 🔊 Sent concurrent sentence audio`);
               }
             }
 
@@ -743,12 +735,12 @@ function handleSet1Socket(ws, request) {
                       console.log(`[TTS] ✅ Background Q${nextIndex + 1} audio ready.`);
                     }
                   })
-                  .catch((err) => {
+                  .catch(() => {
                     if (preGeneratedNextQuestionIndex === nextIndex) {
                       preGeneratedNextQuestionAudio = null;
                       preGeneratedNextQuestionIndex = -1;
                     }
-                    console.error(`[TTS] ❌ Background TTS pre-generation failed:`, err.message);
+                    console.error(`[TTS] ❌ Background TTS pre-generation failed`);
                   });
               }
             }
@@ -782,22 +774,21 @@ function handleSet1Socket(ws, request) {
 
             const finalPromises = finalSentences.map((sentence) => {
               if (ws.readyState !== ws.OPEN) {
-                return Promise.resolve({ sentence, buffer: null });
+                return Promise.resolve(null);
               }
               return synthesizeSpeech(sentence, voiceModel)
-                .then((buffer) => ({ sentence, buffer }))
-                .catch((err) => {
-                  console.error(`[TTS] Error synthesizing sentence "${sentence}":`, err.message);
-                  return { sentence, buffer: null };
+                .catch(() => {
+                  console.error('[TTS] Sentence synthesis failed');
+                  return null;
                 });
             });
 
             for (let i = 0; i < finalPromises.length; i++) {
               if (ws.readyState !== ws.OPEN) break;
-              const { sentence, buffer } = await finalPromises[i];
+              const buffer = await finalPromises[i];
               if (buffer && ws.readyState === ws.OPEN) {
                 send({ type: 'tts_audio', data: buffer.toString('base64') });
-                console.log(`[TTS] 🔊 Sent concurrent final sentence audio: "${sentence}"`);
+                console.log(`[TTS] 🔊 Sent concurrent final sentence audio`);
               }
             }
 
@@ -859,9 +850,9 @@ function handleSet1Socket(ws, request) {
 
             send({ type: 'session_complete', mode: sessionMode });
           }
-        } catch (err) {
+        } catch {
           if (!evaluationSucceeded) console.timeEnd('[Perf] AI Evaluation');
-          console.error('[WS] Evaluation error:', err);
+          console.error('[WS] Evaluation error');
           send({
             type: 'error',
             code: evaluationSucceeded ? undefined : 'EVALUATION_FAILED',
@@ -885,8 +876,8 @@ function handleSet1Socket(ws, request) {
     closeSttSession();
   });
 
-  ws.on('error', (err) => {
-    console.error('[WS] ❌ Set 1 WebSocket error:', err.message);
+  ws.on('error', () => {
+    console.error('[WS] ❌ Set 1 WebSocket error');
     closeSttSession();
   });
 }

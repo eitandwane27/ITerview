@@ -36,6 +36,7 @@ const { safeParseJSON } = require("../utils/jsonParser");
 const { BEHAVIORAL_AVOID_LIST: GLOBAL_BEHAVIORAL_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
+  logLevel: "off",
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com",
 });
@@ -158,7 +159,7 @@ OUTPUT RULE:
       behavioralQuestionVariety.remember(competencyIndex, question);
       return question;
     }
-    console.warn('[Set3Generator] Rejected question:', JSON.stringify({ competency: competency.topic, angle: angle.id, attempt: attempt + 1, reason: issue, draft: raw.slice(0, 600) }));
+    console.warn('[Set3Generator] Rejected question:', JSON.stringify({ competency: competency.topic, angle: angle.id, attempt: attempt + 1, reason: issue }));
     if (attempt < 2) {
       messages.push({ role: "assistant", content: raw });
       messages.push({ role: "user", content: `Repair this question: ${issue} Keep the same selected competency, ${competency.topic}, and entry-level profile. Prefer event angle ${angle.id}: ${angle.focus} Another event within this competency is acceptable. Return only one neutral past-event request with its short action/outcome probe.` });

@@ -1,0 +1,110 @@
+.nikki-companion {
+  --nc-ink: #101b3e;
+  --nc-muted: #596982;
+  --nc-blue: #1456e8;
+  --nc-surface: #fff;
+  --nc-soft: #f0f4fc;
+  position: fixed;
+  right: 24px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 10010;
+  width: min(420px, calc(100vw - 48px));
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--nc-surface);
+  color: var(--nc-ink);
+  box-shadow: 0 8px 36px rgb(16 27 62 / 14%);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+.nikki-companion__identity { display: flex; align-items: center; gap: 12px; }
+.nikki-companion__copy { min-width: 0; flex: 1; display: grid; gap: 4px; }
+.nikki-companion__copy strong { font-size: 14px; line-height: 1.4; font-weight: 700; }
+.nikki-companion__copy span { font-size: 12px; line-height: 1.5; color: var(--nc-muted); }
+.nikki-companion__orb { flex: 0 0 38px; height: 38px; border-radius: 50%; background: var(--nc-blue); display: flex; align-items: center; justify-content: center; gap: 5px; }
+.nikki-companion__orb i { width: 4px; height: 10px; border-radius: 4px; background: var(--nc-surface); animation: nikki-dock-blink 6s infinite; }
+.nikki-companion__orb[data-state='speaking'] { animation: nikki-dock-speak 850ms ease-in-out infinite alternate; }
+.nikki-companion__controls { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.nikki-companion button { border: 0; font: inherit; cursor: pointer; min-height: 40px; border-radius: 8px; background: var(--nc-soft); color: var(--nc-ink); display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background-color 150ms, transform 150ms; }
+.nikki-companion button:hover { background: #e3eaf6; }
+.nikki-companion button:active { transform: scale(.96); }
+.nikki-companion button:focus-visible { outline: 2px solid var(--nc-blue); outline-offset: 3px; }
+.nikki-companion button:disabled { opacity: .5; cursor: default; }
+.nikki-companion .nikki-companion__return { padding: 0 10px; font-size: 12px; font-weight: 600; background: transparent; }
+.nikki-companion .nikki-companion__stop { padding: 0 14px; background: var(--nc-ink); color: var(--nc-surface); font-size: 13px; }
+.nikki-companion__audio { display: flex; gap: 6px; }
+.nikki-companion__audio button { width: 40px; }
+.nikki-companion .nikki-companion__end { color: #b42335; background: #fff0f1; }
+.nikki-companion__caption { margin: 12px 0 0; max-height: 72px; overflow: auto; font-size: 12px; line-height: 1.6; }
+.nikki-cursor { position: fixed; top: 0; left: 0; z-index: 10020; pointer-events: none; color: #1456e8; display: flex; align-items: flex-start; gap: 2px; }
+.nikki-cursor span { margin-top: 23px; padding: 4px 9px; border-radius: 5px; color: white; background: #1456e8; font: 600 12px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; }
+.nikki-cursor[data-label-left='true'] span { position: absolute; right: 100%; margin-right: 4px; white-space: nowrap; }
+.nikki-cursor[data-pressed='true'] svg { transform: scale(.85); }
+.nikki-cursor[data-waiting='true'] svg { animation: nikki-cursor-wait 1.5s ease-in-out infinite alternate; }
+[data-nikki-target='true'] { outline: 2px solid #1456e8; outline-offset: -2px; }
+/* Fit the briefing to the space left above the measured dock. */
+body:has(.nikki-companion) .sb-overlay {
+  grid-template-rows: minmax(0, 1fr);
+  padding-bottom: var(--nikki-companion-clearance, 240px);
+}
+
+body:has(.nikki-companion) .sb-modal { max-height: 100%; }
+/* Reserve room below dashboard content so the floating controls cover no final row. */
+body:has(.nikki-companion) .db-main { padding-bottom: max(210px, var(--nikki-companion-clearance, 210px)); }
+/* Keep the saved-question Undo notice above the dock, including wrapped captions. */
+body:has(.nikki-companion) .pa-undo { bottom: var(--nikki-companion-clearance, 240px); max-width: calc(100vw - 32px); }
+/* Native dialog top layer also hosts Nikki. Keep its content above the dock. */
+.pa-dialog:has(.nikki-companion) { max-height: calc(100dvh - var(--nikki-companion-clearance, 240px) - 48px); margin-block: 24px auto; }
+.db-signout-modal:has(.nikki-companion) { max-height: calc(100dvh - var(--nikki-companion-clearance, 240px) - 48px); margin-block: 24px auto; }
+@keyframes nikki-dock-blink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.15); } }
+@keyframes nikki-dock-speak { to { transform: scale(.92); } }
+@keyframes nikki-cursor-wait { to { opacity: .65; } }
+@media (max-width: 600px) {
+  .nikki-companion { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: calc(100vw - 24px); padding: 14px; }
+  .nikki-companion__copy strong { font-size: 13px; }
+  .nikki-companion__orb { flex-basis: 34px; height: 34px; }
+  .nikki-companion button { min-height: 44px; }
+  .nikki-companion__audio button { width: 44px; }
+}
+
+body:has(.sb-overlay) .nikki-companion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: min(520px, calc(100% - 48px));
+  padding: 10px 12px;
+  border-radius: 16px;
+}
+
+body:has(.sb-overlay) .nikki-companion__identity { flex: 1 1 180px; }
+body:has(.sb-overlay) .nikki-companion__controls { margin: 0 0 0 auto; }
+body:has(.sb-overlay) .nikki-companion__return:disabled { display: none; }
+body:has(.sb-overlay) .nikki-companion__caption { flex-basis: 100%; margin: 0; }
+
+/* The briefing shows progress visually while Nikki still announces her status. */
+body:has(.sb-overlay) .nikki-companion[data-working='true'] .nikki-companion__copy span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  body:has(.sb-overlay) .nikki-companion { width: calc(100% - 24px); }
+}
+
+@media (min-width: 621px) and (max-height: 580px) {
+  body:has(.nikki-companion) .sb-footer { flex-direction: row; align-items: center; }
+  body:has(.nikki-companion) .sb-footer-actions { display: flex; }
+}
+
+@media (max-height: 360px) {
+  body:has(.nikki-companion) .sb-modal { overflow-y: auto; }
+  body:has(.nikki-companion) .sb-content { flex: none; overflow: visible; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nikki-companion *, .nikki-cursor * { animation: none !important; transition: none !important; }
+}

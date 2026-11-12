@@ -12,6 +12,7 @@ function createDeepSeekClient() {
   }
 
   return new OpenAI({
+    logLevel: "off",
     apiKey: process.env.DEEPSEEK_API_KEY,
     baseURL: "https://api.deepseek.com",
   });
@@ -94,7 +95,7 @@ async function handleVoiceAgentChatCompletion(req, res) {
       res.end();
     }
   } catch (error) {
-    console.error("[VoiceAgent:LLM] DeepSeek request failed:", error.message);
+    console.error("[VoiceAgent:LLM] DeepSeek request failed");
 
     if (res.headersSent) {
       if (!res.destroyed) {

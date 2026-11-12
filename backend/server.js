@@ -30,6 +30,10 @@ app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/coach", require("./routes/coachRoutes"));
 app.use("/api/practice-again", require("./routes/practiceAgainRoutes"));
 app.use(express.json());
+app.use((error, req, res, next) => {
+  if (error.type !== 'entity.parse.failed') return next(error);
+  res.status(400).json({ error: 'Invalid JSON body.' });
+});
 
 // 2. Connect to MongoDB
 mongoose

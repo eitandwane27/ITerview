@@ -1,19 +1,19 @@
 import { schoolSocketProtocols } from '../../utils/authenticatedApi';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  buildAudioInputConstraints,
-  readPreferredAudioInput,
-  rememberPreferredAudioInput,
-} from '../../utils/audioInputDevices';
+import { VoiceAgentAudioPlayer } from './VoiceAgentAudioPlayer';
+import { buildAudioInputConstraints } from '../../utils/audioInputDevices';
+import { productionBackendUrl } from '../../utils/backendUrl';
 
 const INPUT_SAMPLE_RATE = 16_000;
-const OUTPUT_SAMPLE_RATE = 24_000;
 const PROCESSOR_BUFFER_SIZE = 2048;
 const CONNECT_TIMEOUT_MS = 15_000;
 
 function getVoiceAgentSocketUrl() {
   if (import.meta.env.VITE_VOICE_AGENT_WS_URL) {
     return import.meta.env.VITE_VOICE_AGENT_WS_URL;
+  }
+  if (productionBackendUrl) {
+    return `${productionBackendUrl.replace(/^http/, 'ws')}/ws/voice-agent`;
   }
 
   const { hostname, host, protocol } = window.location;
@@ -108,13 +108,13 @@ async function requestMicrophoneStream(deviceId) {
   }
 }
 
-export function useVoiceAgentSession() {
+export function useVoiceAgentSession({ readPageContext } = {}) {
   const [agentState, setAgentState] = useState('ready');
   const [connectionStatus, setConnectionStatus] = useState('idle');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [micEnabled, setMicEnabled] = useState(true);
   const [microphones, setMicrophones] = useState([]);
-  const [selectedMicrophoneId, setSelectedMicrophoneId] = useState(readPreferredAudioInput);
+  const [selectedMicrophoneId, setSelectedMicrophoneId] = useState('');
   const [isSwitchingMicrophone, setIsSwitchingMicrophone] = useState(false);
   const [microphoneError, setMicrophoneError] = useState('');
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -126,11 +126,15 @@ export function useVoiceAgentSession() {
   const [workspacePending, setWorkspacePending] = useState(false);
   const [workspaceError, setWorkspaceError] = useState('');
   const [workspaceClarification, setWorkspaceClarification] = useState('');
+  const [uiAction, setUiAction] = useState(null);
+  const pendingUiActionRef = useRef(null);
+  const sessionGenerationRef = useRef(0);
   const lastWorkspacePromptRef = useRef('Show me my technical scores');
   const pendingWorkspaceIdRef = useRef(null);
   const dismissedWorkspaceIdsRef = useRef(new Set());
   const dismissNextWorkspaceRef = useRef(false);
   const queuedPromptRef = useRef('');
+  const queuedPromptExpectsWorkspaceRef = useRef(true);
 
   const mountedRef = useRef(true);
   const socketRef = useRef(null);
@@ -141,22 +145,31 @@ export function useVoiceAgentSession() {
   const inputSourceRef = useRef(null);
   const inputProcessorRef = useRef(null);
   const inputSilencerRef = useRef(null);
-  const outputContextRef = useRef(null);
-  const outputGainRef = useRef(null);
-  const outputSourcesRef = useRef(new Set());
-  const nextPlaybackTimeRef = useRef(0);
+  const outputPlayerRef = useRef(null);
   const pendingPlaybackStateRef = useRef(null);
-  const pendingAudioEnqueuesRef = useRef(0);
-  const playbackGenerationRef = useRef(0);
-  const lastLevelPublishedAtRef = useRef(0);
   const startedAtRef = useRef(0);
   const selectedMicrophoneIdRef = useRef(selectedMicrophoneId);
+  const micEnabledRef = useRef(true);
+  const greetingMuteRef = useRef(false);
+  const speechFinishedRef = useRef(false);
+  // AgentAudioDone marks the server stream; the browser queue can outlast it.
+  const isSpeechFinished = useCallback(() => speechFinishedRef.current && !outputPlayerRef.current?.hasPlayback, []);
 
-  const rememberMicrophone = useCallback((deviceId) => {
-    const nextDeviceId = deviceId || '';
-    selectedMicrophoneIdRef.current = nextDeviceId;
-    setSelectedMicrophoneId(nextDeviceId);
-    rememberPreferredAudioInput(nextDeviceId);
+  const setMicrophoneEnabled = useCallback((enabled) => {
+    micEnabledRef.current = enabled;
+    mediaStreamRef.current?.getAudioTracks().forEach(track => { track.enabled = enabled; });
+    if (mountedRef.current) setMicEnabled(enabled);
+  }, []);
+
+  const releaseGreetingMute = useCallback(() => {
+    if (!greetingMuteRef.current) return;
+    greetingMuteRef.current = false;
+    setMicrophoneEnabled(true);
+  }, [setMicrophoneEnabled]);
+
+  const updateSelectedMicrophone = useCallback((deviceId) => {
+    selectedMicrophoneIdRef.current = deviceId;
+    setSelectedMicrophoneId(deviceId);
   }, []);
 
   const refreshMicrophones = useCallback(async () => {
@@ -204,60 +217,54 @@ export function useVoiceAgentSession() {
   }, []);
 
   const clearPlayback = useCallback(() => {
-    playbackGenerationRef.current += 1;
     pendingPlaybackStateRef.current = null;
-    for (const source of outputSourcesRef.current) {
-      try {
-        source.stop();
-      } catch {
-        // The source may already have ended between the event and this cleanup.
-      }
-    }
-    outputSourcesRef.current.clear();
-    nextPlaybackTimeRef.current = outputContextRef.current?.currentTime || 0;
+    outputPlayerRef.current?.interrupt();
     if (mountedRef.current) setVoiceLevel(0);
   }, []);
 
   const completePendingPlaybackState = useCallback(() => {
-    if (pendingAudioEnqueuesRef.current > 0 || outputSourcesRef.current.size > 0) return;
+    if (outputPlayerRef.current?.hasPlayback) return;
 
     const pendingState = pendingPlaybackStateRef.current;
     if (!pendingState) return;
 
     pendingPlaybackStateRef.current = null;
+    // Only the opening greeting is protected. A server audio-done event alone
+    // is insufficient: wait until the local output queue has actually drained.
+    if (pendingState === 'listening') releaseGreetingMute();
     if (mountedRef.current) {
       setAgentState(pendingState);
       setVoiceLevel(0);
     }
-  }, []);
+  }, [releaseGreetingMute]);
 
   const closeOutput = useCallback(() => {
     clearPlayback();
-    outputGainRef.current?.disconnect();
-    outputGainRef.current = null;
-
-    if (outputContextRef.current && outputContextRef.current.state !== 'closed') {
-      outputContextRef.current.close().catch(() => {});
-    }
-    outputContextRef.current = null;
+    outputPlayerRef.current?.dispose();
+    outputPlayerRef.current = null;
   }, [clearPlayback]);
 
   const stopSession = useCallback(
     ({ keepUi = false } = {}) => {
       closingRef.current = true;
+      sessionGenerationRef.current += 1;
+      greetingMuteRef.current = false;
+      speechFinishedRef.current = false;
+      pendingUiActionRef.current = null;
       queuedPromptRef.current = '';
       pendingWorkspaceIdRef.current = null;
       dismissedWorkspaceIdsRef.current.clear();
       dismissNextWorkspaceRef.current = false;
       if (mountedRef.current) {
         setWorkspace(null);
+        setUiAction(null);
         setWorkspacePending(false);
         setWorkspaceError('');
         setWorkspaceClarification('');
       }
       clearConnectTimeout();
       stopInput();
-      clearPlayback();
+      closeOutput();
 
       const socket = socketRef.current;
       socketRef.current = null;
@@ -270,6 +277,7 @@ export function useVoiceAgentSession() {
 
       startedAtRef.current = 0;
       if (!keepUi && mountedRef.current) {
+        updateSelectedMicrophone('');
         setConnectionStatus('idle');
         setAgentState('ready');
         setElapsedSeconds(0);
@@ -277,7 +285,7 @@ export function useVoiceAgentSession() {
         setVoiceLevel(0);
       }
     },
-    [clearConnectTimeout, clearPlayback, stopInput]
+    [clearConnectTimeout, closeOutput, stopInput, updateSelectedMicrophone]
   );
 
   const failSession = useCallback(
@@ -292,92 +300,27 @@ export function useVoiceAgentSession() {
   );
 
   const ensureOutputContext = useCallback(async () => {
-    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextCtor) {
-      throw new Error('This browser does not support live voice playback.');
+    if (!outputPlayerRef.current) {
+      const player = new VoiceAgentAudioPlayer({
+        onLevel: level => { if (mountedRef.current) setVoiceLevel(level); },
+        onDrain: completePendingPlaybackState,
+        onError: error => {
+          if (outputPlayerRef.current === player) failSession(error.message);
+        },
+      });
+      player.setVolume(audioEnabled ? 1 : 0);
+      outputPlayerRef.current = player;
     }
-
-    if (!outputContextRef.current || outputContextRef.current.state === 'closed') {
-      const context = new AudioContextCtor({ latencyHint: 'interactive' });
-      const gain = context.createGain();
-      gain.gain.value = audioEnabled ? 1 : 0;
-      gain.connect(context.destination);
-      outputContextRef.current = context;
-      outputGainRef.current = gain;
-      nextPlaybackTimeRef.current = context.currentTime;
-    }
-
-    if (outputContextRef.current.state === 'suspended') {
-      await outputContextRef.current.resume();
-    }
-  }, [audioEnabled]);
-
-  const publishVoiceLevel = useCallback((samples) => {
-    const now = performance.now();
-    if (now - lastLevelPublishedAtRef.current < 48) return;
-
-    let sumSquares = 0;
-    for (let index = 0; index < samples.length; index += 1) {
-      const normalized = samples[index] / 0x8000;
-      sumSquares += normalized * normalized;
-    }
-    const rms = Math.sqrt(sumSquares / Math.max(1, samples.length));
-    const level = Math.max(8, Math.min(100, Math.round(rms * 440)));
-    setVoiceLevel(level);
-    lastLevelPublishedAtRef.current = now;
-  }, []);
+    await outputPlayerRef.current.resume();
+  }, [audioEnabled, completePendingPlaybackState, failSession]);
 
   const enqueueOutputAudio = useCallback(
-    async (arrayBuffer) => {
-      const playbackGeneration = playbackGenerationRef.current;
-      pendingAudioEnqueuesRef.current += 1;
-
-      try {
-        await ensureOutputContext();
-      } catch (error) {
-        failSession(error.message);
-        return;
-      } finally {
-        pendingAudioEnqueuesRef.current -= 1;
-      }
-
-      if (playbackGeneration !== playbackGenerationRef.current) {
-        completePendingPlaybackState();
-        return;
-      }
-
-      const context = outputContextRef.current;
-      const gain = outputGainRef.current;
-      if (!context || !gain || !arrayBuffer.byteLength) {
-        completePendingPlaybackState();
-        return;
-      }
-
-      const samples = new Int16Array(arrayBuffer);
-      const audioBuffer = context.createBuffer(1, samples.length, OUTPUT_SAMPLE_RATE);
-      const channel = audioBuffer.getChannelData(0);
-      for (let index = 0; index < samples.length; index += 1) {
-        channel[index] = samples[index] / 0x8000;
-      }
-
-      publishVoiceLevel(samples);
-
-      const source = context.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(gain);
-      outputSourcesRef.current.add(source);
-
-      const startAt = Math.max(context.currentTime + 0.025, nextPlaybackTimeRef.current);
-      nextPlaybackTimeRef.current = startAt + audioBuffer.duration;
-      source.onended = () => {
-        outputSourcesRef.current.delete(source);
-        source.disconnect();
-        completePendingPlaybackState();
-      };
-      source.start(startAt);
-      completePendingPlaybackState();
+    (arrayBuffer) => {
+      speechFinishedRef.current = false;
+      try { outputPlayerRef.current?.queue(arrayBuffer); }
+      catch (error) { failSession(error.message); }
     },
-    [completePendingPlaybackState, ensureOutputContext, failSession, publishVoiceLevel]
+    [failSession]
   );
 
   const startInput = useCallback(() => {
@@ -416,8 +359,44 @@ export function useVoiceAgentSession() {
 
   const handleControlMessage = useCallback(
     (message) => {
+      if (message.type === 'voice_agent_read_page') {
+        if (typeof message.id === 'string' && socketRef.current?.readyState === WebSocket.OPEN) {
+          socketRef.current.send(JSON.stringify({
+            type: 'page_context_result', id: message.id, context: readPageContext?.() ?? null,
+          }));
+        }
+        return;
+      }
+      if (message.type === 'voice_agent_ui_action') {
+        if (!['open_practice_history', 'open_my_progress', 'open_practice_again', 'operate_practice_again', 'open_ai_coach', 'open_interview_prep', 'configure_interview_prep', 'return_to_playground', 'sign_out'].includes(message.name) || typeof message.id !== 'string') return;
+        if (pendingUiActionRef.current) return;
+        pendingUiActionRef.current = message.id;
+        if (message.name === 'sign_out') {
+          // Let Deepgram finish the tool turn before waiting for AudioDone;
+          // this is acceptance only, never a claim that logout has succeeded.
+          speechFinishedRef.current = false;
+          socketRef.current?.send(JSON.stringify({ type: 'ui_action_accepted', id: message.id }));
+        }
+        setWorkspacePending(false);
+        setUiAction({ id: message.id, name: message.name, options: message.options });
+        return;
+      }
+      if (message.type === 'voice_agent_ui_cancel') {
+        if (pendingUiActionRef.current !== message.id) return;
+        pendingUiActionRef.current = null;
+        setUiAction(null);
+        return;
+      }
       if (message.type === 'voice_agent_state') {
-        if (message.shouldClearPlayback) clearPlayback();
+        if (message.state === 'thinking' || message.shouldClearPlayback) speechFinishedRef.current = false;
+        if (message.shouldClearPlayback) {
+          if (outputPlayerRef.current?.hasPlayback) {
+            console.info('[VoiceAgent] Speech interrupted by microphone speech detection', {
+              bufferedAudioMs: Math.round(outputPlayerRef.current.remainingSeconds * 1000),
+            });
+          }
+          clearPlayback();
+        }
         if (message.state === 'error') {
           pendingPlaybackStateRef.current = null;
           setAgentState('error');
@@ -425,6 +404,8 @@ export function useVoiceAgentSession() {
         }
 
         if (message.waitForPlayback) {
+          speechFinishedRef.current = true;
+          outputPlayerRef.current?.finishStream();
           pendingPlaybackStateRef.current = message.state;
           completePendingPlaybackState();
           return;
@@ -448,7 +429,7 @@ export function useVoiceAgentSession() {
             JSON.stringify({ type: 'inject_user_message', content: queuedPromptRef.current })
           );
           queuedPromptRef.current = '';
-          setWorkspacePending(true);
+          setWorkspacePending(queuedPromptExpectsWorkspaceRef.current);
         }
         return;
       }
@@ -500,7 +481,10 @@ export function useVoiceAgentSession() {
         if (event?.type === 'ConversationText') {
           if (event.role === 'assistant') setWorkspacePending(false);
           const content = (event.content || event.text || '').trim();
-          if (event.role === 'user' && content) setWorkspaceClarification('');
+          if (event.role === 'user' && content) {
+            speechFinishedRef.current = false;
+            setWorkspaceClarification('');
+          }
           if (content) {
             setCaption(`${event.role === 'user' ? 'You' : 'Coach'}: ${content}`);
           }
@@ -517,13 +501,14 @@ export function useVoiceAgentSession() {
         failSession('The voice connection ended unexpectedly. Please try again.');
       }
     },
-    [clearConnectTimeout, clearPlayback, completePendingPlaybackState, failSession, startInput]
+    [clearConnectTimeout, clearPlayback, completePendingPlaybackState, failSession, readPageContext, startInput]
   );
 
   const startSession = useCallback(async () => {
     if (connectionStatus === 'connecting' || connectionStatus === 'live') return;
 
     closingRef.current = false;
+    const generation = ++sessionGenerationRef.current;
     setConnectionStatus('connecting');
     setAgentState('connecting');
     setErrorMessage('');
@@ -533,25 +518,27 @@ export function useVoiceAgentSession() {
     setWorkspaceError('');
     setWorkspaceClarification('');
     setElapsedSeconds(0);
-    setMicEnabled(true);
+    greetingMuteRef.current = !queuedPromptRef.current;
+    setMicrophoneEnabled(!greetingMuteRef.current);
 
     try {
       await ensureOutputContext();
+      if (!mountedRef.current || generation !== sessionGenerationRef.current) return;
       const { stream, fellBackToDefault } = await requestMicrophoneStream(
         selectedMicrophoneIdRef.current
       );
 
-      if (fellBackToDefault) rememberMicrophone('');
-
-      if (!mountedRef.current) {
+      if (!mountedRef.current || generation !== sessionGenerationRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
+      if (fellBackToDefault) updateSelectedMicrophone('');
 
       mediaStreamRef.current = stream;
+      stream.getAudioTracks().forEach(track => { track.enabled = micEnabledRef.current; });
       await refreshMicrophones();
       const protocols = await schoolSocketProtocols();
-      if (!mountedRef.current || closingRef.current) return;
+      if (!mountedRef.current || generation !== sessionGenerationRef.current) return;
       const socket = new WebSocket(getVoiceAgentSocketUrl(), protocols);
       socket.binaryType = 'arraybuffer';
       socketRef.current = socket;
@@ -561,9 +548,11 @@ export function useVoiceAgentSession() {
       }, CONNECT_TIMEOUT_MS);
 
       socket.onopen = () => {
+        if (socketRef.current !== socket || generation !== sessionGenerationRef.current) return;
         socket.send(JSON.stringify({ type: 'start_session' }));
       };
       socket.onmessage = (event) => {
+        if (socketRef.current !== socket || generation !== sessionGenerationRef.current) return;
         if (typeof event.data === 'string') {
           try {
             handleControlMessage(JSON.parse(event.data));
@@ -578,15 +567,18 @@ export function useVoiceAgentSession() {
         }
       };
       socket.onerror = () => {
+        if (socketRef.current !== socket) return;
         failSession('Could not reach the voice service. Make sure the backend is running.');
       };
       socket.onclose = (event) => {
+        if (socketRef.current !== socket) return;
         clearConnectTimeout();
         if (!closingRef.current && event.code !== 1000) {
           failSession('The voice connection ended unexpectedly. Please try again.');
         }
       };
     } catch (error) {
+      if (generation !== sessionGenerationRef.current || !mountedRef.current) return;
       const isMicrophoneError = [
         'NotAllowedError',
         'NotFoundError',
@@ -607,7 +599,8 @@ export function useVoiceAgentSession() {
     failSession,
     handleControlMessage,
     refreshMicrophones,
-    rememberMicrophone,
+    setMicrophoneEnabled,
+    updateSelectedMicrophone,
   ]);
 
   const selectMicrophone = useCallback(
@@ -616,25 +609,26 @@ export function useVoiceAgentSession() {
       setMicrophoneError('');
 
       if (connectionStatus !== 'live') {
-        rememberMicrophone(nextDeviceId);
+        updateSelectedMicrophone(nextDeviceId);
         return;
       }
 
       setIsSwitchingMicrophone(true);
+      const generation = sessionGenerationRef.current;
       try {
         const { stream, fellBackToDefault } = await requestMicrophoneStream(nextDeviceId);
-        if (!mountedRef.current) {
+        if (!mountedRef.current || generation !== sessionGenerationRef.current) {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
 
         stream.getAudioTracks().forEach((track) => {
-          track.enabled = micEnabled;
+          track.enabled = micEnabledRef.current;
         });
 
         stopInput();
         mediaStreamRef.current = stream;
-        rememberMicrophone(fellBackToDefault ? '' : nextDeviceId);
+        updateSelectedMicrophone(fellBackToDefault ? '' : nextDeviceId);
         startInput();
         await refreshMicrophones();
       } catch (error) {
@@ -647,7 +641,7 @@ export function useVoiceAgentSession() {
         if (mountedRef.current) setIsSwitchingMicrophone(false);
       }
     },
-    [connectionStatus, micEnabled, refreshMicrophones, rememberMicrophone, startInput, stopInput]
+    [connectionStatus, refreshMicrophones, startInput, stopInput, updateSelectedMicrophone]
   );
 
   const toggleMic = useCallback(() => {
@@ -657,23 +651,15 @@ export function useVoiceAgentSession() {
     }
     if (connectionStatus !== 'live') return;
 
-    const nextEnabled = !micEnabled;
-    mediaStreamRef.current?.getAudioTracks().forEach((track) => {
-      track.enabled = nextEnabled;
-    });
-    setMicEnabled(nextEnabled);
-  }, [connectionStatus, micEnabled, startSession]);
+    // A manual choice takes ownership, including staying muted after greeting.
+    greetingMuteRef.current = false;
+    setMicrophoneEnabled(!micEnabledRef.current);
+  }, [connectionStatus, setMicrophoneEnabled, startSession]);
 
   const toggleAudio = useCallback(() => {
     const nextEnabled = !audioEnabled;
     setAudioEnabled(nextEnabled);
-    if (outputGainRef.current && outputContextRef.current) {
-      outputGainRef.current.gain.setTargetAtTime(
-        nextEnabled ? 1 : 0,
-        outputContextRef.current.currentTime,
-        0.015
-      );
-    }
+    outputPlayerRef.current?.setVolume(nextEnabled ? 1 : 0);
   }, [audioEnabled]);
 
   useEffect(() => {
@@ -719,6 +705,10 @@ export function useVoiceAgentSession() {
   const askNikki = useCallback(
     async (content, { expectWorkspace = true } = {}) => {
       if (!content || connectionStatus === 'connecting') return;
+      speechFinishedRef.current = false;
+      // An explicit new prompt replaces the greeting; do not carry its mute
+      // into a later answer or a workspace-only response.
+      releaseGreetingMute();
       setWorkspaceClarification('');
       if (expectWorkspace) {
         lastWorkspacePromptRef.current = content;
@@ -732,10 +722,11 @@ export function useVoiceAgentSession() {
         socketRef.current.send(JSON.stringify({ type: 'inject_user_message', content }));
       } else {
         queuedPromptRef.current = content;
+        queuedPromptExpectsWorkspaceRef.current = expectWorkspace;
         await startSession();
       }
     },
-    [clearPlayback, connectionStatus, startSession]
+    [clearPlayback, connectionStatus, releaseGreetingMute, startSession]
   );
 
   useEffect(() => {
@@ -747,7 +738,21 @@ export function useVoiceAgentSession() {
     return () => window.clearTimeout(timeout);
   }, [workspacePending]);
 
+  const completeUiAction = useCallback((id, result) => {
+    if (pendingUiActionRef.current !== id) return;
+    pendingUiActionRef.current = null;
+    setUiAction(null);
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: 'ui_action_result', id, result,
+        context: readPageContext?.() ?? null,
+      }));
+    }
+  }, [readPageContext]);
+
   return {
+    isSpeechFinished,
+    uiAction,
+    completeUiAction,
     workspace,
     workspacePending,
     workspaceError,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../firebase';
+import { apiUrl } from '../utils/backendUrl';
 import { schoolAccessStatus } from '../utils/schoolAccess';
 
 import { SchoolAuthContext } from './schoolAuth';
@@ -36,7 +37,7 @@ export function SchoolAuthProvider({ children }) {
           if (currentRevision !== revision.current || user !== auth.currentUser)
             return 'signed-out';
           // Keep this request bound to the account whose session is being checked.
-          const response = await fetch('/api/users/login', {
+          const response = await fetch(apiUrl('/api/users/login'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ displayName: user.displayName || '' }),

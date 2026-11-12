@@ -20,6 +20,8 @@ import {
   AlertCircle,
   Star,
   Bookmark,
+  Check,
+  X,
 } from 'lucide-react';
 import { signOut, onAuthStateChanged, updateProfile } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -31,6 +33,7 @@ import SetBriefingOverlay from '../components/SetBriefingOverlay';
 import StartingScoreDetails from '../components/StartingScoreDetails';
 import AIOrb from '../components/AIOrb';
 import { useNikkiOpening } from '../features/voice-agent/nikkiOpeningContext';
+import { useNikkiPageContext } from '../features/voice-agent/nikkiPageContext';
 import DashboardRoleSelect from '../components/DashboardRoleSelect';
 import DashboardSignOutDialog from '../components/DashboardSignOutDialog';
 import DashboardCoach from '../components/DashboardCoach';
@@ -45,7 +48,9 @@ import {
   lowestThreeC,
 } from '../utils/assessmentGuidance';
 import logoSrc from '../assets/logo';
+import { PROFILE_AVATARS, DEFAULT_AVATAR, getProfileAvatar, getAvatarStyle } from '../assets/avatars';
 import './Dashboard.css';
+import '../components/DashboardProfile.css';
 import '../components/motion/DashboardMotion.css';
 import useRoleCatalogue from '../hooks/useRoleCatalogue';
 import { formatRoleLabel, getRoleOptions, getRoleSelectionError } from '../utils/roleCatalogue';
@@ -510,8 +515,7 @@ const MetricsStates = memo(function MetricsStates({ dataStatus, onRetry, onLogin
 
 // One row in the practice log, memoized so the list never re-renders when
 // unrelated dashboard state changes (attempt objects keep stable references).
-const AttemptCard = memo(function AttemptCard({ attempt, roles }) {
-  const attemptScore = getAttemptScoreOutOfFive(attempt);
+function describeHistoryAttempt(attempt, roles) {
   const completedAt = attempt.completedAt ? new Date(attempt.completedAt) : null;
   const hasValidCompletedAt = completedAt && !Number.isNaN(completedAt.getTime());
   const completedAtLabel = hasValidCompletedAt
@@ -523,28 +527,42 @@ const AttemptCard = memo(function AttemptCard({ attempt, roles }) {
       })
     : 'Recently';
 
+  return {
+    label: attempt.attemptNumber != null ? `Attempt ${attempt.attemptNumber}` : 'Practice session',
+    completedAt: hasValidCompletedAt ? completedAt.toISOString() : null,
+    completedAtLabel,
+    role: formatRoleLabel(attempt.role, roles),
+    difficulty: attempt.difficulty || 'Easy',
+    focus: `${attempt.focusArea || 'Auto'} focus`,
+    overall: formatScoreOutOfFive(getAttemptScoreOutOfFive(attempt)),
+    metrics: attempt.threeCBreakdown ? Object.fromEntries(
+      ['clarity', 'correctness', 'completeness'].map(key => [key, formatScoreOutOfFive(attempt.threeCBreakdown[key])])
+    ) : null,
+  };
+}
+
+const AttemptCard = memo(function AttemptCard({ attempt, roles }) {
+  const display = describeHistoryAttempt(attempt, roles);
   return (
     <article className="db-attempt-card">
       <div className="db-attempt-card__left">
         <div className="db-attempt-card__meta">
           <span className="db-attempt-badge">
-            {attempt.attemptNumber != null
-              ? `Attempt ${attempt.attemptNumber}`
-              : 'Practice session'}
+            {display.label}
           </span>
           <span aria-hidden="true">·</span>
-          {hasValidCompletedAt ? (
-            <time dateTime={completedAt.toISOString()}>{completedAtLabel}</time>
+          {display.completedAt ? (
+            <time dateTime={display.completedAt}>{display.completedAtLabel}</time>
           ) : (
-            <span>{completedAtLabel}</span>
+            <span>{display.completedAtLabel}</span>
           )}
         </div>
-        <h3 className="db-attempt-card__title">{formatRoleLabel(attempt.role, roles)}</h3>
+        <h3 className="db-attempt-card__title">{display.role}</h3>
         <div className="db-attempt-card__context">
-          <span className="db-attempt-card__difficulty">{attempt.difficulty || 'Easy'}</span>
+          <span className="db-attempt-card__difficulty">{display.difficulty}</span>
           <span className="db-badge db-badge--purple">
             <Mic size={11} strokeWidth={2.2} aria-hidden="true" />
-            {attempt.focusArea || 'Auto'} focus
+            {display.focus}
           </span>
         </div>
       </div>
@@ -553,21 +571,21 @@ const AttemptCard = memo(function AttemptCard({ attempt, roles }) {
           <dl className="db-3c-mini" aria-label="3C score breakdown">
             <div className="db-3c-mini__metric">
               <dt>Clarity</dt>
-              <dd>{formatScoreOutOfFive(attempt.threeCBreakdown.clarity)}</dd>
+              <dd>{display.metrics.clarity}</dd>
             </div>
             <div className="db-3c-mini__metric">
               <dt>Correctness</dt>
-              <dd>{formatScoreOutOfFive(attempt.threeCBreakdown.correctness)}</dd>
+              <dd>{display.metrics.correctness}</dd>
             </div>
             <div className="db-3c-mini__metric">
               <dt>Completeness</dt>
-              <dd>{formatScoreOutOfFive(attempt.threeCBreakdown.completeness)}</dd>
+              <dd>{display.metrics.completeness}</dd>
             </div>
           </dl>
         )}
         <div className="db-attempt-card__overall">
           <span className="db-attempt-card__score-label">Overall</span>
-          <strong className="db-attempt-score">{formatScoreOutOfFive(attemptScore)}</strong>
+          <strong className="db-attempt-score">{display.overall}</strong>
         </div>
       </div>
     </article>
@@ -587,6 +605,23 @@ const HistoryPanel = memo(function HistoryPanel({
   const history = useMemo(() => (practiceHistory || []).slice().reverse(), [practiceHistory]);
   const visibleHistory = history.slice(0, HISTORY_VISIBLE_COUNT);
   const hiddenCount = history.length - HISTORY_VISIBLE_COUNT;
+  const nikkiContext = useMemo(() => {
+    const loaded = dataStatus === 'ready' || dataStatus === 'empty';
+    const shown = loaded ? (showAll ? history : history.slice(0, HISTORY_VISIBLE_COUNT)) : [];
+    return {
+      route: '/dashboard', page: 'practice_history',
+      state: loaded ? (history.length ? 'ready' : 'empty')
+        : dataStatus === 'loading' ? 'loading' : 'error',
+      totalSessions: loaded ? history.length : null,
+      displayedSessions: shown.length,
+      olderSessionsExpanded: showAll,
+      hiddenSessions: loaded ? history.length - shown.length : null,
+      // Bound context size without changing the rendered history. The model is
+      // told when the display contains more sessions than the tool includes.
+      sessions: shown.slice(0, 50).map(attempt => describeHistoryAttempt(attempt, roles)),
+    };
+  }, [dataStatus, history, roles, showAll]);
+  useNikkiPageContext(nikkiContext);
 
   return (
     <section className="db-setup-card db-history-card" aria-labelledby="db-history-title">
@@ -710,7 +745,33 @@ const ProgressPanel = memo(function ProgressPanel({
   comparisonReady,
   needsFinalReflection,
   onFinishReflection,
+  modal,
 }) {
+  const guidance = needsFinalReflection
+    ? 'Finish your confidence check to see how your answers compare.'
+    : getPracticeFocus(weakTopic || lowestMetric)?.starting ||
+      'Practise clear, accurate answers that cover the important parts.';
+  useNikkiPageContext(useMemo(() => () => {
+    const base = { route: '/dashboard', page: 'my_progress' };
+    // Resolve disclosures at read time without subscribing this panel to audio
+    // updates or adding observers/fetches. Only the active panel mounts here.
+    if (modal) return { ...base, state: 'covered', modal };
+    if (dataStatus === 'loading' || dataStatus === 'error') return { ...base, state: dataStatus };
+    if (dataStatus === 'unauthenticated') return { ...base, state: 'unavailable' };
+    if (dataStatus === 'empty' || baseline == null) return { ...base, state: 'empty' };
+    if (!comparisonReady) {
+      const expanded = Boolean(document.querySelector('#tabpanel-my-progress .starting-score-details[open]'));
+      return { ...base, state: 'ready', view: needsFinalReflection ? 'reflection_pending' : 'starting_point',
+        guidance, scoreDetails: expanded ? { expanded: true, score: formatScoreValue(baseline) ? formatScoreOutOfFive(baseline) : 'Unavailable' } : { expanded: false } };
+    }
+    return { ...base, state: 'ready', view: 'comparison',
+      journey: { startingScore: formatScoreOutOfFive(baseline), progressCheckScore: formatScoreOutOfFive(mastery),
+        changeLabel: growth != null ? getScoreComparison(baseline, mastery)?.label || null : null },
+      metrics: { clarity: formatScoreOutOfFive(clarity), correctness: formatScoreOutOfFive(correctness), completeness: formatScoreOutOfFive(completeness) },
+      lowestMetric, average: formatScoreOutOfFive(average3C), sessionsCount,
+      weakTopic: weakTopic ? weakTopic.charAt(0).toUpperCase() + weakTopic.slice(1) : '--' };
+  }, [dataStatus, baseline, comparisonReady, needsFinalReflection, guidance, mastery, growth,
+    clarity, correctness, completeness, lowestMetric, average3C, sessionsCount, weakTopic, modal]));
   if (dataStatus === 'loading' || dataStatus === 'error') {
     return <MetricsStates dataStatus={dataStatus} onRetry={onRetry} />;
   }
@@ -726,10 +787,7 @@ const ProgressPanel = memo(function ProgressPanel({
           {needsFinalReflection ? 'Your progress check is saved' : 'Your starting point is saved'}
         </h2>
         <p>
-          {needsFinalReflection
-            ? 'Finish your confidence check to see how your answers compare.'
-            : getPracticeFocus(weakTopic || lowestMetric)?.starting ||
-              'Practise clear, accurate answers that cover the important parts.'}
+          {guidance}
         </p>
         <button
           type="button"
@@ -925,7 +983,7 @@ export default function Dashboard() {
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('easy');
   const [selectedFocus, setSelectedFocus] = useState('auto');
-  const [userName, setUserName] = useState('U');
+  const [selectedAvatar, setSelectedAvatar] = useState(DEFAULT_AVATAR);
   const [fullName, setFullName] = useState('Alex');
   const [unlockedDifficulty, setUnlockedDifficulty] = useState('easy');
   const [hasCompletedDiagnostic, setHasCompletedDiagnostic] = useState(false);
@@ -951,16 +1009,21 @@ export default function Dashboard() {
   // Pre-Flight Mission Calibration modal state
   const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
   const [briefingMode, setBriefingMode] = useState('practice');
+  const [briefingContext, setBriefingContext] = useState(null);
+  const launchAbortRef = useRef(null);
+  useEffect(() => {
+    const cancel = () => launchAbortRef.current?.abort();
+    window.addEventListener('nikki-prep-stop', cancel);
+    return () => { cancel(); window.removeEventListener('nikki-prep-stop', cancel); };
+  }, []);
 
   // Profile modal state
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editName, setEditName] = useState('');
-  const [editRole, setEditRole] = useState('');
+  const [editAvatar, setEditAvatar] = useState(DEFAULT_AVATAR);
   const roleOptions = getRoleOptions(roles, rolesStatus, selectedRole);
-  const profileRoleOptions = getRoleOptions(roles, rolesStatus, editRole);
   const rolesReady = rolesStatus === 'ready';
   const selectedRoleAvailable = rolesReady && roles.some((role) => role.id === selectedRole);
-  const [editFocus, setEditFocus] = useState('auto');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState(null);
   // Profile dialog keyboard story: move focus into the dialog on open and
@@ -982,13 +1045,20 @@ export default function Dashboard() {
   useEffect(() => {
     if (!isProfileModalOpen) return;
     const modal = profileModalRef.current;
-    const avatarBtn = avatarBtnRef.current;
+    const avatarBtn = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    modal?.showModal();
+    document.body.style.overflow = 'hidden';
     const firstFocusable = modal?.querySelector(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     );
     (firstFocusable || modal)?.focus();
     return () => {
-      avatarBtn?.focus();
+      modal?.close();
+      document.body.style.overflow = previousOverflow;
+      const trigger = avatarBtn?.isConnected && avatarBtn.offsetParent !== null
+        ? avatarBtn : [...document.querySelectorAll('.db-user-avatar')].find(button => button.offsetParent !== null);
+      trigger?.focus();
     };
   }, [isProfileModalOpen]);
 
@@ -996,8 +1066,7 @@ export default function Dashboard() {
   const fetchUserData = useCallback(async (user) => {
     if (!user) return;
     setDataStatus('loading');
-    const initial = (user.displayName || user.email || 'U')[0].toUpperCase();
-    setUserName(initial);
+    setSelectedAvatar(DEFAULT_AVATAR);
     setFullName(user.displayName || (user.email ? user.email.split('@')[0] : 'User'));
 
     let userLoadOk = false;
@@ -1022,6 +1091,7 @@ export default function Dashboard() {
         if (data.user?.unlockedDifficulty) setUnlockedDifficulty(data.user.unlockedDifficulty);
         if (data.user?.focusArea) setSelectedFocus(data.user.focusArea);
         if (data.user?.displayName) setFullName(data.user.displayName);
+        setSelectedAvatar(getProfileAvatar(data.user?.avatar).id);
         if (data.hasCompletedDiagnostic !== undefined) {
           completedDiagnostic = Boolean(data.hasCompletedDiagnostic);
           setHasCompletedDiagnostic(completedDiagnostic);
@@ -1100,11 +1170,10 @@ export default function Dashboard() {
   // Open profile modal, seed edit fields from current state
   const handleOpenProfileModal = useCallback(() => {
     setEditName(fullName);
-    setEditRole(selectedRole);
-    setEditFocus(selectedFocus);
+    setEditAvatar(selectedAvatar);
     setProfileError(null);
     setIsProfileModalOpen(true);
-  }, [fullName, selectedRole, selectedFocus]);
+  }, [fullName, selectedAvatar]);
 
   const handleCloseProfileModal = useCallback(() => {
     if (isSavingProfile) return; // prevent close during save
@@ -1118,13 +1187,6 @@ export default function Dashboard() {
     if (!firebaseUser) return;
 
     const trimmedName = editName.trim();
-    if (editRole && editRole !== selectedRole) {
-      const selectionError = getRoleSelectionError(editRole, roles, rolesStatus);
-      if (selectionError) {
-        setProfileError(selectionError);
-        return;
-      }
-    }
     setIsSavingProfile(true);
     setProfileError(null);
 
@@ -1132,16 +1194,14 @@ export default function Dashboard() {
       // 1. Update Firebase Auth profile (displayName field)
       await updateProfile(firebaseUser, { displayName: trimmedName || null });
 
-      // 2. Persist displayName + role + focusArea to MongoDB in one atomic call
+      // Personal details never change the current interview configuration.
       const res = await authenticatedFetch('/api/users/role', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           firebaseUid: firebaseUser.uid,
           displayName: trimmedName,
-          role: rolesReady && roles.some((role) => role.id === (editRole || selectedRole))
-            ? editRole || selectedRole : undefined,
-          focusArea: editFocus || selectedFocus,
+          avatar: editAvatar,
         }),
       });
 
@@ -1151,9 +1211,7 @@ export default function Dashboard() {
       const displayedName =
         trimmedName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User');
       setFullName(displayedName);
-      setUserName(displayedName[0].toUpperCase());
-      if (editRole) setSelectedRole(editRole);
-      if (editFocus) setSelectedFocus(editFocus);
+      setSelectedAvatar(editAvatar);
 
       setIsProfileModalOpen(false);
     } catch (err) {
@@ -1162,7 +1220,7 @@ export default function Dashboard() {
     } finally {
       setIsSavingProfile(false);
     }
-  }, [editName, editRole, editFocus, selectedRole, selectedFocus, roles, rolesStatus, rolesReady]);
+  }, [editName, editAvatar]);
 
   // WAI-ARIA tabs pattern: arrow-key navigation across the tablist
   const handleTabKeyDown = useCallback(
@@ -1195,6 +1253,11 @@ export default function Dashboard() {
   // state updates, the launch uses the resolved values directly.
   const handleStartSession = useCallback(
     async (overrides = {}) => {
+      launchAbortRef.current?.abort();
+      const launchController = new AbortController();
+      launchAbortRef.current = launchController;
+      const { signal } = launchController;
+      const automated = document.getElementById('btn-start-pretest')?.hasAttribute('data-nikki-target');
       const role = overrides.role ?? selectedRole;
       const difficulty = overrides.difficulty ?? selectedDifficulty;
       const focus = overrides.focus ?? selectedFocus;
@@ -1216,14 +1279,27 @@ export default function Dashboard() {
       let journeyState = activeSession;
       try {
         const activeCheckRes = await authenticatedFetch(
-          '/api/users/active-practice-session?uid=' + encodeURIComponent(user.uid)
+          '/api/users/active-practice-session?uid=' + encodeURIComponent(user.uid), { signal }
         );
         if (activeCheckRes.ok) {
           journeyState = await activeCheckRes.json();
           setActiveSession(journeyState);
+        } else if (automated) {
+          setFormError('Couldn’t verify your saved session. Please try again.');
+          return;
         }
       } catch (e) {
+        if (signal.aborted) return;
+        if (automated) {
+          setFormError('Couldn’t verify your saved session. Please try again.');
+          return;
+        }
         console.error('Journey session check fallback error:', e);
+      }
+      if (signal.aborted) return;
+      if (automated && journeyState?.hasActiveSession && !activeSession?.hasActiveSession) {
+        setFormError('A saved session was found. Ask Nikki to resume it; your answers are preserved.');
+        return;
       }
 
       const shouldSaveOnboardingProfile = ['likert-pre', 'mic-test'].includes(
@@ -1237,6 +1313,7 @@ export default function Dashboard() {
         }
         try {
           const profileResponse = await authenticatedFetch('/api/users/role', {
+            signal,
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1248,6 +1325,7 @@ export default function Dashboard() {
           });
           if (!profileResponse.ok) throw new Error('Profile update failed');
         } catch (err) {
+          if (signal.aborted) return;
           console.error('Error saving onboarding profile:', err);
           setFormError('Couldn’t save your target role. Please try again.');
           return;
@@ -1283,6 +1361,7 @@ export default function Dashboard() {
       if (!hasCompletedDiagnostic) {
         try {
           const profileResponse = await authenticatedFetch('/api/users/role', {
+            signal,
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1294,6 +1373,7 @@ export default function Dashboard() {
           });
           if (!profileResponse.ok) throw new Error('Profile update failed');
         } catch (err) {
+          if (signal.aborted) return;
           console.error('Error saving role:', err);
           setFormError('Couldn’t save your target role. Please try again.');
           return;
@@ -1345,6 +1425,10 @@ export default function Dashboard() {
 
   const handleConfirmLaunch = useCallback(
     async (briefingFocus, preparedLaunchId) => {
+      launchAbortRef.current?.abort();
+      const launchController = new AbortController();
+      launchAbortRef.current = launchController;
+      const { signal } = launchController;
       const user = auth.currentUser;
       if (!user) return;
       const focus = briefingFocus || selectedFocus;
@@ -1358,6 +1442,7 @@ export default function Dashboard() {
 
       try {
         const profileResponse = await authenticatedFetch('/api/users/role', {
+          signal,
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1369,6 +1454,7 @@ export default function Dashboard() {
         });
         if (!profileResponse.ok) throw new Error('Profile update failed');
       } catch (err) {
+        if (signal.aborted) return;
         console.error('Error saving role & focus area:', err);
         setFormError('Couldn’t save your target role. Please try again.');
         setIsBriefingModalOpen(false);
@@ -1383,6 +1469,7 @@ export default function Dashboard() {
 
   const handleCloseBriefing = useCallback(() => {
     setIsBriefingModalOpen(false);
+    setBriefingContext(null);
   }, []);
 
   // "Start Fresh Session" is destructive, it wipes the in-progress session
@@ -1469,6 +1556,47 @@ export default function Dashboard() {
   const recommendedDifficulty = unlockedDifficulty || 'easy';
   const recommendedDifficultyLabel =
     recommendedDifficulty.charAt(0).toUpperCase() + recommendedDifficulty.slice(1);
+  const difficultyOptions = [
+    { value: 'easy', label: 'Easy' },
+    { value: 'medium', label: unlockedDifficulty === 'easy' ? 'Medium · keep practicing to unlock' : 'Medium', disabled: unlockedDifficulty === 'easy' },
+    { value: 'hard', label: unlockedDifficulty !== 'hard' ? 'Hard · keep practicing to unlock' : 'Hard', disabled: unlockedDifficulty !== 'hard' },
+  ];
+  // Resolve only public display state. No audio subscription or additional fetch.
+  useNikkiPageContext(useMemo(() => activeTab !== 'Interview Prep' ? null : () => {
+    const onboarding = !hasCompletedDiagnostic;
+    const state = dataStatus === 'loading' ? 'loading' : dataStatus === 'error' ? 'error' : onboarding ? 'onboarding' : 'ready';
+    const startLabel = onboarding ? isSessionActive ? 'Resume practice' : 'Begin setup'
+      : isSessionActive ? 'Resume session' : pendingJourneyLabel ? 'Continue diagnostic' : 'Start session';
+    return {
+      route: '/dashboard', page: 'interview_prep', state, rolesStatus,
+      role: { visible: true, value: selectedRole, options: getRoleOptions(roles, rolesStatus, selectedRole), disabled: isSessionActive || !rolesReady },
+      difficulty: { visible: !onboarding, value: selectedDifficulty, disabled: isSessionActive, options: [
+        { value: 'easy', label: 'Easy' },
+        { value: 'medium', label: unlockedDifficulty === 'easy' ? 'Medium · keep practicing to unlock' : 'Medium', disabled: unlockedDifficulty === 'easy' },
+        { value: 'hard', label: unlockedDifficulty !== 'hard' ? 'Hard · keep practicing to unlock' : 'Hard', disabled: unlockedDifficulty !== 'hard' },
+      ] },
+      focus: { visible: !onboarding, value: selectedFocus, options: FOCUS_OPTIONS, disabled: isSessionActive },
+      modal: isProfileModalOpen ? 'profile' : isConfirmFresh ? 'discard' : isBriefingModalOpen ? 'briefing' : null,
+      briefing: isBriefingModalOpen ? briefingContext : null,
+      session: { active: isSessionActive, resumable: activeSession?.hasResumableSession === true,
+        set: activeSession?.activeSet, nextQuestion: isSessionActive ? activeSession.answersCount + 1 : null, nextStage: activeSession?.nextStage },
+      start: { label: startLabel, disabled: !canContinueWithoutRole && !selectedRoleAvailable },
+      errorMessage: formError || freshResetError || (!rolesReady ? rolesStatus === 'error' ? 'Couldn’t load target roles. Check your connection and try again.' : '' : selectedRole && !selectedRoleAvailable ? 'Your saved target role is unavailable. Choose another target role to start a new session.' : ''),
+      guidance: onboarding ? 'Choose a target role, check your audio, and answer five questions out loud. Next: confidence check, microphone check, five spoken answers. Practice curriculum unlocks after the starting check.'
+        : isSessionActive ? 'Your answers are saved. Configuration is locked. Resume session continues saved work. Start Fresh Session requires discarding in-progress answers.'
+        : needsFinalReflection ? 'Your progress check is saved. Finish your confidence check to see how your answers compare.'
+        : 'Choose role, focus and an unlocked difficulty. 3C skill drills are separate disposable exercises.',
+      recommendation: !onboarding && comparisonReady ? { title: isSessionActive ? `Continue Set ${activeSession.activeSet}` : `Strengthen your ${recommendedFocus.label}`,
+        description: isSessionActive ? `Continue with question ${activeSession.answersCount + 1} of ${activeSession.totalQuestions || 5}.` : recommendedFocus.next,
+        focus: recommendedFocus.key, difficulty: recommendedDifficulty } : null,
+      cards: PRACTICE_CARDS.map(card => ({ title: card.title, description: card.desc, locked: onboarding })),
+      startingScoreDetails: !onboarding && !comparisonReady && document.querySelector('#tabpanel-interview-prep .starting-score-details[open]')
+        ? { visible: true, score: baselineScore != null && baselineScore >= 1 && baselineScore <= 5 ? `${baselineScore.toFixed(1)} / 5.0` : '--' } : { visible: false },
+    };
+  }, [activeTab, hasCompletedDiagnostic, dataStatus, rolesStatus, selectedRole, roles, rolesReady, isSessionActive,
+    selectedDifficulty, unlockedDifficulty, selectedFocus, isProfileModalOpen, isConfirmFresh, isBriefingModalOpen,
+    briefingContext, activeSession, pendingJourneyLabel, canContinueWithoutRole, selectedRoleAvailable,
+    formError, freshResetError, needsFinalReflection, comparisonReady, recommendedFocus, recommendedDifficulty, baselineScore]));
 
   return (
     /*
@@ -1499,7 +1627,7 @@ export default function Dashboard() {
               aria-label="Open profile settings"
               ref={avatarBtnRef}
             >
-              {userName}
+              <span className="db-profile-avatar" style={getAvatarStyle(selectedAvatar)} aria-hidden="true" />
             </button>
             <span className="db-sidebar__user-name" title={fullName}>
               {fullName}
@@ -1570,7 +1698,7 @@ export default function Dashboard() {
             aria-label="Open profile settings"
             id="btn-profile-avatar"
           >
-            {userName}
+            <span className="db-profile-avatar" style={getAvatarStyle(selectedAvatar)} aria-hidden="true" />
           </button>
           <span className="db-sidebar__user-name" title={fullName}>
             {fullName}
@@ -1733,6 +1861,7 @@ export default function Dashboard() {
                       <button
                         type="button"
                         className="db-cta-btn db-onboarding__cta"
+                        id="btn-start-pretest"
                         onClick={() => handleStartSession()}
                         disabled={!canContinueWithoutRole && !selectedRoleAvailable}
                         aria-label={
@@ -1946,109 +2075,25 @@ export default function Dashboard() {
                   </section>
                 )}
 
-                {/* ── Session console bar, configure & launch ── */}
+                {/* Session setup uses the same accessible dropdown interaction in both views. */}
                 <section className="db-config-bar" aria-label="Session setup">
-                  {/* Target Role */}
                   <div className="db-config-bar__field">
-                    <label htmlFor="role-select" className="db-config-bar__label">
-                      Target role
-                    </label>
-                    <div className="db-select-wrap">
-                      <Briefcase
-                        size={17}
-                        className="db-select-wrap__icon db-select-wrap__icon--violet"
-                      />
-                      <select
-                        id="role-select"
-                        className="db-select"
-                        value={selectedRole}
-                        onChange={(e) => {
-                          setSelectedRole(e.target.value);
-                          if (formError) setFormError(null);
-                        }}
-                        disabled={isSessionActive || !rolesReady}
-                        aria-describedby={!rolesReady ? 'db-role-catalogue-status' :
-                          selectedRole && !selectedRoleAvailable ? 'db-role-unavailable' : undefined}
-                        title={
-                          isSessionActive
-                            ? "Target Role is locked during active practice session. Click 'Start Fresh Session' below to edit."
-                            : ''
-                        }
-                      >
-                        {roleOptions.map((o) => (
-                          <option key={o.value} value={o.value} disabled={o.disabled}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={17} className="db-select-wrap__chevron" />
-                    </div>
+                    <label id="role-select-label" htmlFor="role-select" className="db-config-bar__label">Target role</label>
+                    <DashboardRoleSelect id="role-select" labelledBy="role-select-label"
+                      options={roleOptions} value={selectedRole}
+                      onChange={role => { setSelectedRole(role); if (formError) setFormError(null); }}
+                      disabled={isSessionActive || !rolesReady}
+                      describedBy={!rolesReady ? 'db-role-catalogue-status' : selectedRole && !selectedRoleAvailable ? 'db-role-unavailable' : undefined} />
                   </div>
-
-                  {/* 3C Focus Area */}
                   <div className="db-config-bar__field">
-                    <label htmlFor="focus-select" className="db-config-bar__label">
-                      Focus area
-                    </label>
-                    <div className="db-select-wrap">
-                      <Sparkles
-                        size={17}
-                        className="db-select-wrap__icon db-select-wrap__icon--violet"
-                      />
-                      <select
-                        id="focus-select"
-                        className="db-select"
-                        value={selectedFocus}
-                        onChange={(e) => setSelectedFocus(e.target.value)}
-                        disabled={isSessionActive}
-                        title={
-                          isSessionActive
-                            ? "Focus Area is locked during active practice session. Click 'Start Fresh Session' below to edit."
-                            : ''
-                        }
-                      >
-                        {FOCUS_OPTIONS.map((f) => (
-                          <option key={f.value} value={f.value}>
-                            {f.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={17} className="db-select-wrap__chevron" />
-                    </div>
+                    <label id="focus-select-label" htmlFor="focus-select" className="db-config-bar__label">Focus area</label>
+                    <DashboardRoleSelect id="focus-select" labelledBy="focus-select-label" icon={Sparkles}
+                      options={FOCUS_OPTIONS} value={selectedFocus} onChange={setSelectedFocus} disabled={isSessionActive} />
                   </div>
-
-                  {/* Difficulty */}
                   <div className="db-config-bar__field">
-                    <label htmlFor="difficulty-select" className="db-config-bar__label">
-                      Difficulty
-                    </label>
-                    <div className="db-select-wrap">
-                      <Gauge
-                        size={17}
-                        className="db-select-wrap__icon db-select-wrap__icon--violet"
-                      />
-                      <select
-                        id="difficulty-select"
-                        className="db-select"
-                        value={selectedDifficulty}
-                        onChange={(e) => setSelectedDifficulty(e.target.value)}
-                        disabled={isSessionActive}
-                        title={
-                          isSessionActive
-                            ? "Difficulty is locked during active practice session. Click 'Start Fresh Session' below to edit."
-                            : ''
-                        }
-                      >
-                        <option value="easy">Easy</option>
-                        <option value="medium" disabled={unlockedDifficulty === 'easy'}>
-                          Medium · keep practicing to unlock
-                        </option>
-                        <option value="hard" disabled={unlockedDifficulty !== 'hard'}>
-                          Hard · keep practicing to unlock
-                        </option>
-                      </select>
-                      <ChevronDown size={17} className="db-select-wrap__chevron" />
-                    </div>
+                    <label id="difficulty-select-label" htmlFor="difficulty-select" className="db-config-bar__label">Difficulty</label>
+                    <DashboardRoleSelect id="difficulty-select" labelledBy="difficulty-select-label" icon={Gauge}
+                      options={difficultyOptions} value={selectedDifficulty} onChange={setSelectedDifficulty} disabled={isSessionActive} />
                   </div>
 
                   <button
@@ -2250,6 +2295,7 @@ export default function Dashboard() {
               weakTopic={weakTopic}
               sessionsCount={sessionsCount}
               onSwitchTab={setActiveTab}
+              modal={isProfileModalOpen ? 'profile' : isSignOutDialogOpen ? 'sign_out' : isConfirmFresh ? 'discard' : isBriefingModalOpen ? 'briefing' : null}
             />
           )}
         </DashboardPanel>
@@ -2271,23 +2317,30 @@ export default function Dashboard() {
       {/* ── Profile Settings Modal ── */}
       <AnimatePresence initial={false}>
       {isProfileModalOpen && (
-        <Motion.div
+        <Motion.dialog
           key="profile-dialog"
           initial={{ opacity: reduceMotion ? 1 : 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.14 } }}
-          className="db-modal-backdrop" onClick={handleCloseProfileModal}>
-          <Motion.div
-            initial={{ opacity: reduceMotion ? 1 : 0, scale: reduceMotion ? 1 : 0.97, y: reduceMotion ? 0 : 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.98, y: reduceMotion ? 0 : 4, transition: { duration: reduceMotion ? 0 : 0.14 } }}
-            className="db-modal"
+            className="db-modal db-profile-modal"
             ref={profileModalRef}
-            role="dialog"
             aria-modal="true"
             aria-labelledby="db-profile-modal-title"
-            onClick={(e) => e.stopPropagation()}
+            aria-describedby="db-profile-modal-description"
+            aria-busy={isSavingProfile || undefined}
+            onCancel={(e) => { e.preventDefault(); handleCloseProfileModal(); }}
+            onClick={(e) => {
+              if (e.target !== e.currentTarget) return;
+              const bounds = e.currentTarget.getBoundingClientRect();
+              if (e.clientX < bounds.left || e.clientX > bounds.right ||
+                  e.clientY < bounds.top || e.clientY > bounds.bottom) handleCloseProfileModal();
+            }}
             onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target.id === 'modal-display-name') {
+                e.preventDefault();
+                if (!isSavingProfile) handleSaveProfile();
+                return;
+              }
               if (e.key === 'Escape') {
                 e.stopPropagation();
                 if (!isSavingProfile) handleCloseProfileModal();
@@ -2320,7 +2373,7 @@ export default function Dashboard() {
                 <h2 id="db-profile-modal-title" className="db-modal__title">
                   Profile Settings
                 </h2>
-                <p className="db-modal__sub">Update your display name, role, and focus area.</p>
+                <p id="db-profile-modal-description" className="db-modal__sub">Personalize how you appear in ITerview.</p>
               </div>
               <button
                 type="button"
@@ -2329,88 +2382,51 @@ export default function Dashboard() {
                 aria-label="Close profile settings"
                 disabled={isSavingProfile}
               >
-                ✕
+                <X size={23} aria-hidden="true" />
               </button>
             </div>
 
             {/* Modal Body */}
             <div className="db-modal__body">
-              {/* Display Name */}
-              <div className="db-modal__field">
-                <label htmlFor="modal-display-name" className="db-modal__label">
-                  Display name
-                </label>
-                <input
-                  id="modal-display-name"
-                  type="text"
-                  className="db-modal__input"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder="Your name (shown in greeting)"
-                  maxLength={60}
-                  disabled={isSavingProfile}
-                  autoComplete="off"
-                />
-                <p className="db-modal__hint">
-                  Shown as &ldquo;Good morning, {editName || '…'}&rdquo;
-                </p>
-              </div>
-
-              {/* Target Role */}
-              <div className="db-modal__field">
-                <label htmlFor="modal-role" className="db-modal__label">
-                  Target role
-                </label>
-                <div className="db-select-wrap">
-                  <Briefcase
-                    size={17}
-                    className="db-select-wrap__icon db-select-wrap__icon--violet"
-                  />
-                  <select
-                    id="modal-role"
-                    className="db-select"
-                    value={editRole}
-                    onChange={(e) => setEditRole(e.target.value)}
-                    disabled={isSavingProfile || !rolesReady}
-                    aria-describedby={rolesReady ? undefined : 'db-profile-role-catalogue-status'}
-                  >
-                    {profileRoleOptions.map((o) => (
-                      <option key={o.value} value={o.value} disabled={o.disabled}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={17} className="db-select-wrap__chevron" />
-                </div>
-                <RoleCatalogueStatus id="db-profile-role-catalogue-status" status={rolesStatus} onRetry={retryRoles} />
-              </div>
-
-              {/* Focus Area */}
-              <div className="db-modal__field">
-                <label htmlFor="modal-focus" className="db-modal__label">
-                  Focus area
-                </label>
-                <div className="db-select-wrap">
-                  <Sparkles
-                    size={17}
-                    className="db-select-wrap__icon db-select-wrap__icon--violet"
-                  />
-                  <select
-                    id="modal-focus"
-                    className="db-select"
-                    value={editFocus}
-                    onChange={(e) => setEditFocus(e.target.value)}
+              <div className="db-profile-summary">
+                <span className="db-profile-avatar db-profile-summary__avatar" style={getAvatarStyle(editAvatar)} role="img" aria-label={`${getProfileAvatar(editAvatar).label} avatar`} />
+                <div className="db-profile-summary__copy">
+                  <label htmlFor="modal-display-name" className="db-modal__label">Display name</label>
+                  <input
+                    id="modal-display-name"
+                    type="text"
+                    className="db-modal__input"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Your name"
+                    maxLength={60}
                     disabled={isSavingProfile}
-                  >
-                    {FOCUS_OPTIONS.map((f) => (
-                      <option key={f.value} value={f.value}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={17} className="db-select-wrap__chevron" />
+                    autoComplete="nickname"
+                    aria-describedby="db-profile-name-hint"
+                  />
+                  <p id="db-profile-name-hint" className="db-modal__hint">Used in your dashboard greeting.</p>
                 </div>
               </div>
+
+              <fieldset className="db-profile-avatars" disabled={isSavingProfile}>
+                <legend>Choose your avatar</legend>
+                <div className="db-profile-avatars__grid">
+                  {PROFILE_AVATARS.map((avatar) => (
+                    <label key={avatar.id} className="db-profile-avatars__option">
+                      <input type="radio" name="profile-avatar" value={avatar.id} checked={editAvatar === avatar.id} onChange={() => setEditAvatar(avatar.id)} aria-label={`${avatar.label} avatar`} />
+                      <span className="db-profile-avatar" style={getAvatarStyle(avatar.id)} aria-hidden="true" />
+                      {editAvatar === avatar.id && <span className="db-profile-avatars__check" aria-hidden="true"><Check size={17} strokeWidth={3} /></span>}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <dl className="db-profile-account">
+                <dt>Account email</dt>
+                <dd>{auth.currentUser?.email || 'Email unavailable'}</dd>
+              </dl>
+              <p className="db-profile-prep-note">
+                Choose your role, focus, and difficulty in Interview Prep. Profile changes won’t change your session setup.
+              </p>
 
               {/* Error message */}
               {profileError && (
@@ -2441,8 +2457,7 @@ export default function Dashboard() {
                 {isSavingProfile ? 'Saving…' : 'Save changes'}
               </button>
             </div>
-          </Motion.div>
-        </Motion.div>
+        </Motion.dialog>
       )}
       </AnimatePresence>
 
@@ -2457,6 +2472,7 @@ export default function Dashboard() {
             sessionMode={briefingMode}
             onConfirm={handleConfirmLaunch}
             onClose={handleCloseBriefing}
+            onContextChange={setBriefingContext}
           />
         )}
       </AnimatePresence>

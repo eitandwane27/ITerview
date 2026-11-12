@@ -31,8 +31,6 @@ router.post("/speak", async (req, res) => {
   }
 
   try {
-    console.log(`[TTS #${reqId} | ${timeStr}] 🔊 Request for: "${text.substring(0, 60)}…" (voice: ${voice || "default"})`);
-
     const audioBuffer = await synthesizeSpeech(text, voice);
 
     // ── Stream audio back to the client ─────────────────────────────────
@@ -46,7 +44,7 @@ router.post("/speak", async (req, res) => {
     res.send(audioBuffer);
     console.log(`[TTS #${reqId} | ${timeStr}] ✅ Streamed ${audioBuffer.length} bytes of audio`);
   } catch (err) {
-    console.error(`[TTS #${reqId} | ${timeStr}] ❌ Error:`, err.message);
+    console.error(`[TTS #${reqId} | ${timeStr}] ❌ Speech synthesis failed`);
     res.status(500).json({ error: err.message });
   }
 });

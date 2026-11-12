@@ -4,6 +4,7 @@ const { getEvaluatorRubric } = require('../config/evaluatorRubrics');
 const { safeParseJSON } = require('../utils/jsonParser');
 
 const deepseek = new OpenAI({
+  logLevel: 'off',
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: 'https://api.deepseek.com',
 });
@@ -124,7 +125,7 @@ Student's Answer: "${transcript}"`,
         : 'focus_completeness',
     };
   } catch (err) {
-    console.error('[aiEvaluator] Error evaluating 3C scores:', err.message);
+    console.error('[aiEvaluator] Error evaluating 3C scores');
     throw err;
   }
 }

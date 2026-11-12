@@ -160,10 +160,67 @@ test('workspace navigation and coaching actions use the connected event flow', a
   await workspace.screenshot({ path: 'test-results/workspace-detailed-drill.png' });
 });
 
+for (const assessment of ['pre-test', 'post-test']) {
+  test(`${assessment} keeps five tabs and Feedback requests a practice set`, async ({ page }) => {
+    const prompts = [];
+    await page.routeWebSocket('**/__voice-preview-ws__', (route) => {
+      const server = route.connectToServer();
+      route.onMessage((message) => {
+        if (typeof message === 'string') {
+          const command = JSON.parse(message);
+          if (command.type === 'inject_user_message') {
+            if (!prompts.length) command.content = `Show me my ${assessment} scores`;
+            prompts.push(command.content);
+            server.send(JSON.stringify(command));
+            return;
+          }
+        }
+        server.send(message);
+      });
+    });
+    await page.goto(preview.baseURL);
+    await page.getByRole('button', { name: 'Show me my technical scores', exact: true }).click();
+    const workspace = page.getByRole('complementary', { name: 'Nikki workspace' });
+    const tabs = workspace.getByRole('navigation', { name: 'Workspace views' }).getByRole('button');
+    await expect(workspace.getByText(/One-time research assessment/)).toBeVisible();
+    await expect(tabs).toHaveText(['Scores', 'Feedback', 'Compare', 'STAR', 'Drill']);
+    await workspace.getByRole('button', { name: 'Feedback', exact: true }).click();
+    await expect(page.locator('.va-status p')).toContainText('Which practice set');
+    expect(prompts.at(-1)).toContain('practice-set feedback');
+    expect(prompts.at(-1)).not.toMatch(/pre.?test|post.?test/i);
+    await expect(workspace.getByRole('region', { name: 'Question feedback' })).toHaveCount(0);
+    await expect(tabs).toHaveCount(5);
+
+    for (const [tab, heading] of [
+      ['STAR', 'Give your story a shape'],
+      ['Compare', 'Two attempts. One perspective.'],
+      ['Drill', 'A little practice in completeness'],
+    ]) {
+      await workspace.getByRole('button', { name: tab, exact: true }).click();
+      await expect(workspace.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+      await expect(tabs).toHaveText(['Scores', 'Feedback', 'Compare', 'STAR', 'Drill']);
+      await expect(workspace.getByRole('button', { name: tab, exact: true })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+    }
+    await page.getByRole('button', { name: 'Show me my Set 2 feedback', exact: true }).click();
+    await expect(workspace.getByRole('region', { name: 'Question feedback' })).toBeVisible();
+    await expect(workspace.getByRole('button', { name: 'Feedback', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    await expect(tabs).toHaveCount(5);
+  });
+}
+
 for (const width of [390, 768, 1440]) {
   test(`research assessments explain their purpose and preserve score-only views at ${width}px`, async ({
     page,
   }) => {
+    // This checks several complete views and screenshots in one conversation;
+    // software GPU rendering needs more than the single-interaction budget.
+    test.setTimeout(60_000);
     let requested = '';
     await page.routeWebSocket('**/__voice-preview-ws__', (route) => {
       const server = route.connectToServer();
@@ -192,7 +249,12 @@ for (const width of [390, 768, 1440]) {
         'aria-pressed',
         'true'
       );
-      await expect(workspace.getByRole('button', { name: 'Feedback', exact: true })).toHaveCount(0);
+      await expect(
+        workspace.getByRole('navigation', { name: 'Workspace views' }).getByRole('button')
+      ).toHaveCount(5);
+      await expect(
+        workspace.getByRole('button', { name: 'Feedback', exact: true })
+      ).toHaveAttribute('aria-pressed', 'false');
       await expect(workspace.getByRole('button', { name: 'Review question feedback' })).toHaveCount(
         0
       );
@@ -581,6 +643,8 @@ for (const viewport of [
 
 for (const viewport of [
   { width: 320, height: 568 },
+  { width: 320, height: 541 },
+  { width: 390, height: 541 },
   { width: 390, height: 844 },
   { width: 568, height: 320 },
   { width: 760, height: 640 },
@@ -613,7 +677,11 @@ for (const viewport of [
             issues.push('header controls overlap');
           }
         }
-        if (rect(stage).top < rect(topbar).bottom - 1) issues.push('stage overlaps header');
+        const experience = document.querySelector('.va-experience');
+        // At high zoom/short landscape sizes the content scrolls beneath its
+        // clipped viewport, while the header remains in its separate grid row.
+        const visibleStageTop = Math.max(rect(stage).top, rect(experience).top);
+        if (visibleStageTop < rect(topbar).bottom - 1) issues.push('stage overlaps header');
         for (let i = 0; i < children.length; i++) {
           const a = rect(children[i]);
           for (const sibling of children.slice(i + 1)) {
@@ -643,11 +711,16 @@ for (const viewport of [
           stage.clientWidth -
           parseFloat(stageStyle.paddingLeft) -
           parseFloat(stageStyle.paddingRight);
-        if (orb.width < Math.min(280, stageContentWidth) - 1)
-          issues.push('trademark orb is too small');
+        const slot = rect(document.querySelector('.va-orb-slot'));
+        const minimumOrb = Math.min(280, stageContentWidth, slot.height, innerHeight * 0.42);
+        if (orb.width < minimumOrb - 1) issues.push('orb does not use the available space');
+        if (Math.abs(field.width - field.height) > 1) issues.push('orb is not square');
         if (orb.top < field.top - 1 || orb.bottom > field.bottom + 1)
           issues.push('orb escapes its row');
         const workspace = document.querySelector('.va-workspace');
+        const shell = document.querySelector('.voice-agent-playground');
+        if (innerHeight > 540 && shell.scrollHeight > shell.clientHeight + 1)
+          issues.push('conversation has a page scrollbar');
         if (workspace) {
           const panel = rect(workspace);
           const header = rect(workspace.querySelector('.va-workspace__header'));
@@ -657,7 +730,8 @@ for (const viewport of [
             issues.push('workspace regions overlap');
           if (
             panel.bottom > rect(stage).top &&
-            panel.top < rect(stage).bottom &&
+            panel.top <
+              Math.max(rect(stage).bottom, ...children.map((child) => rect(child).bottom)) &&
             panel.left < rect(stage).right
           ) {
             issues.push('workspace overlaps voice stage');

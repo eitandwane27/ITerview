@@ -1,4 +1,5 @@
 import { auth } from '../firebase';
+import { apiUrl } from './backendUrl';
 import { schoolAccessStatus } from './schoolAccess';
 
 export async function schoolIdToken() {
@@ -14,7 +15,7 @@ export async function authenticatedFetch(input, options = {}) {
   const token = await schoolIdToken();
   const headers = new Headers(options.headers);
   headers.set('Authorization', `Bearer ${token}`);
-  return fetch(input, { ...options, headers });
+  return fetch(apiUrl(input), { ...options, headers });
 }
 
 export async function schoolSocketProtocols() {

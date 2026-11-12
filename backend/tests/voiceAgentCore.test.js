@@ -8,6 +8,63 @@ const {
 } = require("../services/voiceAgentService");
 const knowledge = require("../services/chatbotKnowledgeService");
 
+test('sign-out has one farewell step after the queued action is accepted', () => {
+  const think = buildVoiceAgentSettings().agent.think;
+  const tool = think.functions.find(item => item.name === 'sign_out');
+  assert.deepEqual(tool.parameters, { type: 'object', properties: {}, additionalProperties: false });
+  assert.equal(tool.defer_until_eot, true);
+  assert.match(think.prompt, /call sign_out FIRST/);
+  assert.match(think.prompt, /Do not speak a preamble or farewell before the tool call/);
+  assert.match(tool.description, /After its scheduled result, speak the requested farewell exactly once/);
+  assert.doesNotMatch(think.prompt, /SAY a short, warm goodbye aloud first/);
+  assert.match(think.prompt, /Goodbye alone.*does not authorize signing out/);
+  assert.match(think.prompt, /other than explicitly requested sign-out through sign_out/);
+});
+
+test('Nikki has bounded Dashboard and Playground tools with clarification and success guidance', () => {
+  const settings = buildVoiceAgentSettings();
+  const tool = settings.agent.think.functions.find(item => item.name === 'open_practice_history');
+  assert.deepEqual(tool.parameters.properties, {});
+  assert.equal(tool.parameters.additionalProperties, false);
+  assert.match(settings.agent.think.prompt, /Wait for the tool result before saying History is open/);
+  assert.match(settings.agent.think.prompt, /does not refresh your saved progress snapshot/);
+  const progress = settings.agent.think.functions.find(item => item.name === 'open_my_progress');
+  assert.deepEqual(progress.parameters, { type: 'object', properties: {}, additionalProperties: false });
+  assert.equal(progress.defer_until_eot, true);
+  assert.match(settings.agent.think.prompt, /Wait for the tool result before saying My Progress is open/);
+  assert.match(settings.agent.think.prompt, /General questions about scores or improvement alone do not request this tab/);
+  assert.match(settings.agent.think.prompt, /Current page awareness supports Practice History, Practice Again, Interview Prep and My Progress/);
+  const prep = settings.agent.think.functions.find(item => item.name === 'configure_interview_prep');
+  assert.equal(prep.parameters.additionalProperties, false);
+  assert.deepEqual(prep.parameters.properties.action.enum, ['configure', 'start', 'resume']);
+  assert.match(settings.agent.think.prompt, /Omitted settings stay unchanged/);
+  assert.match(settings.agent.think.prompt, /without repetitive confirmation/);
+  assert.match(settings.agent.think.prompt, /never discard it to satisfy a change/);
+  const practiceAgain = settings.agent.think.functions.find(item => item.name === 'open_practice_again');
+  assert.deepEqual(practiceAgain.parameters, { type: 'object', properties: {}, additionalProperties: false });
+  assert.equal(practiceAgain.defer_until_eot, true);
+  assert.match(settings.agent.think.prompt, /Wait for the tool result before saying Practice Again is open/);
+  assert.match(settings.agent.think.prompt, /A general wish to practise again does not by itself request this tab/);
+  assert.match(settings.agent.think.prompt, /it does not start or restart practice, select a question or change saved data/);
+  assert.match(practiceAgain.description, /bounded current page context/);
+  assert.match(settings.agent.think.prompt, /only Start practice in that dialog begins one-question voice practice/);
+  assert.match(settings.agent.think.prompt, /cannot remove\/restore a question or change assessment scores/);
+  const coach = settings.agent.think.functions.find(item => item.name === 'open_ai_coach');
+  assert.deepEqual(coach.parameters, { type: 'object', properties: {}, additionalProperties: false });
+  assert.equal(coach.defer_until_eot, true);
+  assert.match(settings.agent.think.prompt, /Wait for the tool result before saying AI Coach is open/);
+  assert.match(settings.agent.think.prompt, /General requests for coaching or help do not by themselves request navigation/);
+  assert.match(settings.agent.think.prompt, /it does not send or reset a coach chat, type a message, start practice, change saved data, or supply the tab's contents or conversation/);
+  assert.match(settings.agent.think.prompt, /AI Coach text conversation and this Nikki voice conversation are separate/);
+  const returning = settings.agent.think.functions.find(item => item.name === 'return_to_playground');
+  assert.deepEqual(returning.parameters, { type: 'object', properties: {}, additionalProperties: false });
+  assert.equal(returning.defer_until_eot, true);
+  assert.match(settings.agent.think.prompt, /For an ambiguous "go back"/);
+  assert.match(settings.agent.think.prompt, /Do not call a navigation tool until the destination is resolved/);
+  assert.match(settings.agent.think.prompt, /A short confirmation answers that question/);
+  assert.match(settings.agent.think.prompt, /keeps the same voice conversation connected/);
+});
+
 const ENV_KEYS = [
   "DEEPSEEK_MODEL",
   "DEEPSEEK_API_KEY",

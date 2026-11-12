@@ -26,6 +26,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import TermsAndConditions from './pages/TermsAndConditions';
 import SignInTransitionProvider from './auth/SignInTransitionProvider';
 import NikkiOpeningProvider from './features/voice-agent/NikkiOpeningProvider';
+import NikkiSessionProvider from './features/voice-agent/NikkiSessionProvider';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
       <SchoolAuthProvider>
         <SignInTransitionProvider>
         <NikkiOpeningProvider>
+        <NikkiSessionProvider>
         <div className="app-layout">
           <Routes>
             <Route path="/" element={<Navigate to="/landing" replace />} />
@@ -153,6 +155,7 @@ function App() {
             </Route>
           </Routes>
         </div>
+        </NikkiSessionProvider>
         </NikkiOpeningProvider>
         </SignInTransitionProvider>
       </SchoolAuthProvider>

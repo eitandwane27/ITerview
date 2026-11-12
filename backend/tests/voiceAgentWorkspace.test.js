@@ -17,7 +17,7 @@ const progress = {
 
 test('workspace tools are registered and Nikki receives show-me examples without changing personality', () => {
   const settings = buildVoiceAgentSettings();
-  assert.deepEqual(settings.agent.think.functions, [WORKSPACE_FUNCTION]);
+  assert.deepEqual(settings.agent.think.functions.find(tool => tool.name === 'show_workspace'), WORKSPACE_FUNCTION);
   assert.equal(WORKSPACE_FUNCTION.defer_until_eot, true);
   assert.match(settings.agent.think.prompt, /Show me my Set 2 feedback/);
   assert.match(settings.agent.think.prompt, /usually respond with three to six spoken sentences/);

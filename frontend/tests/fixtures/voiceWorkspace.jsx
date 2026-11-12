@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import VoiceAgentPlayground from '../../src/features/voice-agent/VoiceAgentPlayground';
+import { NikkiSessionOwner } from '../../src/features/voice-agent/NikkiSessionProvider';
 import '../../src/index.css';
 
 document.body.style.margin = '0';
@@ -22,6 +23,7 @@ Object.defineProperty(navigator, 'mediaDevices', {
       const context = new AudioContext();
       const stream = context.createMediaStreamDestination().stream;
       const track = stream.getTracks()[0];
+      window.voicePreviewTrack = track;
       const stop = track.stop.bind(track);
       track.stop = () => {
         stop();
@@ -46,12 +48,16 @@ export function Destination() {
 
 createRoot(document.getElementById('root')).render(
   <MemoryRouter initialEntries={['/voice-agent']}>
+    <NikkiSessionOwner>
     <Routes>
       <Route path="/voice-agent" element={<VoiceAgentPlayground />} />
       <Route path="*" element={<Destination />} />
     </Routes>
+    </NikkiSessionOwner>
     <div
       style={{
+        position: 'fixed',
+        bottom: 0,
         padding: '4px 12px',
         zIndex: 100,
         font: '10px system-ui',

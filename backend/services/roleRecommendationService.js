@@ -51,7 +51,7 @@ const OUTPUT_RECOVERY_INSTRUCTIONS = `Output requirements for this response:
 Return one complete JSON object with a nonempty reply, a valid recommendedRoleId or null, confidence, and sourceIds.
 Example of the required format (format only; answer the current student message):
 {"reply":"What part of an IT project do you enjoy working on?","recommendedRoleId":null,"confidence":"low","sourceIds":[]}
-Do not output Markdown fences, commentary outside the JSON object, or an empty response. All preceding factual and safety rules still apply.`;
+Do not output Markdown fences, commentary outside the JSON object, or an empty response. Encode line breaks inside reply as JSON newline escapes. All preceding factual and safety rules still apply.`;
 
 class AssistantUnavailableError extends Error {
   constructor(reason = "provider_error") {
@@ -90,6 +90,7 @@ function completionMetadata(completion) {
     choiceCount: Array.isArray(completion.choices) ? completion.choices.length : 0,
     finishReason: FINISH_REASONS.has(choice?.finish_reason) ? choice.finish_reason : "unknown",
     contentCharacters: typeof content === "string" ? content.length : 0,
+    trimmedContentCharacters: typeof content === "string" ? content.trim().length : 0,
     hasReasoning: typeof choice?.message?.reasoning_content === "string"
       && Boolean(choice.message.reasoning_content.trim()),
     completionTokens: safeCount(completion.usage?.completion_tokens),
@@ -98,11 +99,12 @@ function completionMetadata(completion) {
 }
 
 function outputRecoveryPayload(payload) {
-  // DeepSeek documents empty content in JSON mode. Keep native thinking and
-  // validate the final JSON ourselves while changing the provider output mode.
+  // DeepSeek documents occasional empty JSON output and recommends adjusting
+  // the prompt. Keep JSON mode: text mode removes the formatting guarantee
+  // precisely when we need to recover a machine-readable answer.
   return {
     ...payload,
-    response_format: { type: "text" },
+    response_format: { type: "json_object" },
     messages: payload.messages.map((message) => message.role === "system"
       ? { ...message, content: `${message.content}\n\n${OUTPUT_RECOVERY_INSTRUCTIONS}` }
       : message),
@@ -220,6 +222,7 @@ async function createRecommendationReply({ message, history = [] }, { client: su
   }
 
   const client = suppliedClient || new OpenAI({
+    logLevel: "off",
     apiKey: process.env.DEEPSEEK_API_KEY,
     baseURL: "https://api.deepseek.com",
     timeout: AI_TIMEOUT_MS,
@@ -260,7 +263,13 @@ async function createRecommendationReply({ message, history = [] }, { client: su
         if (search && searchCalls >= MAX_WEB_SEARCH_CALLS) {
           // Keep tool definitions so DeepSeek preserves reasoning in the exchange;
           // disable further calls through tool_choice instead of dropping tools.
-          attemptPayload = { ...attemptPayload, tool_choice: "none" };
+          // Restate the output contract after the untrusted search results, close
+          // to answer generation rather than only in the long initial prompt.
+          attemptPayload = {
+            ...attemptPayload,
+            tool_choice: "none",
+            messages: [...attemptPayload.messages, { role: "system", content: OUTPUT_RECOVERY_INSTRUCTIONS }],
+          };
         }
         modelCalls += 1;
         completion = await client.chat.completions.create(attemptPayload, { timeout: remainingMs });

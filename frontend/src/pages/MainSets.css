@@ -1852,6 +1852,109 @@
 }
 
 /* Recorded state */
+.ix-review-meta-row {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ix-transcript-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--ix-border);
+  border-radius: var(--ix-radius-sm);
+  background: var(--ix-surface);
+  color: var(--ix-blue);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.ix-transcript-action:hover:not(:disabled) {
+  background: var(--ix-blue-light);
+  border-color: var(--ix-blue-border);
+}
+
+.ix-transcript-action:active:not(:disabled) {
+  background: var(--ix-border-accent);
+}
+
+.ix-transcript-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ix-transcript-action:focus-visible,
+.ix-transcript-editor:focus-visible {
+  outline: 2px solid var(--ix-blue);
+  outline-offset: 2px;
+}
+
+.ix-transcript-editor {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  max-height: 120px;
+  padding: 8px 10px;
+  resize: none;
+  border: 1px solid var(--ix-blue-border);
+  border-radius: var(--ix-radius-sm);
+  background: var(--ix-surface);
+  color: var(--ix-ink-primary);
+  caret-color: var(--ix-blue);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ix-border) transparent;
+}
+
+.ix-transcript-editor::selection {
+  background: var(--ix-blue-border);
+  color: var(--ix-ink-primary);
+}
+
+.ix-transcript-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ix-transcript-action-save {
+  background: var(--ix-blue-light);
+  border-color: var(--ix-blue-border);
+}
+
+.ix-transcript-review-box {
+  max-height: 96px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ix-border) transparent;
+}
+
+.ix-transcript-review-help {
+  color: var(--ix-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .ix-transcript-editor {
+    font-size: 16px;
+  }
+}
+
+@media (pointer: coarse) {
+  .ix-transcript-action {
+    min-height: 44px;
+  }
+}
+
 .ix-word-count {
   font-size: 11px;
   color: var(--ix-ink-muted);

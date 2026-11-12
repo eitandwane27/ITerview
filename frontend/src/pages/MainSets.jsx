@@ -45,6 +45,7 @@ import {
   ArrowRight,
   Bookmark,
   CircleCheck,
+  Pencil,
   X,
 } from 'lucide-react';
 import './MainSets.css';
@@ -335,6 +336,9 @@ function MainSetsSession() {
   const [volume, setVolume] = useState(0);
   const [partialTranscript, setPartialTranscript] = useState('');
   const [finalTranscript, setFinalTranscript] = useState('');
+  const [isReviewingAnswer, setIsReviewingAnswer] = useState(false);
+  const [isEditingTranscript, setIsEditingTranscript] = useState(false);
+  const [transcriptDraft, setTranscriptDraft] = useState('');
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [currentQuestionText, setCurrentQuestionText] = useState('');
   const [coachTip, setCoachTip] = useState(
@@ -431,6 +435,11 @@ function MainSetsSession() {
   const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
   const finalTranscriptRef = useRef('');
+  const acceptingTranscriptsRef = useRef(false);
+  const previewRecordingRef = useRef(0);
+  const submissionPendingRef = useRef(false);
+  const transcriptEditorRef = useRef(null);
+  const editTranscriptButtonRef = useRef(null);
   const audioQueueRef = useRef([]);
   const isPlayingRef = useRef(false);
   const currentAudioRef = useRef(null);
@@ -439,6 +448,25 @@ function MainSetsSession() {
   const isSessionCompleteRef = useRef(false);
   const processQueueRef = useRef(null);
   const liveTranscriptScrollRef = useRef(null);
+
+  useEffect(() => {
+    if (isEditingTranscript) {
+      const editor = transcriptEditorRef.current;
+      editor?.focus();
+      editor?.setSelectionRange(editor.value.length, editor.value.length);
+    }
+  }, [isEditingTranscript]);
+
+  const finishTranscriptEdit = (save) => {
+    if (save) {
+      const text = transcriptDraft.trim();
+      if (!text) return;
+      finalTranscriptRef.current = text;
+      setFinalTranscript(text);
+    }
+    setIsEditingTranscript(false);
+    requestAnimationFrame(() => editTranscriptButtonRef.current?.focus());
+  };
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -746,6 +774,11 @@ function MainSetsSession() {
           setStatus(msg.message);
           break;
         case 'question_text':
+          acceptingTranscriptsRef.current = false;
+          submissionPendingRef.current = false;
+          setIsReviewingAnswer(false);
+          setIsEditingTranscript(false);
+          setTranscriptDraft('');
           setCanRetryEvaluation(false);
           setError('');
           addQuestion(msg.index, msg.text);
@@ -775,6 +808,9 @@ function MainSetsSession() {
           }
           break;
         case 'transcript':
+          // A provider can deliver buffered results after stop. Keep the
+          // review snapshot (and any corrections) stable until submission.
+          if (!acceptingTranscriptsRef.current) break;
           if (msg.isFinal) {
             if (msg.text) {
               finalTranscriptRef.current = finalTranscriptRef.current
@@ -788,6 +824,8 @@ function MainSetsSession() {
           }
           break;
         case 'error':
+          acceptingTranscriptsRef.current = false;
+          submissionPendingRef.current = false;
           setError(msg.message);
           setIsGeneratingQuestions(false);
           cleanupAudio();
@@ -822,6 +860,8 @@ function MainSetsSession() {
     };
 
     ws.onclose = () => {
+      acceptingTranscriptsRef.current = false;
+      submissionPendingRef.current = false;
       setIsConnected(false);
       cleanupAudio();
       setIsRecording(false);
@@ -924,178 +964,193 @@ function MainSetsSession() {
     animFrameRef.current = requestAnimationFrame(tick);
   };
 
+  // Review is local until the user explicitly submits the confirmed text.
+  const submitAnswer = useCallback(() => {
+    const text = finalTranscriptRef.current.trim();
+    if (!isReviewingAnswer || isEditingTranscript || !text || isEvaluating ||
+      !isConnected || submissionPendingRef.current) return;
+    if (!preview && wsRef.current?.readyState !== WebSocket.OPEN) return;
+    submissionPendingRef.current = true;
+    submittedAnswerRef.current = text;
+    finalTranscriptRef.current = text;
+    setFinalTranscript(text);
+    setIsReviewingAnswer(false);
+    setError('');
+    setCanRetryEvaluation(false);
+    setIsEvaluating(true);
+    setStatus('Answer submitted. Evaluating...');
+    if (preview) {
+      setTimeout(() => {
+        if (!isMountedRef.current) return;
+        submissionPendingRef.current = false;
+        const previewTip =
+          setNumber === 1
+            ? 'Great detail on the database structure. Try to explain why you chose SQL over NoSQL.'
+            : setNumber === 2
+              ? 'Good explanation of database types. Focus on scaling trade-offs next time.'
+              : 'Excellent use of the STAR method. You clearly outlined the situation and task.';
+        const previewReply =
+          setNumber === 1
+            ? 'That is a solid answer. Let us move on to how you handled testing in that project.'
+            : setNumber === 2
+              ? 'Good explanation of database types. Focus on scaling trade-offs next time.'
+              : 'Excellent use of the STAR method. You clearly outlined the situation and task.';
+
+        setIsEvaluating(false);
+        setCoachTip(previewTip);
+
+        if (setNumber === 2) {
+          setScores({ problem_solving: 8, accuracy: 9, depth: 7 });
+        } else if (setNumber === 3) {
+          setScores({ situation: 8, action: 7, result: 9 });
+        }
+
+        markCurrentAnswered(text, previewReply, previewTip);
+
+        const nextQ = currentQuestion + 1;
+        if (nextQ > 5) {
+          setIsSessionComplete(true);
+          setStatus(`Set ${setNumber} Complete!`);
+        } else {
+          const mockText =
+            setNumber === 1
+              ? `Mock Personalized Question ${nextQ}: How did you handle testing in that project?`
+              : setNumber === 2
+                ? `Mock Technical Question ${nextQ}: Explain JavaScript closures and their use cases.`
+                : `Mock Behavioral Question ${nextQ}: Describe a time you disagreed with a teammate's coding style.`;
+          setCurrentQuestion(nextQ);
+          setCurrentQuestionText(mockText);
+          addQuestion(nextQ, mockText);
+          // Clean slate for Question 2+
+          setFinalTranscript('');
+          setPartialTranscript('');
+          finalTranscriptRef.current = '';
+          setStatus('Question ready. Click Answer to respond.');
+        }
+      }, 1500);
+    } else {
+      wsRef.current.send(JSON.stringify({ type: 'submit_answer', final_text: text }));
+    }
+  }, [isReviewingAnswer, isEditingTranscript, isEvaluating, isConnected, preview,
+    setNumber, currentQuestion, markCurrentAnswered, addQuestion]);
+
   // ── Mic controls ───────────────────────────────────────────────────────────
   const toggleMic = useCallback(async () => {
-    if (preview) {
-      if (isRecording) {
-        setIsRecording(false);
-        setIsEvaluating(true);
-        setStatus('Answer submitted. Evaluating...');
-
-        setTimeout(() => {
-          const previewTip =
-            setNumber === 1
-              ? 'Great detail on the database structure. Try to explain why you chose SQL over NoSQL.'
-              : setNumber === 2
-                ? 'Good explanation of database types. Focus on scaling trade-offs next time.'
-                : 'Excellent use of the STAR method. You clearly outlined the situation and task.';
-          const previewReply =
-            setNumber === 1
-              ? 'That is a solid answer. Let us move on to how you handled testing in that project.'
-              : setNumber === 2
-                ? 'Good explanation of database types. Focus on scaling trade-offs next time.'
-                : 'Excellent use of the STAR method. You clearly outlined the situation and task.';
-
-          setIsEvaluating(false);
-          setCoachTip(previewTip);
-
-          if (setNumber === 2) {
-            setScores({ problem_solving: 8, accuracy: 9, depth: 7 });
-          } else if (setNumber === 3) {
-            setScores({ situation: 8, action: 7, result: 9 });
-          }
-
-          markCurrentAnswered(finalTranscriptRef.current, previewReply, previewTip);
-
-          const nextQ = currentQuestion + 1;
-          if (nextQ > 5) {
-            setIsSessionComplete(true);
-            setStatus(`Set ${setNumber} Complete!`);
-          } else {
-            const mockText =
-              setNumber === 1
-                ? `Mock Personalized Question ${nextQ}: How did you handle testing in that project?`
-                : setNumber === 2
-                  ? `Mock Technical Question ${nextQ}: Explain JavaScript closures and their use cases.`
-                  : `Mock Behavioral Question ${nextQ}: Describe a time you disagreed with a teammate's coding style.`;
-            setCurrentQuestion(nextQ);
-            setCurrentQuestionText(mockText);
-            addQuestion(nextQ, mockText);
-            // Clean slate for Question 2+
-            setFinalTranscript('');
-            setPartialTranscript('');
-            finalTranscriptRef.current = '';
-            setStatus('Question ready. Click Answer to respond.');
-          }
-        }, 1500);
-      } else {
-        setIsRecording(true);
-        setStatus('Listening...');
-        setFinalTranscript('');
-        setPartialTranscript('');
-        finalTranscriptRef.current = '';
-
-        // Progressive preview simulation: sentence 1 interim -> finalized -> sentence 2
-        setTimeout(() => {
-          if (!isMountedRef.current) return;
-          setPartialTranscript('This is a preview transcription of your response.');
-        }, 500);
-
-        setTimeout(() => {
-          if (!isMountedRef.current) return;
-          const s1 = 'This is a preview transcription of your response.';
-          finalTranscriptRef.current = s1;
-          setFinalTranscript(s1);
-          setPartialTranscript(
-            'Variables declared with const are block-scoped and cannot be reassigned,'
-          );
-        }, 1800);
-
-        setTimeout(() => {
-          if (!isMountedRef.current) return;
-          const fullText =
-            'This is a preview transcription of your response. Variables declared with const are block-scoped and cannot be reassigned, whereas let allows reassignment while still maintaining block scope.';
-          finalTranscriptRef.current = fullText;
-          setFinalTranscript(fullText);
-          setPartialTranscript('');
-        }, 3400);
-      }
-      return;
-    }
-
-    if (!isConnected) return;
+    if (!isConnected || isEvaluating || isEditingTranscript || submissionPendingRef.current) return;
+    if (!preview && wsRef.current?.readyState !== WebSocket.OPEN) return;
     setError('');
     setCanRetryEvaluation(false);
 
     if (isRecording) {
+      previewRecordingRef.current += 1;
+      acceptingTranscriptsRef.current = false;
       cleanupAudio();
-      wsRef.current?.send(JSON.stringify({ type: 'stop_recording' }));
+      if (!preview) wsRef.current.send(JSON.stringify({ type: 'stop_recording' }));
       setIsRecording(false);
-      setIsEvaluating(true);
       const combinedText = (
         finalTranscriptRef.current +
         (partialTranscript ? (finalTranscriptRef.current ? ' ' : '') + partialTranscript : '')
       ).trim();
-      submittedAnswerRef.current = combinedText;
       finalTranscriptRef.current = combinedText;
       setFinalTranscript(combinedText);
       setPartialTranscript('');
-      wsRef.current?.send(
-        JSON.stringify({
-          type: 'submit_answer',
-          final_text: combinedText,
-        })
-      );
-      setStatus('Answer submitted. Evaluating...');
-    } else {
-      try {
-        setFinalTranscript('');
+      setIsReviewingAnswer(true);
+      setStatus('Review your transcript, then submit your answer.');
+      return;
+    }
+
+    setIsReviewingAnswer(false);
+    setTranscriptDraft('');
+    setFinalTranscript('');
+    setPartialTranscript('');
+    finalTranscriptRef.current = '';
+
+    if (preview) {
+      const recordingId = ++previewRecordingRef.current;
+      acceptingTranscriptsRef.current = true;
+      setIsRecording(true);
+      setStatus('Listening...');
+
+      // Progressive preview simulation: sentence 1 interim -> finalized -> sentence 2
+      setTimeout(() => {
+        if (!isMountedRef.current || recordingId !== previewRecordingRef.current || !acceptingTranscriptsRef.current) return;
+        setPartialTranscript('This is a preview transcription of your response.');
+      }, 500);
+
+      setTimeout(() => {
+        if (!isMountedRef.current || recordingId !== previewRecordingRef.current || !acceptingTranscriptsRef.current) return;
+        const s1 = 'This is a preview transcription of your response.';
+        finalTranscriptRef.current = s1;
+        setFinalTranscript(s1);
+        setPartialTranscript(
+          'Variables declared with const are block-scoped and cannot be reassigned,'
+        );
+      }, 1800);
+
+      setTimeout(() => {
+        if (!isMountedRef.current || recordingId !== previewRecordingRef.current || !acceptingTranscriptsRef.current) return;
+        const fullText =
+          'This is a preview transcription of your response. Variables declared with const are block-scoped and cannot be reassigned, whereas let allows reassignment while still maintaining block scope.';
+        finalTranscriptRef.current = fullText;
+        setFinalTranscript(fullText);
         setPartialTranscript('');
-        finalTranscriptRef.current = '';
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: 1,
-            sampleRate: 16000,
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        });
-        streamRef.current = stream;
-
-        wsRef.current.send(JSON.stringify({ type: 'start_recording' }));
-
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+      }, 3400);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
           sampleRate: 16000,
-        });
-        audioContextRef.current = audioCtx;
-        const source = audioCtx.createMediaStreamSource(stream);
-        sourceRef.current = source;
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        analyserRef.current = analyser;
-        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-        processorRef.current = processor;
-        source.connect(analyser);
-        source.connect(processor);
-        processor.connect(audioCtx.destination);
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
+      streamRef.current = stream;
 
-        startVolumeMeter(analyser);
+      acceptingTranscriptsRef.current = true;
+      wsRef.current.send(JSON.stringify({ type: 'start_recording' }));
 
-        processor.onaudioprocess = (e) => {
-          if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-          const input = e.inputBuffer.getChannelData(0);
-          const pcm = new Int16Array(input.length);
-          for (let i = 0; i < input.length; i++) {
-            const s = Math.max(-1, Math.min(1, input[i]));
-            pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-          }
-          wsRef.current.send(pcm.buffer);
-        };
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: 16000,
+      });
+      audioContextRef.current = audioCtx;
+      const source = audioCtx.createMediaStreamSource(stream);
+      sourceRef.current = source;
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyserRef.current = analyser;
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
+      source.connect(analyser);
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
 
-        setIsRecording(true);
-      } catch (err) {
-        setError(`Microphone error: ${err.message}`);
-      }
+      startVolumeMeter(analyser);
+
+      processor.onaudioprocess = (e) => {
+        if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+        const input = e.inputBuffer.getChannelData(0);
+        const pcm = new Int16Array(input.length);
+        for (let i = 0; i < input.length; i++) {
+          const s = Math.max(-1, Math.min(1, input[i]));
+          pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+        wsRef.current.send(pcm.buffer);
+      };
+
+      setIsRecording(true);
+    } catch (err) {
+      acceptingTranscriptsRef.current = false;
+      cleanupAudio();
+      setError(`Microphone error: ${err.message}`);
     }
   }, [
     preview,
     isRecording,
     isConnected,
-    currentQuestion,
-    setNumber,
-    markCurrentAnswered,
-    addQuestion,
+    isEvaluating,
+    isEditingTranscript,
     cleanupAudio,
     partialTranscript,
   ]);
@@ -1107,6 +1162,7 @@ function MainSetsSession() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code === 'Space') {
+        if (e.repeat || isReviewingAnswer) return;
         const activeTag = document.activeElement?.tagName?.toLowerCase();
         if (['input', 'textarea', 'button', 'a', 'select'].includes(activeTag)
           || document.activeElement?.isContentEditable) return;
@@ -1126,6 +1182,7 @@ function MainSetsSession() {
     toggleMic,
     micDisabled,
     isRecording,
+    isReviewingAnswer,
     showTranscriptModal,
     showEndModal,
     showSessionGuide,
@@ -1186,7 +1243,10 @@ function MainSetsSession() {
     isOffline: !preview && !isConnected,
     hasError: Boolean(error),
   });
-  const stageCopy = STAGE_STATE_COPY[stageState];
+  const stageCopy = stageState === 'ready' && isReviewingAnswer
+    ? { label: 'Your transcript is ready to review', title: 'Check your transcript',
+      detail: 'Correct any misheard words, then submit your answer.' }
+    : STAGE_STATE_COPY[stageState];
 
   // ── Transcript tab thread (AI question → candidate answer → AI reply) ──────
   // Derived from the same questionsAsked log that drives the question list, so
@@ -1357,7 +1417,7 @@ function MainSetsSession() {
                     <dl>
                       <div>
                         <dt>Answer out loud <kbd>Space</kbd></dt>
-                        <dd>Press once to start recording. Press again to stop and submit your answer.</dd>
+                        <dd>Press once to start recording. Press again to stop. Review your transcript, correct any misheard words, then click Submit answer.</dd>
                       </div>
                       <div>
                         <dt>Review as you go</dt>
@@ -1555,6 +1615,61 @@ function MainSetsSession() {
                         </span>
                       </div>
                     </div>
+                  ) : isReviewingAnswer ? (
+                    <div className="ix-response-state ix-state-review">
+                      <div className="ix-answer-meta-row ix-review-meta-row">
+                        <div className="ix-answer-status">
+                          <span id="transcript-review-label" className="ix-answer-lead">
+                            {isEditingTranscript ? 'Edit transcript' : 'Review your transcript'}
+                          </span>
+                          <span className="ix-word-count">
+                            {(isEditingTranscript ? transcriptDraft : finalTranscript).trim().split(/\s+/).filter(Boolean).length} words
+                          </span>
+                        </div>
+                        {!isEditingTranscript && finalTranscript && (
+                          <button ref={editTranscriptButtonRef} type="button"
+                            className="ix-transcript-action" onClick={() => {
+                              setTranscriptDraft(finalTranscript);
+                              setIsEditingTranscript(true);
+                            }}>
+                            <Pencil size={13} aria-hidden="true" /> Edit transcript
+                          </button>
+                        )}
+                      </div>
+                      {isEditingTranscript ? (
+                        <>
+                          <textarea id="answer-transcript-editor" ref={transcriptEditorRef}
+                            className="ix-transcript-editor" rows={3}
+                            aria-labelledby="transcript-review-label" aria-describedby="transcript-review-help"
+                            value={transcriptDraft} onChange={event => setTranscriptDraft(event.target.value)}
+                            onKeyDown={event => {
+                              if (event.key === 'Escape') {
+                                event.preventDefault();
+                                finishTranscriptEdit(false);
+                              }
+                            }} />
+                          <div className="ix-transcript-edit-actions">
+                            <button type="button" className="ix-transcript-action"
+                              onClick={() => finishTranscriptEdit(false)}>Cancel</button>
+                            <button type="button" className="ix-transcript-action ix-transcript-action-save"
+                              disabled={!transcriptDraft.trim()}
+                              onClick={() => finishTranscriptEdit(true)}>Save changes</button>
+                          </div>
+                        </>
+                      ) : finalTranscript ? (
+                        <div className="ix-transcript-review-box">
+                          <p className="ix-transcript-quote">{finalTranscript}</p>
+                        </div>
+                      ) : (
+                        <p className="ix-transcript-review-help" role="status">
+                          No speech was captured. Record your answer again to continue.
+                        </p>
+                      )}
+                      {finalTranscript && <p id="transcript-review-help" className="ix-transcript-review-help" role="status">
+                        {isEditingTranscript ? 'Correct any words that were misheard, then save your changes.'
+                          : 'Check for misheard words. Your answer is submitted only when you click Submit answer.'}
+                      </p>}
+                    </div>
                   ) : finalTranscript ? (
                     <div className="ix-response-state ix-state-recorded">
                       <div className="ix-answer-meta-row">
@@ -1630,20 +1745,31 @@ function MainSetsSession() {
                     </button>
                   ) : (
                     <>
-                      <button
+                      {isReviewingAnswer ? (
+                        <>
+                          <button type="button" className="ix-dock-btn-main" onClick={submitAnswer}
+                            disabled={micDisabled || isEditingTranscript || !finalTranscript.trim()}>
+                            <ArrowRight size={16} aria-hidden="true" /> Submit answer
+                          </button>
+                          <button id="btn-toggle-mic" type="button" className="ix-transcript-action"
+                            disabled={micDisabled || isEditingTranscript} onClick={toggleMic}>
+                            <Mic size={15} aria-hidden="true" /> Record again
+                          </button>
+                        </>
+                      ) : <button
                         id="btn-toggle-mic"
                         type="button"
                         className={`ix-dock-btn-main ${isRecording ? 'recording' : ''}`}
                         onClick={toggleMic}
                         disabled={micDisabled}
                         title={
-                          isRecording ? 'Stop & Submit Answer (Space)' : 'Start Answering (Space)'
+                          isRecording ? 'Stop & Review Answer (Space)' : 'Start Answering (Space)'
                         }
                       >
                         {isRecording ? <Square size={16} /> : <Mic size={16} />}
-                        <span>{isRecording ? 'Stop & Submit' : 'Answer'}</span>
+                        <span>{isRecording ? 'Stop & Review' : 'Answer'}</span>
                         <kbd className="ix-dock-kbd">Space</kbd>
-                      </button>
+                      </button>}
 
                       <button
                         id="btn-session-end"
@@ -1800,6 +1926,8 @@ function MainSetsSession() {
                         ? isDrill
                           ? 'Your answer is being scored. Please wait a moment before leaving.'
                           : 'Your answer is being scored and saved. Please wait a moment before leaving.'
+                        : isReviewingAnswer
+                          ? 'Your current answer has not been submitted. Leaving will discard this transcript and any corrections.'
                         : isDrill
                           ? 'This drill is temporary. Leaving will discard its questions, answers, and feedback without changing your main-set progress.'
                           : 'Your generated questions, submitted answers, and coach feedback are saved. You can resume this exact set from the dashboard.'}
@@ -1824,6 +1952,8 @@ function MainSetsSession() {
                       ? 'Stop Answer First'
                       : isEvaluating
                         ? 'Saving Answer?'
+                        : isReviewingAnswer
+                          ? isDrill ? 'Leave & discard answer' : 'Pause & discard answer'
                         : isDrill
                           ? 'Leave Drill'
                           : 'Pause & Return to Dashboard'}

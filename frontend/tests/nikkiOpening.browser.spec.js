@@ -112,10 +112,10 @@ test('a stalled opening offers a way back without revealing an unready screen', 
 for (const width of [1440, 768, 390]) {
   test(`opening composition fits at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
-    await page.goto(preview.baseURL);
-    await page.clock.install();
-    await openButton(page).click();
-    await page.clock.runFor(1050);
+    // Keep a real modal phase mounted while taking geometry/screenshots; a
+    // running two-second opening can finish while a software-GPU capture waits.
+    await page.goto(`${preview.baseURL}?specimen=curious`);
+    await expect(page.getByRole('dialog')).toBeVisible();
     await page.screenshot({ path: `test-results/nikki-opening-${width}.png` });
     const bounds = await page.getByRole('dialog').boundingBox();
     expect(bounds.x).toBeGreaterThanOrEqual(16);

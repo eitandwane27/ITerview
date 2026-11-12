@@ -67,7 +67,8 @@
 
   /* Elevation & Tactile 3D Shadows */
   --rs-shadow-card: 0 4px 12px -2px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
-  --rs-shadow-card-hover: 0 12px 28px -4px rgba(37, 99, 235, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
+  --rs-shadow-card-hover:
+    0 12px 28px -4px rgba(37, 99, 235, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
   --rs-shadow-tactile-primary: 0 3px 0 #1e40af;
   --rs-shadow-tactile-secondary: 0 3px 0 #cbd5e1;
 
@@ -775,6 +776,55 @@
   border-color: var(--rs-border);
 }
 
+.rs-rubric-card--locked > .rs-card-header {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.rs-rubric-lock-badge {
+  padding: 5px 10px;
+  border: 1px solid var(--rs-border-strong);
+  border-radius: var(--rs-r-pill);
+  background: var(--rs-canvas-subtle);
+  color: var(--rs-ink-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rs-rubric-lock-note {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--rs-border);
+  border-radius: var(--rs-r-sm);
+  background: var(--rs-canvas-subtle);
+  color: var(--rs-ink-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* A fixed reference, visually separate from the current attempt's results. */
+.rs-rubric-card--locked .rs-rubric-box {
+  background: var(--rs-canvas-subtle);
+  border-color: var(--rs-border);
+  transition: none;
+}
+
+.rs-rubric-card--locked .rs-rubric-box:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.rs-rubric-card--locked .rs-rubric-num {
+  color: var(--rs-ink-secondary);
+}
+
+.rs-rubric-card--locked .rs-rubric-indicator-dot,
+.rs-rubric-card--locked .rs-progress-bar {
+  background: var(--rs-ink-muted);
+}
+
 .rs-rubric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -790,7 +840,9 @@
   gap: 12px;
   background: var(--rs-card-bg);
   position: relative;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .rs-rubric-box:hover {
@@ -1367,7 +1419,10 @@
   border: none;
   cursor: pointer;
   box-shadow: var(--rs-shadow-tactile-primary);
-  transition: background-color 0.15s ease, transform 0.08s ease, box-shadow 0.08s ease;
+  transition:
+    background-color 0.15s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
   white-space: nowrap;
   text-decoration: none;
 }
@@ -1398,7 +1453,11 @@
   border: 1px solid var(--rs-border-strong);
   cursor: pointer;
   box-shadow: var(--rs-shadow-tactile-secondary);
-  transition: background-color 0.15s ease, transform 0.08s ease, box-shadow 0.08s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease,
+    color 0.15s ease;
   white-space: nowrap;
   text-decoration: none;
 }
@@ -1453,7 +1512,8 @@
 }
 
 @keyframes rs-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
   }
   50% {

@@ -29,7 +29,6 @@ const { createDeepgramLiveSession } = require("../services/sttService");
 const { synthesizeSpeech } = require("../services/ttsService");
 const { evaluate3CScores } = require("../services/aiEvaluator");
 const PostTestSession = require("../models/PostTestSession");
-const PreTestSession = require("../models/PreTestSession");
 const User = require("../models/User");
 
 /**
@@ -59,10 +58,6 @@ function computeFinalScores(scores) {
   };
 
   const percentage = Math.round((totalPoints / maxPossiblePoints) * 100);
-
-  console.log(
-    `[AI/Post] 📊 Avg 3C — Clarity: ${avg.clarity.toFixed(2)} | Correctness: ${avg.correctness.toFixed(2)} | Completeness: ${avg.completeness.toFixed(2)} | Overall: ${percentage}%`
-  );
 
   const min = Math.min(avg.clarity, avg.correctness, avg.completeness);
   let weakness_tag = "focus_correctness";
@@ -143,11 +138,11 @@ function handlePostTestSocket(ws, request) {
         questionText: POST_TEST_QUESTIONS[questionIndex] ?? text,
       });
       console.log(
-        `[TTS/Post] 🔊 Sent audio in ${(latency / 1000).toFixed(2)}s — "${text.substring(0, 50)}…"`
+        `[TTS/Post] 🔊 Sent audio in ${(latency / 1000).toFixed(2)}s`
       );
     } catch (err) {
       if (ws.readyState !== ws.OPEN) return;
-      console.error("[WS/Post] TTS error:", err.message);
+      console.error("[WS/Post] TTS error");
       send({ type: "error", message: `TTS failed: ${err.message}` });
     }
   }
@@ -212,8 +207,8 @@ function handlePostTestSocket(ws, request) {
       if (user && user.difficulty) {
         sessionDifficulty = user.difficulty;
       }
-    } catch (err) {
-      console.error("[WS/Post] Failed to fetch user difficulty:", err.message);
+    } catch {
+      console.error("[WS/Post] Failed to fetch user difficulty");
     }
 
     // ── Once-only gate: a completed Post-Test can never be retaken ──────────
@@ -226,9 +221,7 @@ function handlePostTestSocket(ws, request) {
           completedAt: { $ne: null },
         });
         if (completedSession) {
-          console.log(
-            `[WS/Post] ⛔ Post-test already completed for ${firebaseUid} — score ${completedSession.final_score_percentage ?? "?"}%. Rejecting retake.`
-          );
+          console.log("[WS/Post] ⛔ Post-test already completed. Rejecting retake.");
           send({
             type: "posttest_completed",
             final_score: completedSession.final_score_percentage,
@@ -237,8 +230,8 @@ function handlePostTestSocket(ws, request) {
           ws.close();
           return;
         }
-      } catch (err) {
-        console.error("[WS/Post] Failed to check for completed post-test:", err.message);
+      } catch {
+        console.error("[WS/Post] Failed to check for completed post-test");
       }
     }
 
@@ -248,12 +241,12 @@ function handlePostTestSocket(ws, request) {
       if (!isResetRequested) {
         activeSession = await PostTestSession.findOne({ firebaseUid, completedAt: null });
       }
-    } catch (err) {
-      console.error("[WS/Post] Failed to check for active post-test session:", err.message);
+    } catch {
+      console.error("[WS/Post] Failed to check for active post-test session");
     }
 
     if (activeSession) {
-      console.log(`[WS/Post] 🔄 Active session found for user: ${firebaseUid}. Resuming session ID: ${activeSession.sessionId} as new session ID: ${sessionId}`);
+      console.log(`[WS/Post] 🔄 Resuming session ID: ${activeSession.sessionId} as new session ID: ${sessionId}`);
       try {
         activeSession = await PostTestSession.findOneAndUpdate(
           {
@@ -307,8 +300,8 @@ function handlePostTestSocket(ws, request) {
 
         console.log(`[WS/Post] Resumed post-test session at question index: ${currentQuestionIndex}`);
         send({ type: "session_resumed", currentQuestionIndex });
-      } catch (err) {
-        console.error(`[DB/Post] ❌ Failed to update resumed post-test session document:`, err.message);
+      } catch {
+        console.error(`[DB/Post] ❌ Failed to update resumed post-test session document`);
       }
     } else {
       // Initialize / reset post-test session document in MongoDB
@@ -325,9 +318,9 @@ function handlePostTestSocket(ws, request) {
           },
           { upsert: true, returnDocument: "after" }
         );
-        console.log(`[DB/Post] ✅ Post-test session initialized: ${sessionId} for user: ${firebaseUid}`);
-      } catch (err) {
-        console.error(`[DB/Post] ❌ Failed to initialize session:`, err.message);
+        console.log(`[DB/Post] ✅ Post-test session initialized: ${sessionId}`);
+      } catch {
+        console.error(`[DB/Post] ❌ Failed to initialize session`);
       }
     }
 
@@ -352,8 +345,6 @@ function handlePostTestSocket(ws, request) {
       return;
     }
 
-    console.log(`[WS/Post] ← ${msg.type}`);
-
     switch (msg.type) {
       case "start_recording":
         if (!isRecording) {
@@ -372,12 +363,12 @@ function handlePostTestSocket(ws, request) {
                   console.log(`[TTS/Post] ✅ Early background Q${nextIdx + 1} audio ready.`);
                 }
               })
-              .catch((err) => {
+              .catch(() => {
                 if (preGeneratedNextQuestionIndex === nextIdx) {
                   preGeneratedNextQuestionAudio = null;
                   preGeneratedNextQuestionIndex = -1;
                 }
-                console.error(`[TTS/Post] ❌ Background pre-gen failed:`, err.message);
+                console.error(`[TTS/Post] ❌ Background pre-gen failed`);
               });
           }
         }
@@ -415,7 +406,7 @@ function handlePostTestSocket(ws, request) {
         }
         const answeredQuestion = POST_TEST_QUESTIONS[currentQuestionIndex];
         const questionNumber = currentQuestionIndex + 1;
-        console.log(`[WS/Post] Answer confirmed for Q${questionNumber}: "${confirmedText.substring(0, 80)}…"`);
+        console.log(`[WS/Post] Answer confirmed for Q${questionNumber}`);
 
         const capturedIndex = currentQuestionIndex;
         const evalPromise = (async () => {
@@ -452,11 +443,8 @@ function handlePostTestSocket(ws, request) {
             sessionScores.push({ questionIndex: capturedIndex, ...scores });
             console.log("[DB/Post] Post-test score saved for Q" + questionNumber);
             return true;
-          } catch (err) {
-            console.error(
-              "[AI/Post] Evaluation failed for Q" + questionNumber + ":",
-              err.message
-            );
+          } catch {
+            console.error("[AI/Post] Evaluation failed for Q" + questionNumber);
             metrics.evaluationLatencies.push(0);
             return false;
           }
@@ -487,12 +475,12 @@ function handlePostTestSocket(ws, request) {
                   console.log(`[TTS/Post] ✅ Background Q${nextIndex + 1} audio ready.`);
                 }
               })
-              .catch((err) => {
+              .catch(() => {
                 if (preGeneratedNextQuestionIndex === nextIndex) {
                   preGeneratedNextQuestionAudio = null;
                   preGeneratedNextQuestionIndex = -1;
                 }
-                console.error(`[TTS/Post] ❌ Background TTS pre-gen failed:`, err.message);
+                console.error(`[TTS/Post] ❌ Background TTS pre-gen failed`);
               });
           }
         } else {
@@ -540,9 +528,7 @@ function handlePostTestSocket(ws, request) {
             await Promise.allSettled(evaluationPromises);
 
             const { weakness_tag, percentage } = computeFinalScores(sessionScores);
-            console.log(
-              `[Session/Post] 🎓 Post-test complete. Weakness: ${weakness_tag} | Score: ${percentage}%`
-            );
+            console.log("[Session/Post] 🎓 Post-test complete.");
             try {
               const finalisedSession = await PostTestSession.findOneAndUpdate(
                 { sessionId, completedAt: null },
@@ -560,40 +546,8 @@ function handlePostTestSocket(ws, request) {
                 return;
               }
               console.log(`[DB/Post] ✅ Post-test session finalised — ${sessionId}`);
-
-              // Fetch Pre-Test Baseline to calculate & print comparison logs
-              const [preSession, userDoc] = await Promise.all([
-                PreTestSession.findOne({ firebaseUid }),
-                User.findOne({ firebaseUid }),
-              ]);
-
-              const preScore = preSession?.baseline_score_percentage ?? null;
-              const preWeakness = preSession?.final_weakness_tag ?? "N/A";
-              const preConf = userDoc?.confidenceScore ?? null;
-
-              console.log(`\n==================================================`);
-              console.log(`📈 USER GROWTH COMPARISON (PRE VS POST)`);
-              console.log(`User UID: ${firebaseUid}`);
-              console.log(`--------------------------------------------------`);
-              console.log(`Performance Scores:`);
-              console.log(`  Pre-Test Score : ${preScore !== null ? `${preScore}%` : "N/A"}`);
-              console.log(`  Post-Test Score: ${percentage}%`);
-              if (preScore !== null) {
-                const diff = percentage - preScore;
-                const sign = diff >= 0 ? "+" : "";
-                console.log(`  Growth Delta   : ${sign}${diff}% (${diff >= 0 ? "📈 Improvement!" : "📉 Decrease"})`);
-              }
-              console.log(`--------------------------------------------------`);
-              console.log(`Weakness Mitigation:`);
-              console.log(`  Pre-Test Primary Weakness : ${preWeakness}`);
-              console.log(`  Post-Test Primary Weakness: ${weakness_tag}`);
-              console.log(`--------------------------------------------------`);
-              console.log(`Confidence Score:`);
-              console.log(`  Pre-Test Confidence Score : ${preConf !== null ? `${preConf}/25` : "N/A"}`);
-              console.log(`==================================================\n`);
-
-            } catch (err) {
-              console.error(`[DB/Post] ❌ Failed to finalise session:`, err.message);
+            } catch {
+              console.error(`[DB/Post] ❌ Failed to finalise session`);
             }
 
             // Print metrics
@@ -623,7 +577,7 @@ function handlePostTestSocket(ws, request) {
       }
 
       default:
-        console.warn(`[WS/Post] Unknown message type: ${msg.type}`);
+        console.warn("[WS/Post] Unknown message type");
     }
   });
 
@@ -633,8 +587,8 @@ function handlePostTestSocket(ws, request) {
     closeSttSession();
   });
 
-  ws.on("error", (err) => {
-    console.error("[WS/Post] ❌ WebSocket error:", err.message);
+  ws.on("error", () => {
+    console.error("[WS/Post] ❌ WebSocket error");
     closeSttSession();
   });
 }

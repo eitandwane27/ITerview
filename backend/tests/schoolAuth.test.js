@@ -63,7 +63,15 @@ test('missing/invalid tokens, personal addresses, unverified accounts and OAuth 
 
 test('real user routes derive identity from a verified token and prevent other-user reads/writes', async t => {
   const writes = [];
-  t.mock.method(User, 'findOneAndUpdate', async (filter, update) => { writes.push({ filter, update }); return update; });
+  const log = t.mock.method(console, 'log', () => {});
+  const logError = t.mock.method(console, 'error', () => {});
+  t.mock.method(User, 'findOneAndUpdate', async (filter, update) => {
+    if (update.displayName === 'Simulate duplicate') {
+      throw new Error(`Duplicate email: ${update.email}`);
+    }
+    writes.push({ filter, update });
+    return update;
+  });
   const app = express();
   app.use(express.json());
   app.use('/api/users', auth.requireSchoolUser, userRoutes);
@@ -82,11 +90,20 @@ test('real user routes derive identity from a verified token and prevent other-u
   assert.equal(response.status, 201);
   assert.deepEqual(writes[0].filter, { firebaseUid: verifiedUser.uid });
   assert.equal(writes[0].update.email, verifiedUser.email);
+  const login = await request('/login', 'valid', { method: 'POST', body: '{}' });
+  assert.equal(login.status, 200);
+  assert.equal((await login.json()).user.email, verifiedUser.email);
+  for (const path of ['/register', '/login']) {
+    const duplicate = await request(path, 'valid', { method: 'POST', body: '{"displayName":"Simulate duplicate"}' });
+    assert.equal(duplicate.status, 500);
+  }
+  const logCalls = [...log.mock.calls, ...logError.mock.calls].flatMap(call => call.arguments);
+  assert.equal(require('node:util').inspect(logCalls).includes(verifiedUser.email), false);
   for (const path of ['/another-user', '/results-summary?uid=another-user', '/active-practice-session?uid=another-user']) {
     assert.equal((await request(path, 'valid')).status, 403);
   }
   assert.equal((await request('/role', 'valid', { method: 'PUT', body: JSON.stringify({ firebaseUid: 'another-user', role: 'frontend' }) })).status, 403);
-  assert.equal(writes.length, 1);
+  assert.equal(writes.length, 2);
 });
 
 test('bindUserIdentity rejects untrusted calls and fills server-owned identity for legacy route contracts', () => {

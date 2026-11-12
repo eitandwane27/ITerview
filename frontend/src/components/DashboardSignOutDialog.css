@@ -14,7 +14,9 @@
 }
 
 .db-signout-modal[open] {
-  animation: db-signout-enter var(--db-med) var(--db-ease) both;
+  /* This native dialog hosts Nikki's fixed dock and cursor. Keep its motion
+     opacity-only so those controls stay anchored to the viewport throughout. */
+  animation: db-signout-enter var(--db-med) var(--db-ease);
 }
 
 .db-signout-modal::backdrop {
@@ -144,13 +146,13 @@
 .db-signout-modal__spinner { animation: db-signout-spin 800ms linear infinite; }
 
 @keyframes db-signout-enter {
-  from { opacity: 0; transform: translateY(8px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes db-signout-exit {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.97); }
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes db-signout-backdrop-enter {

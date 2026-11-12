@@ -5,6 +5,7 @@ import Dashboard from '../../src/pages/Dashboard';
 import VoiceAgentPlayground from '../../src/features/voice-agent/VoiceAgentPlayground';
 import NikkiOpeningProvider from '../../src/features/voice-agent/NikkiOpeningProvider';
 import NikkiOpening from '../../src/features/voice-agent/NikkiOpening';
+import { NikkiSessionOwner } from '../../src/features/voice-agent/NikkiSessionProvider';
 import '../../src/index.css';
 import '../../src/App.css';
 
@@ -18,10 +19,10 @@ const specimen = params.get('specimen');
 createRoot(document.getElementById('root')).render(
   <MemoryRouter initialEntries={['/dashboard']}>
     {specimen ? <><div inert><Dashboard /></div><NikkiOpening phase={specimen} onCancel={() => { window.location.search = ''; }} /></> : <NikkiOpeningProvider>
-      <Routes>
+      <NikkiSessionOwner><Routes>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/voice-agent" element={<Suspense fallback={null}><Destination /></Suspense>} />
-      </Routes>
+      </Routes></NikkiSessionOwner>
     </NikkiOpeningProvider>}
   </MemoryRouter>
 );

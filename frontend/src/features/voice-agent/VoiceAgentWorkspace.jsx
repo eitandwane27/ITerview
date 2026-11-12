@@ -234,7 +234,6 @@ const VoiceAgentWorkspace = forwardRef(function VoiceAgentWorkspace(
   const researchAssessment = isAccountAssessment ? RESEARCH_ASSESSMENTS[workspace.section] : null;
   const hasPracticeFeedback = isAssessment && Object.hasOwn(SETS, workspace.section);
   const activeView = isAccountAssessment ? 'scores' : workspace?.view;
-  const views = VIEWS.filter(([view]) => view !== 'feedback' || !isAccountAssessment);
   const steps = workspace?.steps || [];
   const filled = steps.filter((step) => step.text).length;
   const sourceDate = savedDate(workspace?.fetchedAt);
@@ -282,7 +281,7 @@ const VoiceAgentWorkspace = forwardRef(function VoiceAgentWorkspace(
           },
         }}
       >
-        {views.map(([view, label]) => (
+        {VIEWS.map(([view, label]) => (
           <Motion.button
             type="button"
             key={view}

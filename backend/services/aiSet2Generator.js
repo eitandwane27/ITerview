@@ -35,6 +35,7 @@ const { safeParseJSON } = require("../utils/jsonParser");
 const { EASY_AVOID_LIST: GLOBAL_EASY_AVOID_LIST, EASY_TECHNICAL_QUESTION_STYLE, MEDIUM_AVOID_LIST, MEDIUM_TECHNICAL_QUESTION_STYLE, HARD_AVOID_LIST, TTS_SAFETY } = require("../config/guardConfig");
 
 const deepseek = new OpenAI({
+  logLevel: "off",
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com",
 });
@@ -245,7 +246,6 @@ OUTPUT RULE:
       role: roleData.id, difficulty, attempt: attempt + 1,
       topic: selectedTopic, preferredFormat: selectedFormat.id,
       detectedFormat: getTechnicalQuestionFormat(question), reason: issue,
-      draft: raw.slice(0, 500),
     }));
     if (attempt === maxAttempts - 1) {
       const fallback = selectTechnicalQuestionFallback(roleData.id, difficulty, setData,

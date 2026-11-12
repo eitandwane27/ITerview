@@ -19,7 +19,7 @@ import { useNikkiOpening } from './nikkiOpeningContext';
 import logoSrc from '../../assets/logo';
 import VoiceAgentBackdrop from './VoiceAgentBackdrop';
 import VoiceAgentWorkspace from './VoiceAgentWorkspace';
-import { useVoiceAgentSession } from './useVoiceAgentSession';
+import { useNikkiSession } from './nikkiSessionContext';
 import { getAudioInputLabel } from '../../utils/audioInputDevices';
 import './VoiceAgentPlayground.css';
 
@@ -62,6 +62,7 @@ const STATE_COPY = {
 };
 
 const SHOW_ME_EXAMPLES = [
+  ['Practice history', 'Show me my practice history', false],
   ['My scores', 'Show me my technical scores'],
   ['My feedback', 'Show me my Set 2 feedback'],
   ['Compare attempts', 'Show me my last two attempts for my selected role'],
@@ -108,16 +109,19 @@ export default function VoiceAgentPlayground() {
     selectMicrophone,
     toggleAudio,
     toggleCaptions,
-  } = useVoiceAgentSession();
+  } = useNikkiSession();
 
   const showWorkspace = Boolean(workspace) || workspacePending || Boolean(workspaceError);
   const requestWorkspace = (view) => {
     const role = workspace?.roleId ? ` for ${workspace.role}` : ' for my selected role';
     const assessment = workspace?.section ? `${workspace.title} ` : '';
+    const feedbackAssessment = ['preTest', 'postTest'].includes(workspace?.section)
+      ? 'practice-set '
+      : assessment;
     const difficulty = workspace?.difficulty ? ` at ${workspace.difficulty} difficulty` : '';
     const prompts = {
       scores: `Show me my ${assessment}scores${role}`,
-      feedback: `Show me my ${assessment}feedback${role}`,
+      feedback: `Show me my ${feedbackAssessment}feedback${role}`,
       comparison: `Show me my last two attempts${role}${difficulty}`,
       star: 'Show me a STAR outline using the story I shared in this conversation',
       drill: `Show me a focused drill${role}`,
@@ -238,7 +242,7 @@ export default function VoiceAgentPlayground() {
         <button
           type="button"
           className="va-brand"
-          onClick={() => navigate('/dashboard')}
+          onClick={handleEndSession}
           aria-label="Return to the ITerview dashboard"
         >
           <img src={logoSrc} alt="" />
@@ -284,16 +288,18 @@ export default function VoiceAgentPlayground() {
           aria-labelledby="voice-agent-status"
           style={{ '--va-energy': energy.toFixed(3) }}
         >
-          <div className="va-orb-field">
-            <span className="va-orb-field__halo" aria-hidden="true" />
-            <AIOrb
-              {...orbStateProps}
-              onReady={nikkiOpening?.destinationReady}
-              volume={voiceLevel}
-              ariaLabel={copy.ariaLabel}
-              expressiveMotion
-              expressionState={agentState}
-            />
+          <div className="va-orb-slot">
+            <div className="va-orb-field">
+              <span className="va-orb-field__halo" aria-hidden="true" />
+              <AIOrb
+                {...orbStateProps}
+                onReady={nikkiOpening?.destinationReady}
+                volume={voiceLevel}
+                ariaLabel={copy.ariaLabel}
+                expressiveMotion
+                expressionState={agentState}
+              />
+            </div>
           </div>
 
           <div className="va-status" aria-live="polite" aria-atomic="true">
@@ -307,12 +313,14 @@ export default function VoiceAgentPlayground() {
               </span>
             )}
             <h1 id="voice-agent-status">{copy.title}</h1>
-            <p>{statusDetail}</p>
+            <p tabIndex={captionsEnabled || errorMessage || workspaceClarification ? 0 : undefined}>
+              {statusDetail}
+            </p>
           </div>
           <div className="va-show-me" aria-label="Try a visual conversation">
             <span>{workspacePending ? 'Nikki is putting it together…' : 'Try “show me…”'}</span>
             <div>
-              {SHOW_ME_EXAMPLES.map(([label, prompt]) => (
+              {SHOW_ME_EXAMPLES.map(([label, prompt, expectWorkspace = true]) => (
                 <button
                   key={label}
                   type="button"
@@ -322,7 +330,7 @@ export default function VoiceAgentPlayground() {
                   onClick={(event) => {
                     lastExampleRef.current = event.currentTarget;
                     setSettingsOpen(false);
-                    askNikki(prompt);
+                    askNikki(prompt, { expectWorkspace });
                   }}
                 >
                   {label}

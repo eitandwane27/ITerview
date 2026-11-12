@@ -168,25 +168,24 @@ function handleSet3Socket(ws, request) {
     // Launch all TTS requests in parallel
     const promises = sentences.map((sentence) => {
       if (ws.readyState !== ws.OPEN) {
-        return Promise.resolve({ sentence, buffer: null });
+        return Promise.resolve(null);
       }
       return synthesizeSpeech(sentence, voiceModel)
-        .then((buffer) => ({ sentence, buffer }))
-        .catch((err) => {
-          console.error(`[TTS] ❌ Error on "${sentence.substring(0, 40)}…": ${err.message}`);
-          return { sentence, buffer: null };
+        .catch(() => {
+          console.error('[TTS] Sentence synthesis failed');
+          return null;
         });
     });
 
     // Stream sequentially to the client as each resolves in order
     for (let i = 0; i < promises.length; i++) {
       if (ws.readyState !== ws.OPEN) break;
-      const { sentence, buffer } = await promises[i];
+      const buffer = await promises[i];
       if (buffer && ws.readyState === ws.OPEN) {
         send({ type: "tts_audio", data: buffer.toString("base64") });
         if (label) {
           console.log(
-            `[TTS] 🔊 ${label} sentence ${i + 1}/${promises.length} sent — "${sentence.substring(0, 50)}…"`,
+            `[TTS] 🔊 ${label} sentence ${i + 1}/${promises.length} sent`,
           );
         }
       }
@@ -306,8 +305,8 @@ function handleSet3Socket(ws, request) {
         );
         console.log(`[DB] ⏱️ Appended practice history attempt #${nextAttempt} for user: ${firebaseUid}`);
       }
-    } catch (errHist) {
-      console.error("[DB] Failed to record practice history:", errHist.message);
+    } catch {
+      console.error("[DB] Failed to record practice history");
     }
 
 
@@ -507,10 +506,7 @@ function handleSet3Socket(ws, request) {
         }
       }
       const totalGenDuration = Date.now() - genStart;
-      console.log(`[aiSet3Generator] 🧠 Generated ${questions.length} questions for Set 3 (${sessionRole}, ${sessionDifficulty}) in ${(totalGenDuration / 1000).toFixed(2)}s:`);
-      questions.forEach((q, idx) => {
-        console.log(`  Q${idx + 1}: "${q}"`);
-      });
+      console.log(`[aiSet3Generator] 🧠 Generated ${questions.length} questions for Set 3 (${sessionRole}, ${sessionDifficulty}) in ${(totalGenDuration / 1000).toFixed(2)}s`);
 
       // Save generated questions array to DB for resumption persistence
       sessionDoc = await Set3Session.findOneAndUpdate(
@@ -556,7 +552,7 @@ function handleSet3Socket(ws, request) {
         message: "Question ready. Click Unmute to answer.",
       });
     } catch (err) {
-      console.error("[WS] Set 3 startup error:", err);
+      console.error("[WS] Set 3 startup error");
       send({ type: "error", message: err.code === 'INVALID_ROLE' ? err.message : "Failed to initialize Set 3." });
     }
   })();
@@ -607,13 +603,13 @@ function handleSet3Socket(ws, request) {
                 );
               }
             })
-            .catch((err) => {
+            .catch(() => {
               // Reset so submit_answer falls back to on-the-fly synthesis
               if (preGeneratedNextQuestionIndex === nextIndex) {
                 preGeneratedNextQuestionAudio = null;
                 preGeneratedNextQuestionIndex = -1;
                 console.warn(
-                  `[Cache] ⚠️ Pre-cache failed for Q${nextIndex + 1}: ${err.message}`,
+                  `[Cache] ⚠️ Pre-cache failed for Q${nextIndex + 1}`,
                 );
               }
             });
@@ -643,7 +639,6 @@ function handleSet3Socket(ws, request) {
         console.log(
           `\n--- Set 3 Q${currentQuestionIndex + 1} (${currentCompetency}) Processing ---`,
         );
-        console.log(`[WS] Transcript: "${confirmedText.substring(0, 80)}..."`);
         send({
           type: "status",
           message: "AI Coach is evaluating your answer...",
@@ -879,8 +874,8 @@ function handleSet3Socket(ws, request) {
               avg_result: sessionDoc.avg_result,
             });
           }
-        } catch (err) {
-          console.error("[WS] Set 3 evaluation error:", err);
+        } catch {
+          console.error("[WS] Set 3 evaluation error");
           send({ type: "error", message: "Failed to evaluate answer." });
         } finally {
           submissionInFlight = false;
@@ -900,8 +895,8 @@ function handleSet3Socket(ws, request) {
     closeSttSession();
   });
 
-  ws.on("error", (err) => {
-    console.error("[WS] ❌ Set 3 WebSocket error:", err.message);
+  ws.on("error", () => {
+    console.error("[WS] ❌ Set 3 WebSocket error");
     closeSttSession();
   });
 }

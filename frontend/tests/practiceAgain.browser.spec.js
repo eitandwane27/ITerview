@@ -184,9 +184,16 @@ test('saved behavioral question runs one voice retry, gives feedback, and return
   await expect(mic).toBeEnabled(); await mic.click();
   await expect(page.getByText('I helped my teammate test our project and we submitted it on time.', { exact: true }).first()).toBeVisible();
   await mic.click();
+  expect(evaluations).toHaveLength(0);
+  await page.getByRole('button', { name: 'Edit transcript', exact: true }).click();
+  const correctedAnswer = 'I helped my teammate test our React project and we submitted it on time.';
+  await page.getByRole('textbox', { name: 'Edit transcript', exact: true }).fill(correctedAnswer);
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
   const finish = page.getByRole('button', { name: 'Return to Practice Again', exact: true });
   await expect(finish).toBeVisible();
   expect(evaluations).toHaveLength(1);
+  expect(evaluations[0].text).toBe(correctedAnswer);
   expect(evaluations[0].question).toMatchObject({ set: 3, role: 'backend', difficulty: 'easy' });
   await expect(page.getByText('Explain how your help changed the outcome.', { exact: true }).first()).toBeVisible();
   await finish.click();
@@ -230,6 +237,7 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
       await expect(orb).toHaveAttribute('data-state', 'listening');
       await expect(page.getByText('I helped my teammate test our project and we submitted it on time.', { exact: true }).first()).toBeVisible();
       await mic.click();
+      await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
       await expect.poll(() => Boolean(releaseSpeech)).toBe(true);
       await expect(page.locator('.ix-stage-card')).toHaveAttribute('data-state', 'responding');
       await expect(orb).toHaveAttribute('data-state', 'evaluating');
@@ -259,6 +267,7 @@ test('slow speech generation does not keep the retry in the analyzing state', as
     await expect(mic).toBeEnabled(); await mic.click();
     await expect(page.getByText('I helped my teammate test our project and we submitted it on time.', { exact: true }).first()).toBeVisible();
     await mic.click();
+    await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
     await expect.poll(() => Boolean(releaseSpeech)).toBe(true);
     // The speech promise remains unresolved throughout these assertions.
     await expect(page.locator('.ix-state-evaluating')).toHaveCount(0);

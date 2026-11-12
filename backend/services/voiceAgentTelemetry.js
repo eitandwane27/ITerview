@@ -1,9 +1,4 @@
-// Simple terminal output for the standalone Voice Agent.
-// We only show what STT heard, what TTS will say, and the AI thinking time.
-
-function cleanText(value) {
-  return String(value || "").replace(/\s+/g, " ").trim();
-}
+// Voice Agent latency and provider status without conversation content.
 
 function createVoiceAgentTelemetry({ writeLine = console.log } = {}) {
   let thinkingStartedAt = null;
@@ -22,20 +17,6 @@ function createVoiceAgentTelemetry({ writeLine = console.log } = {}) {
       if (event.type === "UserStartedSpeaking") {
         thinkingStartedAt = null;
         thinkingTimeLogged = false;
-        return;
-      }
-
-      if (event.type === "ConversationText") {
-        const text = cleanText(event.content || event.text);
-        if (!text) return;
-
-        if (event.role === "user") {
-          writeLine(`[STT] You: ${text}`);
-        }
-
-        if (event.role === "assistant") {
-          writeLine(`[TTS] AI: ${text}`);
-        }
         return;
       }
 
@@ -61,20 +42,16 @@ function createVoiceAgentTelemetry({ writeLine = console.log } = {}) {
       }
 
       if (event.type === "Warning") {
-        writeLine(
-          `[VOICE WARNING] ${event.description || event.message || "Unknown warning"}`,
-        );
+        writeLine("[VOICE WARNING] Provider warning");
       }
 
       if (event.type === "Error") {
-        writeLine(
-          `[VOICE ERROR] ${event.description || event.message || "Unknown error"}`,
-        );
+        writeLine("[VOICE ERROR] Provider error");
       }
     },
 
-    error(error) {
-      writeLine(`[VOICE ERROR] ${error?.message || String(error)}`);
+    error() {
+      writeLine("[VOICE ERROR] Voice agent operation failed");
     },
   };
 }

@@ -239,8 +239,8 @@ function handleDemoSocket(ws, request) {
     closeSttSession();
   });
 
-  ws.on("error", (err) => {
-    console.error("[WS-DEMO] ❌ WebSocket error:", err.message);
+  ws.on("error", () => {
+    console.error("[WS-DEMO] ❌ WebSocket error");
     clearRecordingTimer();
     closeSttSession();
   });

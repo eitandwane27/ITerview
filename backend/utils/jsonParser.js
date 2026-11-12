@@ -48,24 +48,17 @@ function safeParseJSON(raw) {
   // 3. Attempt JSON parse on extracted candidate
   try {
     return JSON.parse(extracted);
-  } catch (err1) {
+  } catch {
     // 4. Secondary parse attempt on un-extracted cleaned string if boundary extraction failed
     if (extracted !== cleaned) {
       try {
         return JSON.parse(cleaned);
-      } catch (err2) {
+      } catch {
         // Fall through to diagnostic error logging
       }
     }
 
-    console.error(
-      "[jsonParser] Failed to parse JSON string:",
-      err1.message,
-      "| Extracted snippet preview:",
-      extracted.substring(0, 150),
-      "| Raw preview:",
-      raw.substring(0, 150)
-    );
+    console.error("[jsonParser] Failed to parse model response");
     return null;
   }
 }

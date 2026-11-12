@@ -135,8 +135,9 @@ test("nothing recovers from one empty final reply without exposing reasoning", a
   assert.equal(logged[0][1].reason, "empty_reply");
   assert.equal(logged[0][1].retrying, true);
   assert.equal(logged[0][1].contentCharacters, 0);
+  assert.equal(logged[0][1].trimmedContentCharacters, 0);
   assert.equal(logged[0][1].hasReasoning, true);
-  assert.deepEqual(payloads.map(payload => payload.response_format.type), ["json_object", "text"]);
+  assert.deepEqual(payloads.map(payload => payload.response_format.type), ["json_object", "json_object"]);
   assert.deepEqual(payloads[1].thinking, { type: "enabled" });
   assert.equal(payloads[1].reasoning_effort, "high");
   assert.equal(payloads[1].max_tokens, payloads[0].max_tokens);
@@ -162,11 +163,11 @@ test("JSON output recovery handles whitespace and missing choices", async (t) =>
     const result = await createRecommendationReply({ message: "i want to be a white hacker" }, { client });
     assert.equal(result.recommendedRoleId, "cyber-security");
     assert.equal(payloads.length, 2);
-    assert.equal(payloads[1].response_format.type, "text");
+    assert.equal(payloads[1].response_format.type, "json_object");
   }
 });
 
-test("invalid JSON receives a different output request and can recover", async (t) => {
+test("invalid JSON receives reinforced instructions while retaining JSON mode", async (t) => {
   t.mock.method(console, "error", () => {});
   const payloads = [];
   const client = { chat: { completions: { create: async payload => {
@@ -177,7 +178,8 @@ test("invalid JSON receives a different output request and can recover", async (
   } } } };
   const result = await createRecommendationReply({ message: "How does ITerview work?" }, { client });
   assert.equal(result.reply, "You can practice answers aloud.");
-  assert.deepEqual(payloads.map(payload => payload.response_format.type), ["json_object", "text"]);
+  assert.deepEqual(payloads.map(payload => payload.response_format.type), ["json_object", "json_object"]);
+  assert.match(payloads[1].messages[0].content, /Output requirements for this response/);
 });
 
 test("output recovery still rejects unsupported tracks, malformed JSON, and secrets", async (t) => {

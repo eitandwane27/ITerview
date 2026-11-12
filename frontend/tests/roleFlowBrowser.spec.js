@@ -251,9 +251,10 @@ for (const viewport of [{ name: 'desktop', width: 1440, height: 900 }, { name: '
     await page.goto(baseURL + '/__role-flow__?view=main&set=1');
     await expect(page.locator('#btn-toggle-mic')).toBeEnabled();
     await page.locator('#btn-toggle-mic').click();
-    await expect(page.getByRole('button', { name: 'Stop & Submit' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Stop & Review' })).toBeVisible();
     await expect(page.getByText('It checks user input.', { exact: true }).first()).toBeVisible();
     await page.locator('#btn-toggle-mic').click();
+    await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText('Could not score your answer');
     await expect(page.getByRole('button', { name: 'Retry evaluation' })).toBeEnabled();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

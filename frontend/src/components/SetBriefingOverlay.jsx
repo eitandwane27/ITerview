@@ -6,7 +6,7 @@ import { authenticatedFetch } from '../utils/authenticatedApi';
 // Interactive 3C Diagnostic Calibration & Practice Studio Launch
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { motion as Motion, useReducedMotion } from 'framer-motion';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -86,6 +86,7 @@ export default function SetBriefingOverlay({
   onConfirm,
   onClose,
   onReady, // legacy alias
+  onContextChange,
 }) {
   const { roles, status: roleStatus, retry: retryRoles } = useRoleCatalogue();
   const [profile, setProfile] = useState(null);
@@ -518,6 +519,22 @@ export default function SetBriefingOverlay({
     () => scoreItems.find((item) => item.key === selectedFocus) || scoreItems[0],
     [scoreItems, selectedFocus]
   );
+  const briefingSnapshot = useMemo(() => ({
+    state: loading ? 'loading' : preparationError || roleStatus === 'error' ? 'error' : isPreparing ? 'preparing' : isSessionReady ? 'ready' : 'idle',
+    role: formattedRole, difficulty, focus: selectedFocus, mode: sessionMode, questionCount,
+    progress: prepProgress, status: stageText, errorMessage: preparationError || (roleStatus === 'error' ? 'Couldn’t load target roles. Retry loading roles.' : ''),
+    buttonLabel: loading ? 'Loading studio...' : isPreparing ? 'Preparing session...' : isSessionReady ? 'Enter Studio' : isDrill ? 'Start Drill' : 'Start Practice Studio',
+    disabled: loading || isPreparing || (!!auth.currentUser && roleStatus !== 'ready'),
+    metrics: loading ? [] : scoreItems.map(item => ({ label: item.label, description: item.description,
+      score: typeof item.score === 'number' && item.score >= 1 && item.score <= 5 ? `${item.score.toFixed(1)} / 5.0` : '--' })),
+  }), [loading, preparationError, isPreparing, isSessionReady, formattedRole, difficulty, selectedFocus, sessionMode,
+    questionCount, prepProgress, stageText, isDrill, roleStatus, scoreItems]);
+  useLayoutEffect(() => { onContextChange?.(briefingSnapshot); }, [onContextChange, briefingSnapshot]);
+  useEffect(() => {
+    const stop = () => { if (isPreparing) handleCancelPreparation(); };
+    window.addEventListener('nikki-prep-stop', stop);
+    return () => window.removeEventListener('nikki-prep-stop', stop);
+  }, [isPreparing, handleCancelPreparation]);
 
   return (
     <Motion.div
@@ -685,6 +702,7 @@ export default function SetBriefingOverlay({
                     return (
                       <button
                         key={item.key}
+                        data-nikki-focus={item.key}
                         type="button"
                         role="radio"
                         aria-checked={isSelected}

@@ -18,6 +18,12 @@ const userSchema = new mongoose.Schema({
     default: "",
   },
 
+  avatar: {
+    type: String,
+    enum: ["robot", "fox", "cat", "frog", "penguin", "bear", "rabbit", "owl"],
+    default: "fox",
+  },
+
   role: {
     type: String,
     enum: VALID_ROLES,
