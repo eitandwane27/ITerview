@@ -162,7 +162,7 @@ const SegmentedScale = ({ color, filled }) => {
 };
 
 // ── Main Component ───────────────────────────────────────────────────────────
-export default function TryItLiveDemo({ onOpenAuth }) {
+export default function TryItLiveDemo({ onOpenAuth, attemptCount, setAttemptCount }) {
   const [selectedTrackIndex, setSelectedTrackIndex] = useState(0);
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -172,7 +172,6 @@ export default function TryItLiveDemo({ onOpenAuth }) {
   const [transcriptText, setTranscriptText] = useState('');
   const [scores, setScores] = useState(null);
   const [micError, setMicError] = useState('');
-  const [attemptCount, setAttemptCount] = useState(0);
   const [switchConfirm, setSwitchConfirm] = useState(null);
 
   const wsRef = useRef(null);
@@ -203,6 +202,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
       audioRef.current.pause();
       audioRef.current.onended = null;
       audioRef.current.onerror = null;
+      URL.revokeObjectURL(audioRef.current.src);
       audioRef.current.src = '';
       audioRef.current = null;
     }
@@ -239,6 +239,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
   }, [isRecording, cleanupAudio]);
 
   const beginMicCapture = useCallback(async () => {
+    const socket = wsRef.current;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -248,6 +249,10 @@ export default function TryItLiveDemo({ onOpenAuth }) {
           noiseSuppression: true,
         },
       });
+      if (wsRef.current !== socket || socket?.readyState !== WebSocket.OPEN) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
 
       // The free attempt is spent only when speech actually starts arriving
@@ -258,9 +263,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
       setTranscriptText('');
       finalTranscriptRef.current = '';
 
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'start_recording' }));
-      }
+      socket.send(JSON.stringify({ type: 'start_recording' }));
 
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
         sampleRate: SAMPLE_RATE,
@@ -422,7 +425,7 @@ export default function TryItLiveDemo({ onOpenAuth }) {
     } else {
       beginMicCapture();
     }
-  }, [attemptCount, onOpenAuth, isRecording, cleanupAudio, beginMicCapture, stopAudio]);
+  }, [attemptCount, onOpenAuth, isRecording, cleanupAudio, beginMicCapture, stopAudio, setAttemptCount]);
 
   // ── Track & Question Switchers ─────────────────────────────────────────────
   const applySelectTrack = (idx) => {

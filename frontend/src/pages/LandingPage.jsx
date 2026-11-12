@@ -5,7 +5,7 @@
 // Primitives inspired by: shadcn/ui · Rare UI · Beautiful UI
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion as Motion, AnimatePresence, MotionConfig, useReducedMotion } from 'framer-motion';
 import AuthModal from '../components/AuthModal';
 import Reveal from '../components/motion/Reveal';
@@ -13,8 +13,8 @@ import CountUp from '../components/motion/CountUp';
 import MentorMascot from '../components/MentorMascot';
 import LearningJourney from '../components/LearningJourney';
 import RecommendationChatbot from '../components/RecommendationChatbot';
+import LandingDemoShowcase from '../components/LandingDemoShowcase';
 import { EASE } from '../components/motion/motion';
-const TryItLiveDemo = lazy(() => import('../components/TryItLiveDemo'));
 import logoSrc from '../assets/logo';
 import './LandingPage.css';
 import {
@@ -920,7 +920,7 @@ const LandingPage = () => {
           />
         </header>
 
-        {/* ── Hero Section (Ambient Light Sweep Atmosphere + Live Product Stage) ── */}
+        {/* ── Hero Section ── */}
         <section className="lp-hero" aria-label="Hero section">
           {/* Dedicated Standalone Atmospheric Lighting Layer (Fixed Geometry, Independent of Demo Height) */}
           <HeroAtmosphere />
@@ -989,15 +989,7 @@ const LandingPage = () => {
               </Reveal>
             </div>
 
-            {/* Live Studio Showcase Stage (lazy — streams in after first paint).
-              The Reveal element IS the stage, so its sizing rules (width:100%,
-              max-width:1000px, margin:0 auto) stay identical to the pre-motion
-              layout — an intermediate wrapper would collapse the flex width. */}
-            <Reveal as="div" className="lp-hero-stage" delay={0.35} y={32} duration={0.8}>
-              <Suspense fallback={<div className="lp-hero-stage-skeleton" aria-hidden="true" />}>
-                <TryItLiveDemo onOpenAuth={openRegisterModal} />
-              </Suspense>
-            </Reveal>
+            <LandingDemoShowcase onOpenAuth={openRegisterModal} />
           </div>
         </section>
 

@@ -854,51 +854,64 @@
   }
 }
 
-/* ── Grand Showcase Stage (Exact AI Studio Console Layout) ───────────────── */
+/* ── Demo showcase ──────────────────────────────────────────────────────── */
 .lp-hero-stage {
   width: 100%;
   max-width: 1000px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 2;
+  display: grid;
+  grid-template-columns: 44px 44px minmax(0, 1fr);
+  gap: 12px 8px;
 }
 
-/* Lazy-demo placeholder: holds the stage height so first paint has no layout
-   jump. Shimmers softly (translate-only) instead of using the atmosphere
-   keyframe, which wobbled the whole box via scaleX/translateY. */
-.lp-hero-stage-skeleton {
-  width: 100%;
-  min-height: 620px;
-  border-radius: var(--r-xl);
-  border: 1.5px dashed var(--border-strong);
-  background: linear-gradient(180deg, var(--canvas-ice) 0%, #ffffff 100%);
-  position: relative;
-  overflow: hidden;
+.lp-demo-content {
+  grid-column: 1 / -1;
+  min-width: 0;
 }
 
-.lp-hero-stage-skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(
-    100deg,
-    transparent 25%,
-    rgba(255, 255, 255, 0.75) 50%,
-    transparent 75%
-  );
-  animation: lpSkeletonShimmer 1.6s ease-in-out infinite;
+.lp-demo-loading {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  color: var(--ink-secondary);
 }
 
-@keyframes lpSkeletonShimmer {
-  to {
-    transform: translateX(100%);
+.lp-demo-view.ui-button {
+  border-radius: var(--r-pill);
+  border-color: var(--border-strong);
+  color: var(--ink-secondary);
+}
+
+.lp-demo-view.ui-button[aria-pressed='true'] {
+  background: var(--blue-light);
+  border-color: var(--blue-border);
+  color: var(--blue-hover);
+}
+
+@media (min-width: 1160px) {
+  .lp-hero-stage {
+    position: relative;
+    display: block;
+  }
+
+  .lp-demo-view {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+  }
+
+  .lp-demo-view--live {
+    right: calc(100% + 24px);
+  }
+
+  .lp-demo-view--video {
+    left: calc(100% + 24px);
   }
 }
 
-@media (max-width: 860px) {
-  .lp-hero-stage-skeleton {
-    min-height: 520px;
+@media (min-width: 861px) {
+  .lp-demo-loading {
+    height: 684px;
   }
 }
 
