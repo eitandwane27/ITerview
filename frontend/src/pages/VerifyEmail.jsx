@@ -85,6 +85,7 @@ export default function VerifyEmail() {
     }
   }
 
+  if (status === 'admin') return <Navigate to="/admin" replace />;
   if (status === 'ready') return <Navigate to="/dashboard" replace />;
   if (status === 'signed-out' || status === 'wrong-school') return <Navigate to="/login" replace />;
   if (!user)

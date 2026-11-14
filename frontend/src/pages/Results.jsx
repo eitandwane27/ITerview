@@ -24,7 +24,7 @@ import {
   Users,
   LockKeyhole,
 } from 'lucide-react';
-import logoSrc from '../assets/logo';
+import ResultsHeader from '../components/ResultsHeader';
 import TestWorkspace from '../components/TestWorkspace';
 import {
   averageThreeCs,
@@ -34,7 +34,6 @@ import {
   lowestThreeC,
   PRACTICE_FOCUS,
 } from '../utils/assessmentGuidance';
-import './Results.css';
 
 const SCORE_MAX = 5;
 const PERCENT_MAX = 100;
@@ -388,19 +387,9 @@ export default function Results() {
   if (loading) {
     return (
       <div className="rs-root">
-        <header className="rs-topbar">
-          <div className="rs-topbar-inner">
-            <div className="rs-topbar-left">
-              <div className="rs-topbar-brand">
-                <img src={logoSrc} alt="ITerview Logo" className="rs-topbar-logo" />
-                <span>ITerview</span>
-              </div>
-            </div>
-            <div className="rs-topbar-right">
-              <span className="rs-topbar-mode-badge">Compiling Telemetry...</span>
-            </div>
-          </div>
-        </header>
+        <ResultsHeader>
+          <span className="rs-topbar-mode-badge">Compiling Telemetry...</span>
+        </ResultsHeader>
 
         <main className="rs-main">
           <div className="rs-skeleton-header" />
@@ -432,16 +421,7 @@ export default function Results() {
   if (error || !data) {
     return (
       <div className="rs-root">
-        <header className="rs-topbar">
-          <div className="rs-topbar-inner">
-            <div className="rs-topbar-left">
-              <div className="rs-topbar-brand">
-                <img src={logoSrc} alt="ITerview Logo" className="rs-topbar-logo" />
-                <span>ITerview</span>
-              </div>
-            </div>
-          </div>
-        </header>
+        <ResultsHeader />
 
         <main className="rs-main">
           <div className="rs-card rs-error-card">
@@ -500,34 +480,19 @@ export default function Results() {
   return (
     <div className="rs-root">
       {/* ── Sticky Top Navigation ────────────────────────────────────────── */}
-      <header className="rs-topbar">
-        <div className="rs-topbar-inner">
-          <div className="rs-topbar-left">
-            <div className="rs-topbar-brand">
-              <img src={logoSrc} alt="ITerview Logo" className="rs-topbar-logo" />
-              <span>ITerview</span>
-            </div>
-            <span
-              className={`rs-topbar-mode-badge ${
-                isPracticeMode ? 'rs-topbar-mode-badge--practice' : ''
-              }`}
-            >
-              {isPracticeMode ? 'Practice Session Summary' : 'Session Results & Graduation'}
-            </span>
-          </div>
-
-          <div className="rs-topbar-right">
-            <button
-              className="rs-topbar-return-btn"
-              onClick={() => navigate('/dashboard')}
-              title="Return to Dashboard"
-            >
-              <Home size={15} />
-              Dashboard
-            </button>
-          </div>
-        </div>
-      </header>
+      <ResultsHeader
+        badge={isPracticeMode ? 'Practice Session Summary' : 'Session Results & Graduation'}
+        practice={isPracticeMode}
+      >
+        <button
+          className="rs-topbar-return-btn"
+          onClick={() => navigate('/dashboard')}
+          title="Return to Dashboard"
+        >
+          <Home size={15} />
+          Dashboard
+        </button>
+      </ResultsHeader>
 
       {/* ── Level Unlocked Celebration Banner ────────────────────────────── */}
       {isNextDifficultyUnlocked && (

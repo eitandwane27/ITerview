@@ -5,7 +5,10 @@ const { WebSocketServer, WebSocket } = require('ws');
 const http = require('node:http');
 const { createSchoolAuth, bindUserIdentity, isSchoolEmail } = require('../middleware/schoolAuth');
 const userRoutes = require('../routes/userRoutes');
+const adminRoutes = require('../routes/adminRoutes');
 const User = require('../models/User');
+const PreTestSession = require('../models/PreTestSession');
+const PostTestSession = require('../models/PostTestSession');
 
 test('Firebase Admin rejects malformed and unsigned tokens without a service account key', async t => {
   const previousProject = process.env.FIREBASE_PROJECT_ID;
@@ -59,6 +62,161 @@ test('missing/invalid tokens, personal addresses, unverified accounts and OAuth 
     await assert.rejects(auth.authenticate(token), error => error.status === status);
   }
   assert.equal((await auth.authenticate('valid')).uid, verifiedUser.uid);
+});
+
+test('admin access requires the configured UID and password sign-in', async t => {
+  const previousUid = process.env.ADMIN_FIREBASE_UID;
+  t.after(() => {
+    if (previousUid === undefined) delete process.env.ADMIN_FIREBASE_UID;
+    else process.env.ADMIN_FIREBASE_UID = previousUid;
+  });
+  const admin = {
+    uid: 'admin-uid', email: 'admin@iterview.invalid', email_verified: false,
+    firebase: { sign_in_provider: 'password' },
+  };
+  const tokens = {
+    admin, student: verifiedUser,
+    wrongUid: { ...admin, uid: 'other-uid' },
+    oauth: { ...admin, firebase: { sign_in_provider: 'google.com' } },
+  };
+  const { requireAdmin, authenticate } = createSchoolAuth(async token => {
+    if (!Object.hasOwn(tokens, token)) throw new Error('Invalid token');
+    return tokens[token];
+  });
+  async function check(token) {
+    const req = { headers: token ? { authorization: `Bearer ${token}` } : {} };
+    const res = { status(code) { this.code = code; return this; }, json() {} };
+    await requireAdmin(req, res, () => { res.code = 204; });
+    return res.code;
+  }
+  delete process.env.ADMIN_FIREBASE_UID;
+  assert.equal(await check('admin'), 403);
+  process.env.ADMIN_FIREBASE_UID = admin.uid;
+  for (const [token, status] of [[null, 401], ['invalid', 401], ['student', 403], ['wrongUid', 403], ['oauth', 403], ['admin', 204]]) {
+    assert.equal(await check(token), status);
+  }
+  await assert.rejects(authenticate('admin'), error => error.status === 403);
+});
+
+test('only the admin can list or change a separate official name', async t => {
+  const previousUid = process.env.ADMIN_FIREBASE_UID;
+  process.env.ADMIN_FIREBASE_UID = 'admin-uid';
+  t.after(() => {
+    if (previousUid === undefined) delete process.env.ADMIN_FIREBASE_UID;
+    else process.env.ADMIN_FIREBASE_UID = previousUid;
+  });
+  const admin = { ...identities.personal, uid: 'admin-uid' };
+  const { requireAdmin, requireSchoolUser } = createSchoolAuth(async token =>
+    token === 'admin' ? admin : verifiedUser
+  );
+  const student = { firebaseUid: verifiedUser.uid, displayName: 'Mika S.', email: verifiedUser.email };
+  const fields = 'firebaseUid displayName email officialName -_id';
+  const updates = [];
+  t.mock.method(User, 'find', () => ({
+    select(projection) {
+      assert.equal(projection, fields);
+      return { sort: () => ({ lean: async () => [student] }) };
+    },
+  }));
+  t.mock.method(User, 'findOneAndUpdate', (filter, update, options) => ({
+    select(projection) {
+      assert.equal(projection, fields);
+      assert.equal(options.upsert, undefined);
+      updates.push(update);
+      return { lean: async () => filter.firebaseUid === student.firebaseUid
+        ? { ...student, officialName: update.$set?.officialName }
+        : null };
+    },
+  }));
+  const app = express();
+  app.use(express.json());
+  app.use('/admin', requireAdmin, adminRoutes);
+  app.use('/users', requireSchoolUser, userRoutes);
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const list = token => fetch(base + '/admin/students', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  const save = (officialName, token = 'admin', uid = student.firebaseUid) =>
+    fetch(base + `/admin/students/${uid}/official-name`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ officialName, displayName: 'Not editable here' }),
+    });
+
+  assert.equal((await list()).status, 401);
+  assert.equal((await list('student')).status, 403);
+  assert.equal((await save('Mika Santos', 'student')).status, 403);
+  assert.equal((await save({ $ne: '' })).status, 400);
+  assert.equal((await save('A'.repeat(161))).status, 400);
+  assert.deepEqual(updates, []);
+  const response = await list('admin');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await response.json(), { students: [student] });
+  assert.deepEqual((await (await save('  Mika Santos  ')).json()).student, {
+    ...student, officialName: 'Mika Santos',
+  });
+  assert.deepEqual((await (await save('')).json()).student, student);
+  assert.deepEqual(updates, [{ $set: { officialName: 'Mika Santos' } }, { $unset: { officialName: '' } }]);
+  assert.equal((await save('Mika Santos', 'admin', 'unknown')).status, 404);
+
+  const studentQuery = User.findOne({ firebaseUid: student.firebaseUid });
+  studentQuery._applyPaths();
+  assert.equal(studentQuery.projection().officialName, 0);
+});
+
+test('research data uses school email digits for IDs and pairs first-run scores by UID', async t => {
+  const previousUid = process.env.ADMIN_FIREBASE_UID;
+  process.env.ADMIN_FIREBASE_UID = 'admin-uid';
+  t.after(() => {
+    if (previousUid === undefined) delete process.env.ADMIN_FIREBASE_UID;
+    else process.env.ADMIN_FIREBASE_UID = previousUid;
+  });
+  const { requireAdmin } = createSchoolAuth(async token => token === 'admin'
+    ? { ...verifiedUser, uid: 'admin-uid' } : verifiedUser);
+  const student = { firebaseUid: 'student-uid', email: 'student2026-0042@spcba.edu.ph', confidenceScore: 15 };
+  const newerStudent = { firebaseUid: 'newer-uid', email: 'a.newer42@spcba.edu.ph' };
+  let users = [{ firebaseUid: 'admin-uid', email: 'admin@spcba.edu.ph' },
+    student, { firebaseUid: 'personal-uid', email: 'person@example.com' }, newerStudent];
+  t.mock.method(User, 'find', () => ({ select: () => ({ sort: (order) => {
+    assert.deepEqual(order, { createdAt: 1, _id: 1 });
+    return { lean: async () => users };
+  } }) }));
+  const answer = { clarity_score: 3, correctness_score: 4, completeness_score: 5 };
+  const queryUids = [];
+  t.mock.method(PreTestSession, 'find', (filter) => {
+    queryUids.push(filter.firebaseUid.$in);
+    return { select: () => ({ lean: async () => [{ firebaseUid: student.firebaseUid, baseline_score_percentage: 0, answers: [answer] }] }) };
+  });
+  t.mock.method(PostTestSession, 'find', () => ({ select: () => ({ lean: async () => [] }) }));
+  const app = express();
+  app.use('/admin', requireAdmin, adminRoutes);
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  t.after(() => server.close());
+  const load = (token) => fetch(`http://127.0.0.1:${server.address().port}/admin/research-data`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal((await load('student')).status, 403);
+  const response = await load('admin');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const { participants } = await response.json();
+  assert.deepEqual(participants.map(({ participantId, email }) => [participantId, email]), [
+    ['0042', student.email],
+    [null, newerStudent.email],
+  ]);
+  const [row] = participants;
+  assert.equal(row.firebaseUid, undefined);
+  assert.deepEqual(row.preTest, { percentage: 0, clarity: 3, correctness: 4, completeness: 5 });
+  assert.deepEqual(row.postTest, { percentage: null, clarity: null, correctness: null, completeness: null });
+  assert.equal(row.preLikert, 15);
+  assert.equal(row.postLikert, null);
+  users = [student];
+  assert.deepEqual(await (await load('admin')).json(), { participants: [row] });
+  assert.deepEqual(queryUids, [[student.firebaseUid, newerStudent.firebaseUid], [student.firebaseUid]]);
 });
 
 test('real user routes derive identity from a verified token and prevent other-user reads/writes', async t => {

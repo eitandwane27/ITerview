@@ -18,6 +18,13 @@ const userSchema = new mongoose.Schema({
     default: "",
   },
 
+  officialName: {
+    type: String,
+    trim: true,
+    maxlength: 160,
+    select: false,
+  },
+
   avatar: {
     type: String,
     enum: ["robot", "fox", "cat", "frog", "penguin", "bear", "rabbit", "owl"],

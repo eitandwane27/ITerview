@@ -20,6 +20,10 @@ async function getRoute(t, path, records, { method = 'get', body: requestBody = 
       return query;
     });
   }
+  return callRoute(path, { method, requestBody, expectedStatus });
+}
+
+async function callRoute(path, { method = 'get', requestBody = {}, expectedStatus = 200 } = {}) {
   const handler = router.stack.find((layer) => layer.route?.path === path && layer.route.methods[method]).route.stack[0].handle;
   let status;
   let body;
@@ -39,6 +43,41 @@ async function getRoute(t, path, records, { method = 'get', body: requestBody = 
   assert.equal(status, expectedStatus);
   return body;
 }
+
+test('each confidence survey keeps its first complete submission and calculates its own total', async t => {
+  const [User] = models;
+  const firebaseUid = 'test-user';
+  const email = 'student@spcba.edu.ph';
+  const saved = { firebaseUid, email };
+  t.mock.method(User, 'findOneAndUpdate', async (filter, update, { upsert }) => {
+    assert.equal(filter.firebaseUid, firebaseUid);
+    const scoreField = Object.keys(filter).find(key => key !== 'firebaseUid');
+    assert.equal(filter[scoreField], null);
+    if (saved[scoreField] == null) return { ...Object.assign(saved, update.$set) };
+    if (upsert) throw Object.assign(new Error('Duplicate UID'), { code: 11000, keyPattern: { firebaseUid: 1 } });
+    return null;
+  });
+  t.mock.method(User, 'findOne', async filter => {
+    assert.deepEqual(filter, { firebaseUid });
+    return saved;
+  });
+  const submit = (path, answers, expectedStatus) => callRoute(path, {
+    method: 'post', requestBody: { firebaseUid, email, answers, confidenceScore: 99 }, expectedStatus,
+  });
+  const answersFor = score => Array.from({ length: 5 }, (_, i) => ({ questionId: `q${i + 1}`, score }));
+  for (const [path, scoreField, answersField, firstScore] of [
+    ['/pretest', 'confidenceScore', 'preConfidenceAnswers', 3],
+    ['/posttest', 'postConfidenceScore', 'postConfidenceAnswers', 4],
+  ]) {
+    const answers = answersFor(firstScore);
+    await submit(path, [...answers.slice(0, 4), answers[0]], 400);
+    assert.equal(saved[scoreField], undefined);
+    assert.equal((await submit(path, answers)).user[scoreField], firstScore * 5);
+    const { user } = await submit(path, answersFor(5));
+    assert.equal(user[scoreField], firstScore * 5);
+    assert.deepEqual(user[answersField], answers);
+  }
+});
 
 const completedPreTest = {
   completedAt: new Date('2026-09-01'),

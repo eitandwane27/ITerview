@@ -26,8 +26,8 @@ async function verifyFirebaseToken(token) {
 }
 
 function createSchoolAuth(verifyToken = verifyFirebaseToken) {
-  async function authenticate(token) {
-    if (!token) throw new AccessError(401, 'auth/required', 'Please sign in with your school email.');
+  async function verifyIdentity(token) {
+    if (!token) throw new AccessError(401, 'auth/required', 'Please sign in.');
     let identity;
     try {
       identity = await verifyToken(token);
@@ -35,6 +35,12 @@ function createSchoolAuth(verifyToken = verifyFirebaseToken) {
       if (error instanceof AccessError) throw error;
       throw new AccessError(401, 'auth/invalid-token', 'Your session has expired. Please sign in again.');
     }
+    return identity;
+  }
+
+  async function authenticate(token) {
+    if (!token) throw new AccessError(401, 'auth/required', 'Please sign in with your school email.');
+    const identity = await verifyIdentity(token);
     if (!identity?.uid || !isSchoolEmail(identity.email)) {
       throw new AccessError(403, 'auth/school-email-required', `Please use your @${SCHOOL_EMAIL_DOMAIN} school email.`);
     }
@@ -47,15 +53,26 @@ function createSchoolAuth(verifyToken = verifyFirebaseToken) {
     return identity;
   }
 
-  async function requireSchoolUser(req, res, next) {
-    try {
-      const token = /^Bearer (\S+)$/i.exec(req.headers.authorization || '')?.[1];
-      req.auth = await authenticate(token);
-      next();
-    } catch (error) {
-      res.status(error.status || 401).json({ code: error.code, message: error.message });
-    }
+  function requireUser(authenticateRequest) {
+    return async (req, res, next) => {
+      try {
+        const token = /^Bearer (\S+)$/i.exec(req.headers.authorization || '')?.[1];
+        req.auth = await authenticateRequest(token);
+        next();
+      } catch (error) {
+        res.status(error.status || 401).json({ code: error.code, message: error.message });
+      }
+    };
   }
+
+  const requireAdmin = requireUser(async (token) => {
+    const identity = await verifyIdentity(token);
+    const adminUid = process.env.ADMIN_FIREBASE_UID?.trim();
+    if (!adminUid || identity?.uid !== adminUid || identity.firebase?.sign_in_provider !== 'password') {
+      throw new AccessError(403, 'auth/admin-required', 'This account does not have admin access.');
+    }
+    return identity;
+  });
 
   async function authenticateSocket(request) {
     // Browser WebSockets cannot set Authorization. Use a subprotocol so the
@@ -70,7 +87,7 @@ function createSchoolAuth(verifyToken = verifyFirebaseToken) {
     return request.auth;
   }
 
-  return { authenticate, requireSchoolUser, authenticateSocket };
+  return { authenticate, requireSchoolUser: requireUser(authenticate), requireAdmin, authenticateSocket };
 }
 
 function bindUserIdentity(req, res, next) {

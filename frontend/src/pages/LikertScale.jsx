@@ -1,5 +1,5 @@
 import { authenticatedFetch } from '../utils/authenticatedApi';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, LoaderCircle, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -51,6 +51,8 @@ export default function LikertScale({ phase = 'pre' }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState(INITIAL_ANSWERS);
   const [isDone, setIsDone] = useState(false);
+  const [savedCheck, setSavedCheck] = useState('loading');
+  const [checkAttempt, setCheckAttempt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -58,6 +60,27 @@ export default function LikertScale({ phase = 'pre' }) {
   const currentAnswer = answers[currentQuestion.id];
   const totalQuestions = QUESTIONS.length;
   const progressRatio = (currentIndex + 1) / totalQuestions;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const uid = auth.currentUser?.uid;
+    const check = async () => {
+      if (!uid) throw new Error('Sign in to check your saved answers.');
+      const response = await authenticatedFetch(`/api/users/${encodeURIComponent(uid)}`, {
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]),
+      });
+      if (response.status === 404) return false;
+      if (!response.ok) throw new Error('Could not check saved answers.');
+      const { user } = await response.json();
+      return (phase === 'pre' ? user.confidenceScore : user.postConfidenceScore) != null;
+    };
+    check().then((saved) => {
+      if (!controller.signal.aborted) setSavedCheck(saved ? 'done' : 'ready');
+    }).catch(() => {
+      if (!controller.signal.aborted) setSavedCheck('error');
+    });
+    return () => controller.abort();
+  }, [phase, checkAttempt]);
 
   const handleSelect = (value) => {
     setAnswers((previous) => ({ ...previous, [currentQuestion.id]: value }));
@@ -84,25 +107,16 @@ export default function LikertScale({ phase = 'pre' }) {
       questionId: question.id,
       score: answers[question.id],
     }));
-    const confidenceScore = answersArray.reduce((sum, answer) => sum + answer.score, 0);
     const endpoint = phase === 'post' ? '/api/users/posttest' : '/api/users/pretest';
 
     setIsSubmitting(true);
     setSubmitError('');
 
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('Your session has expired. Please sign in again.');
-
       const response = await authenticatedFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firebaseUid: user.uid,
-          email: user.email,
-          answers: answersArray,
-          confidenceScore,
-        }),
+        body: JSON.stringify({ answers: answersArray }),
       });
 
       if (!response.ok) throw new Error('We could not save your answers. Please try again.');
@@ -150,10 +164,29 @@ export default function LikertScale({ phase = 'pre' }) {
   };
 
   const handleContinue = () => {
-    navigate(phase === 'pre' ? '/mic-test' : '/results');
+    navigate(phase === 'pre' ? '/mic-test' : '/results', { replace: true });
   };
 
-  if (isDone) {
+  if (savedCheck === 'loading' || savedCheck === 'error') {
+    return (
+      <div className="likert-container">
+        <TopBar phase={phase} progressRatio={0} />
+        <main className="likert-main likert-main--done">
+          {savedCheck === 'loading' ? <p role="status">Checking saved answers…</p> : (
+            <section className="likert-done-card">
+              <p role="alert">Could not check your saved answers.</p>
+              <button className="likert-btn likert-btn--primary" type="button" onClick={() => {
+                setSavedCheck('loading');
+                setCheckAttempt((attempt) => attempt + 1);
+              }}>Try again</button>
+            </section>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  if (isDone || savedCheck === 'done') {
     return (
       <div className="likert-container">
         <TopBar phase={phase} progressRatio={1} isDone />

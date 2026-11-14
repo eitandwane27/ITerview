@@ -74,35 +74,46 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /api/users/pretest
-// This endpoint receives data from your Likert Scale frontend
-router.post('/pretest', async (req, res) => {
-  try {
-    const { firebaseUid, email, answers, confidenceScore } = req.body;
-
+function saveConfidenceSurvey(answersField, scoreField) {
+  return async (req, res) => {
+    const { firebaseUid, email, answers } = req.body;
     if (!firebaseUid || !email) {
       return res.status(400).json({ message: 'Firebase UID and Email are required' });
     }
+    if (!Array.isArray(answers) || answers.length !== 5 ||
+      !answers.every(answer => typeof answer?.questionId === 'string' && /^q[1-5]$/.test(answer.questionId) &&
+        Number.isInteger(answer.score) && answer.score >= 1 && answer.score <= 5) ||
+      new Set(answers.map(({ questionId }) => questionId)).size !== 5) {
+      return res.status(400).json({ message: 'Provide one answer from 1 to 5 for each of the five questions.' });
+    }
 
-    const user = await User.findOneAndUpdate(
-      { firebaseUid },
-      {
-        $set: {
-          email,
-          preConfidenceAnswers: answers,
-          confidenceScore,
-        },
-        $setOnInsert: { firebaseUid },
-      },
-      { returnDocument: 'after', upsert: true }
-    );
+    const filter = { firebaseUid, [scoreField]: null };
+    const update = { $set: {
+      email,
+      [answersField]: answers.map(({ questionId, score }) => ({ questionId, score })),
+      [scoreField]: answers.reduce((sum, { score }) => sum + score, 0),
+    } };
+    const options = { returnDocument: 'after' };
 
-    res.status(200).json({ message: 'Pre-test scores saved successfully!', user });
-  } catch (error) {
-    console.error('Error saving pre-test scores');
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
-});
+    try {
+      let user;
+      try {
+        user = await User.findOneAndUpdate(filter, update, { ...options, upsert: true });
+      } catch (error) {
+        if (error.code !== 11000 || !error.keyPattern?.firebaseUid) throw error;
+        // An existing UID may already have a score or may have been created by a concurrent login.
+        user = await User.findOneAndUpdate(filter, update, options) ?? await User.findOne({ firebaseUid });
+      }
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      res.status(200).json({ message: 'Confidence check saved.', user });
+    } catch {
+      console.error('Error saving confidence survey');
+      res.status(500).json({ message: 'Could not save the confidence check. Please try again.' });
+    }
+  };
+}
+
+router.post('/pretest', saveConfidenceSurvey('preConfidenceAnswers', 'confidenceScore'));
 
 // GET /api/users/pretest-profile?uid=<firebaseUid>
 // Returns the user's pre-test weakness tag, baseline score, and role
@@ -255,35 +266,7 @@ router.post('/reset-practice-session', async (req, res) => {
   }
 });
 
-// POST /api/users/posttest
-// Receives and saves post-test Likert confidence scores (H₀₂ post measurement)
-router.post('/posttest', async (req, res) => {
-  try {
-    const { firebaseUid, email, answers, confidenceScore } = req.body;
-
-    if (!firebaseUid || !email) {
-      return res.status(400).json({ message: 'Firebase UID and Email are required' });
-    }
-
-    const user = await User.findOneAndUpdate(
-      { firebaseUid },
-      {
-        $set: {
-          email,
-          postConfidenceAnswers: answers,
-          postConfidenceScore: confidenceScore,
-        },
-        $setOnInsert: { firebaseUid },
-      },
-      { returnDocument: 'after', upsert: true }
-    );
-
-    res.status(200).json({ message: 'Post-test scores saved successfully!', user });
-  } catch (error) {
-    console.error('Error saving post-test scores');
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
-});
+router.post('/posttest', saveConfidenceSurvey('postConfidenceAnswers', 'postConfidenceScore'));
 
 // POST /api/users/practice-history
 // Appends a completed practice session entry to practiceHistory.

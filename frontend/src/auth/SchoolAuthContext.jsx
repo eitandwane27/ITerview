@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { apiUrl } from '../utils/backendUrl';
-import { schoolAccessStatus } from '../utils/schoolAccess';
+import { ADMIN_AUTH_EMAIL, schoolAccessStatus } from '../utils/schoolAccess';
 
 import { SchoolAuthContext } from './schoolAuth';
 
@@ -31,22 +31,27 @@ export function SchoolAuthProvider({ children }) {
         // current account details and a fresh token; restored sessions use the SDK cache.
         if (user && reloadUser) await user.reload();
         if (user !== auth.currentUser || currentRevision !== revision.current) return 'signed-out';
-        const status = schoolAccessStatus(user);
-        if (status === 'ready') {
+        let status = schoolAccessStatus(user);
+        const isAdminLogin = user?.email === ADMIN_AUTH_EMAIL;
+        if (isAdminLogin || status === 'ready') {
           const token = await user.getIdToken(reloadUser);
           if (currentRevision !== revision.current || user !== auth.currentUser)
             return 'signed-out';
           // Keep this request bound to the account whose session is being checked.
-          const response = await fetch(apiUrl('/api/users/login'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ displayName: user.displayName || '' }),
+          const headers = { Authorization: `Bearer ${token}` };
+          const response = await fetch(apiUrl(isAdminLogin ? '/api/admin/session' : '/api/users/login'), {
+            ...(isAdminLogin ? { headers } : {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ displayName: user.displayName || '' }),
+            }),
             signal: AbortSignal.timeout(15000),
           });
-          if (!response.ok) {
+          if (isAdminLogin ? response.status !== 204 : !response.ok) {
             const payload = await response.json().catch(() => ({}));
             throw new Error(payload.message || 'We could not confirm access. Please try again.');
           }
+          if (isAdminLogin) status = 'admin';
         }
         if (currentRevision !== revision.current || user !== auth.currentUser) return 'signed-out';
         setSession({ user, status, error: '' });

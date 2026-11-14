@@ -16,7 +16,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'fire
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { auth } from '../firebase';
 import './AuthModal.css';
-import { isSchoolEmail } from '../utils/schoolAccess';
+import { ADMIN_AUTH_EMAIL, isSchoolEmail } from '../utils/schoolAccess';
 import { sendSchoolVerification } from '../utils/emailVerification';
 import { passwordResetWaitSeconds, requestPasswordReset } from '../utils/passwordReset';
 import { useSchoolAuth } from '../auth/schoolAuth';
@@ -231,7 +231,9 @@ export default function AuthModal({
     setError('');
     setTermsError('');
 
-    const trimmedEmail = email.trim().toLowerCase();
+    const identifier = email.trim().toLowerCase();
+    const isAdminLogin = mode === 'login' && identifier === 'admin';
+    const trimmedEmail = isAdminLogin ? ADMIN_AUTH_EMAIL : identifier;
 
     // Client-side email validation
     if (!trimmedEmail) {
@@ -243,7 +245,7 @@ export default function AuthModal({
       return;
     }
 
-    if (!isSchoolEmail(trimmedEmail)) {
+    if (!isAdminLogin && !isSchoolEmail(trimmedEmail)) {
       setError('Please use your @spcba.edu.ph school email.');
       return;
     }
@@ -310,7 +312,7 @@ export default function AuthModal({
           : await createUserWithEmailAndPassword(auth, trimmedEmail, password);
       const user = credential.user;
 
-      if (!user.emailVerified) {
+      if (!isAdminLogin && !user.emailVerified) {
         signInTransition?.cancel();
         let emailSent = false;
         let verificationError = '';
@@ -328,6 +330,12 @@ export default function AuthModal({
       }
 
       const status = await refreshSession({ reloadUser: false });
+      if (status === 'admin') {
+        signInTransition?.cancel();
+        if (onClose) onClose();
+        navigate('/admin', { replace: true });
+        return;
+      }
       if (status !== 'ready') {
         signInTransition?.cancel();
         if (status === 'verify') {
@@ -458,7 +466,7 @@ export default function AuthModal({
 
             <p id="am-subheading" className="am-subheading">
               {mode === 'login'
-                ? 'Sign in with your verified SPCBA school email.'
+                ? 'Use your verified SPCBA school email or admin username.'
                 : mode === 'register'
                   ? 'Use your SPCBA school email to get started.'
                   : 'Enter the SPCBA school email you used to create your ITerview account.'}
@@ -478,19 +486,19 @@ export default function AuthModal({
             {/* Email field */}
             <div className="am-field">
               <label htmlFor="am-email" className="am-label">
-                School email address
+                {mode === 'login' ? 'School email address or admin username' : 'School email address'}
               </label>
               <div className="am-input-wrap">
                 <Mail size={18} className="am-input-icon" aria-hidden="true" />
                 <input
                   ref={emailInputRef}
                   id="am-email"
-                  type="email"
+                  type={mode === 'login' ? 'text' : 'email'}
                   className="am-input"
-                  placeholder="you@spcba.edu.ph"
+                  placeholder={mode === 'login' ? 'School email or username' : 'you@spcba.edu.ph'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
+                  autoComplete={mode === 'login' ? 'username' : 'email'}
                   autoCapitalize="none"
                   spellCheck={false}
                   aria-describedby={mode === 'forgot' ? 'am-reset-hint' : undefined}

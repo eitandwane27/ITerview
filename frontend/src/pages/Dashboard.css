@@ -1,6 +1,7 @@
 /* Dashboard.css - Responsive Design System for ITerview Dashboard */
 /* ── Design Tokens ──────────────────────────────────────────────────────── */
-.db-root {
+.db-root,
+.admin-page .db-signout-modal {
   --db-canvas: #ffffff;
   --db-canvas-subtle: #f8fafc;
   --db-card-bg: #ffffff;
@@ -75,7 +76,9 @@
   --db-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --db-font-display: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
   --db-focus: var(--db-blue);
+}
 
+.db-root {
   background-color: var(--db-canvas);
   color: var(--db-ink);
   font-family: var(--db-font-body);

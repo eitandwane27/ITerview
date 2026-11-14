@@ -5,7 +5,7 @@ import '../components/AuthModal.css';
 import SignInTransition from '../components/SignInTransition';
 import { useSignInTransition } from './signInTransition';
 
-export default function ProtectedRoute() {
+export default function ProtectedRoute({ admin = false }) {
   const { status, error, refreshSession, logout, signOutRedirect } = useSchoolAuth();
   const transition = useSignInTransition();
   const signOutPending = useRef(false);
@@ -55,7 +55,7 @@ export default function ProtectedRoute() {
     );
   }
   if (status === 'verify') return <Navigate to="/verify-email" replace />;
-  if (status !== 'ready')
+  if (status !== 'ready' && status !== 'admin')
     return (
       <Navigate
         to={status === 'signed-out' ? signOutRedirect || '/login' : '/login'}
@@ -63,5 +63,7 @@ export default function ProtectedRoute() {
         state={{ schoolEmailRequired: status === 'wrong-school' }}
       />
     );
+  if (admin && status !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (!admin && status === 'admin') return <Navigate to="/admin" replace />;
   return <Outlet />;
 }

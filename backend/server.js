@@ -3,7 +3,7 @@ const http = require("http");
 const { WebSocketServer } = require("ws");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const { requireSchoolUser, authenticateSocket } = require('./middleware/schoolAuth');
+const { requireSchoolUser, requireAdmin, authenticateSocket } = require('./middleware/schoolAuth');
 // Load the backend configuration even when launched from the repository root.
 require("dotenv").config({ path: require("node:path").join(__dirname, ".env") });
 
@@ -49,6 +49,7 @@ app.get("/api/test", (req, res) => {
 // Import REST routes
 const userRoutes = require("./routes/userRoutes");
 app.use("/api/users", requireSchoolUser, userRoutes);
+app.use("/api/admin", requireAdmin, require("./routes/adminRoutes"));
 
 const deepgramRoutes = require("./routes/deepgramRoutes");
 app.use("/api/deepgram", requireSchoolUser, deepgramRoutes);

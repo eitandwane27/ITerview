@@ -1,0 +1,488 @@
+.admin-page .rs-topbar-return-btn {
+  font-family: var(--rs-font-body);
+}
+
+.admin-page .rs-page-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.admin-page :focus-visible {
+  outline: 2px solid var(--rs-blue);
+  outline-offset: 3px;
+}
+
+.admin-roster {
+  min-width: 0;
+  background: var(--rs-card-bg);
+  border: 1px solid var(--rs-border);
+  border-radius: var(--rs-r-lg);
+}
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--rs-border);
+}
+
+.admin-search {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: min(100%, 340px);
+  min-width: 0;
+}
+
+.admin-search svg {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+  color: var(--rs-ink-muted);
+}
+
+.admin-page input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--rs-border-strong);
+  border-radius: var(--rs-r-sm);
+  background: var(--rs-canvas);
+  color: var(--rs-ink);
+  font: inherit;
+  font-size: 1rem;
+  padding: 8px 12px;
+}
+
+.admin-search input {
+  padding-left: 38px;
+}
+
+.admin-search input::placeholder,
+.admin-count,
+.admin-muted,
+.admin-dialog-hint {
+  color: var(--rs-ink-muted);
+}
+
+.admin-count {
+  flex: none;
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: .875rem;
+}
+
+.admin-table :is(th, td) {
+  padding: 10px 16px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.admin-table :is(th, td):first-child {
+  width: 26%;
+  padding-left: 24px;
+}
+
+.admin-table :is(th, td):nth-child(2) {
+  width: 20%;
+}
+
+.admin-table th {
+  color: var(--rs-ink-secondary);
+  font-weight: 600;
+}
+
+.admin-table :is(th, td):last-child {
+  width: 130px;
+  text-align: right;
+  padding-right: 24px;
+}
+
+.admin-table td {
+  border-top: 1px solid var(--rs-border);
+}
+
+.admin-official {
+  font-weight: 700;
+}
+
+.admin-mobile-label {
+  display: none;
+}
+
+.admin-action {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--rs-blue-hover);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-action:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.admin-page button:disabled {
+  cursor: default;
+  opacity: .65;
+}
+
+.admin-table-message td[colspan] {
+  padding: 24px;
+  text-align: left;
+  color: var(--rs-ink-secondary);
+}
+
+.admin-feedback,
+.admin-notice {
+  margin: 0;
+  padding: 12px 24px;
+}
+
+.admin-feedback p,
+.admin-error {
+  margin: 0;
+  color: #991b1b;
+}
+
+.admin-notice {
+  color: var(--rs-correctness-ink);
+  background: var(--rs-correctness-light);
+  font-size: .875rem;
+}
+
+.admin-dialog {
+  width: min(100% - 32px, 480px);
+  max-height: calc(100% - 32px);
+  margin: auto;
+  padding: 24px;
+  border: 1px solid var(--rs-border);
+  border-radius: var(--rs-r-lg);
+  background: var(--rs-canvas);
+  color: var(--rs-ink);
+  box-shadow: 0 16px 48px rgb(15 23 42 / 15%);
+}
+
+.admin-dialog::backdrop {
+  background: rgb(15 23 42 / 32%);
+}
+
+.admin-dialog h2 {
+  font: 600 1.65rem/1.2 var(--rs-font-display);
+  margin: 0;
+}
+
+.admin-dialog-account {
+  margin: 8px 0 20px;
+  color: var(--rs-ink-secondary);
+  overflow-wrap: anywhere;
+  font-size: .875rem;
+}
+
+.admin-dialog-account strong {
+  display: block;
+}
+
+.admin-name-field {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.admin-dialog-hint {
+  margin: 6px 0 0;
+  font-size: .875rem;
+}
+
+.admin-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.admin-dialog-actions :is(.rs-btn-primary, .rs-btn-secondary),
+.research-export {
+  width: auto;
+  min-height: 44px;
+  padding: 8px 16px;
+}
+
+.admin-clear {
+  margin-right: auto;
+  color: var(--rs-ink-secondary);
+  font-size: .875rem;
+}
+
+.admin-nav {
+  display: flex;
+  gap: 24px;
+}
+
+.admin-nav a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 8px;
+  color: var(--rs-ink-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-nav a:first-child {
+  margin-left: -8px;
+}
+
+.admin-nav a:hover,
+.admin-nav a[aria-current] {
+  color: var(--rs-blue-hover);
+}
+
+.admin-nav a[aria-current]::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 4px;
+  border-radius: var(--rs-r-pill);
+  background: var(--rs-blue);
+  content: '';
+}
+
+.research-toolbar {
+  flex-wrap: wrap;
+}
+
+.research-toolbar .admin-count {
+  flex: 1 1 15rem;
+  margin: 0;
+}
+
+.research-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.research-table :is(th, td):first-child {
+  width: 16.75%;
+}
+
+.research-table :is(th, td):nth-child(2) {
+  width: 29%;
+}
+
+.research-table .admin-action {
+  white-space: nowrap;
+}
+
+.research-ready {
+  color: var(--rs-correctness-ink);
+  font-weight: 600;
+}
+
+.research-lower {
+  color: #9a3412;
+}
+
+.research-dialog {
+  width: min(calc(100% - 32px), 620px);
+  max-width: none;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 12%);
+  font-family: var(--rs-font-body);
+}
+
+.research-dialog::backdrop {
+  background: rgb(15 23 42 / 21%);
+}
+
+.research-dialog h2 {
+  padding-right: 44px;
+  font: 700 1.375rem/1.2 var(--rs-font-body);
+  letter-spacing: -.025em;
+}
+
+.research-dialog > p {
+  margin: 8px 0 0;
+  color: var(--rs-ink-muted);
+  font-size: .875rem;
+}
+
+.research-close {
+  position: absolute;
+  top: clamp(18px, 1.3vw, 21px);
+  right: clamp(14px, 1.65vw, 26px);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--rs-r-sm);
+  background: transparent;
+  color: var(--rs-ink-muted);
+  cursor: pointer;
+}
+
+.research-close:hover {
+  background: var(--rs-canvas-subtle);
+  color: var(--rs-ink);
+}
+
+.research-metrics {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.research-metrics :is(th, td) {
+  padding: .85em 4px;
+  text-align: left;
+  font-weight: 700;
+}
+
+.research-metrics :is(th, td):first-child {
+  width: 36%;
+}
+
+.research-metrics :is(th, td):nth-child(2),
+.research-metrics :is(th, td):nth-child(3) {
+  width: 23%;
+}
+
+.research-metrics thead th {
+  color: var(--rs-ink-secondary);
+  font-size: .82em;
+  font-weight: 600;
+}
+
+.research-metrics tbody tr {
+  border-top: 1px solid var(--rs-border);
+}
+
+.research-outcome {
+  display: block;
+  font-size: .8em;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.research-dialog .research-unit {
+  margin-top: 16px;
+  font-size: .8125rem;
+}
+
+@media (min-width: 769px) and (min-height: 620px) {
+  .research-dialog {
+    translate: 0 min(4.5vh, 45px);
+  }
+}
+
+@media (max-width: 900px) {
+  .research-table :is(th, td) {
+    padding-inline: 10px;
+  }
+
+  .research-table :is(th, td):first-child {
+    padding-left: 16px;
+  }
+
+  .research-table :is(th, td):last-child {
+    padding-right: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-page .rs-topbar {
+    padding-inline: 16px;
+  }
+
+  .admin-page .rs-topbar-return-btn {
+    min-height: 44px;
+  }
+
+  .admin-toolbar {
+    padding: 12px 16px;
+  }
+
+  .admin-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .admin-table :is(tbody, tr) {
+    display: block;
+  }
+
+  .admin-table tr {
+    position: relative;
+    border-bottom: 1px solid var(--rs-border);
+    padding: 10px 16px;
+  }
+
+  .admin-table tr:last-child {
+    border-bottom: 0;
+  }
+
+  .admin-table tbody tr td:nth-child(n) {
+    display: block;
+    width: auto;
+    text-align: left;
+    border: 0;
+    padding: 0;
+  }
+
+  .admin-table tbody tr td:first-child {
+    padding-right: 80px;
+  }
+
+  .admin-table tbody tr td:last-child:not([colspan]) {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+  }
+
+  .admin-mobile-label {
+    display: inline;
+    margin-right: 6px;
+    color: var(--rs-ink-muted);
+    font-size: .75rem;
+  }
+
+  .admin-mobile-label::after {
+    content: ':';
+  }
+
+  .research-table tbody tr td:first-child {
+    padding-right: 100px;
+  }
+
+  .research-dialog {
+    padding: 22px 16px;
+  }
+
+  .research-close {
+    top: 10px;
+    right: 8px;
+  }
+
+  .research-metrics {
+    font-size: .875rem;
+  }
+}
