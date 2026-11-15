@@ -19,7 +19,6 @@ import SetBriefingOverlay from './components/SetBriefingOverlay';
 import FluxDebugger from './components/FluxDebugger';
 import LandingPage from './pages/LandingPage';
 import VoiceAgentPlayground from './features/voice-agent';
-import HrTester from './components/hrTester';
 import './App.css';
 import { SchoolAuthProvider } from './auth/SchoolAuthContext';
 import ProtectedRoute from './auth/ProtectedRoute';
@@ -44,6 +43,8 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/hr-tester" element={<Navigate to="/admin?tab=hr-tester" replace />} />
+            <Route path="/hrTester" element={<Navigate to="/admin?tab=hr-tester" replace />} />
             <Route element={<ProtectedRoute admin />}>
               <Route path="/admin" element={<Admin />} />
             </Route>
@@ -89,8 +90,6 @@ function App() {
               <Route path="/dev/interview" element={<MainSets />} />
               <Route path="/results" element={<Results />} />
               <Route path="/voice-agent" element={<VoiceAgentPlayground />} />
-              <Route path="/hr-tester" element={<HrTester />} />
-              <Route path="/hrTester" element={<Navigate to="/hr-tester" replace />} />
 
               {/* Dev only route to preview Set 1 Mission Calibration Modal */}
               <Route

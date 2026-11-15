@@ -287,6 +287,8 @@ test('admin views first-run metrics and exports participant IDs without school e
   await fill(page, 'login', { email: 'admin' });
   await submit(page, 'login');
   await page.getByRole('link', { name: 'Research Data' }).click();
+  await expect(page.getByText('H₀₁ Pre/post interview', { exact: true })).toBeVisible();
+  await expect(page.getByText('H₀₂ Confidence survey', { exact: true })).toBeVisible();
   await expect(page.getByText('Pre/Post Test: 1 of 2 ready · Likert Scale: 1 of 2 ready')).toBeVisible();
   const openMetrics = page.getByRole('row', { name: /^0042\b/ }).getByRole('button', { name: 'View metrics' });
   await openMetrics.click();
@@ -366,6 +368,8 @@ test('a student signed in to Firebase cannot open the admin route', async ({ pag
   await submit(page, 'login');
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.goto(baseURL + '/admin');
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto(baseURL + '/hr-tester');
   await expect(page).toHaveURL(/\/dashboard$/);
   expect(state.adminChecks).toBeUndefined();
 });

@@ -1919,6 +1919,25 @@
   color: var(--ix-ink-primary);
 }
 
+.ix-state-typing .ix-transcript-editor {
+  font-size: 16px;
+}
+
+.ix-typed-label,
+.ix-typed-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ix-ink-secondary);
+  font-size: 12px;
+}
+
+.ix-typed-notice svg {
+  flex-shrink: 0;
+  color: var(--ix-blue);
+}
+
 .ix-transcript-edit-actions {
   display: flex;
   justify-content: flex-end;
@@ -2125,6 +2144,23 @@
   background: var(--ix-red-light);
   border-color: #fca5a5;
   transform: translateY(-1px);
+}
+
+.ix-dock-btn-input {
+  border-color: var(--ix-border);
+  color: var(--ix-ink-secondary);
+}
+
+.ix-dock-btn-input:hover:not(:disabled) {
+  border-color: var(--ix-blue-border);
+  background: var(--ix-blue-light);
+  color: var(--ix-blue-hover);
+}
+
+.ix-dock-btn-input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .ix-btn-primary-action {
@@ -3162,8 +3198,8 @@
     display: none;
   }
 
-  .ix-stage-interviewer-name {
-    display: none;
+  .ix-stage-interviewer-label {
+    white-space: normal;
   }
 
   .ix-stage-interviewer-pill,

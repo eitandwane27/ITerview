@@ -304,6 +304,78 @@
   border-radius: var(--test-radius-card);
   background: var(--test-input-bg);
 }
+
+.test-mic-recovery {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  margin-top: 32px;
+  padding: clamp(16px, 4vw, 28px);
+  border: 1px solid var(--test-blue-border);
+  border-radius: var(--test-radius-card);
+  background: var(--test-surface);
+}
+
+.test-mic-recovery-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--test-radius-control);
+  background: var(--test-blue-light);
+  color: var(--test-blue-hover);
+}
+
+.test-mic-recovery-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.test-mic-recovery-content h2 {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  font-weight: 750;
+}
+
+.test-mic-recovery-content p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.test-mic-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.test-page .test-mic-recovery-actions .test-button:hover:not(:disabled):not(:active) {
+  transform: none;
+}
+
+.test-mic-recovery-content .test-mic-recovery-saved {
+  margin-top: 12px;
+  color: var(--test-ink-muted);
+  font-size: 0.8125rem;
+}
+
+.test-help.test-mic-recovery-help {
+  margin-top: 24px;
+  text-align: center;
+}
+
+@media (max-width: 540px) {
+  .test-mic-recovery {
+    gap: 10px;
+  }
+
+  .test-mic-recovery-actions .test-button {
+    width: 100%;
+    padding-inline: 12px;
+    white-space: normal;
+  }
+}
 .test-transcript-head {
   margin-bottom: 16px;
   display: flex;

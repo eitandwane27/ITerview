@@ -305,6 +305,54 @@
   color: var(--mt-coral);
 }
 
+.mictest-typing-fallback {
+  align-items: center;
+  background: var(--mt-blue-light);
+  border: 1px solid var(--mt-blue-border);
+  color: var(--mt-ink);
+}
+
+.mictest-typing-fallback > svg {
+  color: var(--mt-blue);
+}
+
+.mictest-typing-fallback p {
+  margin: 2px 0 0;
+  font-weight: 500;
+}
+
+.mictest-typing-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--mt-blue-border);
+  border-radius: var(--mt-r-pill);
+  background: var(--mt-card-bg);
+  color: var(--mt-blue-hover);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mictest-typing-button:hover:not(:disabled) {
+  background: var(--mt-blue-light);
+  border-color: var(--mt-blue);
+}
+
+.mictest-typing-button:focus-visible {
+  outline: 2px solid var(--mt-blue);
+  outline-offset: 2px;
+}
+
+.mictest-typing-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    CARDS — db-setup-card shell + lp-3c-icon-badge tinted heads
    ════════════════════════════════════════════════════════════════════════════ */

@@ -167,6 +167,45 @@ test('only the admin can list or change a separate official name', async t => {
   assert.equal(studentQuery.projection().officialName, 0);
 });
 
+test('the HR Tester generation endpoint uses admin credentials in production', async t => {
+  const env = {
+    ADMIN_FIREBASE_UID: 'hr-admin',
+    DEEPSEEK_API_KEY: 'unused-test-key',
+    NODE_ENV: 'production',
+  };
+  for (const [name, value] of Object.entries(env)) {
+    const previous = process.env[name];
+    process.env[name] = value;
+    t.after(() => {
+      if (previous === undefined) delete process.env[name];
+      else process.env[name] = previous;
+    });
+  }
+  const sample = 'Explain the purpose of a unit test.';
+  const generator = t.mock.method(require('../services/aiSet1Generator'), 'generateSet1Question', async () => sample);
+  t.mock.method(console, 'log', () => {});
+  const { requireAdmin } = createSchoolAuth(async token =>
+    token === 'admin' ? { ...identities.personal, uid: env.ADMIN_FIREBASE_UID } : verifiedUser);
+  const app = express();
+  app.use('/api/admin', requireAdmin, adminRoutes);
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  t.after(() => server.close());
+  const url = `http://127.0.0.1:${server.address().port}/api/admin/hr-tester/generate-question?runs=1`;
+  const generate = token => fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  assert.equal((await generate()).status, 401);
+  assert.equal((await generate('student')).status, 403);
+  assert.equal(generator.mock.callCount(), 0);
+  const response = await generate('admin');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal((await response.json()).results[0].question, sample);
+  assert.equal(generator.mock.callCount(), 1);
+});
+
 test('research data uses school email digits for IDs and pairs first-run scores by UID', async t => {
   const previousUid = process.env.ADMIN_FIREBASE_UID;
   process.env.ADMIN_FIREBASE_UID = 'admin-uid';

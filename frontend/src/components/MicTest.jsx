@@ -22,6 +22,8 @@ import { motion as Motion, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Mic,
+  MicOff,
+  Keyboard,
   AudioLines,
   Volume2,
   ChevronDown,
@@ -72,6 +74,8 @@ export default function MicTest() {
 
   // ── Device list ──────────────────────────────────────────────────────────
   const [devices, setDevices] = useState([]);
+  const [deviceListReady, setDeviceListReady] = useState(false);
+  const [captureUnavailable, setCaptureUnavailable] = useState(false);
   const [selectedMic, setSelectedMic] = useState(readPreferredAudioInput);
 
   // ── Test session state ───────────────────────────────────────────────────
@@ -103,13 +107,19 @@ export default function MicTest() {
   // ── On mount: enumerate devices WITHOUT requesting permission ─────────────
   useEffect(() => {
     refreshDevices();
-    return stopTest; // cleanup on unmount
+    navigator.mediaDevices?.addEventListener('devicechange', refreshDevices);
+    return () => {
+      navigator.mediaDevices?.removeEventListener('devicechange', refreshDevices);
+      stopTest();
+    };
   }, []);
 
-  const refreshDevices = () => {
-    navigator.mediaDevices.enumerateDevices().then((list) => {
+  const refreshDevices = async () => {
+    try {
+      const list = await navigator.mediaDevices.enumerateDevices();
       const mics = list.filter((d) => d.kind === 'audioinput');
       setDevices(mics);
+      setDeviceListReady(true);
       setSelectedMic((currentMic) => {
         const nextMic = mics.some((device) => device.deviceId === currentMic)
           ? currentMic
@@ -117,7 +127,9 @@ export default function MicTest() {
         rememberPreferredAudioInput(nextMic);
         return nextMic;
       });
-    });
+    } catch {
+      setCaptureUnavailable(true);
+    }
   };
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
@@ -191,6 +203,7 @@ export default function MicTest() {
     } catch (err) {
       if (attempt !== attemptRef.current) return;
       isTestingRef.current = false;
+      setCaptureUnavailable(true);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setStatus('denied');
         setErrorMsg(
@@ -214,6 +227,13 @@ export default function MicTest() {
     // Permission granted — re-enumerate so device labels update to real names
     refreshDevices();
     streamRef.current = stream;
+    setCaptureUnavailable(false);
+    stream.getAudioTracks()[0]?.addEventListener('ended', () => {
+      if (streamRef.current !== stream) return;
+      stopTest();
+      setStatus('error');
+      setCaptureUnavailable(true);
+    }, { once: true });
 
     // 2. Web Audio — volume meter + PCM extraction
     try {
@@ -418,6 +438,8 @@ export default function MicTest() {
   const StatusIcon =
     status === 'ok' ? CheckCircle2 : status === 'denied' || status === 'error' ? AlertCircle : null;
 
+  const micUnavailable = captureUnavailable || (deviceListReady && !devices.length);
+  const showUnavailableStatus = micUnavailable && statusTone !== 'requesting';
   const isDenied = status === 'denied';
 
   return (
@@ -466,7 +488,15 @@ export default function MicTest() {
         </div>
 
         {/* ── Permission / error banner (amber = user action, coral = failure) ── */}
-        {errorMsg && (
+        {micUnavailable ? (
+          <div className="mictest-banner mictest-typing-fallback">
+            <MicOff size={17} aria-hidden="true" />
+            <div role="status">
+              <strong>No microphone available</strong>
+              <p>Connect a mic or allow access to start the spoken check.</p>
+            </div>
+          </div>
+        ) : errorMsg && (
           <div
             className={`mictest-banner ${isDenied ? 'mictest-banner--denied' : 'mictest-banner--error'}`}
             role="alert"
@@ -495,15 +525,17 @@ export default function MicTest() {
               </p>
             </div>
             <span
-              className={`mictest-status-chip mictest-status-chip--${statusTone}`}
+              className={`mictest-status-chip mictest-status-chip--${showUnavailableStatus ? 'error' : statusTone}`}
               role="status"
             >
-              {StatusIcon ? (
+              {showUnavailableStatus ? (
+                <AlertCircle size={13} aria-hidden="true" />
+              ) : StatusIcon ? (
                 <StatusIcon size={13} aria-hidden="true" />
               ) : (
                 <span className="mictest-pulse-dot" aria-hidden="true" />
               )}
-              {STATUS_TEXT[status] ?? ''}
+              {showUnavailableStatus ? 'Microphone unavailable' : STATUS_TEXT[status] ?? ''}
             </span>
           </div>
 
@@ -561,7 +593,6 @@ export default function MicTest() {
             </div>
           </div>
 
-          {/* Test toggle — cobalt while idle, coral stop while recording */}
           <div className="mictest-card__actions">
             <button
               type="button"
@@ -586,6 +617,15 @@ export default function MicTest() {
                   Test microphone
                 </>
               )}
+            </button>
+            <button type="button" className="mictest-typing-button" disabled={isStarting}
+              onClick={() => {
+                stopTest();
+                navigate('/interview?set=1&mode=drill&input=typing', {
+                  state: { practiceReturn: '/mic-test', voice: INTERVIEW_VOICE },
+                });
+              }}>
+              <Keyboard size={16} aria-hidden="true" /> Practice by typing <ArrowRight size={15} aria-hidden="true" />
             </button>
           </div>
         </section>

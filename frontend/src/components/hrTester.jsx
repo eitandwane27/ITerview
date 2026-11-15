@@ -1,9 +1,10 @@
-import { authenticatedFetch } from '../utils/authenticatedApi';
+import adminRequest from '../utils/adminRequest';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, LoaderCircle, RefreshCw, X } from 'lucide-react';
+import DashboardRoleSelect from './DashboardRoleSelect';
 import { Button } from './ui/button';
 import useRoleCatalogue from '../hooks/useRoleCatalogue';
-import logoSrc from '../assets/logo';
+import { getRoleOptions } from '../utils/roleCatalogue';
 import './hrTester.css';
 
 // Behavioral practice uses one profile and has no difficulty selection.
@@ -32,22 +33,19 @@ const FOCUS_OPTIONS = [
   {
     value: 'focus_clarity',
     label: 'Clarity',
-    description: 'Questions that practice explaining a concept clearly.',
   },
   {
     value: 'focus_correctness',
     label: 'Correctness',
-    description: 'Questions that practice accurate facts and definitions.',
   },
   {
     value: 'focus_completeness',
     label: 'Completeness',
-    description: 'Questions that practice covering multiple related points.',
   },
 ];
 const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1);
 
-export default function HrTester() {
+export default function HrTester({ user }) {
   const { roles, status: roleStatus, retry: retryRoles } = useRoleCatalogue();
   const [selectedRole, setSelectedRole] = useState('');
   const [selection, setSelection] = useState({ setId: 1, difficulty: 'medium' });
@@ -78,7 +76,7 @@ export default function HrTester() {
   );
 
   useEffect(() => {
-    if (generation.status !== 'loading' || !window.matchMedia('(max-width: 960px)').matches) return;
+    if (generation.status !== 'loading' || !window.matchMedia('(max-width: 760px)').matches) return;
     mainRef.current?.scrollIntoView({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ? 'instant'
@@ -115,19 +113,16 @@ export default function HrTester() {
       params.set('difficulty', difficulty);
     }
     if (questionSet.id === 1) params.set('weakness', focus);
-    setSelection(questionSet.id === 3 ? { setId: 3 } : { ...nextSelection, difficulty });
+    setSelection(questionSet.id === 3 ? { ...selection, setId: 3 } : { ...nextSelection, difficulty });
     clearTimeout(copyTimer.current);
     setCopyStatus('');
     setGeneration({ status: 'loading', results: [], error: '' });
     // Five sequential AI calls can take longer than an ordinary REST request.
     const timeout = setTimeout(() => controller.abort('timeout'), 300000);
     try {
-      const response = await authenticatedFetch(`/api/debug/${questionSet.endpoint}?${params}`, {
+      const data = await adminRequest(user, `/hr-tester/${questionSet.endpoint}?${params}`, {
         signal: controller.signal,
       });
-      if (!response.ok)
-        throw new Error(`Question generation failed (HTTP ${response.status}). Please try again.`);
-      const data = await response.json();
       if (
         !Array.isArray(data.results) ||
         data.results.length === 0 ||
@@ -146,9 +141,7 @@ export default function HrTester() {
       const actualDifficulty = DIFFICULTIES.includes(data.params?.difficulty)
         ? data.params.difficulty
         : difficulty;
-      setSelection(
-        questionSet.id === 3 ? { setId: 3 } : { ...nextSelection, difficulty: actualDifficulty }
-      );
+      if (questionSet.id !== 3) setSelection({ ...nextSelection, difficulty: actualDifficulty });
       setGeneration({ status: 'done', results: data.results, error: '', generatedAt: new Date() });
     } catch (error) {
       if (requestRef.current !== controller) return;
@@ -193,45 +186,25 @@ export default function HrTester() {
 
   return (
     <div className="hr-tester">
-      <header className="hr-tester__header">
-        <div className="hr-tester__heading">
-          <img className="hr-tester__logo" src={logoSrc} alt="ITerview" />
-          <div>
-            <h1>Question Review Studio</h1>
-            <p>Generate question sets for verbal HR evaluation</p>
-          </div>
-        </div>
-        <span className="hr-tester__badge">Internal</span>
-      </header>
-
       <div className="hr-tester__workspace">
         <aside className="hr-tester__sidebar" aria-label="Question generation settings">
           <h2>Question sets</h2>
-          <p className="hr-tester__intro">Generate a set to review five interview questions</p>
 
           <div className="hr-tester__field">
-            <label htmlFor="hr-tester-role">Target role</label>
-            <select
+            <label id="hr-tester-role-label" htmlFor="hr-tester-role">Target role</label>
+            <DashboardRoleSelect
               id="hr-tester-role"
+              labelledBy="hr-tester-role-label"
+              describedBy="hr-tester-role-status"
+              options={getRoleOptions(roles, roleStatus)}
               value={role}
-              disabled={roleStatus !== 'ready'}
-              aria-describedby="hr-tester-role-status"
-              onChange={(event) => {
+              disabled={!ready}
+              onChange={(nextRole) => {
+                if (nextRole === role) return;
                 resetResults();
-                setSelectedRole(event.target.value);
+                setSelectedRole(nextRole);
               }}
-            >
-              {roleStatus !== 'ready' && (
-                <option value="">
-                  {roleStatus === 'loading' ? 'Loading roles…' : 'Roles unavailable'}
-                </option>
-              )}
-              {roles.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+            />
             <div id="hr-tester-role-status" className="hr-tester__field-note" aria-live="polite">
               {roleStatus === 'error' ? (
                 <>
@@ -262,11 +235,8 @@ export default function HrTester() {
                 </div>
                 <p className="hr-tester__set-description">{set.description}</p>
                 {set.id === 1 && (
-                  <fieldset className="hr-tester__focus" aria-describedby="hr-3c-help">
+                  <fieldset className="hr-tester__focus">
                     <legend>3C focus</legend>
-                    <p id="hr-3c-help" className="hr-tester__field-note">
-                      Simulate the student's pre-test weakness.
-                    </p>
                     <div className="hr-tester__focus-options">
                       {FOCUS_OPTIONS.map((option) => (
                         <label
@@ -289,9 +259,6 @@ export default function HrTester() {
                         </label>
                       ))}
                     </div>
-                    <p className="hr-tester__field-note" aria-live="polite">
-                      {selectedFocus.description}
-                    </p>
                   </fieldset>
                 )}
                 {set.id === 3 ? (
@@ -338,10 +305,10 @@ export default function HrTester() {
           </div>
         </aside>
 
-        <main className="hr-tester__main" ref={mainRef}>
+        <section className="hr-tester__main" ref={mainRef} aria-labelledby="hr-tester-results-title">
           <div className="hr-tester__toolbar">
             <div className="hr-tester__title">
-              <h2>Generated Questions</h2>
+              <h2 id="hr-tester-results-title">Generated questions</h2>
               <p className="hr-tester__metadata">
                 <span>{selectionLabel}</span>
                 <span>{metadata}</span>
@@ -452,7 +419,7 @@ export default function HrTester() {
                 <h3>
                   {generation.cancelled
                     ? 'Generation cancelled'
-                    : 'Your next interview starts here'}
+                    : 'No questions generated yet'}
                 </h3>
                 <p>
                   {generation.cancelled
@@ -462,7 +429,7 @@ export default function HrTester() {
               </div>
             )}
           </section>
-        </main>
+        </section>
       </div>
     </div>
   );

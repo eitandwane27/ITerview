@@ -1,6 +1,6 @@
 // backend/routes/debugRoutes.js
 // ─────────────────────────────────────────────────────────────────────────────
-// DEV-ONLY: Test AI question generation in isolation.
+// Generate question samples for the admin HR Tester and local development.
 // No TTS, no STT, no WebSocket, no session state.
 // Hit this route directly from your browser or Postman to see raw LLM output.
 //
@@ -37,12 +37,9 @@
 const express = require("express");
 const router = express.Router();
 const { VALID_ROLES } = require("../config/roleConfig");
-const { resolveSetDifficulty } = require('../config/interviewConfig');
-const { generateSet1Question } = require("../services/aiSet1Generator");
-const { generateSet2Question } = require("../services/aiSet2Generator");
-const { generateSet3Question, getCompetencyTopic } = require("../services/aiSet3Generator");
 
 router.get("/generate-question", async (req, res) => {
+  const { generateSet1Question } = require("../services/aiSet1Generator");
   // ── 1. Parse & validate query params ──────────────────────────────────────
   const VALID_WEAKNESSES = ["focus_clarity", "focus_correctness", "focus_completeness"];
   const VALID_DIFFS      = ["easy", "medium", "hard"];
@@ -84,6 +81,7 @@ router.get("/generate-question", async (req, res) => {
 // SET 2 DEBUG ROUTE
 // ─────────────────────────────────────────────────────────────────────────────
 router.get("/generate-question-s2", async (req, res) => {
+  const { generateSet2Question } = require("../services/aiSet2Generator");
   const VALID_DIFFS      = ["easy", "medium", "hard"];
 
   const role       = VALID_ROLES.includes(req.query.role)         ? req.query.role       : "frontend";
@@ -122,6 +120,7 @@ router.get("/generate-question-s2", async (req, res) => {
 // SET 3 DEBUG ROUTE
 // ─────────────────────────────────────────────────────────────────────────────
 router.get("/generate-question-s3", async (req, res) => {
+  const { generateSet3Question, getCompetencyTopic } = require("../services/aiSet3Generator");
   const startIndex = Math.min(4, Math.max(0, parseInt(req.query.startIndex) || 0));
   // Cap runs so we never exceed the 5 competency slots
   const runs = Math.min(5 - startIndex, Math.max(1, parseInt(req.query.runs) || 5 - startIndex));

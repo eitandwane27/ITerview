@@ -1,4 +1,4 @@
-import { createElement, useEffect, useId, useRef, useState } from 'react';
+import { createElement, useId, useLayoutEffect, useRef, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Briefcase, Check, ChevronDown } from 'lucide-react';
 import './DashboardRoleSelect.css';
@@ -12,12 +12,14 @@ export default function DashboardRoleSelect({
   value,
   onChange,
   disabled = false,
+  required = false,
+  autoFocus = false,
   icon = Briefcase,
   title,
 }) {
   const listId = useId();
   const triggerRef = useRef(null);
-  const menuRef = useRef(null);
+  const [menu, setMenu] = useState(null);
   const searchRef = useRef({ text: '', time: 0 });
   const [open, setOpen] = useState(false);
   const [activeValue, setActiveValue] = useState('');
@@ -34,7 +36,7 @@ export default function DashboardRoleSelect({
     if (nextOpen) {
       setActiveInput('keyboard');
       // Escape the onboarding card's clipping while inheriting dashboard tokens.
-      setPortalContainer(triggerRef.current?.closest('.db-root') || null);
+      setPortalContainer(triggerRef.current?.closest('.db-root, .admin-page') || null);
       const clearance = getComputedStyle(document.body).getPropertyValue('--nikki-companion-clearance');
       setBottomCollisionPadding(Number.parseFloat(clearance) || 16);
       setActiveValue(enabledOptions.find((option) => option.value === value)?.value ||
@@ -49,18 +51,17 @@ export default function DashboardRoleSelect({
     triggerRef.current?.focus();
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Hover highlights clipped rows without moving the list beneath the pointer.
     if (!expanded || activeInput !== 'keyboard') return;
-    const menu = menuRef.current;
     const active = menu?.querySelector('[data-active="true"]');
     if (!active) return;
     // Scroll only the popup, never the dashboard behind it.
-    if (active.offsetTop < menu.scrollTop) menu.scrollTop = active.offsetTop;
+    if (active.offsetTop < menu.scrollTop) menu.scrollTo({ top: active.offsetTop });
     else if (active.offsetTop + active.offsetHeight > menu.scrollTop + menu.clientHeight) {
-      menu.scrollTop = active.offsetTop + active.offsetHeight - menu.clientHeight;
+      menu.scrollTo({ top: active.offsetTop + active.offsetHeight - menu.clientHeight });
     }
-  }, [expanded, activeValue, activeInput]);
+  }, [menu, expanded, activeValue, activeInput]);
 
   function handleKeyDown(event) {
     if (disabled || !enabledOptions.length || event.ctrlKey || event.metaKey) return;
@@ -125,20 +126,22 @@ export default function DashboardRoleSelect({
           aria-labelledby={labelledBy}
           aria-describedby={describedBy}
           aria-invalid={invalid || undefined}
+          aria-required={required || undefined}
           disabled={disabled}
+          autoFocus={autoFocus}
           title={title}
           data-value={value}
           data-placeholder={!value || undefined}
           onKeyDown={handleKeyDown}
         >
-          {createElement(icon, { size: 17, className: 'db-role-select__icon', 'aria-hidden': true })}
+          {icon && createElement(icon, { size: 17, className: 'db-role-select__icon', 'aria-hidden': true })}
           <span className="db-role-select__value">{selectedOption?.label}</span>
           <ChevronDown size={17} className="db-role-select__chevron" aria-hidden="true" />
         </button>
       </Popover.Trigger>
       <Popover.Portal container={portalContainer}>
         <Popover.Content
-          ref={menuRef}
+          ref={setMenu}
           id={listId}
           role="listbox"
           aria-labelledby={labelledBy}

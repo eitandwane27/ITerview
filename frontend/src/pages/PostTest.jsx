@@ -43,13 +43,14 @@ export default function PostTest() {
   const [authLoading, setAuthLoading] = useState(() => !auth.currentUser);
 
   // ── Briefing gate — the socket connects only after an explicit start ───────
-  const [showBriefing, setShowBriefing] = useState(true);
+  const [showBriefing, setShowBriefing] = useState(() => !location.state?.assessmentPaused);
 
   // ── UI State ───────────────────────────────────────────────────────────────
   const [status, setStatus] = useState('Connecting to session…');
   const [error, setError] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [micRecovery, setMicRecovery] = useState(() => location.state?.assessmentPaused ? 'paused' : '');
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isSessionComplete, setIsSessionComplete] = useState(false);
   const [connectionLost, setConnectionLost] = useState(false);
@@ -75,6 +76,7 @@ export default function PostTest() {
   // ── Refs ───────────────────────────────────────────────────────────────────
   const wsRef = useRef(null);
   const streamRef = useRef(null);
+  const requestingMicRef = useRef(false);
   const audioContextRef = useRef(null);
   const processorRef = useRef(null);
   const sourceRef = useRef(null);
@@ -449,6 +451,8 @@ export default function PostTest() {
       ws.onclose = () => {
         if (wsRef.current === ws) {
           setIsConnected(false);
+          cleanupAudio();
+          setIsRecording(false);
           if (!intentionalCloseRef.current && wasOpenRef.current && isMountedRef.current) {
             setConnectionLost(true);
             setStatus('Connection lost.');
@@ -456,7 +460,7 @@ export default function PostTest() {
         }
       };
     },
-    [handleWsMessage, voice, location.search]
+    [handleWsMessage, voice, location.search, cleanupAudio]
   );
 
   // The briefing gates the session: no socket until "Start the challenge".
@@ -489,7 +493,9 @@ export default function PostTest() {
 
   // ── Mic controls ───────────────────────────────────────────────────────────
   const startRecording = async () => {
-    if (isRecording || !isConnected) return;
+    const ws = wsRef.current;
+    if (isRecording || requestingMicRef.current || ws?.readyState !== WebSocket.OPEN) return;
+    requestingMicRef.current = true;
     setError('');
     setVerifyError('');
 
@@ -502,7 +508,19 @@ export default function PostTest() {
           noiseSuppression: true,
         },
       });
+      if (!isMountedRef.current || wsRef.current !== ws || ws.readyState !== WebSocket.OPEN) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
       streamRef.current = stream;
+
+      const track = stream.getAudioTracks()[0];
+      if (track?.readyState !== 'live') throw new Error('Microphone disconnected');
+      track.addEventListener('ended', () => {
+        if (streamRef.current !== stream) return;
+        stopRecording(true);
+        setMicRecovery('paused');
+      }, { once: true });
 
       // Non-destructive re-record: whatever was confirmed before is kept in
       // backupRef until a new take produces finals.
@@ -516,9 +534,6 @@ export default function PostTest() {
       setConfirmedTranscript('');
       setAwaitingConfirmation(false);
       awaitingRef.current = false;
-
-      // Tell the server we're starting
-      wsRef.current.send(JSON.stringify({ type: 'start_recording' }));
 
       // Setup Web Audio API exactly like PreTest for raw PCM
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
@@ -552,20 +567,29 @@ export default function PostTest() {
         wsRef.current.send(pcm.buffer); // binary frame → sttService
       };
 
+      ws.send(JSON.stringify({ type: 'start_recording' }));
+      setMicRecovery('');
       setIsRecording(true);
       setStatus('Recording your answer…');
-    } catch (err) {
-      setError(`Microphone error: ${err.message}`);
+    } catch {
+      if (!isMountedRef.current || wsRef.current !== ws || ws.readyState !== WebSocket.OPEN) return;
+      cleanupAudio();
+      if (micRecovery) setError('Microphone is still unavailable. Check your connection and browser permissions.');
+      setMicRecovery(current => current || 'paused');
+    } finally {
+      requestingMicRef.current = false;
     }
   };
 
-  const stopRecording = () => {
-    if (!isRecording) return;
+  const stopRecording = (interrupted = false) => {
+    if (!isRecording && interrupted !== true) return;
 
     cleanupAudio();
 
     // Tell the server to close the Deepgram session
-    wsRef.current?.send(JSON.stringify({ type: 'stop_recording' }));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'stop_recording' }));
+    }
 
     setIsRecording(false);
 
@@ -643,16 +667,7 @@ export default function PostTest() {
   };
 
   const reRecord = () => {
-    backupRef.current = confirmedTranscript || finalTranscriptRef.current || '';
-    setAwaitingConfirmation(false);
-    awaitingRef.current = false;
     setSubmissionPhase('idle');
-    setVerifyError('');
-    setFinalTranscript('');
-    partialRef.current = '';
-    setPartialTranscript('');
-    setConfirmedTranscript('');
-    finalTranscriptRef.current = '';
     startRecording();
   };
 
@@ -678,6 +693,10 @@ export default function PostTest() {
       awaitingConfirmation={awaitingConfirmation}
       submissionPhase={submissionPhase}
       verifyError={verifyError}
+      micRecovery={micRecovery}
+      onPracticeByTyping={() => navigate('/interview?set=1&mode=drill&input=typing', {
+        state: { practiceReturn: '/post-test', voice },
+      })}
       error={error}
       volume={volume}
       volumeFillRef={volumeFillRef}

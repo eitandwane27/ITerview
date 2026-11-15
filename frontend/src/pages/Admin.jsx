@@ -3,15 +3,25 @@ import { LogOut, Search } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useSchoolAuth } from '../auth/schoolAuth';
 import DashboardSignOutDialog from '../components/DashboardSignOutDialog';
+import HrTester from '../components/hrTester';
 import ResultsHeader from '../components/ResultsHeader';
 import adminRequest from '../utils/adminRequest';
 import AdminResearchData from './AdminResearchData';
+import AdminScoringStudy from './AdminScoringStudy';
 import './Admin.css';
+
+const adminPages = [
+  { id: '', title: 'Students', description: 'Find student accounts and manage their official names.', Content: AdminStudents },
+  { id: 'research-data', title: 'Research Data', Content: AdminResearchData },
+  { id: 'scoring-study', title: 'Scoring Study', description: 'Compare repeated AI scores and independent HR ratings on completed pre-test responses.', Content: AdminScoringStudy },
+  { id: 'hr-tester', title: 'HR Tester', description: 'Generate and copy interview questions for HR review.', Content: HrTester },
+];
 
 export default function Admin() {
   const { user, logout } = useSchoolAuth();
   const [params] = useSearchParams();
-  const showResearch = params.get('tab') === 'research-data';
+  const activePage = adminPages.find(({ id }) => id === params.get('tab')) ?? adminPages[0];
+  const { id, title, description, Content } = activePage;
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState('');
@@ -41,16 +51,23 @@ export default function Admin() {
       </ResultsHeader>
       <main className="rs-main admin-main">
         <nav className="admin-nav" aria-label="Admin pages">
-          <Link to="/admin" aria-current={showResearch ? undefined : 'page'}>Students</Link>
-          <Link to="/admin?tab=research-data" aria-current={showResearch ? 'page' : undefined}>Research Data</Link>
+          {adminPages.map((page) => (
+            <Link key={page.id} to={page.id ? `/admin?tab=${page.id}` : '/admin'}
+              aria-current={page === activePage ? 'page' : undefined}>
+              {page.title}
+            </Link>
+          ))}
         </nav>
         <div className="rs-header-section">
-          <h1 className="rs-page-title">{showResearch ? 'Research Data' : 'Students'}</h1>
-          <p className="rs-page-subtitle">
-            {showResearch ? 'First research run' : 'Find student accounts and manage their official names.'}
-          </p>
+          <h1 className="rs-page-title">{title}</h1>
+          {id === 'research-data' ? (
+            <p className="rs-page-subtitle research-run">
+              <span><strong>H₀₁</strong> Pre/post interview</span>
+              <span><strong>H₀₂</strong> Confidence survey</span>
+            </p>
+          ) : <p className="rs-page-subtitle">{description}</p>}
         </div>
-        {showResearch ? <AdminResearchData user={user} /> : <AdminStudents user={user} />}
+        <Content user={user} />
       </main>
       {confirmSignOut && (
         <DashboardSignOutDialog

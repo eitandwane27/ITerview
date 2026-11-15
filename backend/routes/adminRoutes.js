@@ -28,6 +28,8 @@ router.use((_req, res, next) => {
 });
 
 router.get('/session', (_req, res) => res.sendStatus(204));
+router.use('/scoring-study', require('./scoringStudyRoutes'));
+router.use('/hr-tester', require('./debugRoutes'));
 
 router.get('/research-data', async (req, res) => {
   try {

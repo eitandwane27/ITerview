@@ -61,19 +61,32 @@ Return exactly this shape:
   "primary_weakness": "<focus_clarity | focus_correctness | focus_completeness>"
 }`;
 
-/**
- * evaluate3CScores(question, transcript, difficulty)
- *
- * Calls DeepSeek LLM with temperature 0.0 and JSON mode to produce
- * deterministic 3C dimension scores for an answer based on difficulty.
- *
- * @param {string} question   - The interview question asked.
- * @param {string} transcript - The student's STT-transcribed answer.
- * @param {string} difficulty - Session difficulty level ("easy" | "medium" | "hard").
- * @returns {Promise<{ clarity_score: number, correctness_score: number, completeness_score: number, primary_weakness: string }>}
- */
-async function evaluate3CScores(question, transcript, difficulty = 'easy') {
-  // Guard: empty transcript → lowest scores, flag completeness
+function create3CScoringRequest(question, transcript, difficulty) {
+  const difficultyRubric = getEvaluatorRubric(difficulty);
+  const systemPrompt = `${BASE_SCORING_SYSTEM_PROMPT}\n\n${difficultyRubric}`;
+
+  return {
+    model: process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: `Score ONLY how well the Student's Answer responds to the specific Interview Question below.
+An answer that talks about a different topic entirely must receive low correctness and completeness scores.
+
+Interview Question: "${question}"
+
+Student's Answer: "${transcript}"`,
+      },
+    ],
+    temperature: 0.0,
+    max_tokens: 2000,
+    thinking: { type: 'disabled' }, // Disables native reasoning CoT for sub-second/1s latency
+    response_format: { type: 'json_object' }, // forces valid JSON output
+  };
+}
+
+async function evaluate3CScores(question, transcript, difficulty = 'easy', requestOptions) {
   if (!transcript || transcript.trim().length === 0) {
     return {
       clarity_score: 1,
@@ -83,29 +96,10 @@ async function evaluate3CScores(question, transcript, difficulty = 'easy') {
     };
   }
 
-  const difficultyRubric = getEvaluatorRubric(difficulty);
-  const systemPrompt = `${BASE_SCORING_SYSTEM_PROMPT}\n\n${difficultyRubric}`;
-
   try {
-    const response = await deepseek.chat.completions.create({
-      model: process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: `Score ONLY how well the Student's Answer responds to the specific Interview Question below.
-An answer that talks about a different topic entirely must receive low correctness and completeness scores.
-
-Interview Question: "${question}"
-
-Student's Answer: "${transcript}"`,
-        },
-      ],
-      temperature: 0.0, // deterministic scoring
-      max_tokens: 2000,
-      thinking: { type: 'disabled' }, // Disables native reasoning CoT for sub-second/1s latency
-      response_format: { type: 'json_object' }, // forces valid JSON output
-    });
+    const response = await deepseek.chat.completions.create(
+      create3CScoringRequest(question, transcript, difficulty), requestOptions,
+    );
 
     const raw = response.choices?.[0]?.message?.content || '';
     const parsed = safeParseJSON(raw);
@@ -130,4 +124,4 @@ Student's Answer: "${transcript}"`,
   }
 }
 
-module.exports = { evaluate3CScores };
+module.exports = { create3CScoringRequest, evaluate3CScores };

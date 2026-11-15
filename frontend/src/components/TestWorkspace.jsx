@@ -8,6 +8,9 @@ import {
   LoaderCircle,
   LogOut,
   Mic,
+  MicOff,
+  Keyboard,
+  Pause,
   RotateCcw,
   Square,
   Volume2,
@@ -86,6 +89,7 @@ export default function TestWorkspace({
   submissionPhase = 'idle',
   verifyError = '',
   error = '',
+  micRecovery = '',
   volume = 0,
   volumeFillRef,
   verifyTextareaRef,
@@ -95,6 +99,8 @@ export default function TestWorkspace({
   onReplay,
   onRecord,
   onStop,
+  onPauseAssessment,
+  onPracticeByTyping,
   onAnswerChange,
   onConfirm,
   onNext,
@@ -107,12 +113,14 @@ export default function TestWorkspace({
   const reduced = useReducedMotion();
   const startRef = useRef(null);
   const recordRef = useRef(null);
+  const recoveryRef = useRef(null);
   const confirmRef = useRef(null);
   const continueRef = useRef(null);
   const pre = variant === 'pre';
   const complete = isSessionComplete || Boolean(alreadyCompleted);
   const intro = showBriefing && !complete;
-  const review = awaitingConfirmation && !complete && !intro;
+  const review = awaitingConfirmation && !complete && !intro && !micRecovery;
+  const paused = micRecovery === 'paused';
   const saved = Boolean(alreadyCompleted);
   const score = saved ? alreadyCompleted : result;
   const practiceFocus = pre ? getPracticeFocus(score?.weakness) : null;
@@ -137,10 +145,13 @@ export default function TestWorkspace({
         ? ready
           ? confirmRef
           : verifyTextareaRef
-        : recordRef;
+        : micRecovery ? recoveryRef : recordRef;
   useEffect(() => {
     if (ready) confirmRef.current?.focus({ preventScroll: true });
   }, [ready]);
+  useEffect(() => {
+    if (micRecovery && canRecord) recoveryRef.current?.focus({ preventScroll: true });
+  }, [micRecovery, canRecord]);
   const recordLabel = isRecording
     ? 'Stop recording'
     : isPlayingAudio
@@ -319,6 +330,41 @@ export default function TestWorkspace({
                       <Volume2 aria-hidden="true" />
                     </button>
                   </div>
+                  {micRecovery ? (
+                    <>
+                      <div className="test-mic-recovery">
+                        <div className="test-mic-recovery-icon" aria-hidden="true">
+                          {paused ? <Pause /> : <MicOff />}
+                        </div>
+                        <div className="test-mic-recovery-content">
+                          <div role="status">
+                            <h2>{paused ? 'Assessment paused' : 'Microphone unavailable'}</h2>
+                            <p>{paused
+                              ? 'Your submitted answers are saved. You’ll return to this question when your mic is ready.'
+                              : 'This check uses spoken answers. Connect a mic or allow access in your browser, then try again.'}</p>
+                          </div>
+                          <div className="test-mic-recovery-actions">
+                            <button ref={recoveryRef} type="button" className="test-button test-button--primary"
+                              disabled={!canRecord} onClick={onRecord}>
+                              <RotateCcw aria-hidden="true" /> {paused ? 'Resume assessment' : 'Retry microphone'}
+                            </button>
+                            <button type="button" className="test-button test-button--secondary"
+                              onClick={paused ? onPracticeByTyping : onPauseAssessment}>
+                              {paused && <Keyboard aria-hidden="true" />}
+                              {paused ? 'Practice by typing' : 'Pause and resume later'}
+                            </button>
+                          </div>
+                          {!paused && <p className="test-mic-recovery-saved">Your submitted answers are saved.</p>}
+                        </div>
+                      </div>
+                      <details className="test-help test-mic-recovery-help">
+                        <summary>Help</summary>
+                        <div className="test-help-content">
+                          <p>Reconnect your microphone or allow microphone access in your browser to continue the assessment.</p>
+                        </div>
+                      </details>
+                    </>
+                  ) : <>
                   <div className={`test-transcript${review ? ' test-transcript--review' : ''}`}>
                     <div className="test-transcript-head">
                       {review ? (
@@ -492,6 +538,7 @@ export default function TestWorkspace({
                       </div>
                     </details>
                   </div>
+                  </>}
                 </>
               )}
             </AnimatedContent>

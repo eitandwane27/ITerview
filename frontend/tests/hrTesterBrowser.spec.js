@@ -38,11 +38,11 @@ for (const role of ['qa-engineer', 'cyber-security', 'network-engineer', 'game-d
     );
     await page.goto(`${baseURL}/hr-tester`);
     await expect(page.getByLabel('Target role')).toBeEnabled();
-    await page.getByLabel('Target role').selectOption(role);
+    await chooseRole(page, role);
     await page.getByRole('button', { name: 'Technical Hard', exact: true }).click();
     await expect(page.locator('.hr-tester__question')).toHaveCount(5);
     expect(request).toEqual({
-      path: '/api/debug/generate-question-s2',
+      path: '/api/admin/hr-tester/generate-question-s2',
       params: { difficulty: 'hard', runs: '5', role },
     });
   });
@@ -66,7 +66,7 @@ test('difficulty controls follow the catalogue capabilities', async ({ page }) =
   );
   await page.goto(`${baseURL}/hr-tester`);
   await expect(page.getByLabel('Target role')).toBeEnabled();
-  await page.getByLabel('Target role').selectOption('qa-test');
+  await chooseRole(page, 'qa-test');
   await expect(page.getByRole('button', { name: 'Technical Easy', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Technical Medium', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Technical Hard', exact: true })).toBeDisabled();
@@ -79,6 +79,24 @@ test.beforeAll(async () => {
     configFile: fileURLToPath(new URL('../vite.config.js', import.meta.url)),
     root: fileURLToPath(new URL('..', import.meta.url)),
     server: { host: '127.0.0.1', port: 0 },
+    plugins: [{
+      name: 'hr-tester-admin-session',
+      enforce: 'pre',
+      resolveId(id) {
+        if (id === './auth/SchoolAuthContext') return '\0hr-tester-admin-session';
+      },
+      load(id) {
+        if (id !== '\0hr-tester-admin-session') return;
+        return `
+          import { createElement } from 'react';
+          import { SchoolAuthContext } from '/src/auth/schoolAuth.js';
+          const session = { status: 'admin', user: { getIdToken: async () => 'hr-admin-test-token' } };
+          export function SchoolAuthProvider({ children }) {
+            return createElement(SchoolAuthContext.Provider, { value: session }, children);
+          }
+        `;
+      },
+    }],
   });
   await server.listen();
   baseURL = `http://127.0.0.1:${server.httpServer.address().port}`;
@@ -92,13 +110,31 @@ async function mockApi(page, handler) {
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/recommendations/roles') return route.fulfill({ json: { roles } });
-    if (url.pathname.startsWith('/api/debug/')) {
+    if (url.pathname === '/api/admin/students') return route.fulfill({ json: { students: [] } });
+    if (url.pathname.startsWith('/api/admin/hr-tester/')) {
+      expect(route.request().headers().authorization).toBe('Bearer hr-admin-test-token');
       if (handler) return handler(route, url);
       return route.fulfill({ json: { params: Object.fromEntries(url.searchParams), results } });
     }
     return route.fulfill({ status: 404, json: { message: 'Unexpected API request' } });
   });
 }
+
+async function chooseRole(page, value) {
+  await page.getByRole('combobox', { name: 'Target role' }).click();
+  await page.getByRole('listbox', { name: 'Target role' }).locator(`[data-value="${value}"]`).click();
+}
+
+test('HR Tester opens from Admin and uses the shared Admin header', async ({ page }) => {
+  await mockApi(page);
+  await page.goto(`${baseURL}/admin`);
+  await page.getByRole('link', { name: 'HR Tester' }).click();
+  await expect(page).toHaveURL(`${baseURL}/admin?tab=hr-tester`);
+  await expect(page.getByRole('link', { name: 'HR Tester' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { level: 1, name: 'HR Tester' })).toBeVisible();
+  await expect(page.getByRole('main')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+});
 
 for (const viewport of [
   { name: 'desktop', width: 1586, height: 992 },
@@ -109,9 +145,10 @@ for (const viewport of [
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await mockApi(page);
     await page.goto(`${baseURL}/hrTester`);
-    await expect(page).toHaveURL(`${baseURL}/hr-tester`);
+    await expect(page).toHaveURL(`${baseURL}/admin?tab=hr-tester`);
     await expect(page.getByLabel('Target role')).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Copy all' })).toBeDisabled();
     await page.getByRole('button', { name: 'Personalized 3C Medium', exact: true }).click();
@@ -121,8 +158,47 @@ for (const viewport of [
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true
     );
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     await page.screenshot({ path: `test-results/hr-tester-${viewport.name}.png`, fullPage: true });
     expect(errors).toEqual([]);
+  });
+
+  test(`role menu fits the viewport and supports keyboard selection on ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await mockApi(page);
+    await page.route('**/api/recommendations/roles', (route) =>
+      route.fulfill({ json: { roles: getRoleCatalogue() } })
+    );
+    await page.goto(`${baseURL}/admin?tab=hr-tester`);
+    const trigger = page.getByRole('combobox', { name: 'Target role' });
+    const menu = page.getByRole('listbox', { name: 'Target role' });
+    const last = menu.getByRole('option').last();
+    await trigger.press('ArrowDown');
+    await expect(menu).toBeVisible();
+    const bounds = await menu.boundingBox();
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+    await expect(menu).toHaveCSS('scrollbar-color', 'rgb(148, 163, 184) rgba(0, 0, 0, 0)');
+
+    const initialY = await page.evaluate(() => scrollY);
+    const lastLabel = await last.textContent();
+    await trigger.press('End');
+    await expect(last).toBeInViewport({ ratio: 1 });
+    expect(await menu.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => scrollY)).toBe(initialY);
+    await trigger.press('Enter');
+    await expect(menu).toBeHidden();
+    await expect(trigger).toHaveText(lastLabel);
+    await expect(trigger).toBeFocused();
+
+    await trigger.press('ArrowUp');
+    await expect(last).toHaveAttribute('aria-selected', 'true');
+    await trigger.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(trigger).toBeFocused();
   });
 }
 
@@ -136,7 +212,7 @@ test('all set and difficulty choices use their REST contracts and server roles',
   });
   await page.goto(`${baseURL}/hr-tester`);
   await expect(page.getByLabel('Target role')).toBeEnabled();
-  await page.getByLabel('Target role').selectOption('qa-test');
+  await chooseRole(page, 'qa-test');
   await expect(page.locator('.hr-tester__set-heading h3')).toHaveText([
     'Personalized 3C',
     'Technical',
@@ -147,7 +223,7 @@ test('all set and difficulty choices use their REST contracts and server roles',
     await page.getByRole('button', { name: `Personalized 3C ${difficulty}`, exact: true }).click();
     await expect(page.locator('.hr-tester__question')).toHaveCount(5);
     expect(requests.at(-1)).toEqual({
-      path: '/api/debug/generate-question',
+      path: '/api/admin/hr-tester/generate-question',
       params: {
         difficulty: difficulty.toLowerCase(),
         runs: '5',
@@ -160,7 +236,7 @@ test('all set and difficulty choices use their REST contracts and server roles',
     await page.getByRole('button', { name: `Technical ${difficulty}`, exact: true }).click();
     await expect(page.locator('.hr-tester__question')).toHaveCount(5);
     expect(requests.at(-1)).toEqual({
-      path: '/api/debug/generate-question-s2',
+      path: '/api/admin/hr-tester/generate-question-s2',
       params: {
         difficulty: difficulty.toLowerCase(),
         runs: '5',
@@ -168,6 +244,8 @@ test('all set and difficulty choices use their REST contracts and server roles',
       },
     });
   }
+  await chooseRole(page, 'qa-test');
+  await expect(page.locator('.hr-tester__question')).toHaveCount(5);
   await expect(page.getByRole('group', { name: 'Behavioral difficulty' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Behavioral (Easy|Medium|Hard)$/ })).toHaveCount(
     0
@@ -175,7 +253,7 @@ test('all set and difficulty choices use their REST contracts and server roles',
   await page.getByRole('button', { name: 'Generate behavioral questions', exact: true }).click();
   await expect(page.locator('.hr-tester__question')).toHaveCount(5);
   expect(requests.at(-1)).toEqual({
-    path: '/api/debug/generate-question-s3',
+    path: '/api/admin/hr-tester/generate-question-s3',
     params: {
       runs: '5',
       startIndex: '0',
@@ -225,7 +303,7 @@ test('HTTP and malformed-response failures offer recovery; all failed questions 
   let attempt = 0;
   await mockApi(page, (route) => {
     attempt += 1;
-    if (attempt === 1) return route.fulfill({ status: 503, json: {} });
+    if (attempt === 1) return route.fulfill({ status: 503, json: { message: 'Question service unavailable.' } });
     if (attempt === 2) return route.fulfill({ json: { results: [{ question: {}, error: '' }] } });
     if (attempt === 3)
       return route.fulfill({
@@ -235,7 +313,7 @@ test('HTTP and malformed-response failures offer recovery; all failed questions 
   });
   await page.goto(`${baseURL}/hr-tester`);
   await page.getByRole('button', { name: 'Personalized 3C Easy', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('HTTP 503');
+  await expect(page.getByRole('alert')).toContainText('Question service unavailable.');
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByRole('alert')).toContainText('no usable questions');
   await page.getByRole('button', { name: 'Try again' }).click();
@@ -271,7 +349,7 @@ test('cancelled or replaced requests cannot overwrite the latest selection', asy
     release = resolve;
   });
   await mockApi(page, async (route, url) => {
-    if (url.pathname === '/api/debug/generate-question') {
+    if (url.pathname === '/api/admin/hr-tester/generate-question') {
       await pending;
       await route.fulfill({ json: { results } }).catch(() => {});
     } else
@@ -294,7 +372,7 @@ test('cancelled or replaced requests cannot overwrite the latest selection', asy
     'true'
   );
   await expect(page.locator('.hr-tester__question')).toHaveCount(1);
-  await page.getByLabel('Target role').selectOption('backend');
+  await chooseRole(page, 'backend');
   await expect(page.locator('.hr-tester__question')).toHaveCount(0);
 });
 
@@ -303,12 +381,12 @@ test('behavioral generation, retry and regeneration do not depend on the role se
 }) => {
   let attempts = 0;
   await mockApi(page, (route, url) => {
-    expect(url.pathname).toBe('/api/debug/generate-question-s3');
+    expect(url.pathname).toBe('/api/admin/hr-tester/generate-question-s3');
     expect(url.searchParams.has('role')).toBe(false);
     expect(url.searchParams.has('difficulty')).toBe(false);
     attempts += 1;
     return attempts === 1
-      ? route.fulfill({ status: 503, json: {} })
+      ? route.fulfill({ status: 503, json: { message: 'Question service unavailable.' } })
       : route.fulfill({ json: { results } });
   });
   await page.route('**/api/recommendations/roles', (route) =>
@@ -320,7 +398,7 @@ test('behavioral generation, retry and regeneration do not depend on the role se
     page.getByRole('button', { name: 'Personalized 3C Easy', exact: true })
   ).toBeDisabled();
   await page.getByRole('button', { name: 'Generate behavioral questions', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('HTTP 503');
+  await expect(page.getByRole('alert')).toContainText('Question service unavailable.');
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.locator('.hr-tester__question')).toHaveCount(5);
   await page.getByRole('button', { name: 'Regenerate' }).click();
@@ -366,7 +444,7 @@ test('3C controls target every weakness, support keyboard selection and keep cop
     await page.getByRole('button', { name: 'Generate questions', exact: true }).click();
     await expect(page.locator('.hr-tester__question')).toHaveCount(5);
     expect(requests.at(-1)).toEqual({
-      path: '/api/debug/generate-question',
+      path: '/api/admin/hr-tester/generate-question',
       params: {
         difficulty: 'medium',
         runs: '5',
@@ -398,6 +476,10 @@ test('3C controls target every weakness, support keyboard selection and keep cop
   await page.getByRole('button', { name: 'Regenerate' }).click();
   await expect(page.locator('.hr-tester__question')).toHaveCount(5);
   expect(requests.at(-1).params.weakness).toBe('focus_correctness');
+  await page.getByRole('button', { name: 'Generate behavioral questions' }).click();
+  await expect(page.locator('.hr-tester__question')).toHaveCount(5);
+  await page.getByRole('radio', { name: 'Clarity', exact: true }).check();
+  await expect(page.locator('.hr-tester__metadata')).toContainText('Set 1 · Personalized 3C · Hard');
 });
 
 test('changing the 3C focus cancels a pending question set and discards its response', async ({
