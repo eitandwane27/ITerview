@@ -8,7 +8,8 @@ export default function DashboardRoleSelect({
   labelledBy,
   describedBy,
   invalid = false,
-  options,
+  groups,
+  options = groups?.flatMap(group => group.options) ?? [],
   value,
   onChange,
   disabled = false,
@@ -16,6 +17,7 @@ export default function DashboardRoleSelect({
   autoFocus = false,
   icon = Briefcase,
   title,
+  menuClassName,
 }) {
   const listId = useId();
   const triggerRef = useRef(null);
@@ -35,10 +37,11 @@ export default function DashboardRoleSelect({
     searchRef.current = { text: '', time: 0 };
     if (nextOpen) {
       setActiveInput('keyboard');
-      // Escape the onboarding card's clipping while inheriting dashboard tokens.
-      setPortalContainer(triggerRef.current?.closest('.db-root, .admin-page') || null);
+      // Keep menus inside native dialogs while escaping scrollable content.
+      const container = triggerRef.current?.closest('dialog, .db-root, .mictest-root, .admin-page');
+      setPortalContainer(container || null);
       const clearance = getComputedStyle(document.body).getPropertyValue('--nikki-companion-clearance');
-      setBottomCollisionPadding(Number.parseFloat(clearance) || 16);
+      setBottomCollisionPadding(container?.matches('dialog') ? 16 : Number.parseFloat(clearance) || 16);
       setActiveValue(enabledOptions.find((option) => option.value === value)?.value ||
         enabledOptions[0]?.value || '');
     }
@@ -57,7 +60,9 @@ export default function DashboardRoleSelect({
     const active = menu?.querySelector('[data-active="true"]');
     if (!active) return;
     // Scroll only the popup, never the dashboard behind it.
-    if (active.offsetTop < menu.scrollTop) menu.scrollTo({ top: active.offsetTop });
+    const headingHeight = active.closest('.db-role-select__group')?.firstElementChild.offsetHeight ?? 0;
+    const visibleTop = active.offsetTop - headingHeight;
+    if (visibleTop < menu.scrollTop) menu.scrollTo({ top: visibleTop });
     else if (active.offsetTop + active.offsetHeight > menu.scrollTop + menu.clientHeight) {
       menu.scrollTo({ top: active.offsetTop + active.offsetHeight - menu.clientHeight });
     }
@@ -110,6 +115,31 @@ export default function DashboardRoleSelect({
     }
   }
 
+  function renderOptions(items) {
+    return items.filter((option) => option.value).map((option) => (
+      <div
+        key={option.value}
+        id={`${listId}-${option.value}`}
+        role="option"
+        aria-selected={value === option.value}
+        aria-disabled={option.disabled || undefined}
+        data-value={option.value}
+        className="db-role-select__option"
+        data-active={activeValue === option.value}
+        onPointerMove={(event) => {
+          if (event.pointerType === 'mouse' && !option.disabled) {
+            setActiveInput('pointer');
+            setActiveValue(option.value);
+          }
+        }}
+        onClick={() => choose(option.value)}
+      >
+        <span>{option.label}</span>
+        {value === option.value && <Check size={16} aria-hidden="true" />}
+      </div>
+    ));
+  }
+
   return (
     <Popover.Root open={expanded} onOpenChange={changeOpen}>
       <Popover.Trigger asChild>
@@ -145,36 +175,21 @@ export default function DashboardRoleSelect({
           id={listId}
           role="listbox"
           aria-labelledby={labelledBy}
-          className="db-role-select__menu"
+          className={menuClassName ? `db-role-select__menu ${menuClassName}` : 'db-role-select__menu'}
           align="start"
           sideOffset={8}
+          collisionBoundary={portalContainer?.matches('dialog') ? portalContainer : undefined}
           collisionPadding={{ top: 16, right: 16, bottom: bottomCollisionPadding, left: 16 }}
           onOpenAutoFocus={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => event.preventDefault()}
           onMouseDown={(event) => event.preventDefault()}
         >
-          {options.filter((option) => option.value).map((option) => (
-            <div
-              key={option.value}
-              id={`${listId}-${option.value}`}
-              role="option"
-              aria-selected={value === option.value}
-              aria-disabled={option.disabled || undefined}
-              data-value={option.value}
-              className="db-role-select__option"
-              data-active={activeValue === option.value}
-              onPointerMove={(event) => {
-                if (event.pointerType === 'mouse' && !option.disabled) {
-                  setActiveInput('pointer');
-                  setActiveValue(option.value);
-                }
-              }}
-              onClick={() => choose(option.value)}
-            >
-              <span>{option.label}</span>
-              {value === option.value && <Check size={16} aria-hidden="true" />}
+          {groups ? groups.map(group => (
+            <div key={group.label} role="group" aria-label={group.label} className="db-role-select__group">
+              <div className="db-role-select__group-label" aria-hidden="true">{group.label}</div>
+              {renderOptions(group.options)}
             </div>
-          ))}
+          )) : renderOptions(options)}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

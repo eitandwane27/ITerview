@@ -40,6 +40,7 @@ for (const set of [1, 2, 3]) {
       t.after(() => socket.close());
       let generationCalls = 0;
       let questionWrites = 0;
+      const voicesUsed = [];
       const sessionModel = {
         findOne: async () => null,
         findOneAndUpdate: async (_filter, update) => {
@@ -49,7 +50,9 @@ for (const set of [1, 2, 3]) {
       };
       const handle = loadController(set, {
         '../services/sttService': { createDeepgramLiveSession() { throw new Error('Unexpected STT'); } },
-        '../services/ttsService': { synthesizeSpeech: () => tts.promise },
+        '../services/ttsService': {
+          synthesizeSpeech: (_text, voice) => { voicesUsed.push(voice); return tts.promise; },
+        },
         [`../services/aiSet${set}Generator`]: {
           [`generateSet${set}Question`]: async () => {
             generationCalls++;
@@ -58,7 +61,9 @@ for (const set of [1, 2, 3]) {
           },
           getCompetencyTopic: () => 'Teamwork',
         },
-        '../models/User': { findOne: async () => ({ role: 'backend', difficulty: 'easy' }) },
+        '../models/User': {
+          findOne: async () => ({ role: 'backend', difficulty: 'easy', interviewerVoice: 'aura-2-zeus-en' }),
+        },
         '../models/PreTestSession': { findOne: () => ({ sort: async () => null }) },
         '../models/Set1Session': set === 1 ? sessionModel : { findOne: async () => ({ isCompleted: true, attemptId: 'startup-run', role: 'backend', difficulty: 'easy' }) },
         '../models/Set2Session': set === 2 ? sessionModel : { findOne: async () => ({ isCompleted: true, attemptId: 'startup-run', role: 'backend', difficulty: 'easy' }) },
@@ -110,6 +115,8 @@ for (const set of [1, 2, 3]) {
         assert.equal(generationCalls, 5);
         assert.equal(audio.length, 1);
         assert.equal(audio[0].data, Buffer.from('synthetic audio').toString('base64'));
+        assert.deepEqual(voicesUsed, ['aura-2-zeus-en']);
+        assert.equal(socket.messages.find(message => message.type === 'session_meta').voice, voicesUsed[0]);
       }
     });
   }

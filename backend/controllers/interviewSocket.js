@@ -42,6 +42,7 @@ const { synthesizeSpeech } = require("../services/ttsService");
 const { evaluate3CScores } = require("../services/aiEvaluator");
 const PreTestSession = require("../models/PreTestSession");
 const User = require("../models/User");
+const { resolveInterviewerVoice } = require("../config/interviewerVoices");
 
 /**
  * Splits a text block into separate sentences.
@@ -118,7 +119,8 @@ function handleInterviewSocket(ws, request) {
 
   // The upgrade gate supplies the verified identity; the URL chooses the voice.
   const url = new URL(request.url, `http://${request.headers.host}`);
-  const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
+  const requestedVoice = url.searchParams.get("voice");
+  let voiceModel = resolveInterviewerVoice(requestedVoice);
   const firebaseUid = request.auth?.uid;
   if (!firebaseUid) { ws.close(1008, 'Authentication required'); return; }
   const isResetRequested = url.searchParams.get("reset") === "true";
@@ -249,6 +251,7 @@ function handleInterviewSocket(ws, request) {
       // Fetch user difficulty; non‑critical, log errors only
       try {
         const user = await User.findOne({ firebaseUid });
+        voiceModel = resolveInterviewerVoice(requestedVoice, user?.interviewerVoice);
         if (user?.difficulty) {
           sessionDifficulty = user.difficulty;
         }

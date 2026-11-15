@@ -95,6 +95,9 @@ test.use({ launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-
   permissions: ['microphone'] });
 test.beforeEach(async ({ page }) => {
   mode = 'normal'; sessions = []; authCalls = []; tokenRequests = 0;
+  await page.route('**/api/users/mic-browser-test', route => route.fulfill({
+    json: { user: { interviewerVoice: 'aura-2-andromeda-en' } },
+  }));
   await page.addInitScript(() => {
     if (!navigator.mediaDevices) return;
     const getUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
@@ -196,8 +199,22 @@ for (const scenario of [
     await page.clock.install({ time: new Date('2026-10-16T00:00:00Z') });
     await page.clock.pauseAt(new Date('2026-10-16T00:00:01Z'));
     await page.goto(`${baseURL}?handoff`);
-    await expect(page.locator('#voice-select')).toHaveCount(0);
+    const voice = page.getByRole('combobox', { name: 'AI interviewer voice' });
+    await expect(voice).toHaveText('Andromeda');
     await expect(page.getByRole('button', { name: 'Hear sample' })).toBeVisible();
+    if (!scenario.reduced) {
+      await voice.click();
+      const menu = page.getByRole('listbox', { name: 'AI interviewer voice' });
+      await expect(menu).toBeVisible();
+      await expect(voice).toHaveCSS('padding-inline-start', '12px');
+      await expect(menu).toHaveCSS('padding-inline-start', '6px');
+      await expect(menu.getByText('Feminine', { exact: true })).toHaveCSS('padding-inline-start', '10px');
+      await expect(menu.getByRole('option', { selected: true })).toHaveCSS('padding-inline-end', '10px');
+      await expect.poll(() => menu.evaluate(list => list.clientHeight <= 236 && list.scrollHeight > list.clientHeight)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath('voice-menu.png'), animations: 'disabled' });
+      await voice.press('Escape');
+      await expect(menu).toBeHidden();
+    }
     await page.locator('#mictest-proceed-btn').scrollIntoViewIfNeeded();
     if (!scenario.reduced) await page.screenshot({ path: testInfo.outputPath('setup.png'), fullPage: true });
     // Dispatch twice in the same frame to cover accidental repeated activation.
@@ -208,7 +225,7 @@ for (const scenario of [
     await page.clock.runFor(scenario.reduced ? 250 : 650);
     await expect(page.locator('.mictest-root')).toHaveCount(0);
     await expect(page.locator('.test-page')).toBeVisible();
-    await expect(page.getByTestId('selected-voice')).toHaveText('aura-2-luna-en');
+    await expect(page.getByTestId('selected-voice')).toHaveText('aura-2-andromeda-en');
     // Opacity-only reduced-motion fades may use native browser animation time.
     await page.clock.resume();
     await expect.poll(() => page.locator('.test-page').evaluate(element => getComputedStyle(element).opacity)).toBe('1');
@@ -219,3 +236,38 @@ for (const scenario of [
     if (!scenario.reduced) await page.screenshot({ path: testInfo.outputPath('briefing.png'), fullPage: true });
   });
 }
+
+test('plays a static preview and saves the selected voice before the interview', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const synthesisRequests = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/tts/speak') synthesisRequests.push(request.url());
+  });
+  let saved;
+  await page.route('**/api/users/role', route => {
+    saved = route.request().postDataJSON();
+    return route.fulfill({ json: {} });
+  });
+  await page.goto(`${baseURL}?handoff`);
+  const picker = page.getByRole('combobox', { name: 'AI interviewer voice' });
+  const options = page.getByRole('listbox', { name: 'AI interviewer voice' });
+  await picker.press('ArrowDown');
+  await expect(options.getByRole('option')).toHaveCount(26);
+  await picker.press('Home');
+  const luna = options.getByRole('group', { name: 'Feminine' }).getByRole('option', { name: 'Luna (Default)' });
+  await expect(luna).toHaveAttribute('data-active', 'true');
+  await picker.press('End');
+  await expect(options.getByRole('group', { name: 'Masculine' }).getByRole('option', { name: 'Zeus' })).toBeInViewport();
+  await picker.press('Enter');
+  await expect(picker).toHaveText('Zeus');
+  const sample = page.waitForResponse(response => response.url().includes('aura-2-zeus-en.wav'));
+  await page.getByRole('button', { name: 'Hear sample' }).click();
+  expect((await sample).ok()).toBeTruthy();
+  await expect.poll(() => page.locator('audio').evaluate(audio => audio.currentTime)).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Stop sample' }).click();
+  await expect.poll(() => page.locator('audio').evaluate(audio => audio.paused)).toBe(true);
+  await page.getByRole('button', { name: 'Start interview' }).click();
+  await expect(page.getByTestId('selected-voice')).toHaveText('aura-2-zeus-en');
+  expect(saved).toEqual({ interviewerVoice: 'aura-2-zeus-en' });
+  expect(synthesisRequests).toEqual([]);
+});

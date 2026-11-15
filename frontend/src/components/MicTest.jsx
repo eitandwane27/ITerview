@@ -7,7 +7,7 @@ import { authenticatedFetch, schoolSocketProtocols } from '../utils/authenticate
 //   2. Run a live mic test with a real-time volume meter
 //   3. Optionally speak a sentence — transcript preview via Deepgram STT
 //      (streams through the authenticated backend /ws/mic-test connection)
-//   4. Hear the AI interviewer voice via POST /api/tts/speak (aura-2-luna-en)
+//   4. Choose and preview the AI interviewer voice
 //   5. Click "Start Interview" once satisfied → navigates to /pre-test
 //
 // Design: Cool Color Spectrum system (Royal Cobalt · Signal Sky Cyan · Deep
@@ -47,11 +47,12 @@ import {
 } from '../utils/audioInputDevices';
 import './MicTest.css';
 import { EASE } from './motion/motion';
+import InterviewerVoicePicker from './InterviewerVoicePicker';
+import { DEFAULT_INTERVIEWER_VOICE } from '../utils/interviewerVoices';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const MIC_TEST_WS_URL = BACKEND_URL.replace(/^http/, 'ws') + '/ws/mic-test';
 const CONNECT_TIMEOUT_MS = 10000;
-const INTERVIEW_VOICE = 'aura-2-luna-en';
 
 // Status chip copy per pipeline state — the state machine lives in
 // startTest()/stopTest() below (idle → requesting → connecting → recording → ok, with
@@ -71,6 +72,27 @@ export default function MicTest() {
   const reducedMotion = useReducedMotion();
   const [isStarting, setIsStarting] = useState(false);
   const pendingInterviewRef = useRef(null);
+  const savingVoiceRef = useRef(false);
+  const [voice, setVoice] = useState(null);
+  const [selectedVoice, setSelectedVoice] = useState(null);
+  const [isSavingVoice, setIsSavingVoice] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(CONNECT_TIMEOUT_MS)]);
+    authenticatedFetch(`/api/users/${encodeURIComponent(uid)}`, { signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => {
+        if (data && !signal.aborted) {
+          setVoice(data.user?.interviewerVoice || DEFAULT_INTERVIEWER_VOICE);
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   // ── Device list ──────────────────────────────────────────────────────────
   const [devices, setDevices] = useState([]);
@@ -86,11 +108,6 @@ export default function MicTest() {
   const [status, setStatus] = useState('idle');
   // idle | requesting | connecting | recording | ok | denied | error
   const [errorMsg, setErrorMsg] = useState('');
-
-  // ── TTS sample state ─────────────────────────────────────────────────────
-  const [ttsLoading, setTtsLoading] = useState(false);
-  const [ttsError, setTtsError] = useState('');
-  const audioRef = useRef(null);
 
   // ── Refs ─────────────────────────────────────────────────────────────────
   const streamRef = useRef(null);
@@ -355,44 +372,34 @@ export default function MicTest() {
     }
   };
 
-  // ── TTS: play AI interviewer voice sample ────────────────────────────────
-  const handleHearSample = async () => {
-    setTtsLoading(true);
-    setTtsError('');
-    try {
-      const res = await authenticatedFetch(`${BACKEND_URL}/api/tts/speak`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: "Hello! I'm your AI interviewer. When you're ready, click Start Interview and we'll begin.",
-          voice: INTERVIEW_VOICE,
-        }),
-      });
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({}));
-        throw new Error(error || `Server returned ${res.status}`);
-      }
-      const blob = await res.blob();
-      if (pendingInterviewRef.current || !audioRef.current) return;
-      const url = URL.createObjectURL(blob);
-      if (audioRef.current) {
-        audioRef.current.src = url;
-        audioRef.current.play();
-      }
-    } catch (err) {
-      console.error('[TTS] Sample playback failed:', err);
-      setTtsError('Could not play audio sample. Check your connection or try again.');
-    } finally {
-      setTtsLoading(false);
-    }
-  };
-
   // ── Proceed to interview ──────────────────────────────────────────────────
-  const handleProceed = () => {
-    if (pendingInterviewRef.current) return;
-    pendingInterviewRef.current = { voice: INTERVIEW_VOICE, fromMicSetup: true };
+  const handleProceed = async () => {
+    if (pendingInterviewRef.current || savingVoiceRef.current) return;
     stopTest();
-    audioRef.current?.pause();
+    if (selectedVoice && selectedVoice !== voice) {
+      savingVoiceRef.current = true;
+      setIsSavingVoice(true);
+      setVoiceError('');
+      try {
+        const response = await authenticatedFetch('/api/users/role', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ interviewerVoice: selectedVoice }),
+          signal: AbortSignal.timeout(CONNECT_TIMEOUT_MS),
+        });
+        if (!response.ok) throw new Error('Voice preference save failed.');
+      } catch {
+        setVoiceError('Couldn’t save your interviewer voice. Try again.');
+        return;
+      } finally {
+        savingVoiceRef.current = false;
+        setIsSavingVoice(false);
+      }
+    }
+    pendingInterviewRef.current = {
+      voice: selectedVoice || voice,
+      fromMicSetup: true,
+    };
     setIsStarting(true);
   };
 
@@ -453,7 +460,7 @@ export default function MicTest() {
       }}
       transition={{ duration: reducedMotion ? 0.08 : 0.18, ease: EASE }}
       onAnimationComplete={finishHandoff}
-      aria-busy={isStarting}
+      aria-busy={isStarting || isSavingVoice}
     >
       {/* ── Top Bar — db-topnav pattern: logo + wordmark, phase chip, sign out ── */}
       <header className="mictest-topnav">
@@ -468,7 +475,7 @@ export default function MicTest() {
               type="button"
               className="mictest-signout-btn"
               onClick={handleLogout}
-              disabled={isStarting}
+              disabled={isStarting || isSavingVoice}
               aria-label="Sign out"
             >
               <LogOut size={14} aria-hidden="true" />
@@ -554,7 +561,7 @@ export default function MicTest() {
                   setSelectedMic(e.target.value);
                   rememberPreferredAudioInput(e.target.value);
                 }}
-                disabled={isStarting || isTesting || status === 'requesting' || status === 'connecting'}
+                disabled={isStarting || isSavingVoice || isTesting || status === 'requesting' || status === 'connecting'}
               >
                 {devices.length === 0 && <option value="">No microphones found</option>}
                 {devices.map((d) => (
@@ -599,7 +606,7 @@ export default function MicTest() {
               id="mic-test-btn"
               className={`mictest-btn-test ${isTesting ? 'mictest-btn-test--stop' : ''}`}
               onClick={handleToggleTest}
-              disabled={isStarting || status === 'requesting' || status === 'connecting'}
+              disabled={isStarting || isSavingVoice || status === 'requesting' || status === 'connecting'}
             >
               {status === 'requesting' || status === 'connecting' ? (
                 <>
@@ -618,11 +625,11 @@ export default function MicTest() {
                 </>
               )}
             </button>
-            <button type="button" className="mictest-typing-button" disabled={isStarting}
+            <button type="button" className="mictest-typing-button" disabled={isStarting || isSavingVoice}
               onClick={() => {
                 stopTest();
                 navigate('/interview?set=1&mode=drill&input=typing', {
-                  state: { practiceReturn: '/mic-test', voice: INTERVIEW_VOICE },
+                  state: { practiceReturn: '/mic-test', voice: selectedVoice || voice },
                 });
               }}>
               <Keyboard size={16} aria-hidden="true" /> Practice by typing <ArrowRight size={15} aria-hidden="true" />
@@ -690,40 +697,22 @@ export default function MicTest() {
                 AI interviewer voice
               </h2>
               <p className="mictest-card__sub">
-                Hear the voice that will guide you through your interview.
+                Choose the voice that will guide you through your interview.
               </p>
             </div>
           </div>
 
-          {/* Hidden TTS playback element — no controls, driven by ref */}
-          <audio ref={audioRef} style={{ display: 'none' }} />
+          <InterviewerVoicePicker
+            value={selectedVoice || voice}
+            onChange={value => { setSelectedVoice(value); setVoiceError(''); }}
+            disabled={isStarting || isSavingVoice}
+            labelledBy="mictest-voice-title"
+          />
 
-          <div className="mictest-card__actions">
-            <button
-              type="button"
-              id="mic-tts-sample-btn"
-              className="mictest-btn-ghost"
-              onClick={handleHearSample}
-              disabled={isStarting || ttsLoading}
-            >
-              {ttsLoading ? (
-                <>
-                  <Loader2 size={15} className="mictest-spin" aria-hidden="true" />
-                  Loading sample…
-                </>
-              ) : (
-                <>
-                  <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />
-                  Hear sample
-                </>
-              )}
-            </button>
-          </div>
-
-          {ttsError && (
+          {voiceError && (
             <div className="mictest-banner mictest-banner--error" role="alert">
               <AlertCircle size={16} aria-hidden="true" />
-              <span>{ttsError}</span>
+              <span>{voiceError}</span>
             </div>
           )}
         </section>
@@ -743,10 +732,10 @@ export default function MicTest() {
           id="mictest-proceed-btn"
           className="mictest-proceed-btn"
           onClick={handleProceed}
-          disabled={isStarting}
+          disabled={isStarting || isSavingVoice}
           aria-live="polite"
         >
-          {isStarting ? 'Starting interview…' : 'Start interview'}
+          {isSavingVoice ? 'Saving voice…' : isStarting ? 'Starting interview…' : 'Start interview'}
           <ArrowRight size={17} strokeWidth={2.5} aria-hidden="true" />
         </button>
 

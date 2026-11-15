@@ -36,7 +36,7 @@ const WS_BASE = BACKEND_URL.replace(/^http/, 'ws');
 export default function PostTest() {
   const navigate = useNavigate();
   const location = useLocation();
-  const voice = location.state?.voice || 'aura-2-luna-en';
+  const voice = location.state?.voice;
 
   // ── Auth State ─────────────────────────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
@@ -422,7 +422,7 @@ export default function PostTest() {
       catch (error) { setError(error.message); return; }
       if (attempt !== connectionAttemptRef.current || !isMountedRef.current) return;
       const ws = new WebSocket(
-        `${WS_BASE}/ws/posttest?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}${resetParam}`, protocols
+        `${WS_BASE}/ws/posttest?uid=${encodeURIComponent(uid)}${resetParam}${voice ? `&voice=${encodeURIComponent(voice)}` : ''}`, protocols
       );
       ws.binaryType = 'arraybuffer'; // receive binary chunks as ArrayBuffers
       wsRef.current = ws;

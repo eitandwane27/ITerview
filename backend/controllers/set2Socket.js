@@ -31,6 +31,7 @@ const {
 const Set1Session = require('../models/Set1Session');
 const Set2Session = require("../models/Set2Session");
 const User = require("../models/User");
+const { resolveInterviewerVoice } = require("../config/interviewerVoices");
 const { resolveUserDifficulty, requireRegisteredRole, sessionMetadata } = require('../services/interviewSettings');
 
 const MAX_QUESTIONS = 5;
@@ -44,7 +45,8 @@ function handleSet2Socket(ws, request) {
   console.log("[WS] 🔌 New Set 2 (Technical Mastery) session connected");
 
   const url = new URL(request.url, `http://${request.headers.host}`);
-  const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
+  const requestedVoice = url.searchParams.get("voice");
+  let voiceModel = resolveInterviewerVoice(requestedVoice);
   const firebaseUid = request.auth?.uid;
   let sessionMode =
     url.searchParams.get("mode") === "practice" ? "practice" : "diagnostic";
@@ -188,6 +190,7 @@ function handleSet2Socket(ws, request) {
 
       // 1. Fetch role and difficulty from User
       const user = await User.findOne({ firebaseUid });
+      voiceModel = resolveInterviewerVoice(requestedVoice, user?.interviewerVoice);
       if (user) {
         sessionRole = user.role || "fullstack";
         sessionDifficulty = resolveUserDifficulty(user);
@@ -239,7 +242,7 @@ function handleSet2Socket(ws, request) {
           return;
         }
 
-        send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS }));
+        send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS, voice: voiceModel }));
 
         if (savedAnswerCount(sessionDoc) === 5) {
           if (!await finaliseSavedSession()) return;
@@ -331,7 +334,7 @@ function handleSet2Socket(ws, request) {
         `[DB] ✅ Set 2 session initialized: ${sessionId} for user: ${firebaseUid}`,
       );
 
-      send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS }));
+      send(sessionMetadata(sessionRole, sessionDifficulty, { mode: sessionMode, totalQuestions: MAX_QUESTIONS, voice: voiceModel }));
 
       // 3. Generate ALL 5 questions sequentially
       send({

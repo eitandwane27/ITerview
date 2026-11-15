@@ -174,7 +174,7 @@ router.get('/active-practice-session', async (req, res) => {
 // Updates user's target role, difficulty, focus area, and optionally displayName in MongoDB.
 router.put('/role', async (req, res) => {
   try {
-    const { firebaseUid, role, difficulty, focusArea, displayName, avatar } = req.body;
+    const { firebaseUid, role, difficulty, focusArea, displayName, avatar, interviewerVoice } = req.body;
 
     if (!firebaseUid) {
       return res.status(400).json({ message: 'Firebase UID is required' });
@@ -188,6 +188,9 @@ router.put('/role', async (req, res) => {
     if (avatar !== undefined && !User.schema.path('avatar').enumValues.includes(avatar)) {
       return res.status(400).json({ message: 'Select a supported avatar.' });
     }
+    if (interviewerVoice !== undefined && !User.schema.path('interviewerVoice').enumValues.includes(interviewerVoice)) {
+      return res.status(400).json({ message: 'Select a supported interviewer voice.' });
+    }
 
     const updateFields = {};
     if (role) updateFields.role = role;
@@ -196,6 +199,7 @@ router.put('/role', async (req, res) => {
     // Allow updating displayName (including empty string to clear it)
     if (displayName !== undefined) updateFields.displayName = displayName;
     if (avatar !== undefined) updateFields.avatar = avatar;
+    if (interviewerVoice !== undefined) updateFields.interviewerVoice = interviewerVoice;
 
     const user = await User.findOneAndUpdate(
       { firebaseUid },

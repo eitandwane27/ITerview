@@ -374,7 +374,7 @@ export default function SetBriefingOverlay({
       const protocols = await schoolSocketProtocols();
       if (controller.signal.aborted) return;
       const ws = new WebSocket(
-        `${BACKEND_URL.replace(/^http/, 'ws')}/ws/set1?voice=aura-2-luna-en&uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(sessionMode)}${focusParam}&launch=${encodeURIComponent(launchIdRef.current)}`, protocols
+        `${BACKEND_URL.replace(/^http/, 'ws')}/ws/set1?uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(sessionMode)}${focusParam}&launch=${encodeURIComponent(launchIdRef.current)}`, protocols
       );
       wsRef.current = ws;
 

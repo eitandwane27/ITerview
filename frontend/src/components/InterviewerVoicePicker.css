@@ -1,0 +1,74 @@
+.interviewer-voice {
+  display: grid;
+  gap: 6px;
+  color: var(--db-ink, var(--mt-ink, #0f172a));
+  font-size: 14px;
+}
+
+.interviewer-voice label {
+  font-weight: 600;
+}
+
+.interviewer-voice__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.mictest-root :is(.db-role-select__trigger, .interviewer-voice__menu) {
+  --db-border: var(--mt-border);
+  --db-border-strong: var(--mt-border-strong);
+  --db-r-sm: var(--mt-r-sm);
+  --db-r-md: var(--mt-r-md);
+  --db-canvas-subtle: var(--mt-canvas-subtle);
+  --db-card-bg: var(--mt-card-bg);
+  --db-ink: var(--mt-ink);
+  --db-ink-muted: var(--mt-ink-muted);
+  --db-ink-faint: var(--mt-ink-muted);
+  --db-blue: var(--mt-blue);
+  --db-blue-hover: var(--mt-blue-hover);
+  --db-blue-light: var(--mt-blue-light);
+  --db-fast: var(--mt-fast);
+  --db-med: var(--mt-med);
+  --db-ease: var(--mt-ease);
+}
+
+.interviewer-voice__menu.db-role-select__menu {
+  max-height: min(236px, var(--radix-popover-content-available-height, 236px));
+}
+
+.interviewer-voice__sample {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 116px;
+  min-height: 44px;
+  border: 1px solid var(--db-border-strong, var(--mt-border-strong, #cbd5e1));
+  border-radius: var(--db-r-md, var(--mt-r-md, 8px));
+  padding: 0 10px;
+  color: inherit;
+  background: var(--db-canvas-subtle, var(--mt-canvas-subtle, #f8fafc));
+  font: inherit;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.interviewer-voice__sample:hover:not(:disabled) {
+  background: var(--db-blue-light, var(--mt-indigo-light, #eef2ff));
+}
+
+.interviewer-voice__controls button:focus-visible {
+  outline: 2px solid var(--db-blue, var(--mt-blue, #2563eb));
+  outline-offset: 2px;
+}
+
+.interviewer-voice__sample:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.interviewer-voice__error {
+  margin: 0;
+  color: var(--db-coral-active, #b91c1c);
+}

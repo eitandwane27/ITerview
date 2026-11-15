@@ -105,9 +105,9 @@
 }
 
 /* ── Scoped reset & base type ─────────────────────────────────────────────── */
-.mictest-root *,
-.mictest-root *::before,
-.mictest-root *::after {
+:where(.mictest-root *),
+:where(.mictest-root *)::before,
+:where(.mictest-root *)::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -742,48 +742,6 @@
 .mictest-btn-test--stop:active:not(:disabled) {
   background: var(--mt-coral-active);
   box-shadow: 0 1px 0 #b91c1c;
-}
-
-/* Ghost tactile — "Hear sample" (lp-btn-ghost pattern) */
-.mictest-btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: var(--mt-canvas);
-  border: 1.5px solid var(--mt-border-strong);
-  border-radius: var(--mt-r-pill);
-  color: var(--mt-ink);
-  font-family: inherit;
-  font-size: 13.5px;
-  font-weight: 700;
-  box-shadow: var(--mt-shadow-tactile);
-  transition:
-    transform var(--mt-fast) var(--mt-ease),
-    background-color var(--mt-fast) ease,
-    border-color var(--mt-fast) ease,
-    color var(--mt-fast) ease,
-    box-shadow var(--mt-fast) ease;
-}
-
-.mictest-btn-ghost:hover:not(:disabled) {
-  background: var(--mt-canvas-ice);
-  border-color: var(--mt-blue-border);
-  color: var(--mt-blue);
-  transform: translateY(-1px);
-}
-
-.mictest-btn-ghost:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 #cbd5e1;
-}
-
-.mictest-btn-ghost:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
 }
 
 /* Spinner for loading states */

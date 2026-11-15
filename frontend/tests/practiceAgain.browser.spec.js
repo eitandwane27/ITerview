@@ -67,12 +67,14 @@ test.beforeAll(async () => {
           ws.send(JSON.stringify({ type: 'audio_unavailable' }));
         } else {
           createPracticeAgainHandler({
+            loadVoice: async () => 'aura-2-zeus-en',
             find: async (uid, savedId) => {
               expect(uid).toBe('practice-browser');
               const question = records.find(q => q.id === savedId && q.isSaved);
               return question ? { ...question, difficulty: question.difficulty.toLowerCase(), competency: 'Teamwork & Collaboration' } : null;
             },
-            speak: async text => {
+            speak: async (text, voice) => {
+              expect(voice).toBe('aura-2-zeus-en');
               if (slowSpeech && text === 'You described a concrete contribution.') {
                 return new Promise(resolve => { releaseSpeech = () => resolve(playFeedback ? Buffer.from(speechAudioBase64(), 'base64') : null); });
               }

@@ -183,7 +183,7 @@ for (const viewport of [
     });
   }
 
-  test(`interview prep owns role choices independently of profile on ${viewport.name}`, async ({ page }) => {
+  test(`interview prep owns role choices independently of profile on ${viewport.name}`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     let saved;
     await mockApi(page, {
@@ -207,13 +207,44 @@ for (const viewport of [
     await expect(page.getByRole('definition')).toHaveText('test@spcba.edu.ph');
     await page.getByRole('textbox', { name: 'Display name' }).fill('Updated name');
     await page.getByRole('radio', { name: 'Robot avatar' }).check();
+    const voice = page.getByRole('combobox', { name: 'Interviewer voice' });
+    const dialog = page.getByRole('dialog', { name: 'Profile Settings' });
+    const voiceMenu = dialog.getByRole('listbox', { name: 'Interviewer voice' });
+    await expect(voice).toHaveText('Luna (Default)');
+    await voice.click();
+    const feminine = voiceMenu.getByRole('group', { name: 'Feminine' });
+    const masculine = voiceMenu.getByRole('group', { name: 'Masculine' });
+    await expect(feminine.getByRole('option')).toHaveCount(17);
+    await expect(masculine.getByRole('option')).toHaveCount(9);
+    const selectedVoice = feminine.getByRole('option', { selected: true });
+    await expect(selectedVoice).toHaveText('Luna (Default)');
+    await expect(selectedVoice).toBeInViewport({ ratio: 1 });
+    await expect.poll(() => voiceMenu.evaluate(list => {
+      const bounds = list.getBoundingClientRect();
+      const dialogBounds = list.closest('dialog').getBoundingClientRect();
+      return list.clientHeight <= 236 && list.scrollHeight > list.clientHeight &&
+        bounds.top >= dialogBounds.top && bounds.bottom <= dialogBounds.bottom;
+    })).toBe(true);
+    await dialog.screenshot({ path: testInfo.outputPath('profile-voice-menu.png'), animations: 'disabled' });
+    await voice.press('Escape');
+    await expect(voiceMenu).toBeHidden();
+    await expect(dialog).toBeVisible();
+    await expect(voice).toBeFocused();
+    await voice.click();
+    await voiceMenu.getByRole('option', { name: 'Andromeda' }).click();
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('#role-select')).toHaveAttribute('data-value', 'qa-test');
-    expect(saved).toEqual({ firebaseUid: 'registry-browser-user', displayName: 'Updated name', avatar: 'robot' });
+    expect(saved).toEqual({ firebaseUid: 'registry-browser-user', displayName: 'Updated name', avatar: 'robot', interviewerVoice: 'aura-2-andromeda-en' });
     await page.getByRole('button', { name: 'Open profile settings' }).filter({ visible: true }).click();
     await expect(page.getByRole('textbox', { name: 'Display name' })).toHaveValue('Updated name');
     await expect(page.getByRole('radio', { name: 'Robot avatar' })).toBeChecked();
+    await expect(voice).toHaveText('Andromeda');
+    await voice.click();
+    await voiceMenu.getByRole('option', { name: 'Zeus' }).click();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.getByRole('button', { name: 'Open profile settings' }).filter({ visible: true }).click();
+    await expect(voice).toHaveText('Andromeda');
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     await chooseSetupOption(page, 'role-select', 'backend');
     await expect(page.locator('#role-select')).toHaveAttribute('data-value', 'backend');

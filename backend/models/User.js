@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { VALID_ROLES } = require("../config/roleConfig");
+const { DEFAULT_INTERVIEWER_VOICE, INTERVIEWER_VOICES } = require("../config/interviewerVoices");
 
 const userSchema = new mongoose.Schema({
   // We use the ID provided by Firebase as our main link
@@ -29,6 +30,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ["robot", "fox", "cat", "frog", "penguin", "bear", "rabbit", "owl"],
     default: "fox",
+  },
+
+  interviewerVoice: {
+    type: String,
+    enum: INTERVIEWER_VOICES,
+    default: DEFAULT_INTERVIEWER_VOICE,
   },
 
   role: {

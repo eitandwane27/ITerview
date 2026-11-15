@@ -1,6 +1,8 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
+// App loads the shared dropdown through Dashboard before MicTest's styles.
+import '../../src/components/DashboardRoleSelect.css';
 import MicTest from '../../src/components/MicTest';
 import FluxDebugger from '../../src/components/FluxDebugger';
 import TestWorkspace from '../../src/components/TestWorkspace';

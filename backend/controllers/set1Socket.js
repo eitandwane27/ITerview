@@ -21,6 +21,7 @@ const PreTestSession = require('../models/PreTestSession');
 const Set1Session = require('../models/Set1Session');
 const User = require('../models/User');
 const { resolveUserDifficulty, requireRegisteredRole, sessionMetadata } = require('../services/interviewSettings');
+const { resolveInterviewerVoice } = require('../config/interviewerVoices');
 
 const MAIN_SET_QUESTIONS = 5;
 const DRILL_QUESTIONS = 3;
@@ -44,7 +45,8 @@ function handleSet1Socket(ws, request) {
   console.log('[WS] 🔌 New Set 1 session connected');
 
   const url = new URL(request.url, `http://${request.headers.host}`);
-  const voiceModel = url.searchParams.get('voice') || 'aura-2-luna-en';
+  const requestedVoice = url.searchParams.get('voice');
+  let voiceModel = resolveInterviewerVoice(requestedVoice);
   const firebaseUid = request.auth?.uid;
   let sessionMode = resolveSessionMode(url.searchParams.get('mode'));
   const isDrill = sessionMode === 'drill';
@@ -216,6 +218,7 @@ function handleSet1Socket(ws, request) {
 
       // Fetch role, difficulty, and focusArea from User
       const user = await User.findOne({ firebaseUid });
+      voiceModel = resolveInterviewerVoice(requestedVoice, user?.interviewerVoice);
       if (user) {
         sessionRole = user.role || 'fullstack';
         sessionDifficulty = resolveUserDifficulty(user);
@@ -288,6 +291,7 @@ function handleSet1Socket(ws, request) {
 
           send(sessionMetadata(sessionRole, sessionDifficulty, {
             mode: sessionMode, totalQuestions: questionLimit, weakness: sessionWeaknessTag,
+            voice: voiceModel,
           }));
 
           if (savedAnswerCount(sessionDoc) === 5) {
@@ -385,6 +389,7 @@ function handleSet1Socket(ws, request) {
       requireRegisteredRole(sessionRole);
       send(sessionMetadata(sessionRole, sessionDifficulty, {
         mode: sessionMode, totalQuestions: questionLimit, weakness: sessionWeaknessTag,
+        voice: voiceModel,
       }));
 
       // 3. Generate the set or drill questions sequentially

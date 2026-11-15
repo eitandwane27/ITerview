@@ -38,6 +38,8 @@ import DashboardRoleSelect from '../components/DashboardRoleSelect';
 import DashboardSignOutDialog from '../components/DashboardSignOutDialog';
 import DashboardCoach from '../components/DashboardCoach';
 import DashboardPracticeAgain from '../components/DashboardPracticeAgain';
+import InterviewerVoicePicker from '../components/InterviewerVoicePicker';
+import { DEFAULT_INTERVIEWER_VOICE } from '../utils/interviewerVoices';
 import { useSchoolAuth } from '../auth/schoolAuth';
 import { useSignInTransition } from '../auth/signInTransition';
 import {
@@ -984,6 +986,7 @@ export default function Dashboard() {
   const [selectedDifficulty, setSelectedDifficulty] = useState('easy');
   const [selectedFocus, setSelectedFocus] = useState('auto');
   const [selectedAvatar, setSelectedAvatar] = useState(DEFAULT_AVATAR);
+  const [interviewerVoice, setInterviewerVoice] = useState(DEFAULT_INTERVIEWER_VOICE);
   const [fullName, setFullName] = useState('Alex');
   const [unlockedDifficulty, setUnlockedDifficulty] = useState('easy');
   const [hasCompletedDiagnostic, setHasCompletedDiagnostic] = useState(false);
@@ -1021,6 +1024,7 @@ export default function Dashboard() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editAvatar, setEditAvatar] = useState(DEFAULT_AVATAR);
+  const [editVoice, setEditVoice] = useState(null);
   const roleOptions = getRoleOptions(roles, rolesStatus, selectedRole);
   const rolesReady = rolesStatus === 'ready';
   const selectedRoleAvailable = rolesReady && roles.some((role) => role.id === selectedRole);
@@ -1067,6 +1071,7 @@ export default function Dashboard() {
     if (!user) return;
     setDataStatus('loading');
     setSelectedAvatar(DEFAULT_AVATAR);
+    setInterviewerVoice(DEFAULT_INTERVIEWER_VOICE);
     setFullName(user.displayName || (user.email ? user.email.split('@')[0] : 'User'));
 
     let userLoadOk = false;
@@ -1092,6 +1097,7 @@ export default function Dashboard() {
         if (data.user?.focusArea) setSelectedFocus(data.user.focusArea);
         if (data.user?.displayName) setFullName(data.user.displayName);
         setSelectedAvatar(getProfileAvatar(data.user?.avatar).id);
+        setInterviewerVoice(data.user?.interviewerVoice || DEFAULT_INTERVIEWER_VOICE);
         if (data.hasCompletedDiagnostic !== undefined) {
           completedDiagnostic = Boolean(data.hasCompletedDiagnostic);
           setHasCompletedDiagnostic(completedDiagnostic);
@@ -1171,6 +1177,7 @@ export default function Dashboard() {
   const handleOpenProfileModal = useCallback(() => {
     setEditName(fullName);
     setEditAvatar(selectedAvatar);
+    setEditVoice(null);
     setProfileError(null);
     setIsProfileModalOpen(true);
   }, [fullName, selectedAvatar]);
@@ -1202,6 +1209,7 @@ export default function Dashboard() {
           firebaseUid: firebaseUser.uid,
           displayName: trimmedName,
           avatar: editAvatar,
+          interviewerVoice: editVoice ?? undefined,
         }),
       });
 
@@ -1212,6 +1220,7 @@ export default function Dashboard() {
         trimmedName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User');
       setFullName(displayedName);
       setSelectedAvatar(editAvatar);
+      if (editVoice) setInterviewerVoice(editVoice);
 
       setIsProfileModalOpen(false);
     } catch (err) {
@@ -1220,7 +1229,7 @@ export default function Dashboard() {
     } finally {
       setIsSavingProfile(false);
     }
-  }, [editName, editAvatar]);
+  }, [editName, editAvatar, editVoice]);
 
   // WAI-ARIA tabs pattern: arrow-key navigation across the tablist
   const handleTabKeyDown = useCallback(
@@ -2341,7 +2350,7 @@ export default function Dashboard() {
                 if (!isSavingProfile) handleSaveProfile();
                 return;
               }
-              if (e.key === 'Escape') {
+              if (e.key === 'Escape' && !e.defaultPrevented) {
                 e.stopPropagation();
                 if (!isSavingProfile) handleCloseProfileModal();
                 return;
@@ -2373,7 +2382,7 @@ export default function Dashboard() {
                 <h2 id="db-profile-modal-title" className="db-modal__title">
                   Profile Settings
                 </h2>
-                <p id="db-profile-modal-description" className="db-modal__sub">Personalize how you appear in ITerview.</p>
+                <p id="db-profile-modal-description" className="db-modal__sub">Personalize your profile and interviewer voice.</p>
               </div>
               <button
                 type="button"
@@ -2420,12 +2429,17 @@ export default function Dashboard() {
                   ))}
                 </div>
               </fieldset>
+              <InterviewerVoicePicker
+                value={editVoice ?? interviewerVoice}
+                onChange={setEditVoice}
+                disabled={isSavingProfile}
+              />
               <dl className="db-profile-account">
                 <dt>Account email</dt>
                 <dd>{auth.currentUser?.email || 'Email unavailable'}</dd>
               </dl>
               <p className="db-profile-prep-note">
-                Choose your role, focus, and difficulty in Interview Prep. Profile changes won’t change your session setup.
+                Your voice choice applies the next time you start or resume an interview.
               </p>
 
               {/* Error message */}

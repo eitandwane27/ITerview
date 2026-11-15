@@ -97,6 +97,23 @@
   pointer-events: none;
 }
 
+.db-role-select__group + .db-role-select__group {
+  margin-top: 4px;
+  border-top: 1px solid var(--db-border);
+  padding-top: 4px;
+}
+
+.db-role-select__group-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 10px 4px;
+  background: var(--db-card-bg);
+  color: var(--db-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .db-role-select__option {
   display: flex;
   align-items: center;

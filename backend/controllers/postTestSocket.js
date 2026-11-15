@@ -30,6 +30,7 @@ const { synthesizeSpeech } = require("../services/ttsService");
 const { evaluate3CScores } = require("../services/aiEvaluator");
 const PostTestSession = require("../models/PostTestSession");
 const User = require("../models/User");
+const { resolveInterviewerVoice } = require("../config/interviewerVoices");
 
 /**
  * Averages 3C scores across all evaluated answers and returns
@@ -88,7 +89,8 @@ function handlePostTestSocket(ws, request) {
   console.log("[WS/Post] 🔌 New post-test session connected");
 
   const url = new URL(request.url, `http://${request.headers.host}`);
-  const voiceModel = url.searchParams.get("voice") || "aura-2-luna-en";
+  const requestedVoice = url.searchParams.get("voice");
+  let voiceModel = resolveInterviewerVoice(requestedVoice);
   const firebaseUid = request.auth?.uid;
   if (!firebaseUid) { ws.close(1008, 'Authentication required'); return; }
 
@@ -204,6 +206,7 @@ function handlePostTestSocket(ws, request) {
     // Fetch user difficulty
     try {
       const user = await User.findOne({ firebaseUid });
+      voiceModel = resolveInterviewerVoice(requestedVoice, user?.interviewerVoice);
       if (user && user.difficulty) {
         sessionDifficulty = user.difficulty;
       }

@@ -140,18 +140,23 @@ async function socket(options = {}) {
   const ws = new Socket();
   await createPracticeAgainHandler({ find: async (uid, savedId) => {
     assert.equal(uid, 'student'); assert.equal(savedId, id); return saved;
-  }, speak: async () => Buffer.from('audio'), reportTiming: () => {}, ...options })(ws,
+  }, speak: async () => Buffer.from('audio'), loadVoice: async () => null, reportTiming: () => {}, ...options })(ws,
   { auth: identity, url: `/ws/practice-again?questionId=${id}&difficulty=hard&role=frontend` });
   return ws;
 }
 test('one-question retry uses the stored question and rubric; duplicates cannot evaluate twice', async () => {
   let resolve, calls = 0;
-  const ws = await socket({ evaluate: async (question, text) => {
+  const voiced = [];
+  const ws = await socket({
+    loadVoice: async () => 'aura-2-zeus-en',
+    speak: async (_text, voice) => { voiced.push(voice); return Buffer.from('audio'); },
+    evaluate: async (question, text) => {
     calls++; assert.deepEqual(question, saved); assert.equal(text, 'My new answer');
     await new Promise(done => { resolve = done; });
     return { tip: 'Include one example.', interviewer_reply: 'Good explanation.', accuracy_score: 4 };
   } });
   assert.equal(ws.sent.find(message => message.type === 'session_meta').totalQuestions, 1);
+  assert.equal(ws.sent.find(message => message.type === 'session_meta').voice, 'aura-2-zeus-en');
   assert.equal(ws.sent.find(message => message.type === 'question_text').text, saved.text);
   const first = ws.message({ type: 'submit_answer', final_text: 'My new answer' });
   await ws.message({ type: 'submit_answer', final_text: 'Duplicate' });
@@ -161,6 +166,7 @@ test('one-question retry uses the stored question and rubric; duplicates cannot 
   assert.equal(calls, 1);
   assert.equal(ws.sent.filter(message => message.type === 'coach_tip').length, 1);
   assert.equal(ws.sent.filter(message => message.type === 'session_complete').length, 1);
+  assert.deepEqual(voiced, ['aura-2-zeus-en', 'aura-2-zeus-en']);
 });
 test('evaluation failure permits retry and audio failure still displays feedback', async () => {
   let calls = 0;

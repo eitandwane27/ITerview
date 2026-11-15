@@ -1,11 +1,14 @@
 const library = require('../services/savedQuestionService');
 const { createDeepgramLiveSession } = require('../services/sttService');
 const { synthesizeSpeech } = require('../services/ttsService');
+const User = require('../models/User');
+const { resolveInterviewerVoice } = require('../config/interviewerVoices');
 const { performance } = require('node:perf_hooks');
 
 // Reuse the interview wire protocol and evaluators, with no assessment writes.
 function createPracticeAgainHandler({ find = library.find, stt = createDeepgramLiveSession,
   speak = synthesizeSpeech,
+  loadVoice = async firebaseUid => (await User.findOne({ firebaseUid }).select('interviewerVoice'))?.interviewerVoice,
   reportTiming = timing => console.info('[PracticeAgain timing]', JSON.stringify(timing)),
   evaluate = async (question, text) => {
     const evaluator = require(`../services/aiSet${question.set}Generator`)[`evaluateSet${question.set}Answer`];
@@ -20,7 +23,8 @@ function createPracticeAgainHandler({ find = library.find, stt = createDeepgramL
     const close = () => { closed = true; stop(); };
     ws.on('close', close);
     ws.on('error', close);
-    const id = new URL(request.url, 'http://localhost').searchParams.get('questionId');
+    const params = new URL(request.url, 'http://localhost').searchParams;
+    const id = params.get('questionId');
     let question;
     try {
       if (!request.auth?.uid || !/^[a-f\d]{24}$/i.test(id || '')) throw new Error('Invalid question');
@@ -31,6 +35,8 @@ function createPracticeAgainHandler({ find = library.find, stt = createDeepgramL
       ws.close();
       return;
     }
+    const savedVoice = await loadVoice(request.auth.uid).catch(() => null);
+    const voice = resolveInterviewerVoice(params.get('voice'), savedVoice);
     if (closed) return;
     ws.on('message', async (data, isBinary) => {
       if (closed || complete) return;
@@ -86,7 +92,7 @@ function createPracticeAgainHandler({ find = library.find, stt = createDeepgramL
           // order. The first sentence can play before later clips are ready.
           const clips = sentences.map(sentence => Promise.resolve().then(() => {
             if (closed) return null;
-            return speak(sentence);
+            return speak(sentence, voice);
           }).catch(() => null));
           let firstAudioMs = null;
           for (const clip of clips) {
@@ -105,10 +111,10 @@ function createPracticeAgainHandler({ find = library.find, stt = createDeepgramL
         } finally { busy = false; }
       }
     });
-    send({ type: 'session_meta', role: question.role, difficulty: question.difficulty, mode: 'drill', totalQuestions: 1 });
+    send({ type: 'session_meta', role: question.role, difficulty: question.difficulty, mode: 'drill', totalQuestions: 1, voice });
     send({ type: 'question_text', text: question.text, index: 1 });
     try {
-      const audio = await speak(question.text);
+      const audio = await speak(question.text, voice);
       if (audio) send({ type: 'tts_audio', data: audio.toString('base64') });
     } catch {
       send({ type: 'audio_unavailable', message: 'Read the question above, then record your answer.' });

@@ -21,6 +21,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../firebase';
 import useRoleCatalogue from '../hooks/useRoleCatalogue';
 import usePracticeBookmarks from '../hooks/usePracticeBookmarks';
+import { DEFAULT_INTERVIEWER_VOICE, interviewerVoices } from '../utils/interviewerVoices';
 import { formatRoleLabel } from '../utils/roleCatalogue';
 import { AnimatePresence } from 'framer-motion';
 import * as Popover from '@radix-ui/react-popover';
@@ -291,7 +292,7 @@ export default function MainSets() {
 function MainSetsSession() {
   const navigate = useNavigate();
   const location = useLocation();
-  const voice = location.state?.voice || 'aura-2-luna-en';
+  const voice = location.state?.voice;
   const query = new URLSearchParams(location.search);
   const setNumber = parseInt(query.get('set')) || 1;
   const mode = query.get('mode') || 'diagnostic';
@@ -321,6 +322,10 @@ function MainSetsSession() {
   const [canRetryEvaluation, setCanRetryEvaluation] = useState(false);
   const submittedAnswerRef = useRef('');
   const [isConnected, setIsConnected] = useState(false);
+  const [sessionVoice, setSessionVoice] = useState(null);
+  const interviewer = interviewerVoices.find(option =>
+    option.value === (preview ? voice || DEFAULT_INTERVIEWER_VOICE : sessionVoice)
+  );
   const [isRecording, setIsRecording] = useState(false);
   const [isTyping, setIsTyping] = useState(() => query.get('input') === 'typing');
   const [typedAnswer, setTypedAnswer] = useState('');
@@ -740,6 +745,7 @@ function MainSetsSession() {
     const user = auth.currentUser;
     const uid = user ? user.uid : 'anonymous_user';
     const focusParam = focusArea ? `&focusArea=${encodeURIComponent(focusArea)}` : '';
+    const voiceParam = voice ? `&voice=${encodeURIComponent(voice)}` : '';
     const attempt = ++socketAttemptRef.current;
     let protocols;
     try { protocols = await schoolSocketProtocols(); }
@@ -747,8 +753,8 @@ function MainSetsSession() {
     if (attempt !== socketAttemptRef.current) return;
     const ws = new WebSocket(
       isSavedPractice
-        ? `${WS_BASE}/ws/practice-again?questionId=${encodeURIComponent(savedQuestionId)}`
-        : `${WS_BASE}/ws/set${setNumber}?voice=${encodeURIComponent(voice)}&uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(mode)}${focusParam}&launch=${encodeURIComponent(launchId)}`, protocols
+        ? `${WS_BASE}/ws/practice-again?questionId=${encodeURIComponent(savedQuestionId)}${voiceParam}`
+        : `${WS_BASE}/ws/set${setNumber}?uid=${encodeURIComponent(uid)}&mode=${encodeURIComponent(mode)}${focusParam}&launch=${encodeURIComponent(launchId)}${voiceParam}`, protocols
     );
     ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
@@ -769,6 +775,7 @@ function MainSetsSession() {
 
       switch (msg.type) {
         case 'session_meta':
+          setSessionVoice(msg.voice);
           if (msg.role) setUserRole(msg.role);
           if (msg.roleLabel) setSessionRoleLabel(msg.roleLabel);
           if (['practice', 'diagnostic', 'drill'].includes(msg.mode)) setSavedSessionMode(msg.mode);
@@ -1559,7 +1566,9 @@ function MainSetsSession() {
                     <span className="ix-dot-blue" />
                     <span className="ix-stage-interviewer-label">
                       <span>AI Interviewer</span>
-                      <span className="ix-stage-interviewer-name"> · Mrs. Tania Shahira</span>
+                      {interviewer && (
+                        <span className="ix-stage-interviewer-name"> · {interviewer.masculine ? 'Mr.' : 'Ms.'} {interviewer.name}</span>
+                      )}
                     </span>
                   </div>
 

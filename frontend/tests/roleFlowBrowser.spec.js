@@ -182,6 +182,24 @@ test('briefing retries a failed catalogue without assigning a different role', a
   await expect(page.getByRole('button', { name: 'Start Practice Studio' })).toBeEnabled();
 });
 
+for (const [set, voice, interviewer] of [
+  [1, 'aura-2-luna-en', 'Ms. Luna'],
+  [2, 'aura-2-amalthea-en', 'Ms. Amalthea'],
+  [3, 'aura-2-zeus-en', 'Mr. Zeus'],
+]) {
+  test(`MainSets Set ${set} names the voice from session metadata ${interviewer}`, async ({ page }) => {
+    if (set === 2) await page.setViewportSize({ width: 320, height: 844 });
+    await mockApi(page);
+    await page.routeWebSocket(/\/ws\/set[123]/, ws => {
+      ws.send(JSON.stringify({ type: 'session_meta', voice }));
+    });
+    await page.goto(`${baseURL}/__role-flow__?view=main&set=${set}`);
+    const name = page.locator('.ix-stage-interviewer-name');
+    await expect(name).toBeVisible();
+    await expect(name).toHaveText(`· ${interviewer}`);
+  });
+}
+
 for (const set of [1, 2, 3]) {
   test(`MainSets Set ${set} displays socket questions and keeps session settings after a late profile fetch`, async ({ page }) => {
     const errors = [];
