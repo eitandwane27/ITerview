@@ -25,6 +25,16 @@ export default function NikkiCompanion({ session, operation, cursor, onStop, onE
     };
   }, []);
   const reduced = useReducedMotion();
+  if (session.quotaExhausted) {
+    return (
+      <aside ref={dockRef} className="nikki-companion" data-nikki-controls aria-label="Nikki companion">
+        <div className="nikki-companion__identity">
+          <div className="nikki-companion__copy" role="status">{session.errorMessage}</div>
+          <button type="button" className="nikki-companion__return" onClick={onEnd}>Dismiss</button>
+        </div>
+      </aside>
+    );
+  }
   const working = operation?.phase === 'opening';
   const state = !session.micEnabled ? 'Microphone muted' : session.agentState === 'speaking' ? 'Nikki is speaking' : session.agentState === 'thinking' ? 'Nikki is thinking' : 'Nikki is listening';
   return (

@@ -70,12 +70,6 @@ const SHOW_ME_EXAMPLES = [
   ['A focused drill', 'Show me how to improve completeness'],
 ];
 
-function formatSessionTime(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
 export default function VoiceAgentPlayground() {
   const navigate = useNavigate();
   const nikkiOpening = useNikkiOpening();
@@ -91,7 +85,6 @@ export default function VoiceAgentPlayground() {
     dismissWorkspace,
     agentState,
     connectionStatus,
-    elapsedSeconds,
     micEnabled,
     microphones,
     selectedMicrophoneId,
@@ -101,6 +94,9 @@ export default function VoiceAgentPlayground() {
     captionsEnabled,
     caption,
     errorMessage,
+    quotaExhausted,
+    voiceTimeLabel,
+    isCountingVoiceTime,
     voiceLevel,
     isLive,
     isConnecting,
@@ -137,7 +133,7 @@ export default function VoiceAgentPlayground() {
   const energy = agentState === 'speaking' ? voiceLevel / 100 : 0;
   const copy = STATE_COPY[agentState] || STATE_COPY.ready;
   const sessionStarted = isLive || isConnecting;
-  const showHeaderStatus = sessionStarted || connectionStatus === 'error';
+  const showHeaderStatus = !quotaExhausted && (sessionStarted || connectionStatus === 'error');
   const liveLabel =
     connectionStatus === 'connecting'
       ? 'CONNECTING'
@@ -146,7 +142,7 @@ export default function VoiceAgentPlayground() {
         : isLive
           ? 'LIVE'
           : 'READY';
-  const statusDetail =
+  const statusDetail = quotaExhausted ? 'You’ve used all your Nikki voice time.' :
     errorMessage ||
     workspaceClarification ||
     (!isLive && connectionStatus === 'idle'
@@ -250,24 +246,21 @@ export default function VoiceAgentPlayground() {
         </button>
 
         <div className="va-topbar__status-slot">
-          {showHeaderStatus && (
-            <div
-              className="va-live-pill"
-              data-status={connectionStatus}
-              role="status"
-              aria-label={`Voice session is ${liveLabel.toLowerCase()}`}
-            >
-              <span className="va-live-pill__dot" />
-              <strong>{liveLabel}</strong>
-              <span className="va-live-pill__meta">
-                {isLive
-                  ? formatSessionTime(elapsedSeconds)
-                  : connectionStatus === 'connecting'
-                    ? 'One moment'
-                    : 'Reconnect'}
+          <div className="va-live-pill" data-status={connectionStatus}>
+            {showHeaderStatus && (
+              <span className="va-live-pill__connection" role="status" aria-label={`Voice session is ${liveLabel.toLowerCase()}`}>
+                <span className="va-live-pill__dot" />
+                <strong>{liveLabel}</strong>
               </span>
-            </div>
-          )}
+            )}
+            <span
+              className="va-live-pill__meta"
+              role={isCountingVoiceTime ? 'timer' : undefined}
+              aria-label={isCountingVoiceTime ? 'Nikki voice time remaining' : undefined}
+            >
+              {voiceTimeLabel}
+            </span>
+          </div>
         </div>
 
         <button
@@ -312,12 +305,12 @@ export default function VoiceAgentPlayground() {
                 <i />
               </span>
             )}
-            <h1 id="voice-agent-status">{copy.title}</h1>
+            <h1 id="voice-agent-status">{quotaExhausted ? 'Voice time limit reached' : copy.title}</h1>
             <p tabIndex={captionsEnabled || errorMessage || workspaceClarification ? 0 : undefined}>
               {statusDetail}
             </p>
           </div>
-          <div className="va-show-me" aria-label="Try a visual conversation">
+          <div className="va-show-me" aria-label="Try a visual conversation" hidden={quotaExhausted}>
             <span>{workspacePending ? 'Nikki is putting it together…' : 'Try “show me…”'}</span>
             <div>
               {SHOW_ME_EXAMPLES.map(([label, prompt, expectWorkspace = true]) => (
@@ -344,6 +337,7 @@ export default function VoiceAgentPlayground() {
             className="va-session-controls"
             data-session-started={sessionStarted}
             aria-label="Voice session controls"
+            hidden={quotaExhausted}
           >
             <button
               type="button"

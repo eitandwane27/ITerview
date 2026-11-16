@@ -142,6 +142,7 @@ function simulatedProvider(callbacks, { failAt = 0, clarifyAt = 0, delayMs = 180
   };
   queueMicrotask(() => {
     if (!closed) {
+      callbacks.onStatus('connected');
       callbacks.onReady();
       callbacks.onEvent({ type: 'AgentAudioDone' }); // Silent greeting in this UI-only provider.
     }
@@ -150,8 +151,10 @@ function simulatedProvider(callbacks, { failAt = 0, clarifyAt = 0, delayMs = 180
     isReady: () => !closed,
     sendAudio() {},
     close() {
+      if (closed) return;
       closed = true;
       timers.forEach(clearTimeout);
+      callbacks.onClose({ code: 1000, reason: '', expected: true });
     },
     sendCommand(command) {
       if (closed) return false;
@@ -249,9 +252,14 @@ export async function voiceWorkspaceServer({ port = 0 } = {}) {
         },
         load(id) {
           if (id === '\0voice-preview-auth')
-            return 'export async function schoolSocketProtocols() { const params = new URLSearchParams(location.search); return [params.has("fresh") ? "preview-empty" : params.has("error") ? "preview-error" : params.has("updateError") ? "preview-update-error" : params.has("clarify") ? "preview-clarify" : params.has("updateClarify") ? "preview-update-clarify" : params.has("slow") ? "preview-slow" : params.has("summary") ? "preview-summary" : "preview"]; }';
+            return `export const authenticatedFetch = (path, options) => fetch(path, options);
+              export async function schoolSocketProtocols() { const params = new URLSearchParams(location.search); return [params.has("fresh") ? "preview-empty" : params.has("error") ? "preview-error" : params.has("updateError") ? "preview-update-error" : params.has("clarify") ? "preview-clarify" : params.has("updateClarify") ? "preview-update-clarify" : params.has("slow") ? "preview-slow" : params.has("summary") ? "preview-summary" : "preview"]; }`;
         },
         configureServer(vite) {
+          vite.middlewares.use('/api/voice-agent/quota', (_req, res) => {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ remainingMs: 900_000 }));
+          });
           vite.httpServer.on('upgrade', (request, socket, head) => {
             if (request.url !== '/__voice-preview-ws__') return;
             wss.handleUpgrade(request, socket, head, (ws) => {
@@ -261,6 +269,7 @@ export async function voiceWorkspaceServer({ port = 0 } = {}) {
                 ws,
                 { auth: { uid: 'synthetic-preview' } },
                 {
+                  reserveQuota: async () => ({ remainingMs: 900_000, release: async () => {} }),
                   loadProgress: async () => {
                     if (empty)
                       return buildVoiceAgentProgress(buildCoachProgress({ role: 'backend' }));

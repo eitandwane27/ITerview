@@ -1,4 +1,4 @@
-import { schoolSocketProtocols } from '../../utils/authenticatedApi';
+import { authenticatedFetch, schoolSocketProtocols } from '../../utils/authenticatedApi';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { VoiceAgentAudioPlayer } from './VoiceAgentAudioPlayer';
 import { buildAudioInputConstraints } from '../../utils/audioInputDevices';
@@ -7,6 +7,11 @@ import { productionBackendUrl } from '../../utils/backendUrl';
 const INPUT_SAMPLE_RATE = 16_000;
 const PROCESSOR_BUFFER_SIZE = 2048;
 const CONNECT_TIMEOUT_MS = 15_000;
+
+function formatVoiceTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')} left`;
+}
 
 function getVoiceAgentSocketUrl() {
   if (import.meta.env.VITE_VOICE_AGENT_WS_URL) {
@@ -108,10 +113,9 @@ async function requestMicrophoneStream(deviceId) {
   }
 }
 
-export function useVoiceAgentSession({ readPageContext } = {}) {
+export function useVoiceAgentSession({ readPageContext, watchQuota } = {}) {
   const [agentState, setAgentState] = useState('ready');
   const [connectionStatus, setConnectionStatus] = useState('idle');
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [micEnabled, setMicEnabled] = useState(true);
   const [microphones, setMicrophones] = useState([]);
   const [selectedMicrophoneId, setSelectedMicrophoneId] = useState('');
@@ -121,6 +125,10 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
   const [caption, setCaption] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [quota, setQuota] = useState(null);
+  const [quotaEnded, setQuotaEnded] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState(null);
+  const quotaExhausted = quotaEnded || quota?.remainingMs === 0;
   const [voiceLevel, setVoiceLevel] = useState(0);
   const [workspace, setWorkspace] = useState(null);
   const [workspacePending, setWorkspacePending] = useState(false);
@@ -147,7 +155,7 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
   const inputSilencerRef = useRef(null);
   const outputPlayerRef = useRef(null);
   const pendingPlaybackStateRef = useRef(null);
-  const startedAtRef = useRef(0);
+  const voiceDeadlineRef = useRef(null);
   const selectedMicrophoneIdRef = useRef(selectedMicrophoneId);
   const micEnabledRef = useRef(true);
   const greetingMuteRef = useRef(false);
@@ -275,12 +283,17 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
         socket.close();
       }
 
-      startedAtRef.current = 0;
+      if (voiceDeadlineRef.current !== null) {
+        voiceDeadlineRef.current = null;
+        if (mountedRef.current) {
+          setCountdownSeconds(null);
+          setQuota(null);
+        }
+      }
       if (!keepUi && mountedRef.current) {
         updateSelectedMicrophone('');
         setConnectionStatus('idle');
         setAgentState('ready');
-        setElapsedSeconds(0);
         setCaption('');
         setVoiceLevel(0);
       }
@@ -417,12 +430,17 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
         return;
       }
 
+      if (message.type === 'voice_agent_quota' && Number.isFinite(message.remainingMs) && message.remainingMs > 0) {
+        voiceDeadlineRef.current = performance.now() + message.remainingMs;
+        setCountdownSeconds(Math.ceil(message.remainingMs / 1000));
+        return;
+      }
+
       if (message.type === 'voice_agent_ready') {
         clearConnectTimeout();
         setConnectionStatus('live');
         setAgentState('ready');
         setErrorMessage('');
-        startedAtRef.current = Date.now();
         startInput();
         if (queuedPromptRef.current && socketRef.current?.readyState === WebSocket.OPEN) {
           socketRef.current.send(
@@ -493,6 +511,7 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
       }
 
       if (message.type === 'voice_agent_error') {
+        if (message.code === 'quota_exhausted') setQuotaEnded(true);
         failSession(message.message || 'The voice session could not continue. Please try again.');
         return;
       }
@@ -505,7 +524,7 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
   );
 
   const startSession = useCallback(async () => {
-    if (connectionStatus === 'connecting' || connectionStatus === 'live') return;
+    if (quotaExhausted || connectionStatus === 'connecting' || connectionStatus === 'live') return;
 
     closingRef.current = false;
     const generation = ++sessionGenerationRef.current;
@@ -517,7 +536,6 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
     setWorkspacePending(false);
     setWorkspaceError('');
     setWorkspaceClarification('');
-    setElapsedSeconds(0);
     greetingMuteRef.current = !queuedPromptRef.current;
     setMicrophoneEnabled(!greetingMuteRef.current);
 
@@ -598,6 +616,7 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
     ensureOutputContext,
     failSession,
     handleControlMessage,
+    quotaExhausted,
     refreshMicrophones,
     setMicrophoneEnabled,
     updateSelectedMicrophone,
@@ -686,12 +705,47 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
   }, [refreshMicrophones, selectMicrophone]);
 
   useEffect(() => {
-    if (connectionStatus !== 'live') return undefined;
+    if (connectionStatus !== 'live' && connectionStatus !== 'connecting') return undefined;
     const timer = window.setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000));
-    }, 1000);
+      if (voiceDeadlineRef.current !== null) {
+        setCountdownSeconds(Math.max(0, Math.ceil((voiceDeadlineRef.current - performance.now()) / 1000)));
+      }
+    }, 250);
     return () => window.clearInterval(timer);
   }, [connectionStatus]);
+
+  useEffect(() => {
+    if (!watchQuota || quotaExhausted || connectionStatus === 'connecting' || connectionStatus === 'live') return;
+
+    const controller = new AbortController();
+    let retry;
+    let pending = false;
+    async function readQuota() {
+      if (pending) return;
+      clearTimeout(retry);
+      pending = true;
+      try {
+        const response = await authenticatedFetch('/api/voice-agent/quota', { signal: controller.signal });
+        if (!response.ok) throw new Error('Voice time unavailable');
+        const result = await response.json();
+        if (controller.signal.aborted) return;
+        setQuota(result);
+        if (result.remainingMs === null) retry = setTimeout(readQuota, 3000);
+      } catch {
+        if (!controller.signal.aborted) setQuota(null);
+      } finally {
+        pending = false;
+      }
+    }
+
+    readQuota();
+    window.addEventListener('focus', readQuota);
+    return () => {
+      controller.abort();
+      clearTimeout(retry);
+      window.removeEventListener('focus', readQuota);
+    };
+  }, [connectionStatus, quotaExhausted, watchQuota]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -704,7 +758,7 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
 
   const askNikki = useCallback(
     async (content, { expectWorkspace = true } = {}) => {
-      if (!content || connectionStatus === 'connecting') return;
+      if (!content || quotaExhausted || connectionStatus === 'connecting') return;
       speechFinishedRef.current = false;
       // An explicit new prompt replaces the greeting; do not carry its mute
       // into a later answer or a workspace-only response.
@@ -726,7 +780,7 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
         await startSession();
       }
     },
-    [clearPlayback, connectionStatus, releaseGreetingMute, startSession]
+    [clearPlayback, connectionStatus, quotaExhausted, releaseGreetingMute, startSession]
   );
 
   useEffect(() => {
@@ -748,6 +802,12 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
       }));
     }
   }, [readPageContext]);
+
+  let voiceTimeLabel = 'Voice time';
+  if (quotaExhausted) voiceTimeLabel = 'Voice time used';
+  else if (countdownSeconds !== null) voiceTimeLabel = formatVoiceTime(countdownSeconds);
+  else if (quota?.remainingMs === null) voiceTimeLabel = 'Voice session in use';
+  else if (Number.isFinite(quota?.remainingMs)) voiceTimeLabel = formatVoiceTime(Math.ceil(quota.remainingMs / 1000));
 
   return {
     isSpeechFinished,
@@ -776,7 +836,6 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
     },
     agentState,
     connectionStatus,
-    elapsedSeconds,
     micEnabled,
     microphones,
     selectedMicrophoneId,
@@ -786,6 +845,9 @@ export function useVoiceAgentSession({ readPageContext } = {}) {
     captionsEnabled,
     caption,
     errorMessage,
+    quotaExhausted,
+    voiceTimeLabel,
+    isCountingVoiceTime: countdownSeconds !== null,
     voiceLevel,
     isLive: connectionStatus === 'live',
     isConnecting: connectionStatus === 'connecting',

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSchoolAuth } from '../../auth/schoolAuth';
 import { useVoiceAgentSession } from './useVoiceAgentSession';
-import { NikkiSessionContext } from './nikkiSessionContext';
+import { NikkiSessionContext, NikkiVoiceTimeContext } from './nikkiSessionContext';
 import { NikkiOverlayContext, NikkiPageContext } from './nikkiPageContext';
 import NikkiCompanion from './NikkiCompanion';
 import { runInterviewPrep } from './nikkiInterviewPrep';
@@ -76,7 +76,9 @@ export function NikkiSessionOwner({ children }) {
       ? snapshot
       : { page: PLAYGROUND.includes(path.current) ? 'voice_agent_playground' : 'unavailable', state: 'unavailable' };
   }, []);
-  const session = useVoiceAgentSession({ readPageContext });
+  const onPlayground = PLAYGROUND.includes(location.pathname);
+  const onDashboard = location.pathname === '/dashboard';
+  const session = useVoiceAgentSession({ readPageContext, watchQuota: onDashboard || onPlayground });
   const { uiAction, completeUiAction, stopSession, connectionStatus, isSpeechFinished } = session;
 
   useEffect(() => { navigation.current = navigate; }, [navigate]);
@@ -293,13 +295,15 @@ export function NikkiSessionOwner({ children }) {
     };
   }, [uiAction, completeUiAction, connectionStatus, cancelOperation, readPageContext, isSpeechFinished]);
 
-  const onPlayground = PLAYGROUND.includes(location.pathname);
-  const showCompanion = session.isLive && ((location.pathname === '/dashboard' && Boolean(operation)) || (onPlayground && operation?.phase === 'opening'));
+  const showCompanion = (session.isLive && ((onDashboard && Boolean(operation)) || (onPlayground && operation?.phase === 'opening')))
+    || (session.quotaExhausted && onDashboard && backgroundAllowed.current);
   const companion = showCompanion && <NikkiCompanion session={session} operation={operation} cursor={cursor} onStop={cancelOperation} onEnd={endSession} onReturn={() => navigate('/voice-agent')} />;
   return (
     <NikkiSessionContext.Provider value={{ ...session, stopSession: endSession }}>
       <NikkiOverlayContext.Provider value={setOverlayHost}>
-        <NikkiPageContext.Provider value={publishPageContext}>{children}</NikkiPageContext.Provider>
+        <NikkiPageContext.Provider value={publishPageContext}>
+          <NikkiVoiceTimeContext.Provider value={session.voiceTimeLabel}>{children}</NikkiVoiceTimeContext.Provider>
+        </NikkiPageContext.Provider>
       </NikkiOverlayContext.Provider>
       {overlayHost?.isConnected ? createPortal(companion, overlayHost) : companion}
     </NikkiSessionContext.Provider>

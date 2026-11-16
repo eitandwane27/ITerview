@@ -185,6 +185,12 @@
   min-height: 42px;
 }
 
+.va-live-pill__connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
 .va-live-pill__dot {
   width: 9px;
   height: 9px;
@@ -220,17 +226,17 @@
 }
 
 .va-live-pill strong {
-  color: #10b981;
+  color: #047857;
   font-size: 14px;
   letter-spacing: 0.02em;
 }
 
 .va-live-pill__meta {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #475569;
+  white-space: nowrap;
 }
 
 .va-end-button {
@@ -539,6 +545,11 @@
   gap: 10px;
   min-width: 0;
   margin-top: 8px;
+}
+
+.va-show-me[hidden],
+.va-session-controls[hidden] {
+  display: none;
 }
 
 .va-session-control {
@@ -954,8 +965,8 @@
     font-size: 12px;
   }
 
-  .va-live-pill__meta {
-    display: none;
+  .va-live-pill__connection {
+    gap: 6px;
   }
 
   .va-end-button {
@@ -1007,6 +1018,12 @@
   .va-session-controls__toolbar {
     max-width: calc(100vw - 24px);
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 360px) {
+  .va-brand__wordmark {
+    display: none;
   }
 }
 

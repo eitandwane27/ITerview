@@ -1,5 +1,5 @@
 import { authenticatedFetch } from '../utils/authenticatedApi';
-import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useId, useRef, useMemo, memo } from 'react';
 import {
   LogOut,
   Lock,
@@ -8,6 +8,7 @@ import {
   Gauge,
   Briefcase,
   Sparkles,
+  Clock,
   ChevronDown,
   Play,
   ArrowRight,
@@ -33,6 +34,7 @@ import SetBriefingOverlay from '../components/SetBriefingOverlay';
 import StartingScoreDetails from '../components/StartingScoreDetails';
 import AIOrb from '../components/AIOrb';
 import { useNikkiOpening } from '../features/voice-agent/nikkiOpeningContext';
+import { NikkiVoiceTimeContext } from '../features/voice-agent/nikkiSessionContext';
 import { useNikkiPageContext } from '../features/voice-agent/nikkiPageContext';
 import DashboardRoleSelect from '../components/DashboardRoleSelect';
 import DashboardSignOutDialog from '../components/DashboardSignOutDialog';
@@ -940,11 +942,14 @@ const PracticeCard = memo(function PracticeCard({
 });
 
 const CoachCard = memo(function CoachCard({ onOpen, compact = false }) {
+  const voiceTime = useContext(NikkiVoiceTimeContext);
+  const voiceTimeId = useId();
   return (
     <button
       type="button"
       className={`db-coach-card ${compact ? 'db-coach-card--compact' : ''}`}
       aria-label="Open AI Voice Agent"
+      aria-describedby={voiceTimeId}
       onClick={onOpen}
     >
       <span className="db-coach-card__mascot" aria-hidden="true">
@@ -952,9 +957,9 @@ const CoachCard = memo(function CoachCard({ onOpen, compact = false }) {
       </span>
       <span className="db-coach-card__content">
         <span className="db-coach-card__name">AI Voice Agent</span>
-        <span className="db-coach-card__level db-coach-card__level--starter">
-          <Sparkles size={12} aria-hidden="true" />
-          Ready to talk
+        <span className="db-coach-card__level" id={voiceTimeId}>
+          <Clock size={12} aria-hidden="true" />
+          {voiceTime}
         </span>
         <span className="db-coach-card__hint">
           Talk through interviews, nerves, and your next steps.

@@ -354,10 +354,12 @@ function setup(t, overrides = {}, request = { auth: { uid: 'verified-user' } }) 
   const session = { close: t.mock.fn(), sendAudio: t.mock.fn(), sendCommand: t.mock.fn(() => true), isReady: () => true };
   const loadProgress = t.mock.fn(async () => ({ role: 'frontend', practiceScore: 75 }));
   const createSession = t.mock.fn(options => { callbacks = options; return session; });
-  const options = { loadProgress, createSession, ...overrides };
+  const releaseQuota = t.mock.fn(async () => {});
+  const reserveQuota = t.mock.fn(async () => ({ remainingMs: 900_000, release: releaseQuota }));
+  const options = { loadProgress, createSession, reserveQuota, ...overrides };
   const ready = handleVoiceAgentSocket(socket, request, options);
   t.after(() => socket.close());
-  return { socket, session, ready, ...options, callbacks: () => callbacks };
+  return { socket, session, ready, releaseQuota, ...options, callbacks: () => callbacks };
 }
 
 test('page reads wait for fresh browser state and ignore unsolicited, duplicate and cancelled results', async t => {
@@ -446,6 +448,7 @@ test('voice loads only the verified account once and forwards audio and commands
   const h = setup(t, {}, { auth: { uid: 'verified-user' }, url: '/ws/voice-agent?uid=another-user' });
   await h.ready;
   assert.deepEqual(h.loadProgress.mock.calls[0].arguments, ['verified-user']);
+  assert.deepEqual(h.reserveQuota.mock.calls[0].arguments, ['verified-user']);
   assert.equal(h.callbacks().progressContext.practiceScore, 75);
   h.callbacks().onReady();
   assert.ok(h.socket.messages.some(message => message.type === 'voice_agent_ready'));
@@ -464,6 +467,7 @@ test('voice refuses an unbound identity before loading progress or starting an u
   const h = setup(t, {}, { url: '/ws/voice-agent?uid=another-user' });
   await h.ready;
   assert.equal(h.loadProgress.mock.callCount(), 0);
+  assert.equal(h.reserveQuota.mock.callCount(), 0);
   assert.equal(h.createSession.mock.callCount(), 0);
   assert.equal(h.socket.closeCode, 1008);
 });
@@ -491,8 +495,92 @@ for (const action of ['close', 'error', 'close_session']) {
     finish({ practiceScore: 75 });
     await h.ready;
     assert.equal(h.createSession.mock.callCount(), 0);
+    assert.equal(h.reserveQuota.mock.callCount(), 0);
   });
 }
+
+test('quota rejection never opens Deepgram and reports why the session was blocked', async t => {
+  t.mock.method(console, 'error', () => {});
+  for (const reason of ['exhausted', 'active', 'unavailable']) {
+    const h = setup(t, { reserveQuota: async () => {
+      if (reason === 'unavailable') throw new Error('private database details');
+      return { reason };
+    } });
+    await h.ready;
+    assert.equal(h.createSession.mock.callCount(), 0);
+    assert.equal(h.socket.messages.at(-1).code, `quota_${reason}`);
+    assert.equal(h.socket.closeCode, reason === 'unavailable' ? 1011 : 1008);
+    assert.doesNotMatch(JSON.stringify(h.socket.messages), /private database details/);
+  }
+});
+
+test('disconnecting during reservation or failing before Deepgram connects returns the full grant', async t => {
+  let finishReservation;
+  let startReservation;
+  const reserving = new Promise(resolve => { startReservation = resolve; });
+  const h = setup(t, { reserveQuota: () => new Promise(resolve => {
+    finishReservation = resolve;
+    startReservation();
+  }) });
+  await reserving;
+  h.socket.close();
+  finishReservation({ remainingMs: 900_000, release: h.releaseQuota });
+  await h.ready;
+  assert.equal(h.createSession.mock.callCount(), 0);
+  assert.deepEqual(h.releaseQuota.mock.calls.map(call => call.arguments), [[0]]);
+
+  const failed = setup(t, { createSession() { throw new Error('Configuration failed'); } });
+  await failed.ready;
+  assert.deepEqual(failed.releaseQuota.mock.calls.map(call => call.arguments), [[0]]);
+});
+
+test('quota charges only connected time and settles once after the upstream closes', async t => {
+  const h = setup(t);
+  await h.ready;
+  let now = 20_000;
+  t.mock.method(performance, 'now', () => now);
+  h.callbacks().onStatus('connected');
+  now += 360_000;
+  h.socket.control({ type: 'close_session' });
+  h.socket.close();
+  assert.equal(h.session.close.mock.callCount(), 1);
+  assert.equal(h.releaseQuota.mock.callCount(), 0);
+  const details = { code: 1000, reason: '', expected: true };
+  await h.callbacks().onClose(details);
+  await h.callbacks().onClose(details);
+  assert.deepEqual(h.releaseQuota.mock.calls.map(call => call.arguments), [[360_000]]);
+});
+
+test('remaining quota forcibly ends an idle session and stays enforced during a close handshake', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const release = t.mock.fn(async () => {});
+  const allowanceMs = 20 * 60 * 1000;
+  const reserveQuota = async () => ({ remainingMs: allowanceMs, release });
+  const idle = setup(t, { reserveQuota });
+  const closing = setup(t, { reserveQuota });
+  await Promise.all([idle.ready, closing.ready]);
+  t.mock.timers.tick(allowanceMs + 1);
+  assert.equal(idle.session.close.mock.callCount(), 0, 'meter waits for upstream open');
+  idle.callbacks().onStatus('connected');
+  closing.callbacks().onStatus('connected');
+  assert.deepEqual(idle.socket.messages.find(message => message.type === 'voice_agent_quota'), {
+    type: 'voice_agent_quota', remainingMs: allowanceMs,
+  });
+  t.mock.timers.tick(allowanceMs - 1);
+  assert.equal(idle.session.close.mock.callCount(), 0);
+  closing.socket.close();
+  assert.deepEqual(closing.session.close.mock.calls[0].arguments, [{ immediate: false }]);
+  t.mock.timers.tick(1);
+  assert.deepEqual(idle.session.close.mock.calls[0].arguments, [{ immediate: true }]);
+  assert.deepEqual(closing.session.close.mock.calls[1].arguments, [{ immediate: true }]);
+  assert.equal(idle.socket.messages.at(-1).code, 'quota_exhausted');
+  assert.equal(idle.socket.messages.at(-1).message, 'You’ve used all your Nikki voice time.');
+  assert.equal(idle.socket.closeCode, 1008);
+  const details = { code: 1006, reason: '', expected: true };
+  await idle.callbacks().onClose(details);
+  await closing.callbacks().onClose(details);
+  assert.deepEqual(release.mock.calls.map(call => call.arguments), [[allowanceMs], [allowanceMs]]);
+});
 
 test('each new voice session loads fresh scores and the newly selected role', async t => {
   let progress = { role: 'backend', practiceScore: 75 };

@@ -57,6 +57,29 @@ async function connect(page) {
   return { send, audio };
 }
 
+test('exhausted Nikki quota stops the microphone and shows the limit message', async ({ page }) => {
+  const h = await connect(page);
+  h.send({
+    type: 'voice_agent_error',
+    code: 'quota_exhausted',
+    message: 'You’ve used all your Nikki voice time.',
+  });
+  await expect(page.getByRole('heading', { name: 'Voice time limit reached' })).toBeVisible();
+  await expect(page.getByText('You’ve used all your Nikki voice time.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try voice session again' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Show me my practice history' })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.voicePreviewTrack.readyState)).toBe('ended');
+});
+
+test('the Playground loads the account’s voice time before starting a conversation', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.route('**/api/voice-agent/quota', route => route.fulfill({ json: { remainingMs: 1_229_500 } }));
+  await page.goto(preview.baseURL);
+  await expect(page.getByText('20:30 left', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start voice session' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Back to dashboard' })).toBeVisible();
+});
+
 test('Nikki opens the system microphone first despite a saved input and allows a manual switch', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('iterview.preferredAudioInput', 'preview');

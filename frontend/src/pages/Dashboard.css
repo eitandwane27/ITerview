@@ -330,15 +330,10 @@
   padding: 4px 12px;
   border-radius: var(--db-r-pill);
   background: var(--db-blue-light);
-  color: var(--db-blue);
+  color: var(--db-blue-hover);
   font-size: 12px;
   font-weight: 600;
-}
-
-.db-coach-card__level--starter {
-  background: var(--db-mint-light);
-  color: var(--db-mint-text);
-  border: 1px solid var(--db-mint-border);
+  font-variant-numeric: tabular-nums;
 }
 
 .db-coach-card__hint {

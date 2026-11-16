@@ -203,6 +203,7 @@ function createVoiceAgentSession({
   validateVoiceAgentEnvironment();
 
   const upstream = new WebSocket(DEEPGRAM_AGENT_URL, {
+    handshakeTimeout: 15_000,
     headers: {
       Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
     },
@@ -249,6 +250,7 @@ function createVoiceAgentSession({
   });
 
   upstream.on('message', (data, isBinary) => {
+    if (closedByApplication) return;
     if (isBinary) {
       onAudio(Buffer.from(data));
       return;
@@ -324,14 +326,16 @@ function createVoiceAgentSession({
       return settingsApplied;
     },
 
-    close() {
-      if (closedByApplication) return;
-      closedByApplication = true;
-      settingsApplied = false;
-      stopKeepAlive();
-      audioQueue.length = 0;
+    close({ immediate = false } = {}) {
+      if (!closedByApplication) {
+        closedByApplication = true;
+        settingsApplied = false;
+        stopKeepAlive();
+        audioQueue.length = 0;
+      }
 
-      if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) {
+      if (immediate) upstream.terminate();
+      else if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) {
         upstream.close(1000, 'Client session ended');
       }
     },

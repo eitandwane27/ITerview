@@ -36,16 +36,24 @@ export async function dashboardMotionServer({ entry = 'roleDashboard.jsx' } = {}
           wss.handleUpgrade(request, socket, head, ws => {
             handleVoiceAgentSocket(ws, { auth: { uid: 'motion-preview' } }, {
               loadProgress: async () => null,
+              reserveQuota: async () => ({ remainingMs: 900_000, release: async () => {} }),
               createSession(callbacks) {
                 voiceAudit.sessions += 1;
                 voiceAudit.callbacks = callbacks;
                 let sequence = 0;
+                let closed = false;
                 queueMicrotask(() => {
+                  callbacks.onStatus('connected');
                   callbacks.onReady();
                   callbacks.onEvent({ type: 'AgentAudioDone' }); // Silent preview greeting.
                 });
                 return {
-                  close() { voiceAudit.closed += 1; }, isReady: () => true, sendAudio() {},
+                  close() {
+                    if (closed) return;
+                    closed = true;
+                    voiceAudit.closed += 1;
+                    callbacks.onClose({ code: 1000, reason: '', expected: true });
+                  }, isReady: () => !closed, sendAudio() {},
                   sendCommand(command) {
                     voiceAudit.commands.push(command);
                     if (command.type === 'InjectUserMessage') queueMicrotask(() => callbacks.onEvent({ type: 'FunctionCallRequest', functions: [{
@@ -81,6 +89,7 @@ export async function dashboardMotionServer({ entry = 'roleDashboard.jsx' } = {}
           };
           else if (path === '/coach/context') data = { context: { hasAssessmentData: true, role: 'frontend', roleLabel: 'Frontend Developer', preTestScore: 60, practiceScore: 75, postTestScore: 80, nextStage: 'complete' } };
           else if (path === '/practice-again/questions') data = { questions: [] };
+          else if (path === '/voice-agent/quota') data = { remainingMs: 900_000 };
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(data));
         });

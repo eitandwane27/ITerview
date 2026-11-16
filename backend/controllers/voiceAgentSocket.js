@@ -4,6 +4,7 @@
 
 const WebSocket = require('ws');
 const { createVoiceAgentSession } = require('../services/voiceAgentService');
+const { reserveVoiceAgentQuota } = require('../services/voiceAgentQuotaService');
 const { createVoiceAgentTelemetry } = require('../services/voiceAgentTelemetry');
 const { loadVoiceAgentProgress } = require('../services/voiceAgentProgressService');
 const { buildVoiceWorkspace } = require('../services/voiceAgentWorkspaceService');
@@ -12,10 +13,12 @@ const { validatePrepArguments } = require('../services/voiceAgentInterviewPrep')
 const { validatePracticeArguments } = require('../services/voiceAgentPracticeAgain');
 const { SIGN_OUT_ACCEPTED_RESULT } = require('../services/voiceAgentNavigation');
 const NAVIGATION_ACTIONS = ['open_practice_history', 'open_my_progress', 'open_practice_again', 'open_ai_coach', 'open_interview_prep', 'return_to_playground', 'sign_out'];
+const QUOTA_EXHAUSTED_MESSAGE = 'You’ve used all your Nikki voice time.';
 
 function handleVoiceAgentSocket(ws, request, {
   loadProgress = loadVoiceAgentProgress,
   createSession = createVoiceAgentSession,
+  reserveQuota = reserveVoiceAgentQuota,
   progressTimeoutMs = 3_000,
   uiActionTimeoutMs = 12_000,
   prepActionTimeoutMs = 360_000,
@@ -28,6 +31,10 @@ function handleVoiceAgentSocket(ws, request, {
   let currentState = 'connecting';
   let session;
   let closed = false;
+  let quota;
+  let quotaStartedAt;
+  let quotaTimer;
+  let quotaExhausted = false;
   const completedCalls = new Map();
   const cancelledCalls = new Set();
   const pendingUiCalls = new Map();
@@ -191,6 +198,32 @@ function handleVoiceAgentSocket(ws, request, {
     return false;
   }
 
+  function stopSession(immediate = false) {
+    if (closed && !immediate) return;
+    closed = true;
+    clearUiCalls();
+    session?.close({ immediate });
+  }
+
+  function rejectSession(message, code, { immediate = false, closeCode = 1008 } = {}) {
+    sendJson({ type: 'voice_agent_error', code, message });
+    stopSession(immediate);
+    if (ws.readyState === WebSocket.OPEN) ws.close(closeCode, 'Voice session ended');
+  }
+
+  async function settleQuota() {
+    clearTimeout(quotaTimer);
+    if (!quota) return;
+    const reservation = quota;
+    quota = null;
+    const elapsedMs = quotaStartedAt === undefined ? 0 : Math.ceil(performance.now() - quotaStartedAt);
+    try {
+      await reservation.release(quotaExhausted ? reservation.remainingMs : elapsedMs);
+    } catch {
+      console.error('[VoiceAgent] Could not settle a voice time reservation.');
+    }
+  }
+
   sendJson({ type: 'voice_agent_state', state: currentState });
 
   async function startSession() {
@@ -221,10 +254,39 @@ function handleVoiceAgentSocket(ws, request, {
 
     if (closed || ws.readyState !== WebSocket.OPEN) return;
 
+    let reservation;
+    try {
+      reservation = await reserveQuota(uid);
+    } catch {
+      console.error('[VoiceAgent] Voice quota storage unavailable.');
+      rejectSession('Nikki couldn’t check your remaining voice time. Please try again.', 'quota_unavailable', { closeCode: 1011 });
+      return;
+    }
+    if (reservation.reason) {
+      if (reservation.reason === 'active') {
+        rejectSession('This account has a Nikki session open or finishing. End it if it’s still open, then try again.', 'quota_active');
+      } else {
+        rejectSession(QUOTA_EXHAUSTED_MESSAGE, 'quota_exhausted');
+      }
+      return;
+    }
+
+    quota = reservation;
+    if (closed || ws.readyState !== WebSocket.OPEN) return settleQuota();
+
     try {
       session = createSession({
         progressContext,
         onStatus(status) {
+          if (status === 'connected' && quota && quotaStartedAt === undefined) {
+            quotaStartedAt = performance.now();
+            quotaTimer = setTimeout(() => {
+              quotaExhausted = true;
+              rejectSession(QUOTA_EXHAUSTED_MESSAGE, 'quota_exhausted', { immediate: true });
+            }, quota.remainingMs);
+            quotaTimer.unref?.();
+            sendJson({ type: 'voice_agent_quota', remainingMs: quota.remainingMs });
+          }
           sendJson({ type: 'voice_agent_status', status });
         },
         onReady() {
@@ -243,21 +305,26 @@ function handleVoiceAgentSocket(ws, request, {
           }
         },
         onError(error) {
+          if (closed) return;
           telemetry.error();
           setState('error');
           sendJson({ type: 'voice_agent_error', message: error.message });
         },
         onClose({ code, reason, expected }) {
+          session = undefined;
+          const settlement = settleQuota();
           for (const id of pendingUiCalls.keys()) sendJson({ type: 'voice_agent_ui_cancel', id });
           clearUiCalls();
           sendJson({ type: 'voice_agent_closed', code, reason, expected });
           if (!expected) setState('error');
+          return settlement;
         },
       });
     } catch (error) {
       telemetry.error();
       setState('error');
       sendJson({ type: 'voice_agent_error', message: error.message });
+      await settleQuota();
     }
   }
 
@@ -279,9 +346,7 @@ function handleVoiceAgentSocket(ws, request, {
 
     if (!message || typeof message !== 'object' || Array.isArray(message)) return;
     if (message.type === 'close_session') {
-      closed = true;
-      clearUiCalls();
-      session?.close();
+      stopSession();
       return;
     }
     if (!session) return;
@@ -394,17 +459,13 @@ function handleVoiceAgentSocket(ws, request, {
   });
 
   ws.on('close', () => {
-    closed = true;
-    clearUiCalls();
     console.log('[VoiceAgent] Browser disconnected');
-    session?.close();
+    stopSession();
   });
 
   ws.on('error', () => {
-    closed = true;
-    clearUiCalls();
     telemetry.error();
-    session?.close();
+    stopSession();
   });
 
   return startSession();

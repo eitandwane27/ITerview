@@ -6,6 +6,16 @@ const {
 
 const router = express.Router();
 const { requireSchoolUser } = require('../middleware/schoolAuth');
+const { readVoiceAgentQuota } = require('../services/voiceAgentQuotaService');
+
+router.get('/quota', requireSchoolUser, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    res.json(await readVoiceAgentQuota(req.auth.uid));
+  } catch {
+    res.status(503).json({ message: 'Voice time is temporarily unavailable.' });
+  }
+});
 
 router.get("/health", requireSchoolUser, (req, res) => {
   const usesLlmProxy = Boolean(process.env.VOICE_AGENT_LLM_ENDPOINT_URL);

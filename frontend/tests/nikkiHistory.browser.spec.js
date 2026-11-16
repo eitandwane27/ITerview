@@ -518,6 +518,39 @@ test('the Practice history example starts voice and navigates without a workspac
   await companion(page).getByRole('button', { name: 'End Nikki conversation' }).click();
 });
 
+test('Nikki counts down on the Playground and dashboard, then reloads the saved balance', async ({ page }) => {
+  let remainingMs = 900_000;
+  await page.route('**/api/voice-agent/quota', route => route.fulfill({ json: { remainingMs } }));
+  await connect(page);
+  await expect(page.getByRole('timer', { name: 'Nikki voice time remaining' })).toHaveText(/^14:\d\d left$/);
+  await request(page);
+  const card = page.getByRole('button', { name: 'Open AI Voice Agent' });
+  await expect(card).toHaveAccessibleDescription(/^14:\d\d left$/);
+  await expect(companion(page)).toContainText('Nikki is still here');
+  remainingMs = 810_000;
+  await companion(page).getByRole('button', { name: 'End Nikki conversation' }).click();
+  await expect(card).toHaveAccessibleDescription('13:30 left');
+});
+
+test('Nikki shows the time limit on the dashboard when a background conversation ends', async ({ page }) => {
+  let client;
+  await page.routeWebSocket('**/__nikki-history-ws__', socket => {
+    client = socket;
+    socket.connectToServer();
+  });
+  await connect(page);
+  await request(page);
+  await expect(companion(page)).toContainText('Nikki is still here');
+  client.send(JSON.stringify({
+    type: 'voice_agent_error', code: 'quota_exhausted', message: 'You’ve used all your Nikki voice time.',
+  }));
+  await expect(companion(page)).toContainText('You’ve used all your Nikki voice time.');
+  await expect.poll(() => page.evaluate(() => window.microphoneAudit.stopped)).toBe(1);
+  await companion(page).getByRole('button', { name: 'Dismiss' }).click();
+  await expect(companion(page)).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'History', exact: true })).toHaveAttribute('aria-selected', 'true');
+});
+
 test('History executes through the real socket controller, survives routes, and ends on manual leave', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
