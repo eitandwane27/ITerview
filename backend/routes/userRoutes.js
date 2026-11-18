@@ -15,6 +15,7 @@ const Set3Session = require('../models/Set3Session');
 const { VALID_ROLES } = require('../config/roleConfig');
 const { getResultsSummary, getActivePracticeSession } = require('../services/userProgressService');
 const { calculatePracticeScores } = require('../utils/practiceScoring');
+const { CONFIDENCE_ITEM_COUNT, CONFIDENCE_SCALE_MAX } = require('../utils/confidenceSurvey');
 
 // POST /api/users/register
 // Called right after Firebase creates a new account.
@@ -74,17 +75,20 @@ router.post('/login', async (req, res) => {
   }
 });
 
-function saveConfidenceSurvey(answersField, scoreField) {
+function saveConfidenceSurvey(answersField, scoreField, scaleField) {
   return async (req, res) => {
-    const { firebaseUid, email, answers } = req.body;
+    const { firebaseUid, email, answers, scaleMax } = req.body;
     if (!firebaseUid || !email) {
       return res.status(400).json({ message: 'Firebase UID and Email are required' });
     }
-    if (!Array.isArray(answers) || answers.length !== 5 ||
+    if (scaleMax !== CONFIDENCE_SCALE_MAX) {
+      return res.status(400).json({ message: 'The confidence scale has changed. Refresh this page and answer the updated survey.' });
+    }
+    if (!Array.isArray(answers) || answers.length !== CONFIDENCE_ITEM_COUNT ||
       !answers.every(answer => typeof answer?.questionId === 'string' && /^q[1-5]$/.test(answer.questionId) &&
-        Number.isInteger(answer.score) && answer.score >= 1 && answer.score <= 5) ||
-      new Set(answers.map(({ questionId }) => questionId)).size !== 5) {
-      return res.status(400).json({ message: 'Provide one answer from 1 to 5 for each of the five questions.' });
+        Number.isInteger(answer.score) && answer.score >= 1 && answer.score <= CONFIDENCE_SCALE_MAX) ||
+      new Set(answers.map(({ questionId }) => questionId)).size !== CONFIDENCE_ITEM_COUNT) {
+      return res.status(400).json({ message: `Provide one answer from 1 to ${CONFIDENCE_SCALE_MAX} for each of the five questions.` });
     }
 
     const filter = { firebaseUid, [scoreField]: null };
@@ -92,6 +96,7 @@ function saveConfidenceSurvey(answersField, scoreField) {
       email,
       [answersField]: answers.map(({ questionId, score }) => ({ questionId, score })),
       [scoreField]: answers.reduce((sum, { score }) => sum + score, 0),
+      [scaleField]: CONFIDENCE_SCALE_MAX,
     } };
     const options = { returnDocument: 'after' };
 
@@ -113,7 +118,7 @@ function saveConfidenceSurvey(answersField, scoreField) {
   };
 }
 
-router.post('/pretest', saveConfidenceSurvey('preConfidenceAnswers', 'confidenceScore'));
+router.post('/confidence-survey/pre', saveConfidenceSurvey('preConfidenceAnswers', 'confidenceScore', 'confidenceScaleMax'));
 
 // GET /api/users/pretest-profile?uid=<firebaseUid>
 // Returns the user's pre-test weakness tag, baseline score, and role
@@ -270,7 +275,7 @@ router.post('/reset-practice-session', async (req, res) => {
   }
 });
 
-router.post('/posttest', saveConfidenceSurvey('postConfidenceAnswers', 'postConfidenceScore'));
+router.post('/confidence-survey/post', saveConfidenceSurvey('postConfidenceAnswers', 'postConfidenceScore', 'postConfidenceScaleMax'));
 
 // POST /api/users/practice-history
 // Appends a completed practice session entry to practiceHistory.

@@ -131,4 +131,24 @@ test('progress-check results keep their own scores without a baseline lock', asy
   await expect(rubric.getByRole('heading', { name: 'What makes a strong answer' })).toBeVisible();
   await expect(rubric.getByText('Locked baseline', { exact: true })).toHaveCount(0);
   await expect(rubric.locator('.rs-rubric-num')).toHaveText(['4.7', '4.8', '4.3']);
+  await expect(page.locator('.rs-confidence-card .rs-stage-value')).toHaveText(['2.8 / 5.0', '4.2 / 5.0']);
+  await expect(page.getByText('on the 1–5 scale')).toBeVisible();
+});
+
+test('confidence results compare four-point pairs and suppress a change across scales', async ({ page }) => {
+  let preConfidenceScaleMax = 4;
+  await page.route('**/api/users/results-summary?**', (route) =>
+    route.fulfill({ json: { ...summary, preConfidenceScaleMax, postConfidenceScore: 20, postConfidenceScaleMax: 4 } })
+  );
+  await page.goto(baseURL);
+  const confidence = page.locator('.rs-confidence-card');
+  await expect(confidence.locator('.rs-stage-value')).toHaveText(['2.8 / 4.0', '4.0 / 4.0']);
+  await expect(confidence.getByText('on the 1–4 scale')).toBeVisible();
+  await expect(confidence.locator('.rs-delta-value')).toHaveText('+1.2');
+
+  preConfidenceScaleMax = 5;
+  await page.reload();
+  await expect(confidence.locator('.rs-stage-value')).toHaveText(['2.8 / 5.0', '4.0 / 4.0']);
+  await expect(confidence.getByText('Your confidence checks used different scales.')).toBeVisible();
+  await expect(confidence.locator('.rs-delta-value')).toHaveText('Unavailable');
 });

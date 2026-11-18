@@ -216,7 +216,8 @@ test('research data uses school email digits for IDs and pairs first-run scores 
   const { requireAdmin } = createSchoolAuth(async token => token === 'admin'
     ? { ...verifiedUser, uid: 'admin-uid' } : verifiedUser);
   const student = { firebaseUid: 'student-uid', email: 'student2026-0042@spcba.edu.ph', confidenceScore: 15 };
-  const newerStudent = { firebaseUid: 'newer-uid', email: 'a.newer42@spcba.edu.ph' };
+  const newerStudent = { firebaseUid: 'newer-uid', email: 'a.newer42@spcba.edu.ph',
+    confidenceScore: 20, confidenceScaleMax: 4, postConfidenceScore: 21, postConfidenceScaleMax: 4 };
   let users = [{ firebaseUid: 'admin-uid', email: 'admin@spcba.edu.ph' },
     student, { firebaseUid: 'personal-uid', email: 'person@example.com' }, newerStudent];
   t.mock.method(User, 'find', () => ({ select: () => ({ sort: (order) => {
@@ -252,7 +253,13 @@ test('research data uses school email digits for IDs and pairs first-run scores 
   assert.deepEqual(row.preTest, { percentage: 0, clarity: 3, correctness: 4, completeness: 5 });
   assert.deepEqual(row.postTest, { percentage: null, clarity: null, correctness: null, completeness: null });
   assert.equal(row.preLikert, 15);
+  assert.equal(row.preLikertScaleMax, 5);
   assert.equal(row.postLikert, null);
+  assert.equal(row.postLikertScaleMax, null);
+  assert.equal(participants[1].preLikert, 20);
+  assert.equal(participants[1].preLikertScaleMax, 4);
+  assert.equal(participants[1].postLikert, null);
+  assert.equal(participants[1].postLikertScaleMax, null);
   users = [student];
   assert.deepEqual(await (await load('admin')).json(), { participants: [row] });
   assert.deepEqual(queryUids, [[student.firebaseUid, newerStudent.firebaseUid], [student.firebaseUid]]);
@@ -300,6 +307,9 @@ test('real user routes derive identity from a verified token and prevent other-u
     assert.equal((await request(path, 'valid')).status, 403);
   }
   assert.equal((await request('/role', 'valid', { method: 'PUT', body: JSON.stringify({ firebaseUid: 'another-user', role: 'frontend' }) })).status, 403);
+  for (const path of ['/pretest', '/posttest']) {
+    assert.equal((await request(path, 'valid', { method: 'POST', body: '{}' })).status, 404);
+  }
   assert.equal(writes.length, 2);
 });
 

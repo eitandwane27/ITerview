@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import ResultsHeader from '../components/ResultsHeader';
 import TestWorkspace from '../components/TestWorkspace';
+import { readConfidenceRating } from '../utils/confidenceSurvey';
 import {
   averageThreeCs,
   getPracticeFocus,
@@ -37,7 +38,6 @@ import {
 
 const SCORE_MAX = 5;
 const PERCENT_MAX = 100;
-const CONFIDENCE_ITEM_COUNT = 5;
 
 function isScoreOutOfFive(value) {
   return isValidScore(value) && value >= 1 && value <= SCORE_MAX;
@@ -46,13 +46,6 @@ function isScoreOutOfFive(value) {
 function percentageToScoreOutOfFive(value) {
   if (!isValidScore(value) || value < 0 || value > PERCENT_MAX) return null;
   return Math.round((value / 20) * 10) / 10;
-}
-
-function confidenceTotalToMean(value) {
-  const minimumTotal = CONFIDENCE_ITEM_COUNT;
-  const maximumTotal = CONFIDENCE_ITEM_COUNT * SCORE_MAX;
-  if (!isValidScore(value) || value < minimumTotal || value > maximumTotal) return null;
-  return Math.round((value / CONFIDENCE_ITEM_COUNT) * 10) / 10;
 }
 
 function scoreWidth(value) {
@@ -109,7 +102,9 @@ function useCountUp(target, duration = 1200, decimals = 0) {
 // ── Realistic Mock Dataset for Visual Verification & Dev ───────────────────
 const MOCK_RESULTS_DATA = {
   preConfidenceScore: 14,
-  postConfidenceScore: 21,
+  preConfidenceScaleMax: 4,
+  postConfidenceScore: 18,
+  postConfidenceScaleMax: 4,
   masteryScore: 84,
   preTestScore: 62,
   improvementDelta: 22,
@@ -292,16 +287,17 @@ export default function Results() {
   }, [navigate, isPracticeMode, isMockMode]);
 
   // Derived telemetry calculations
-  const preConf = confidenceTotalToMean(data?.preConfidenceScore);
-  const postConf = confidenceTotalToMean(data?.postConfidenceScore);
+  const preConfidence = readConfidenceRating(data?.preConfidenceScore, data?.preConfidenceScaleMax);
+  const postConfidence = readConfidenceRating(data?.postConfidenceScore, data?.postConfidenceScaleMax);
+  const confidenceScaleChanged = preConfidence && postConfidence && preConfidence.scaleMax !== postConfidence.scaleMax;
   const preTestScore = percentageToScoreOutOfFive(data?.preTestScore);
   const postTestScore = percentageToScoreOutOfFive(data?.masteryScore);
-  const confidenceComparison = getScoreComparison(preConf, postConf);
+  const confidenceComparison = confidenceScaleChanged ? null : getScoreComparison(preConfidence?.mean, postConfidence?.mean);
   const comparison = getScoreComparison(preTestScore, postTestScore);
 
   const animDelta = useCountUp(confidenceComparison?.delta, 1500, 1);
-  const animPre = useCountUp(preConf, 1200, 1);
-  const animPost = useCountUp(postConf, 1200, 1);
+  const animPre = useCountUp(preConfidence?.mean, 1200, 1);
+  const animPost = useCountUp(postConfidence?.mean, 1200, 1);
 
   const practiceAverageScore = isScoreOutOfFive(
     data?.sessionAverages?.practiceSetsAverage?.scoreOutOf5
@@ -669,16 +665,18 @@ export default function Results() {
                     ? `${confidenceComparison.delta > 0 ? '+' : ''}${animDelta}`
                     : 'Unavailable'}
                 </span>
-                {confidenceComparison && <span className="rs-delta-unit">on the 1–5 scale</span>}
+                {confidenceComparison && <span className="rs-delta-unit">on the 1–{preConfidence.scaleMax} scale</span>}
               </div>
-              <p className="rs-delta-caption">Change in your average confidence rating</p>
+              <p className="rs-delta-caption">
+                {confidenceScaleChanged ? 'Your confidence checks used different scales.' : 'Change in your average confidence rating'}
+              </p>
             </div>
 
             <div className="rs-comparison-track">
               <div className="rs-stage-pill">
                 <span className="rs-stage-label">Before practice</span>
                 <span className="rs-stage-value">
-                  {isScoreOutOfFive(preConf) ? `${animPre.toFixed(1)} / 5.0` : 'Unavailable'}
+                  {preConfidence ? `${animPre.toFixed(1)} / ${preConfidence.scaleMax}.0` : 'Unavailable'}
                 </span>
               </div>
               <div className="rs-stage-arrow">
@@ -687,7 +685,7 @@ export default function Results() {
               <div className="rs-stage-pill">
                 <span className="rs-stage-label">After practice</span>
                 <span className="rs-stage-value rs-stage-value--highlight">
-                  {isScoreOutOfFive(postConf) ? `${animPost.toFixed(1)} / 5.0` : 'Unavailable'}
+                  {postConfidence ? `${animPost.toFixed(1)} / ${postConfidence.scaleMax}.0` : 'Unavailable'}
                 </span>
               </div>
             </div>

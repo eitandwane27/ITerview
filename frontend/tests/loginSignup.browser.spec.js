@@ -161,9 +161,10 @@ async function open(page, mode = 'login', options = {}) {
     }
     if (url.pathname === '/api/users/validation-user' && state.confidenceUser)
       return json({ user: state.confidenceUser });
-    if (url.pathname === '/api/users/posttest' && state.confidenceUser && route.request().method() === 'POST') {
-      const { answers } = route.request().postDataJSON();
+    if (url.pathname === '/api/users/confidence-survey/post' && state.confidenceUser && route.request().method() === 'POST') {
+      const { answers, scaleMax } = route.request().postDataJSON();
       state.confidenceUser.postConfidenceScore = answers.reduce((total, { score }) => total + score, 0);
+      state.confidenceUser.postConfidenceScaleMax = scaleMax;
       return json({ user: state.confidenceUser });
     }
     if (url.pathname.startsWith('/api/'))
@@ -280,8 +281,9 @@ test('admin views first-run metrics and exports participant IDs without school e
   await open(page, 'login', {
     adminAllowed: true,
     participants: [
-      { participantId: '0042', email: 'student0042@spcba.edu.ph', preTest: assessment(60), postTest: assessment(80), preLikert: 14, postLikert: 20 },
+      { participantId: '0042', email: 'student0042@spcba.edu.ph', preTest: assessment(60), postTest: assessment(80), preLikert: 14, postLikert: 20, preLikertScaleMax: 4, postLikertScaleMax: 4 },
       { participantId: '3124', email: 'student3124@spcba.edu.ph', preTest: assessment(0), postTest: assessment(null), preLikert: 15, postLikert: null },
+      { participantId: '5678', email: 'student5678@spcba.edu.ph', preTest: assessment(null), postTest: assessment(null), preLikert: 20, postLikert: 18, postLikertScaleMax: 4 },
     ],
   });
   await fill(page, 'login', { email: 'admin' });
@@ -289,31 +291,44 @@ test('admin views first-run metrics and exports participant IDs without school e
   await page.getByRole('link', { name: 'Research Data' }).click();
   await expect(page.getByText('H₀₁ Pre/post interview', { exact: true })).toBeVisible();
   await expect(page.getByText('H₀₂ Confidence survey', { exact: true })).toBeVisible();
-  await expect(page.getByText('Pre/Post Test: 1 of 2 ready · Likert Scale: 1 of 2 ready')).toBeVisible();
+  await expect(page.getByText('Pre/Post Test: 1 of 3 ready · Likert Scale (1–4): 1 of 3 ready')).toBeVisible();
   const openMetrics = page.getByRole('row', { name: /^0042\b/ }).getByRole('button', { name: 'View metrics' });
   await openMetrics.click();
   const dialog = page.getByRole('dialog', { name: 'Participant metrics' });
   await expect(dialog.getByRole('row', { name: /Pre\/Post Test/ })).toContainText('+20 pp');
-  await expect(dialog.getByRole('row', { name: /Likert Scale/ })).toContainText('2.8 / 5');
+  await expect(dialog.getByRole('row', { name: /Likert Scale/ })).toContainText('2.8 / 4');
   await expect(dialog.getByText('Improved')).toHaveCount(2);
   await page.keyboard.press('Escape');
   await expect(openMetrics).toBeFocused();
   await page.getByRole('row', { name: /^3124\b/ }).getByRole('button', { name: 'View metrics' }).click();
   await expect(dialog.getByRole('cell', { name: '0%', exact: true })).toBeVisible();
   await expect(dialog.getByRole('cell', { name: 'Pending' })).toHaveCount(2);
+  await expect(dialog.getByRole('cell', { name: '3.0 / 5', exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close metrics' }).click();
+  const mixedRow = page.getByRole('row', { name: /^5678\b/ });
+  await expect(mixedRow.getByRole('cell', { name: 'Different scales' })).toBeVisible();
+  await mixedRow.getByRole('button', { name: 'View metrics' }).click();
+  await expect(dialog.getByRole('row', { name: /Likert Scale/ }).getByRole('cell')).toHaveText([
+    '4.0 / 5', '3.6 / 4', 'Different scales',
+  ]);
   await dialog.getByRole('button', { name: 'Close metrics' }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export CSV' }).click();
   const file = await download;
   expect(file.suggestedFilename()).toBe('iterview-research-data.csv');
   const csv = await readFile(await file.path(), 'utf8');
-  expect(csv).toContain('\r\n0042,60,80,3,3,4,4,3,3,14,20');
+  expect(csv).toContain('pre_likert_scale_max,post_likert_scale_max\r\n');
+  expect(csv).toContain('\r\n0042,60,80,3,3,4,4,3,3,14,20,4,4\r\n');
+  expect(csv).toContain('\r\n5678,,,3,3,4,4,3,3,20,18,5,4\r\n');
   expect(csv).not.toContain('@');
   const pdfDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export PDF' }).click();
   const pdf = await pdfDownload;
   expect(pdf.suggestedFilename()).toBe('iterview-research-data.pdf');
-  expect((await readFile(await pdf.path())).subarray(0, 5).toString()).toBe('%PDF-');
+  const pdfText = (await readFile(await pdf.path())).toString('latin1');
+  expect(pdfText.startsWith('%PDF-')).toBe(true);
+  expect(pdfText).toContain('(14 / 20)');
+  expect(pdfText).toContain('(20 / 25)');
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Research Data' })).toBeVisible();
 });
@@ -350,13 +365,30 @@ test('reopening either confidence survey shows the saved screen', async ({ page 
   await expect(page).toHaveURL(/\/dashboard$/);
 
   await page.goto(baseURL + '/likert-post');
+  const options = page.getByRole('radiogroup', { name: 'Confidence options for question 1' });
+  await expect(options.getByRole('radio')).toHaveCount(4);
+  await expect(options.getByRole('radio').getByText(/confident/i)).toHaveText([
+    'Not at all confident', 'Not very confident', 'Somewhat confident', 'Very confident',
+  ]);
+  const first = options.getByRole('radio', { name: 'Not at all confident', exact: true });
+  const last = options.getByRole('radio', { name: 'Very confident', exact: true });
+  await first.focus();
+  await first.press('5');
+  await expect(options.getByRole('radio', { checked: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
+  await first.press('ArrowLeft');
+  await expect(last).toBeChecked();
+  await expect(last).toBeFocused();
+  await last.press('1');
+  await expect(first).toBeChecked();
   for (let question = 1; question <= 5; question += 1) {
     await page.getByRole('radiogroup', { name: `Confidence options for question ${question}` })
-      .getByRole('radio', { name: /^Confident\b/ }).click();
+      .getByRole('radio', { name: 'Very confident', exact: true }).click();
     await page.getByRole('button', { name: question === 5 ? 'Finish confidence check' : 'Continue', exact: true }).click();
   }
   await expect(page.getByRole('heading', { name: 'Confidence check saved' })).toBeVisible();
   expect(state.confidenceUser.postConfidenceScore).toBe(20);
+  expect(state.confidenceUser.postConfidenceScaleMax).toBe(4);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Confidence check saved' })).toBeVisible();
   await expect(page.getByRole('radio')).toHaveCount(0);

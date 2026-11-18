@@ -65,7 +65,7 @@ const userSchema = new mongoose.Schema({
   // Stores the pre-test Likert Scale baseline (H₀₂)
   // Shape mirrors the LikertScale.jsx payload:
   //   preConfidenceAnswers: [{ questionId: "q1", score: 3 }, ...]
-  //   confidenceScore: sum of all 5 scores (max 25)
+  //   confidenceScore: sum of five answers on the recorded response scale
   preConfidenceAnswers: {
     type: [
       {
@@ -76,6 +76,7 @@ const userSchema = new mongoose.Schema({
     default: [],
   },
   confidenceScore: { type: Number, default: null },
+  confidenceScaleMax: { type: Number },
 
   // Stores the post-test Likert Scale scores (H₀₂ comparison)
   // Shape mirrors preConfidenceAnswers
@@ -89,6 +90,7 @@ const userSchema = new mongoose.Schema({
     default: [],
   },
   postConfidenceScore: { type: Number, default: null },
+  postConfidenceScaleMax: { type: Number },
 
   // Capped rolling 20-session practice history log
   practiceHistory: {

@@ -234,7 +234,7 @@
 
 .likert-options {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -341,16 +341,8 @@
   background: var(--lk-surface);
 }
 
-.likert-option-label {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 5px;
-  padding-top: 18px;
-}
-
 .likert-option-title {
+  padding: 18px 24px 0 0;
   color: var(--lk-ink);
   font-family: var(--lk-font-display);
   font-size: 1rem;
@@ -361,15 +353,6 @@
 
 .likert-option.selected .likert-option-title {
   color: var(--lk-blue-hover);
-}
-
-.likert-option-sub {
-  padding-right: 22px;
-  color: var(--lk-ink-muted);
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.4;
-  text-wrap: pretty;
 }
 
 .likert-option-status {
@@ -729,9 +712,8 @@
     height: calc(6px + var(--lk-segment) * 4px);
   }
 
-  .likert-option-label {
-    padding-top: 0;
-    justify-content: center;
+  .likert-option-title {
+    padding: 0;
   }
 
   .likert-option-status {
@@ -817,11 +799,6 @@
 
   .likert-option-title {
     font-size: 0.92rem;
-  }
-
-  .likert-option-sub {
-    padding-right: 0;
-    font-size: 0.7rem;
   }
 
   .likert-option-status {

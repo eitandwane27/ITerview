@@ -7,6 +7,7 @@ const Set2Session = require('../models/Set2Session');
 const Set3Session = require('../models/Set3Session');
 const { DIFFICULTIES, DIFFICULTY_UNLOCK_THRESHOLD } = require('../config/interviewConfig');
 const { calculatePracticeScores } = require('../utils/practiceScoring');
+const { readConfidenceRating } = require('../utils/confidenceSurvey');
 
 function isPercentage(value) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
@@ -47,7 +48,7 @@ async function getResultsSummary(uid, { persistUnlock = true } = {}) {
       'final_score_percentage final_weakness_tag answers'
     ),
     User.findOne({ firebaseUid: uid }).select(
-      'confidenceScore postConfidenceScore role difficulty unlockedDifficulty focusArea practiceHistory'
+      'confidenceScore confidenceScaleMax postConfidenceScore postConfidenceScaleMax role difficulty unlockedDifficulty focusArea practiceHistory'
     ),
     Set1Session.findOne({ firebaseUid: uid }).select(
       'avg_clarity avg_correctness avg_completeness isCompleted answers difficulty role attemptId'
@@ -249,7 +250,9 @@ async function getResultsSummary(uid, { persistUnlock = true } = {}) {
 
   return ({
     preConfidenceScore: preConf,
+    preConfidenceScaleMax: readConfidenceRating(preConf, user?.confidenceScaleMax)?.scaleMax ?? null,
     postConfidenceScore: postConf,
+    postConfidenceScaleMax: readConfidenceRating(postConf, user?.postConfidenceScaleMax)?.scaleMax ?? null,
     masteryScore: postScore,
     preTestScore: preScore,
     improvementDelta: preScore !== null && postScore !== null ? postScore - preScore : null,

@@ -113,6 +113,11 @@ test("new accounts keep missing metrics null and can receive general coaching", 
   assert.equal(progress.snapshot.practiceScore, null);
   assert.equal(progress.snapshot.postTestScore, null);
   assert.equal(progress.context.confidence.before, 20);
+  assert.equal(progress.context.confidence.beforeMaxTotal, 25);
+  assert.equal(progress.context.confidence.afterMaxTotal, null);
+  const revised = buildCoachProgress({ postConfidenceScore: 20, postConfidenceScaleMax: 4 });
+  assert.equal(revised.context.confidence.after, 20);
+  assert.equal(revised.context.confidence.afterMaxTotal, 20);
   assert.equal(progress.snapshot.nextStage, "mic-test");
   const zeroScore = buildCoachProgress({ preTestScore: 0, threeCBreakdown: { clarity: 0 } });
   assert.equal(zeroScore.snapshot.hasAssessmentData, true);

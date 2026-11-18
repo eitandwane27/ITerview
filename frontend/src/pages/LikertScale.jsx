@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, LoaderCircle, Sparkles } from 'lucide-rea
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import logoSrc from '../assets/logo';
+import { CONFIDENCE_SCALE_MAX } from '../utils/confidenceSurvey';
 import './LikertScale.css';
 
 const Motion = motion;
@@ -16,15 +17,15 @@ const QUESTIONS = [
   },
   {
     id: 'q2',
-    text: 'How comfortable are you explaining your technical projects to a stranger?',
+    text: 'How confident are you that you can explain your technical projects to a stranger?',
   },
   {
     id: 'q3',
-    text: 'How well do you think you can handle unexpected or follow-up questions?',
+    text: 'How confident are you that you can handle unexpected or follow-up questions?',
   },
   {
     id: 'q4',
-    text: 'How prepared do you feel for a real IT job interview right now?',
+    text: 'How confident are you about your preparation for a real IT job interview right now?',
   },
   {
     id: 'q5',
@@ -33,12 +34,11 @@ const QUESTIONS = [
 ];
 
 const OPTIONS = [
-  { value: 1, title: 'Not at all', sub: 'I feel very uncertain' },
-  { value: 2, title: 'Slightly', sub: 'I have some doubts' },
-  { value: 3, title: 'Moderately', sub: "I'm somewhat confident" },
-  { value: 4, title: 'Confident', sub: 'I feel fairly ready' },
-  { value: 5, title: 'Very confident', sub: 'I feel completely ready' },
-];
+  'Not at all confident',
+  'Not very confident',
+  'Somewhat confident',
+  'Very confident',
+].map((title, index) => ({ title, value: index + 1 }));
 
 const INITIAL_ANSWERS = Object.fromEntries(QUESTIONS.map((question) => [question.id, null]));
 
@@ -107,7 +107,7 @@ export default function LikertScale({ phase = 'pre' }) {
       questionId: question.id,
       score: answers[question.id],
     }));
-    const endpoint = phase === 'post' ? '/api/users/posttest' : '/api/users/pretest';
+    const endpoint = phase === 'post' ? '/api/users/confidence-survey/post' : '/api/users/confidence-survey/pre';
 
     setIsSubmitting(true);
     setSubmitError('');
@@ -116,7 +116,7 @@ export default function LikertScale({ phase = 'pre' }) {
       const response = await authenticatedFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: answersArray }),
+        body: JSON.stringify({ answers: answersArray, scaleMax: CONFIDENCE_SCALE_MAX }),
       });
 
       if (!response.ok) throw new Error('We could not save your answers. Please try again.');
@@ -130,7 +130,7 @@ export default function LikertScale({ phase = 'pre' }) {
     }
   };
 
-  const handleOptionKeyDown = (event) => {
+  const handleOptionKeyDown = (event, focusedValue) => {
     const digit = Number(event.key);
     const isDigitShortcut = Number.isInteger(digit) && digit >= 1 && digit <= OPTIONS.length;
 
@@ -151,8 +151,7 @@ export default function LikertScale({ phase = 'pre' }) {
     if (!direction) return;
 
     event.preventDefault();
-    const selectedIndex = currentAnswer === null ? 2 : currentAnswer - 1;
-    const nextIndex = (selectedIndex + direction + OPTIONS.length) % OPTIONS.length;
+    const nextIndex = (focusedValue - 1 + direction + OPTIONS.length) % OPTIONS.length;
     handleSelect(OPTIONS[nextIndex].value);
     optionRefs.current[nextIndex]?.focus();
   };
@@ -234,7 +233,7 @@ export default function LikertScale({ phase = 'pre' }) {
               <p>
                 {phase === 'pre'
                   ? 'Next, check your microphone before recording your starting answers.'
-                  : 'Your answers and confidence are ready to compare.'}
+                  : 'You can now view your confidence and interview results.'}
               </p>
             </div>
 
@@ -287,7 +286,7 @@ export default function LikertScale({ phase = 'pre' }) {
               <p className="likert-question-help">
                 {currentIndex === 0
                   ? phase === 'post'
-                    ? 'Before seeing your results, tell us how you feel now. We’ll compare this with your first confidence check.'
+                    ? 'Before seeing your results, tell us how you feel now.'
                     : 'Tell us how you feel before practice. We’ll ask again afterward to compare.'
                   : 'Choose the answer that feels true right now.'}
               </p>
@@ -297,7 +296,6 @@ export default function LikertScale({ phase = 'pre' }) {
               className="likert-options"
               role="radiogroup"
               aria-label={`Confidence options for question ${currentIndex + 1}`}
-              onKeyDown={handleOptionKeyDown}
             >
               {OPTIONS.map((option) => {
                 const isSelected = currentAnswer === option.value;
@@ -311,10 +309,11 @@ export default function LikertScale({ phase = 'pre' }) {
                     }}
                     className={`likert-option${isSelected ? ' selected' : ''}`}
                     onClick={() => handleSelect(option.value)}
+                    onKeyDown={(event) => handleOptionKeyDown(event, option.value)}
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
-                    tabIndex={isSelected || (currentAnswer === null && option.value === 3) ? 0 : -1}
+                    tabIndex={isSelected || (currentAnswer === null && option.value === 1) ? 0 : -1}
                     whileTap={reduceMotion ? undefined : { scale: 0.97 }}
                   >
                     <span className="likert-option-topline">
@@ -330,10 +329,7 @@ export default function LikertScale({ phase = 'pre' }) {
                       <kbd aria-hidden="true">{option.value}</kbd>
                     </span>
 
-                    <span className="likert-option-label">
-                      <span className="likert-option-title">{option.title}</span>
-                      <span className="likert-option-sub">{option.sub}</span>
-                    </span>
+                    <span className="likert-option-title">{option.title}</span>
 
                     <span className="likert-option-status" aria-hidden="true">
                       <AnimatePresence initial={false}>
@@ -354,7 +350,7 @@ export default function LikertScale({ phase = 'pre' }) {
               })}
             </div>
 
-            <p className="likert-keyboard-hint">Tip: use the arrow keys or press 1-5.</p>
+            <p className="likert-keyboard-hint">Tip: use the arrow keys or press 1–{CONFIDENCE_SCALE_MAX}.</p>
           </Motion.section>
         </AnimatePresence>
 

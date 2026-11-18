@@ -61,22 +61,38 @@ test('each confidence survey keeps its first complete submission and calculates 
     assert.deepEqual(filter, { firebaseUid });
     return saved;
   });
-  const submit = (path, answers, expectedStatus) => callRoute(path, {
-    method: 'post', requestBody: { firebaseUid, email, answers, confidenceScore: 99 }, expectedStatus,
+  const submit = (path, answers, expectedStatus = 200, scaleMax = 4) => callRoute(path, {
+    method: 'post', requestBody: { firebaseUid, email, answers, scaleMax, confidenceScore: 99 }, expectedStatus,
   });
   const answersFor = score => Array.from({ length: 5 }, (_, i) => ({ questionId: `q${i + 1}`, score }));
-  for (const [path, scoreField, answersField, firstScore] of [
-    ['/pretest', 'confidenceScore', 'preConfidenceAnswers', 3],
-    ['/posttest', 'postConfidenceScore', 'postConfidenceAnswers', 4],
+  for (const [path, scoreField, answersField, scaleField, firstScore] of [
+    ['/confidence-survey/pre', 'confidenceScore', 'preConfidenceAnswers', 'confidenceScaleMax', 1],
+    ['/confidence-survey/post', 'postConfidenceScore', 'postConfidenceAnswers', 'postConfidenceScaleMax', 4],
   ]) {
     const answers = answersFor(firstScore);
     await submit(path, [...answers.slice(0, 4), answers[0]], 400);
+    await submit(path, answersFor(5), 400);
+    await submit(path, answers, 400, 5);
+    await submit(path, answers, 400, null);
     assert.equal(saved[scoreField], undefined);
-    assert.equal((await submit(path, answers)).user[scoreField], firstScore * 5);
-    const { user } = await submit(path, answersFor(5));
+    const first = (await submit(path, answers)).user;
+    assert.equal(first[scoreField], firstScore * 5);
+    assert.equal(first[scaleField], 4);
+    const { user } = await submit(path, answersFor(2));
     assert.equal(user[scoreField], firstScore * 5);
+    assert.equal(user[scaleField], 4);
     assert.deepEqual(user[answersField], answers);
   }
+});
+
+test('results retain a legacy confidence scale even when its total fits the new scale', async (t) => {
+  const result = await getRoute(t, '/results-summary', {
+    User: { confidenceScore: 20, postConfidenceScore: 20, postConfidenceScaleMax: 4 },
+  });
+  assert.deepEqual(
+    [result.preConfidenceScore, result.preConfidenceScaleMax, result.postConfidenceScore, result.postConfidenceScaleMax],
+    [20, 5, 20, 4],
+  );
 });
 
 const completedPreTest = {

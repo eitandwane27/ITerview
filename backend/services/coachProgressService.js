@@ -1,6 +1,7 @@
 const { getResultsSummary, getActivePracticeSession } = require("./userProgressService");
 const { containsSensitiveContent, isInstructionOverride } = require("./chatbotGuardrails");
 const { getRoleCatalogue } = require("./chatbotKnowledgeService");
+const { CONFIDENCE_ITEM_COUNT, readConfidenceRating } = require("../utils/confidenceSurvey");
 
 const number = (value, max = 100) => typeof value === "number" && Number.isFinite(value)
   && value >= 0 && value <= max ? value : null;
@@ -54,6 +55,8 @@ function buildCoachProgress(summary = {}, active = {}, now = new Date()) {
   const preTestScore = number(summary.preTestScore);
   const practiceScore = number(summary.practiceProgress?.scorePercentage);
   const postTestScore = number(summary.masteryScore);
+  const preConfidence = readConfidenceRating(summary.preConfidenceScore, summary.preConfidenceScaleMax);
+  const postConfidence = readConfidenceRating(summary.postConfidenceScore, summary.postConfidenceScaleMax);
   const hasAssessmentData = [preTestScore, practiceScore, postTestScore].some(value => value !== null)
     || recentAttempts.some(attempt => attempt.scorePercentage !== null)
     || Object.values(metrics(summary.threeCBreakdown)).some(value => value !== null)
@@ -80,8 +83,13 @@ function buildCoachProgress(summary = {}, active = {}, now = new Date()) {
     snapshot,
     context: {
       ...snapshot, metricScale: "Interview dimensions are out of 5; overall scores are percentages. Null means not assessed, not zero.",
-      confidence: { before: number(summary.preConfidenceScore, 25), after: number(summary.postConfidenceScore, 25),
-        scale: "Raw total of five 1–5 confidence survey answers, out of 25; distinct from interview assessment metrics." },
+      confidence: {
+        before: preConfidence?.total ?? null,
+        after: postConfidence?.total ?? null,
+        beforeMaxTotal: preConfidence ? CONFIDENCE_ITEM_COUNT * preConfidence.scaleMax : null,
+        afterMaxTotal: postConfidence ? CONFIDENCE_ITEM_COUNT * postConfidence.scaleMax : null,
+        scale: "Totals of five confidence survey answers. Give each score with its maximum. Compare only when both totals are available and their maxima match.",
+      },
       practice: {
         source: ["latest-completed-attempt", "current-sets"].includes(summary.practiceProgress?.source) ? summary.practiceProgress.source : null,
         role: catalogue.some(item => item.id === summary.practiceProgress?.role) ? summary.practiceProgress.role : null,

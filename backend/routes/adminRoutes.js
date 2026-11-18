@@ -3,6 +3,7 @@ const { isSchoolEmail } = require('../middleware/schoolAuth');
 const User = require('../models/User');
 const PreTestSession = require('../models/PreTestSession');
 const PostTestSession = require('../models/PostTestSession');
+const { readConfidenceRating } = require('../utils/confidenceSurvey');
 
 const router = express.Router();
 const studentFields = 'firebaseUid displayName email officialName -_id';
@@ -34,7 +35,7 @@ router.use('/hr-tester', require('./debugRoutes'));
 router.get('/research-data', async (req, res) => {
   try {
     const users = await User.find()
-      .select('firebaseUid email confidenceScore postConfidenceScore -_id')
+      .select('firebaseUid email confidenceScore confidenceScaleMax postConfidenceScore postConfidenceScaleMax -_id')
       .sort({ createdAt: 1, _id: 1 })
       .lean();
     const participants = users.filter(({ firebaseUid, email }) =>
@@ -48,15 +49,19 @@ router.get('/research-data', async (req, res) => {
     ]);
     const preByUid = new Map(preTests.map((session) => [session.firebaseUid, session]));
     const postByUid = new Map(postTests.map((session) => [session.firebaseUid, session]));
-    res.json({ participants: participants.map(({ firebaseUid, email, confidenceScore, postConfidenceScore }) => {
+    res.json({ participants: participants.map(({ firebaseUid, email, confidenceScore, confidenceScaleMax, postConfidenceScore, postConfidenceScaleMax }) => {
       const digits = email.split('@')[0].replace(/\D/g, '');
+      const pre = readConfidenceRating(confidenceScore, confidenceScaleMax);
+      const post = readConfidenceRating(postConfidenceScore, postConfidenceScaleMax);
       return {
         participantId: digits.length >= 4 ? digits.slice(-4) : null,
         email,
         preTest: assessment(preByUid.get(firebaseUid), 'baseline_score_percentage'),
         postTest: assessment(postByUid.get(firebaseUid), 'final_score_percentage'),
-        preLikert: savedScore(confidenceScore, 5, 25),
-        postLikert: savedScore(postConfidenceScore, 5, 25),
+        preLikert: pre?.total ?? null,
+        postLikert: post?.total ?? null,
+        preLikertScaleMax: pre?.scaleMax ?? null,
+        postLikertScaleMax: post?.scaleMax ?? null,
       };
     }) });
   } catch (error) {
