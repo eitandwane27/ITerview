@@ -136,6 +136,218 @@ test('HR Tester opens from Admin and uses the shared Admin header', async ({ pag
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
 });
 
+test('H₀₄ keeps long responses, the rubric, and rating controls usable across questions', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const responses = [0, 1, 2].map((questionIndex) => ({
+    id: `response-${questionIndex}`, assessmentId: 'assessment', participantKey: 'participant', participantId: '0679',
+    questionIndex, trialsSaved: 3, rated: false,
+  }));
+  const details = responses.map((response) => ({
+    ...response, question: 'How do you stay up to date with changes in technology?',
+    transcript: ('I read the release notes, follow members of developer communities, and try new tools on small projects.\n\n').repeat(16),
+    trials: [2, 3, 2].map((clarity_score) => ({ clarity_score, correctness_score: 3, completeness_score: 4 })),
+    rating: null, ratingRevision: 0,
+  }));
+  let rejectNextSave = true;
+  await mockApi(page);
+  await page.route('**/api/admin/scoring-study**', async (route) => {
+    const path = new URL(route.request().url()).pathname.split('/').slice(4);
+    if (!path.length) return route.fulfill({ json: { responses, trialCount: 3 } });
+    const detail = details[Number(path[1])];
+    if (path[2] === 'rating') {
+      const payload = route.request().postDataJSON();
+      const { id, scores, revision } = payload;
+      expect(id).toBe(detail.id);
+      expect(payload).not.toHaveProperty('raterCode');
+      if (detail.questionIndex === 1 && rejectNextSave) {
+        rejectNextSave = false;
+        return route.fulfill({ status: 500, json: { message: 'Could not save this rating. Try again.' } });
+      }
+      if (route.request().method() === 'PATCH') {
+        expect(revision).toBe(detail.ratingRevision);
+        detail.ratingRevision += 1;
+      }
+      detail.rated = responses[detail.questionIndex].rated = true;
+      detail.rating = scores;
+    }
+    return route.fulfill({ json: { response: { ...detail, trials: detail.rating ? detail.trials : [] } } });
+  });
+
+  await page.goto(`${baseURL}/admin`);
+  await page.getByRole('link', { name: 'H₀₄ · HR ratings' }).click();
+  await expect(page).toHaveURL(`${baseURL}/admin?tab=hr-ratings`);
+  await page.getByRole('combobox', { name: 'Participant' }).click();
+  await page.getByRole('option', { name: 'Participant 0679' }).click();
+  const saveRating = page.getByRole('button', { name: 'Save HR rating' });
+  const saveAndNext = page.getByRole('button', { name: 'Save & next' });
+  const compareWithAi = page.getByRole('button', { name: 'Compare with AI' });
+  const comparison = page.getByRole('table', { name: 'HR and AI average scores out of five' });
+  const score = (criterion, value) => page.getByRole('radiogroup', { name: criterion }).getByRole('radio', { name: new RegExp(`^${value} ·`) });
+  await saveRating.waitFor();
+  await page.screenshot({ path: testInfo.outputPath('hr-ratings-desktop.png'), animations: 'disabled' });
+  await expect(saveRating).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole('button', { name: 'Export scores CSV' })).toHaveCount(0);
+  await expect(page.getByRole('table')).toHaveCount(0);
+  await expect(compareWithAi).toHaveCount(0);
+  expect(await page.locator('blockquote').evaluate((transcript) => transcript.scrollHeight > transcript.clientHeight)).toBe(true);
+
+  const rubric = page.getByText('3C scoring rubric', { exact: true });
+  await rubric.press('Enter');
+  await expect(page.getByRole('heading', { name: 'What to score' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Score levels' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Scoring notes' })).toHaveCount(0);
+  await expect(page.locator('.scoring-question')).toHaveCSS('animation-name', 'scoring-question-in');
+  expect(await page.locator('.scoring-rubric').evaluate((rubric) => getComputedStyle(rubric, '::details-content').transitionDuration)).toContain('0.24s');
+  await expect(saveRating).toBeInViewport({ ratio: 1 });
+  await page.setViewportSize({ width: 1536, height: 730 });
+  await page.screenshot({ path: testInfo.outputPath('hr-ratings-rubric.png'), animations: 'disabled', fullPage: true });
+  await page.getByText('Fully meets', { exact: true }).scrollIntoViewIfNeeded();
+  await expect(saveRating).toBeInViewport({ ratio: 1 });
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await rubric.click();
+  await expect(page.getByRole('heading', { name: 'Score levels' })).toBeHidden();
+  await expect(page.getByRole('textbox', { name: 'Rater code' })).toHaveCount(0);
+  await score('Clarity', 3).check();
+  await score('Clarity', 3).press('ArrowRight');
+  await expect(score('Clarity', 4)).toBeChecked();
+  await score('Correctness', 3).check();
+  await saveRating.click();
+  await expect(score('Completeness', 1)).toBeFocused();
+  await score('Completeness', 5).check();
+  await saveRating.click();
+  const savedHeading = page.getByRole('heading', { name: 'Saved HR rating' });
+  await expect(savedHeading).toBeFocused();
+  expect(details[0].rating).toEqual({ clarity_score: 4, correctness_score: 3, completeness_score: 5 });
+  await page.keyboard.press('Tab');
+  await expect(compareWithAi).toBeFocused();
+  await expect(compareWithAi).toHaveAttribute('aria-expanded', 'false');
+  await expect(comparison).toBeHidden();
+  await compareWithAi.press('Enter');
+  await expect(compareWithAi).toHaveAttribute('aria-expanded', 'true');
+  await expect(comparison.getByRole('row', { name: 'Clarity 4 2.3' })).toBeVisible();
+  await expect(page.getByRole('table')).toHaveCount(1);
+  await expect(page.getByText('Average of 3 saved AI trials.')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('hr-compare-desktop.png'), animations: 'disabled', fullPage: true });
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await expect(comparison).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: testInfo.outputPath('hr-compare-tablet.png'), animations: 'disabled', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await comparison.scrollIntoViewIfNeeded();
+  await expect(comparison).toBeInViewport({ ratio: 1 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+  await page.screenshot({ path: testInfo.outputPath('hr-compare-mobile.png'), animations: 'disabled', fullPage: true });
+  await compareWithAi.click();
+  await expect(comparison).toBeHidden();
+  await page.getByRole('button', { name: 'Correct HR rating' }).click();
+  await expect(compareWithAi).toHaveCount(0);
+  await expect(score('Clarity', 4)).toBeChecked();
+  await expect(score('Clarity', 4)).toBeFocused();
+  await score('Clarity', 5).check();
+  await page.getByRole('button', { name: 'Save correction' }).click();
+  await expect(page.getByText(/Prior ratings are kept/)).toBeVisible();
+  await expect(savedHeading).toBeFocused();
+  await expect(compareWithAi).toHaveAttribute('aria-expanded', 'true');
+  await expect(comparison.getByRole('row', { name: 'Clarity 5 2.3' })).toBeVisible();
+  await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+  await page.screenshot({ path: testInfo.outputPath('hr-compare-after-correction.png'), fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  await page.getByRole('button', { name: 'Next question' }).click();
+  await expect(page.getByRole('heading', { name: 'Question 2' })).toBeFocused();
+  await expect(page.getByRole('combobox', { name: 'Saved response' })).toHaveText('Question 2 · To rate');
+  await expect(page.getByRole('radio', { checked: true })).toHaveCount(0);
+  await expect(compareWithAi).toHaveCount(0);
+  await expect(saveAndNext).toBeInViewport({ ratio: 1 });
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('hr-ratings-mobile.png'), animations: 'disabled', fullPage: true });
+  await expect(score('Clarity', 1)).toBeInViewport({ ratio: 1 });
+
+  await score('Clarity', 4).check();
+  await score('Correctness', 4).check();
+  await score('Completeness', 5).check();
+  await saveAndNext.click();
+  await expect(page.getByRole('alert')).toHaveText('Could not save this rating. Try again.');
+  await expect(page.getByRole('heading', { name: 'Question 2' })).toBeVisible();
+  await expect(page.getByRole('radio', { checked: true })).toHaveCount(3);
+  await saveAndNext.click();
+  await expect(page.getByRole('heading', { name: 'Question 3' })).toBeFocused();
+  expect(details[1].rating).toEqual({ clarity_score: 4, correctness_score: 4, completeness_score: 5 });
+  await expect(page.getByRole('radio', { checked: true })).toHaveCount(0);
+  await expect(saveRating).toBeVisible();
+  await expect(saveAndNext).toHaveCount(0);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('.scoring-question')).toHaveCSS('animation-name', 'none');
+  await rubric.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Score levels' })).toBeVisible();
+  expect(await page.locator('.scoring-rubric').evaluate((rubric) => getComputedStyle(rubric, '::details-content').transitionDuration)).toBe('0s');
+  await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+  await expect(score('Clarity', 1)).toBeInViewport({ ratio: 1 });
+  const ratingBottom = await page.locator('.scoring-rating').evaluate((rating) => rating.getBoundingClientRect().bottom);
+  const rubricTop = await rubric.evaluate((summary) => summary.getBoundingClientRect().top);
+  expect(rubricTop).toBeGreaterThan(ratingBottom);
+  await page.screenshot({ path: testInfo.outputPath('hr-ratings-mobile-rubric.png'), fullPage: true });
+  await page.setViewportSize({ width: 320, height: 740 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await rubric.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Score levels' })).toBeHidden();
+
+  await page.getByRole('link', { name: 'Scoring Study', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Participant' }).click();
+  await page.getByRole('option', { name: 'Participant 0679' }).click();
+  await expect(page.getByRole('table', { name: 'AI trials and HR scores out of five' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Export scores CSV' })).toBeEnabled();
+});
+
+test('H₀₄ marks a participant completed only after all five responses are rated', async ({ page }, testInfo) => {
+  const scores = { clarity_score: 4, correctness_score: 4, completeness_score: 4 };
+  const responses = [5, 4].flatMap((count, index) => Array.from({ length: count }, (_, questionIndex) => ({
+    id: `${index}-${questionIndex}`, assessmentId: `assessment-${index}`, participantKey: `participant-${index}`,
+    participantId: index === 0 ? '0679' : '0680', questionIndex, trialsSaved: 0, rated: questionIndex < 4,
+  })));
+  await mockApi(page);
+  await page.route('**/api/admin/scoring-study**', async (route) => {
+    const [, , , , assessmentId, questionIndex] = new URL(route.request().url()).pathname.split('/');
+    if (!assessmentId) return route.fulfill({ json: { responses, trialCount: 3 } });
+    const item = responses.find((item) => item.assessmentId === assessmentId && item.questionIndex === Number(questionIndex));
+    if (route.request().method() === 'POST') {
+      expect(route.request().postDataJSON()).toEqual({ id: item.id, scores });
+      item.rated = true;
+    }
+    return route.fulfill({ json: { response: {
+      ...item, question: 'What is a unit test?', transcript: 'It checks one small unit of code.',
+      trials: [], rating: item.rated ? scores : null, ratingRevision: 0,
+    } } });
+  });
+
+  await page.goto(`${baseURL}/admin?tab=hr-ratings`);
+  const participants = page.getByRole('combobox', { name: 'Participant' });
+  await participants.click();
+  await expect(page.getByRole('option', { name: /Completed/ })).toHaveCount(0);
+  await page.getByRole('option', { name: 'Participant 0679', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Saved response' }).click();
+  await page.getByRole('option', { name: 'Question 5 · To rate' }).click();
+  for (const criterion of ['Clarity', 'Correctness', 'Completeness']) {
+    await page.getByRole('radiogroup', { name: criterion }).getByRole('radio', { name: /^4 ·/ }).check();
+  }
+  await page.getByRole('button', { name: 'Save HR rating' }).click();
+  await expect(page.getByRole('heading', { name: 'Saved HR rating' })).toBeVisible();
+  await expect(page.getByText('No AI scores are saved for this response yet.')).toBeVisible();
+  await expect(page.getByText('Compare with AI', { exact: true })).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await participants.click();
+  await expect(page.getByRole('option', { name: 'Participant 0679 Completed' })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Participant 0680', exact: true })).toBeVisible();
+  await expect(page.getByRole('listbox', { name: 'Participant' })).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: testInfo.outputPath('hr-ratings-completed-dropdown.png'), animations: 'disabled' });
+});
+
 for (const viewport of [
   { name: 'desktop', width: 1586, height: 992 },
   { name: 'tablet', width: 800, height: 1024 },

@@ -7,13 +7,14 @@ import HrTester from '../components/hrTester';
 import ResultsHeader from '../components/ResultsHeader';
 import adminRequest from '../utils/adminRequest';
 import AdminResearchData from './AdminResearchData';
-import AdminScoringStudy from './AdminScoringStudy';
+import AdminScoringStudy, { AdminHrRatings } from './AdminScoringStudy';
 import './Admin.css';
 
 const adminPages = [
   { id: '', title: 'Students', description: 'Find student accounts and manage their official names.', Content: AdminStudents },
   { id: 'research-data', title: 'Research Data', Content: AdminResearchData },
-  { id: 'scoring-study', title: 'Scoring Study', description: 'Compare repeated AI scores and independent HR ratings on completed pre-test responses.', Content: AdminScoringStudy },
+  { id: 'scoring-study', title: 'Scoring Study', description: 'Run H₀₃ AI trials and compare saved scores for the research study.', Content: AdminScoringStudy },
+  { id: 'hr-ratings', title: 'H₀₄ · HR ratings', Content: AdminHrRatings },
   { id: 'hr-tester', title: 'HR Tester', description: 'Generate and copy interview questions for HR review.', Content: HrTester },
 ];
 
@@ -49,7 +50,7 @@ export default function Admin() {
           Sign out
         </button>
       </ResultsHeader>
-      <main className="rs-main admin-main">
+      <main className={`rs-main admin-main${id === 'hr-ratings' ? ' admin-main--ratings' : ''}`}>
         <nav className="admin-nav" aria-label="Admin pages">
           {adminPages.map((page) => (
             <Link key={page.id} to={page.id ? `/admin?tab=${page.id}` : '/admin'}
@@ -65,7 +66,7 @@ export default function Admin() {
               <span><strong>H₀₁</strong> Pre/post interview</span>
               <span><strong>H₀₂</strong> Confidence survey</span>
             </p>
-          ) : <p className="rs-page-subtitle">{description}</p>}
+          ) : description && <p className="rs-page-subtitle">{description}</p>}
         </div>
         <Content user={user} />
       </main>

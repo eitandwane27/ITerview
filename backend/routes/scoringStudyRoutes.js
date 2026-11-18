@@ -181,13 +181,12 @@ router.post(`${responsePath}/trial`, async (req, res) => {
 
 async function saveRating(req, res) {
   const source = res.locals.studySource;
-  const { id, raterCode, scores, revision } = req.body ?? {};
+  const { id, scores, revision } = req.body ?? {};
   if (id !== source.id) return res.status(409).json({ message: 'The response changed. Open it again.' });
-  if (typeof raterCode !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/.test(raterCode) ||
-      !dimensions.every((key) => Number.isInteger(scores?.[key]) && scores[key] >= 1 && scores[key] <= 5)) {
-    return res.status(400).json({ message: 'Enter a rater code and a whole-number score from 1 to 5 for each criterion.' });
+  if (!dimensions.every((key) => Number.isInteger(scores?.[key]) && scores[key] >= 1 && scores[key] <= 5)) {
+    return res.status(400).json({ message: 'Enter a whole-number score from 1 to 5 for each criterion.' });
   }
-  const rating = { ...Object.fromEntries(dimensions.map((key) => [key, scores[key]])), raterCode, ratedAt: new Date() };
+  const rating = { ...Object.fromEntries(dimensions.map((key) => [key, scores[key]])), ratedAt: new Date() };
   const filter = { _id: source.id, rating: null };
   const update = { $set: { rating } };
   const correcting = req.method === 'PATCH';
@@ -203,9 +202,10 @@ async function saveRating(req, res) {
     if (!current?.rating || (current.ratingHistory?.length ?? 0) !== revision) {
       return res.status(409).json({ message: conflictMessage });
     }
-    if (current.rating.raterCode === raterCode && dimensions.every((key) => current.rating[key] === rating[key])) {
+    if (dimensions.every((key) => current.rating[key] === rating[key])) {
       return res.json({ response: responseDetail(source, current) });
     }
+    if (current.rating.raterCode !== undefined) rating.raterCode = current.rating.raterCode;
     filter.rating = { $ne: null };
     filter[`ratingHistory.${revision}`] = { $exists: false };
     update.$push = { ratingHistory: {

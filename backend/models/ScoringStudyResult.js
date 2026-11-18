@@ -14,7 +14,7 @@ const trialSchema = new Schema({
 
 const ratingSchema = new Schema({
   ...scores,
-  raterCode: { type: String, required: true },
+  raterCode: String, // Retain codes already recorded in the study.
   ratedAt: { type: Date, required: true },
 }, { _id: false });
 

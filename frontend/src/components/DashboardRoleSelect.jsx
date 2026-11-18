@@ -134,7 +134,7 @@ export default function DashboardRoleSelect({
         }}
         onClick={() => choose(option.value)}
       >
-        <span>{option.label}</span>
+        <span>{option.label}{option.status}</span>
         {value === option.value && <Check size={16} aria-hidden="true" />}
       </div>
     ));

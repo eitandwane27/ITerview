@@ -137,16 +137,17 @@ test('the scoring study resumes failed trials and records corrections to saved H
     assert.deepEqual([question, answer, difficulty], [fixture.answers[0].question, fixture.answers[0].transcript, 'easy']);
   }
 
-  assert.equal((await request(path + '/rating', { id, raterCode: 'HR01', scores: { ...scores, correctness_score: '4' } })).status, 400);
-  const rated = await (await request(path + '/rating', { id, raterCode: 'HR01', scores })).json();
-  assert.equal(rated.response.rating.raterCode, 'HR01');
+  assert.equal((await request(path + '/rating', { id, scores: { ...scores, correctness_score: '4' } })).status, 400);
+  const rated = await (await request(path + '/rating', { id, scores })).json();
+  assert.equal(rated.response.rating.raterCode, undefined);
+  await new ScoringStudyResult(rows.get(id)).validate();
   assert.equal(rated.response.trials.length, 3);
   assert.equal(rated.response.ratingRevision, 0);
-  assert.equal((await request(path + '/rating', { id, raterCode: 'HR02', scores })).status, 409);
+  assert.equal((await request(path + '/rating', { id, scores })).status, 409);
 
   const callsBeforeCorrection = calls.length;
   const correctedScores = { ...scores, clarity_score: 3 };
-  const correction = { id, raterCode: 'HR01', revision: 0, scores: correctedScores };
+  const correction = { id, revision: 0, scores: correctedScores };
   const correct = (body, token) => request(path + '/rating', body, token, 'PATCH');
   assert.equal((await correct(correction, 'student')).status, 403);
   assert.equal((await correct({ ...correction, revision: '0' })).status, 400);
@@ -155,6 +156,7 @@ test('the scoring study resumes failed trials and records corrections to saved H
   assert.equal(corrected.response.rating.clarity_score, 3);
   assert.equal(corrected.response.rating.correctness_score, scores.correctness_score);
   assert.equal(corrected.response.rating.completeness_score, scores.completeness_score);
+  assert.equal(corrected.response.rating.raterCode, undefined);
   assert.deepEqual(corrected.response.trials, rated.response.trials);
   assert.equal(corrected.response.ratingRevision, 1);
   assert.equal(corrected.response.ratingHistory, undefined);
@@ -171,15 +173,19 @@ test('the scoring study resumes failed trials and records corrections to saved H
   assert.match(csv, /"ai_3_clarity_score"/);
   assert.match(csv, /"hr_completeness_score"/);
   assert.ok(csv.includes(`"${participantKey}","0042","${id}"`));
-  assert.ok(csv.includes('"HR01","3","4","4"'));
+  assert.match(csv, /"hr_rater_code"/);
+  assert.ok(csv.includes('"","3","4","4"'));
   for (const value of [fixture.answers[0].question, fixture.answers[0].transcript, student.email, student.firebaseUid]) {
     assert.ok(!csv.includes(value));
   }
 
+  rows.get(id).rating.raterCode = 'HR01';
   const concurrent = await Promise.all([
     correct({ ...correction, revision: 1, scores: { ...scores, clarity_score: 2 } }),
     correct({ ...correction, revision: 1, scores: { ...scores, clarity_score: 4 } }),
   ]);
   assert.deepEqual(concurrent.map((response) => response.status).sort(), [200, 409]);
   assert.equal(rows.get(id).ratingHistory.length, 2);
+  assert.equal(rows.get(id).rating.raterCode, 'HR01');
+  assert.match((await (await request('/export')).json()).csv, /"HR01","[24]","4","4"/);
 });
