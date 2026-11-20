@@ -249,12 +249,18 @@ test('admin searches, adds, edits and clears a separate official name', async ({
   await open(page, 'login', {
     adminAllowed: true,
     students: [
-      { firebaseUid: 'mika', displayName: 'Mika S.', email: 'mika.santos@spcba.edu.ph' },
-      { firebaseUid: 'paolo', displayName: 'Paolo R.', email: 'paolo.reyes@spcba.edu.ph', officialName: 'Paolo Reyes' },
+      { firebaseUid: 'mika', displayName: 'Mika S.', email: 'mika.santos@spcba.edu.ph', unlockedDifficulty: 'hard' },
+      { firebaseUid: 'paolo', displayName: 'Paolo R.', email: 'paolo.reyes@spcba.edu.ph', officialName: 'Paolo Reyes', unlockedDifficulty: 'medium' },
+      { firebaseUid: 'legacy', displayName: 'Legacy student', email: 'legacy@spcba.edu.ph' },
     ],
   });
   await fill(page, 'login', { email: 'admin' });
   await submit(page, 'login');
+  await expect(page.getByRole('columnheader', { name: 'Highest unlocked tier' })).toBeVisible();
+  for (const [email, tier] of [['mika.santos', 'Hard'], ['paolo.reyes', 'Medium'], ['legacy@', 'Easy']]) {
+    const row = page.getByRole('row').filter({ hasText: email });
+    await expect(row.getByRole('cell', { name: tier, exact: true })).toBeVisible();
+  }
   const search = page.getByRole('searchbox');
   await search.fill('mika.santos');
   await expect(page.getByRole('cell', { name: 'Paolo R.', exact: true })).toHaveCount(0);
@@ -264,6 +270,7 @@ test('admin searches, adds, edits and clears a separate official name', async ({
   await dialog.getByRole('button', { name: 'Save name' }).click();
   await expect(page.getByText('Mika Santos', { exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Mika S.', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Hard', exact: true })).toBeVisible();
   await page.reload();
   await page.getByRole('searchbox').fill('mika.santos');
   await page.getByRole('button', { name: 'Edit name' }).click();

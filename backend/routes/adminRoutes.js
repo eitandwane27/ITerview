@@ -6,7 +6,7 @@ const PostTestSession = require('../models/PostTestSession');
 const { readConfidenceRating } = require('../utils/confidenceSurvey');
 
 const router = express.Router();
-const studentFields = 'firebaseUid displayName email officialName -_id';
+const studentFields = 'firebaseUid displayName email officialName unlockedDifficulty -_id';
 const dimensions = ['clarity_score', 'correctness_score', 'completeness_score'];
 
 function savedScore(value, min, max) {

@@ -137,6 +137,37 @@ html:has(.admin-page :is(.hr-tester, .scoring-study)) {
   border-top: 1px solid var(--rs-border);
 }
 
+@media (min-width: 641px) {
+  .admin-students-table :is(th, td):first-child {
+    width: 22%;
+  }
+
+  .admin-students-table :is(th, td):nth-child(2) {
+    width: 15%;
+    padding-right: 8px;
+  }
+
+  .admin-students-table :is(th, td):nth-child(4) {
+    width: 17%;
+  }
+
+  .admin-students-table :is(th, td):last-child {
+    width: 7rem;
+    padding-left: 8px;
+    white-space: nowrap;
+  }
+}
+
+.ui-badge.admin-tier {
+  border-radius: var(--rs-r-pill);
+  font-size: .75rem;
+}
+
+.admin-tier[data-tier='Hard'] {
+  background: var(--rs-indigo-light);
+  color: #3730a3;
+}
+
 .admin-official {
   font-weight: 700;
 }

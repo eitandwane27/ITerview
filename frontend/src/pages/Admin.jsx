@@ -5,18 +5,21 @@ import { useSchoolAuth } from '../auth/schoolAuth';
 import DashboardSignOutDialog from '../components/DashboardSignOutDialog';
 import HrTester from '../components/hrTester';
 import ResultsHeader from '../components/ResultsHeader';
+import { Badge } from '../components/ui/badge';
 import adminRequest from '../utils/adminRequest';
 import AdminResearchData from './AdminResearchData';
 import AdminScoringStudy, { AdminHrRatings } from './AdminScoringStudy';
 import './Admin.css';
 
 const adminPages = [
-  { id: '', title: 'Students', description: 'Find student accounts and manage their official names.', Content: AdminStudents },
+  { id: '', title: 'Students', description: 'Find student accounts, view unlocked tiers, and manage official names.', Content: AdminStudents },
   { id: 'research-data', title: 'Research Data', Content: AdminResearchData },
   { id: 'scoring-study', title: 'Scoring Study', description: 'Run H₀₃ AI trials and compare saved scores for the research study.', Content: AdminScoringStudy },
   { id: 'hr-ratings', title: 'H₀₄ · HR ratings', Content: AdminHrRatings },
   { id: 'hr-tester', title: 'HR Tester', description: 'Generate and copy interview questions for HR review.', Content: HrTester },
 ];
+
+const unlockedTierLabels = new Map([['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']]);
 
 export default function Admin() {
   const { user, logout } = useSchoolAuth();
@@ -174,28 +177,38 @@ function AdminStudents({ user }) {
               }}>Try again</button>
             </div>
           ) : (
-            <table className="admin-table" role="table">
+            <table className="admin-table admin-students-table" role="table">
               <thead><tr>
                 <th scope="col">Official name</th>
                 <th scope="col">Display name</th>
                 <th scope="col">School email</th>
+                <th scope="col">Highest unlocked tier</th>
                 <th scope="col">Action</th>
               </tr></thead>
               <tbody>
-                {students.map((student) => (
-                  <tr key={student.firebaseUid} role="row">
-                    <td role="cell"><span className="admin-mobile-label" aria-hidden="true">Official name</span>
-                      <span className={student.officialName ? 'admin-official' : 'admin-muted'}>{student.officialName || 'Name not set'}</span>
-                    </td>
-                    <td role="cell"><span className="admin-mobile-label" aria-hidden="true">Display name</span>{student.displayName || '—'}</td>
-                    <td role="cell"><span className="admin-mobile-label" aria-hidden="true">School email</span>{student.email}</td>
-                    <td role="cell"><button type="button" className="admin-action" onClick={(event) => openEditor(student, event)}>
-                      {student.officialName ? 'Edit name' : 'Add name'}
-                    </button></td>
-                  </tr>
-                ))}
+                {students.map((student) => {
+                  const tier = unlockedTierLabels.get(student.unlockedDifficulty) ?? 'Easy';
+                  return (
+                    <tr key={student.firebaseUid} role="row">
+                      <td role="cell"><span className="admin-mobile-label" aria-hidden="true">Official name</span>
+                        <span className={student.officialName ? 'admin-official' : 'admin-muted'}>{student.officialName || 'Name not set'}</span>
+                      </td>
+                      <td role="cell"><span className="admin-mobile-label" aria-hidden="true">Display name</span>{student.displayName || '—'}</td>
+                      <td role="cell"><span className="admin-mobile-label" aria-hidden="true">School email</span>{student.email}</td>
+                      <td role="cell">
+                        <span className="admin-mobile-label" aria-hidden="true">Highest unlocked tier</span>
+                        <Badge className="admin-tier" data-tier={tier} variant={tier === 'Easy' ? 'secondary' : 'default'}>
+                          {tier}
+                        </Badge>
+                      </td>
+                      <td role="cell"><button type="button" className="admin-action" onClick={(event) => openEditor(student, event)}>
+                        {student.officialName ? 'Edit name' : 'Add name'}
+                      </button></td>
+                    </tr>
+                  );
+                })}
                 {!students.length && (
-                  <tr className="admin-table-message"><td colSpan="4">
+                  <tr className="admin-table-message"><td colSpan="5">
                     <span role="status">
                       {!roster.students ? 'Loading students…' : query ? 'No students match your search.' : 'No student accounts yet.'}
                     </span>

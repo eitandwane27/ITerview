@@ -109,8 +109,10 @@ test('only the admin can list or change a separate official name', async t => {
   const { requireAdmin, requireSchoolUser } = createSchoolAuth(async token =>
     token === 'admin' ? admin : verifiedUser
   );
-  const student = { firebaseUid: verifiedUser.uid, displayName: 'Mika S.', email: verifiedUser.email };
-  const fields = 'firebaseUid displayName email officialName -_id';
+  const student = {
+    firebaseUid: verifiedUser.uid, displayName: 'Mika S.', email: verifiedUser.email, unlockedDifficulty: 'hard',
+  };
+  const fields = 'firebaseUid displayName email officialName unlockedDifficulty -_id';
   const updates = [];
   t.mock.method(User, 'find', () => ({
     select(projection) {
