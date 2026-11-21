@@ -7,6 +7,7 @@ let baseURL;
 
 test.beforeAll(async () => {
   server = await createServer({
+    mode: 'test',
     configFile: fileURLToPath(new URL('../vite.config.js', import.meta.url)),
     root: fileURLToPath(new URL('..', import.meta.url)),
     server: { host: '127.0.0.1', port: 0 },

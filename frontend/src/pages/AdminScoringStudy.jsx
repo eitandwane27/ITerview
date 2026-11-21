@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, BookOpen, ChevronDown, CircleCheck, FileText, UserRound } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ArrowRight, BookOpen, ChevronDown, CircleCheck, FileText, RefreshCw, UserRound } from 'lucide-react';
 import DashboardRoleSelect from '../components/DashboardRoleSelect';
 import adminRequest from '../utils/adminRequest';
 
@@ -64,8 +64,67 @@ function RatingRubric() {
   );
 }
 
-function RatingForm({ busy, rating, saving, error, hasNextQuestion, onCancel, onSave }) {
+function RatingTranscript({ transcript }) {
+  const transcriptRef = useRef(null);
+  const [expanded, setExpanded] = useState(false);
+  const [clipped, setClipped] = useState(false);
+
+  useEffect(() => {
+    const box = transcriptRef.current;
+    const updateClipping = () => {
+      const resizing = box.getAnimations().some((animation) => animation.transitionProperty === 'max-height');
+      if (!resizing && !box.hasAttribute('data-expanded')) setClipped(box.scrollHeight > box.clientHeight + 1);
+    };
+    const observer = new ResizeObserver(updateClipping);
+    observer.observe(box);
+    observer.observe(box.firstElementChild);
+    box.addEventListener('transitionend', updateClipping);
+    return () => {
+      observer.disconnect();
+      box.removeEventListener('transitionend', updateClipping);
+    };
+  }, []);
+
+  return (
+    <>
+      <div className="scoring-transcript-heading">
+        <h3 id="hr-rating-transcript">Student transcript</h3>
+        {(clipped || expanded) && <button type="button" className="admin-action scoring-transcript-toggle"
+          aria-controls="hr-rating-transcript-text" aria-expanded={expanded} onClick={() => setExpanded((open) => !open)}>
+          {expanded ? 'Collapse transcript' : 'Expand transcript'}
+          <ChevronDown size={15} aria-hidden="true" />
+        </button>}
+      </div>
+      <blockquote ref={transcriptRef} id="hr-rating-transcript-text" tabIndex={0} aria-labelledby="hr-rating-transcript"
+        data-expanded={expanded || undefined}>
+        <div>{transcript}</div>
+      </blockquote>
+    </>
+  );
+}
+
+function RatingForm({ busy, rating, draft, focusAfterReopen, saving, error, hasNextQuestion, onCancel, onSave, onReset }) {
   const canAdvance = !rating && hasNextQuestion;
+  const [scores, setScores] = useState(rating ?? draft ?? {});
+  const firstOption = useRef(null);
+  const focusAfterReset = useRef(focusAfterReopen);
+  const hasSavedScores = Boolean(rating || criteria.some(({ key }) => draft?.[key]));
+
+  useEffect(() => {
+    if (!busy && focusAfterReset.current) {
+      firstOption.current?.focus();
+      focusAfterReset.current = false;
+    }
+  }, [busy, scores]);
+
+  function resetRating() {
+    if (hasSavedScores) {
+      onReset();
+      return;
+    }
+    focusAfterReset.current = true;
+    setScores({});
+  }
 
   function submit(event) {
     event.preventDefault();
@@ -78,16 +137,23 @@ function RatingForm({ busy, rating, saving, error, hasNextQuestion, onCancel, on
   return (
     <form onSubmit={submit}>
       <fieldset disabled={busy} className="scoring-fields">
-        <legend>{rating ? 'Correct HR rating' : 'HR rating'}</legend>
-        <p className="admin-muted">1 · No usable evidence <span aria-hidden="true">/</span> 5 · Fully meets</p>
+        <legend>{rating ? 'Correct HR rating' : draft ? 'Reopened HR rating' : 'HR rating'}</legend>
+        {draft && <p className="admin-muted" role="status">Fill in any missing scores and save to mark this response as rated again.</p>}
+        <p className="admin-muted">Score each criterion from 1 (no usable evidence) to 5 (fully meets).</p>
         <div className="scoring-criteria">
-          {criteria.map(({ key, label }) => (
-            <div className="scoring-criterion" role="radiogroup" aria-labelledby={`scoring-${key}-label`} key={key}>
-              <span id={`scoring-${key}-label`}>{label}</span>
+          {criteria.map(({ key, label, description }) => (
+            <div className="scoring-criterion" role="radiogroup" aria-labelledby={`scoring-${key}-label`}
+              aria-describedby={`scoring-${key}-description`} key={key}>
+              <div className="scoring-criterion-label">
+                <span id={`scoring-${key}-label`}>{label}</span>
+                <p id={`scoring-${key}-description`} className="admin-muted">{description}</p>
+              </div>
               <div className="scoring-options">
                 {scoreAnchors.map(({ score, label: anchor }) => (
                   <label key={score} title={anchor}>
-                    <input type="radio" name={key} value={score} required defaultChecked={rating?.[key] === score}
+                    <input type="radio" name={key} value={score} required checked={scores[key] === score}
+                      onChange={() => setScores((current) => ({ ...current, [key]: score }))}
+                      ref={key === criteria[0].key && score === 1 ? firstOption : undefined}
                       autoFocus={key === criteria[0].key && rating?.[key] === score}
                       aria-label={`${score} · ${anchor}`} />
                     <span aria-hidden="true">{score}</span>
@@ -108,6 +174,8 @@ function RatingForm({ busy, rating, saving, error, hasNextQuestion, onCancel, on
             {saving && !canAdvance ? 'Saving…' : rating ? 'Save correction' : 'Save HR rating'}
           </button>
           {rating && <button type="button" className="rs-btn-secondary research-export" onClick={onCancel}>Cancel</button>}
+          <button type="button" className="admin-action scoring-reset-link" aria-haspopup={hasSavedScores ? 'dialog' : undefined}
+            disabled={!hasSavedScores && !criteria.some(({ key }) => scores[key])} onClick={resetRating}>Reset rating</button>
         </div>
       </fieldset>
     </form>
@@ -124,7 +192,7 @@ function ScoreTable({ id, trials, rating, trialCount = 0, showAverage = false })
           <th scope="col">Criterion</th>
           {Array.from({ length: trialCount }, (_, index) => <th key={index} scope="col">Trial {index + 1}</th>)}
           {rating && <th scope="col">{trialCount || showAverage ? 'HR' : 'Score / 5'}</th>}
-          {showAverage && <th scope="col">AI average</th>}
+          {showAverage && <th scope="col" className="scoring-ai-average">AI average</th>}
         </tr>
       </thead>
       <tbody>
@@ -135,7 +203,7 @@ function ScoreTable({ id, trials, rating, trialCount = 0, showAverage = false })
               <td key={index}>{trials[index]?.[key] ?? '—'}</td>
             ))}
             {rating && <td>{rating[key]}</td>}
-            {showAverage && <td>{(trials.reduce((sum, trial) => sum + trial[key], 0) / trials.length).toFixed(1)}</td>}
+            {showAverage && <td className="scoring-ai-average">{(trials.reduce((sum, trial) => sum + trial[key], 0) / trials.length).toFixed(1)}</td>}
           </tr>
         ))}
       </tbody>
@@ -143,7 +211,7 @@ function ScoreTable({ id, trials, rating, trialCount = 0, showAverage = false })
   );
 }
 
-function SavedHrRating({ response, busy, headingRef, showAverage, onToggleComparison, onNext, onCorrect }) {
+function SavedHrRating({ response, busy, headingRef, showAverage, onToggleComparison, onNext, onCorrect, onReset }) {
   const { rating, ratingRevision, trials } = response;
 
   return (
@@ -169,6 +237,9 @@ function SavedHrRating({ response, busy, headingRef, showAverage, onToggleCompar
           </button>
         )}
         <button type="button" className="admin-action" disabled={busy} onClick={onCorrect}>Correct HR rating</button>
+        <button type="button" className="admin-action scoring-reset-link" aria-haspopup="dialog" disabled={busy} onClick={onReset}>
+          Reset rating
+        </button>
       </div>
       {trials.length === 0 && <p className="admin-muted scoring-ai-empty">No AI scores are saved for this response yet.</p>}
     </>
@@ -184,12 +255,15 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
   const [selectedId, setSelectedId] = useState('');
   const [detail, setDetail] = useState(null);
   const [ratingEdit, setRatingEdit] = useState(null);
+  const [focusAfterReopen, setFocusAfterReopen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [showHrComparison, setShowHrComparison] = useState(false);
   const [error, setError] = useState('');
   const [refresh, setRefresh] = useState(0);
   const [refreshing, setRefreshing] = useState(true);
   const [pending, setPending] = useState('');
   const action = useRef(null);
+  const resetDialog = useRef(null);
   const focusQuestionAfterLoad = useRef(false);
   const focusSavedRatingAfterSave = useRef(false);
   const responses = cohort?.responses ?? [];
@@ -205,10 +279,13 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
   }
   const questionOptions = responsesByParticipant.get(selected?.participantKey) ?? [];
   const nextQuestion = selected && questionOptions[questionOptions.indexOf(selected) + 1];
+  const progressResponses = selected ? questionOptions : responses;
+  const ratedCount = progressResponses.filter(({ rated }) => rated).length;
   const aiReady = responses.filter((item) => item.trialsSaved === cohort.trialCount).length;
   const paired = responses.filter((item) => item.rated && item.trialsSaved > 0).length;
   const busy = refreshing || Boolean(pending);
   const savingRating = pending === 'Saving correction…' || pending === 'Saving HR rating…';
+  const resettingRating = pending === 'Resetting rating…';
 
   useEffect(() => {
     const controller = new AbortController();
@@ -233,12 +310,17 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
 
   useEffect(() => () => action.current?.abort(), []);
 
+  useLayoutEffect(() => {
+    if (confirmReset) resetDialog.current?.showModal();
+  }, [confirmReset]);
+
   function choose(id, focusQuestion = false) {
     if (id === selectedId) return;
     focusQuestionAfterLoad.current = focusQuestion;
     setSelectedId(id);
     setDetail(null);
     setRatingEdit(null);
+    setFocusAfterReopen(false);
     setShowHrComparison(false);
     setError('');
   }
@@ -247,6 +329,7 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
     setError('');
     setDetail(null);
     setRatingEdit(null);
+    setFocusAfterReopen(false);
     setShowHrComparison(false);
     setRefreshing(true);
     setRefresh((value) => value + 1);
@@ -291,11 +374,12 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
   }
 
   function saveHrRating(values, advance) {
-    const data = ratingEdit ? { ...values, revision: ratingEdit.revision } : values;
+    const revision = ratingEdit?.revision ?? (response.ratingDraft ? response.ratingRevision : null);
+    const data = revision === null ? values : { ...values, revision };
     perform(ratingEdit ? 'Saving correction…' : 'Saving HR rating…', async (request, signal) => {
       focusSavedRatingAfterSave.current = !(advance && nextQuestion);
       try {
-        const saved = await saveResponse('rating', data, request, signal, ratingEdit ? 'PATCH' : 'POST');
+        const saved = await saveResponse('rating', data, request, signal, revision === null ? 'POST' : 'PATCH');
         if (signal.aborted) return;
         if (ratingEdit) {
           setShowHrComparison(saved.trials.length > 0);
@@ -306,6 +390,28 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
         throw failure;
       }
       if (advance && nextQuestion) choose(nextQuestion.id, true);
+    });
+  }
+
+  function openResetConfirmation() {
+    setError('');
+    setConfirmReset(true);
+  }
+
+  function closeResetConfirmation() {
+    resetDialog.current.close();
+    setConfirmReset(false);
+    setError('');
+  }
+
+  function resetHrRating() {
+    perform('Resetting rating…', async (request, signal) => {
+      await saveResponse('rating/reset', { revision: response.ratingRevision }, request, signal);
+      if (signal.aborted) return;
+      closeResetConfirmation();
+      setFocusAfterReopen(true);
+      setRatingEdit(null);
+      setShowHrComparison(false);
     });
   }
 
@@ -322,8 +428,10 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
   }
 
   const refreshButton = (
-    <button type="button" className="admin-action scoring-refresh" disabled={busy} onClick={refreshStudy}>
-      {refreshing ? 'Refreshing…' : hrOnly ? 'Refresh responses' : 'Refresh study'}
+    <button type="button" className="admin-action scoring-refresh" aria-label={hrOnly && !refreshing ? 'Refresh responses' : undefined}
+      data-refreshing={hrOnly && refreshing || undefined} disabled={busy} onClick={refreshStudy}>
+      {hrOnly && <RefreshCw size={15} aria-hidden="true" />}
+      {refreshing ? 'Refreshing…' : hrOnly ? 'Refresh' : 'Refresh study'}
     </button>
   );
 
@@ -345,12 +453,9 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
         </div>
       </div>}
       <div className="scoring-body">
-        {error && !ratingFormOpen && <p className="admin-error" role="alert">{error}</p>}
-        {!cohort && !error && <p role="status" className="admin-muted">Loading completed pre-test responses…</p>}
-        {cohort && !responses.length && <p className="admin-muted">Saved answers appear here after a student completes the pre-test.</p>}
-        {!!responses.length && (
+        {(responses.length > 0 || (hrOnly && (cohort || error))) && (
           <div className="scoring-toolbar">
-            <div className="scoring-selection">
+            {!!responses.length && <div className="scoring-selection">
               <div className="scoring-field">
                 <label id="scoring-participant-label" htmlFor="scoring-participant">Participant</label>
                 <DashboardRoleSelect id="scoring-participant" labelledBy="scoring-participant-label"
@@ -370,11 +475,14 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
                     }),
                   ]}
                   onChange={(value) => {
-                    if (value !== selected?.participantKey) choose(responsesByParticipant.get(value)?.[0].id ?? '');
+                    if (value === selected?.participantKey) return;
+                    const items = responsesByParticipant.get(value) ?? [];
+                    const firstUnrated = hrOnly ? items.find(({ rated }) => !rated) : undefined;
+                    choose((firstUnrated ?? items[0])?.id ?? '');
                   }} />
               </div>
               <div className="scoring-field">
-                <label id="scoring-response-label" htmlFor="scoring-response">Saved response</label>
+                <label id="scoring-response-label" htmlFor="scoring-response">{hrOnly ? 'Question' : 'Saved response'}</label>
                 <DashboardRoleSelect id="scoring-response" labelledBy="scoring-response-label"
                   icon={FileText} value={selected?.id ?? ''} disabled={!selected || busy}
                   options={selected ? questionOptions.map((item) => ({
@@ -384,9 +492,23 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
                   })) : [{ value: '', label: 'Choose a participant first', disabled: true }]}
                   onChange={choose} />
               </div>
-            </div>
+            </div>}
+            {hrOnly && <div className="scoring-queue-meta">
+              {progressResponses.length > 0 && <div className="scoring-progress">
+                <p role="status"><strong>{ratedCount} of {progressResponses.length}</strong> responses rated{selected ? '' : ' overall'}</p>
+                <div className="scoring-progress-track">
+                  <progress max={progressResponses.length} value={ratedCount} aria-label={selected ? 'Participant rating progress' : 'Overall rating progress'} />
+                  <span key={selected?.participantKey ?? 'overall'} aria-hidden="true"
+                    style={{ '--scoring-progress': ratedCount / progressResponses.length }} />
+                </div>
+              </div>}
+              {refreshButton}
+            </div>}
           </div>
         )}
+        {error && !confirmReset && !ratingFormOpen && <p className="admin-error" role="alert">{error}</p>}
+        {!cohort && !error && <p role="status" className="admin-muted">Loading completed pre-test responses…</p>}
+        {cohort && !responses.length && <p className="admin-muted">Saved answers appear here after a student completes the pre-test.</p>}
         {selected && !response && !error && <p role="status" className="admin-muted">Loading saved response…</p>}
         {hrOnly && cohort && !selected && !!responses.length && <p className="admin-muted">Choose a participant to start rating.</p>}
         <div className="scoring-response">
@@ -400,10 +522,10 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
                   }
                 }}>Question {response.questionIndex + 1}</h2>
                 <p>{response.question}</p>
-                <h3 id={hrOnly ? 'hr-rating-transcript' : undefined}>Student transcript</h3>
-                <blockquote tabIndex={hrOnly ? 0 : undefined} aria-labelledby={hrOnly ? 'hr-rating-transcript' : undefined}>
-                  {response.transcript}
-                </blockquote>
+                {hrOnly ? <RatingTranscript transcript={response.transcript} /> : <>
+                  <h3>Student transcript</h3>
+                  <blockquote>{response.transcript}</blockquote>
+                </>}
               </div>
             </div>
           )}
@@ -417,11 +539,13 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
                         focusSavedRatingAfterSave.current = false;
                         heading.focus();
                       }
-                    }} onNext={nextQuestion ? () => choose(nextQuestion.id, true) : undefined} onCorrect={() => {
+                    }} onNext={nextQuestion ? () => choose(nextQuestion.id, true) : undefined} onReset={openResetConfirmation} onCorrect={() => {
                       setError('');
+                      setFocusAfterReopen(false);
                       setRatingEdit({ rating: response.rating, revision: response.ratingRevision });
                     }} />
-                ) : <RatingForm busy={busy} rating={ratingEdit?.rating} saving={savingRating} error={error}
+                ) : <RatingForm key={response.ratingRevision} busy={busy} rating={ratingEdit?.rating} draft={response.ratingDraft}
+                  focusAfterReopen={focusAfterReopen} saving={savingRating} error={confirmReset ? '' : error} onReset={openResetConfirmation}
                   hasNextQuestion={Boolean(nextQuestion)} onCancel={() => {
                     focusSavedRatingAfterSave.current = true;
                     setRatingEdit(null);
@@ -455,8 +579,29 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
           ))}
           {hrOnly && <RatingRubric />}
         </div>
-        {hrOnly && !refreshing && refreshButton}
       </div>
+      {hrOnly && response && <dialog ref={resetDialog} className="admin-dialog scoring-reset-dialog" inert={!confirmReset}
+        aria-labelledby="scoring-reset-title" aria-describedby="scoring-reset-description" aria-busy={resettingRating || undefined}
+        onCancel={(event) => {
+          event.preventDefault();
+          if (!resettingRating) closeResetConfirmation();
+        }}>
+        <form onSubmit={(event) => {
+          event.preventDefault();
+          resetHrRating();
+        }}>
+          <h2 id="scoring-reset-title">Reset this rating?</h2>
+          <p className="scoring-reset-context">{participantLabel(response)} · Question {response.questionIndex + 1}</p>
+          <p id="scoring-reset-description">All three scores will be cleared, and the response will return to <strong>To rate</strong>. Its HR scores will be left out of exports until it’s rated again.</p>
+          {confirmReset && error && <p className="admin-error" role="alert">{error}</p>}
+          <div className="admin-dialog-actions">
+            <button type="button" className="rs-btn-secondary" disabled={resettingRating} onClick={closeResetConfirmation}>Keep rating</button>
+            <button type="submit" className="rs-btn-primary scoring-danger" aria-disabled={resettingRating || undefined}>
+              {resettingRating ? 'Resetting…' : 'Reset rating'}
+            </button>
+          </div>
+        </form>
+      </dialog>}
     </section>
   );
 }

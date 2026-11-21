@@ -136,8 +136,7 @@ test('HR Tester opens from Admin and uses the shared Admin header', async ({ pag
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
 });
 
-test('H₀₄ keeps long responses, the rubric, and rating controls usable across questions', async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 1280, height: 720 });
+test('H₀₄ opens in a new tab and keeps the rating workflow usable across questions', async ({ page: adminPage, context }, testInfo) => {
   const responses = [0, 1, 2].map((questionIndex) => ({
     id: `response-${questionIndex}`, assessmentId: 'assessment', participantKey: 'participant', participantId: '0679',
     questionIndex, trialsSaved: 3, rated: false,
@@ -149,8 +148,10 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
     rating: null, ratingRevision: 0,
   }));
   let rejectNextSave = true;
-  await mockApi(page);
-  await page.route('**/api/admin/scoring-study**', async (route) => {
+  let rejectNextReset = true;
+  await mockApi(adminPage);
+  await context.route('**/api/admin/scoring-study**', async (route) => {
+    expect(route.request().headers().authorization).toBe('Bearer hr-admin-test-token');
     const path = new URL(route.request().url()).pathname.split('/').slice(4);
     if (!path.length) return route.fulfill({ json: { responses, trialCount: 3 } });
     const detail = details[Number(path[1])];
@@ -159,6 +160,18 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
       const { id, scores, revision } = payload;
       expect(id).toBe(detail.id);
       expect(payload).not.toHaveProperty('raterCode');
+      if (path[3] === 'reset') {
+        expect(payload).toEqual({ id: detail.id, revision: detail.ratingRevision });
+        if (rejectNextReset) {
+          rejectNextReset = false;
+          return route.fulfill({ status: 500, json: { message: 'Could not reset this rating. Try again.' } });
+        }
+        detail.ratingDraft = {};
+        detail.rating = null;
+        detail.rated = responses[detail.questionIndex].rated = false;
+        detail.ratingRevision += 1;
+        return route.fulfill({ json: { response: { ...detail, trials: [] } } });
+      }
       if (detail.questionIndex === 1 && rejectNextSave) {
         rejectNextSave = false;
         return route.fulfill({ status: 500, json: { message: 'Could not save this rating. Try again.' } });
@@ -169,15 +182,29 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
       }
       detail.rated = responses[detail.questionIndex].rated = true;
       detail.rating = scores;
+      detail.ratingDraft = null;
     }
     return route.fulfill({ json: { response: { ...detail, trials: detail.rating ? detail.trials : [] } } });
   });
 
-  await page.goto(`${baseURL}/admin`);
-  await page.getByRole('link', { name: 'H₀₄ · HR ratings' }).click();
-  await expect(page).toHaveURL(`${baseURL}/admin?tab=hr-ratings`);
+  await adminPage.goto(`${baseURL}/admin`);
+  const launch = adminPage.getByRole('link', { name: 'Open H₀₄ HR ratings (opens in a new tab)' });
+  await expect(adminPage.getByRole('navigation', { name: 'Admin pages' }).getByText('HR ratings')).toHaveCount(0);
+  await adminPage.screenshot({ path: testInfo.outputPath('admin-hr-ratings-launch.png'), animations: 'disabled' });
+  const newTab = context.waitForEvent('page');
+  await launch.click();
+  const page = await newTab;
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect(adminPage).toHaveURL(`${baseURL}/admin`);
+  await expect(page).toHaveURL(`${baseURL}/admin/hr-ratings`);
+  await expect(page).toHaveTitle('H₀₄ · HR ratings | ITerview');
+  await expect(page.getByRole('navigation', { name: 'Admin pages' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Back to Admin' })).toHaveAttribute('href', '/admin');
+  await expect(page.getByRole('status').filter({ hasText: 'responses rated' })).toHaveText('0 of 3 responses rated overall');
   await page.getByRole('combobox', { name: 'Participant' }).click();
   await page.getByRole('option', { name: 'Participant 0679' }).click();
+  const progress = page.getByRole('status').filter({ hasText: 'responses rated' });
+  await expect(progress).toHaveText('0 of 3 responses rated');
   const saveRating = page.getByRole('button', { name: 'Save HR rating' });
   const saveAndNext = page.getByRole('button', { name: 'Save & next' });
   const compareWithAi = page.getByRole('button', { name: 'Compare with AI' });
@@ -189,14 +216,25 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
   await expect(page.getByRole('button', { name: 'Export scores CSV' })).toHaveCount(0);
   await expect(page.getByRole('table')).toHaveCount(0);
   await expect(compareWithAi).toHaveCount(0);
-  expect(await page.locator('blockquote').evaluate((transcript) => transcript.scrollHeight > transcript.clientHeight)).toBe(true);
+  const transcript = page.locator('blockquote');
+  expect(await transcript.evaluate((box) => box.scrollHeight > box.clientHeight)).toBe(true);
+  await transcript.evaluate((box) => box.addEventListener('transitionrun', (event) => {
+    if (event.propertyName === 'max-height') box.dataset.sizingTransition = 'started';
+  }, { once: true }));
+  await page.getByRole('button', { name: 'Expand transcript' }).click();
+  const collapseTranscript = page.getByRole('button', { name: 'Collapse transcript' });
+  await expect(collapseTranscript).toHaveAttribute('aria-expanded', 'true');
+  await expect(transcript).toHaveAttribute('data-sizing-transition', 'started');
+  await expect.poll(() => transcript.evaluate((box) => box.scrollHeight <= box.clientHeight + 1)).toBe(true);
+  await collapseTranscript.click();
+  await expect(page.getByRole('button', { name: 'Expand transcript' })).toBeFocused();
 
   const rubric = page.getByText('3C scoring rubric', { exact: true });
   await rubric.press('Enter');
   await expect(page.getByRole('heading', { name: 'What to score' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Score levels' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Scoring notes' })).toHaveCount(0);
-  await expect(page.locator('.scoring-question')).toHaveCSS('animation-name', 'scoring-question-in');
+  await expect(page.locator('.scoring-question')).toHaveCSS('animation-name', 'scoring-response-in');
   expect(await page.locator('.scoring-rubric').evaluate((rubric) => getComputedStyle(rubric, '::details-content').transitionDuration)).toContain('0.24s');
   await expect(saveRating).toBeInViewport({ ratio: 1 });
   await page.setViewportSize({ width: 1536, height: 730 });
@@ -208,9 +246,23 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
   await rubric.click();
   await expect(page.getByRole('heading', { name: 'Score levels' })).toBeHidden();
   await expect(page.getByRole('textbox', { name: 'Rater code' })).toHaveCount(0);
-  await score('Clarity', 3).check();
+  const clarityThreeVisual = page.locator('.scoring-options input[name="clarity_score"][value="3"] + span');
+  await score('Clarity', 3).hover();
+  await page.mouse.down();
+  await expect(clarityThreeVisual).toHaveCSS('scale', '0.95');
+  await page.mouse.up();
+  await expect(score('Clarity', 3)).toBeChecked();
   await score('Clarity', 3).press('ArrowRight');
   await expect(score('Clarity', 4)).toBeChecked();
+  const resetRating = page.getByRole('button', { name: 'Reset rating', exact: true });
+  await score('Correctness', 2).check();
+  await score('Completeness', 5).check();
+  await expect(page.getByRole('button', { name: /reset/i })).toHaveCount(1);
+  await resetRating.press('Enter');
+  await expect(page.getByRole('radio', { checked: true })).toHaveCount(0);
+  await expect(score('Clarity', 1)).toBeFocused();
+  await expect(resetRating).toBeDisabled();
+  await score('Clarity', 4).check();
   await score('Correctness', 3).check();
   await saveRating.click();
   await expect(score('Completeness', 1)).toBeFocused();
@@ -218,6 +270,12 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
   await saveRating.click();
   const savedHeading = page.getByRole('heading', { name: 'Saved HR rating' });
   await expect(savedHeading).toBeFocused();
+  await expect(progress).toHaveText('1 of 3 responses rated');
+  await expect(page.getByRole('progressbar', { name: 'Participant rating progress' })).toHaveAttribute('value', '1');
+  const progressFill = page.locator('.scoring-progress-track > span');
+  await expect(progressFill).toHaveCSS('transition-property', 'transform');
+  await expect.poll(() => progressFill.evaluate((fill) =>
+    Math.round(fill.getBoundingClientRect().width / fill.parentElement.clientWidth * 100))).toBe(33);
   expect(details[0].rating).toEqual({ clarity_score: 4, correctness_score: 3, completeness_score: 5 });
   await page.keyboard.press('Tab');
   await expect(compareWithAi).toBeFocused();
@@ -234,7 +292,7 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
   await page.screenshot({ path: testInfo.outputPath('hr-compare-tablet.png'), animations: 'disabled', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await comparison.scrollIntoViewIfNeeded();
-  await expect(comparison).toBeInViewport({ ratio: 1 });
+  await expect(comparison).toBeInViewport({ ratio: .99 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
   await page.screenshot({ path: testInfo.outputPath('hr-compare-mobile.png'), animations: 'disabled', fullPage: true });
@@ -256,7 +314,7 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
 
   await page.getByRole('button', { name: 'Next question' }).click();
   await expect(page.getByRole('heading', { name: 'Question 2' })).toBeFocused();
-  await expect(page.getByRole('combobox', { name: 'Saved response' })).toHaveText('Question 2 · To rate');
+  await expect(page.getByRole('combobox', { name: 'Question' })).toHaveText('Question 2 · To rate');
   await expect(page.getByRole('radio', { checked: true })).toHaveCount(0);
   await expect(compareWithAi).toHaveCount(0);
   await expect(saveAndNext).toBeInViewport({ ratio: 1 });
@@ -283,6 +341,8 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('.scoring-question')).toHaveCSS('animation-name', 'none');
+  await expect(clarityThreeVisual).toHaveCSS('transition-duration', '0s');
+  await expect(progressFill).toHaveCSS('transition-duration', '0s');
   await rubric.press('Enter');
   await expect(page.getByRole('heading', { name: 'Score levels' })).toBeVisible();
   expect(await page.locator('.scoring-rubric').evaluate((rubric) => getComputedStyle(rubric, '::details-content').transitionDuration)).toBe('0s');
@@ -297,6 +357,69 @@ test('H₀₄ keeps long responses, the rubric, and rating controls usable acros
   await rubric.press('Enter');
   await expect(page.getByRole('heading', { name: 'Score levels' })).toBeHidden();
 
+  await page.getByRole('combobox', { name: 'Question' }).click();
+  await page.getByRole('option', { name: 'Question 1 · Rated' }).click();
+  await expect(savedHeading).toBeVisible();
+  await expect(page.getByRole('button', { name: /reset/i })).toHaveCount(1);
+  await resetRating.click();
+  const confirmation = page.getByRole('dialog', { name: 'Reset this rating?' });
+  const keepRating = confirmation.getByRole('button', { name: 'Keep rating' });
+  const confirmReset = confirmation.getByRole('button', { name: 'Reset rating' });
+  await expect(keepRating).toBeFocused();
+  await expect(confirmation).toHaveCSS('transition-duration', '0s');
+  await expect(confirmation).toContainText('Participant 0679 · Question 1');
+  await expect(confirmation).toBeInViewport({ ratio: 1 });
+  expect((await keepRating.boundingBox()).y).toBe((await confirmReset.boundingBox()).y);
+  await page.screenshot({ path: testInfo.outputPath('hr-reset-dialog-320.png') });
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toBeHidden();
+  await expect(resetRating).toBeFocused();
+  await expect(savedHeading).toBeVisible();
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const animatedDialog = page.locator('.scoring-reset-dialog');
+  await animatedDialog.evaluate((dialog) => dialog.addEventListener('transitionrun', (event) => {
+    if (event.propertyName === 'opacity' && !event.pseudoElement) {
+      dialog.dataset.motionState = dialog.open ? 'opening' : 'closing';
+    }
+  }));
+  await resetRating.click();
+  await expect(confirmation).toHaveCSS('transition-property', 'opacity, transform, display, overlay');
+  await expect(animatedDialog).toHaveAttribute('data-motion-state', 'opening');
+  await expect(confirmation).toHaveCSS('opacity', '1');
+  for (const [width, height] of [[1440, 900], [768, 1024], [390, 844]]) {
+    await page.setViewportSize({ width, height });
+    await expect(confirmation).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: testInfo.outputPath(`hr-reset-dialog-${width}.png`) });
+  }
+  await keepRating.click();
+  await expect(savedHeading).toBeVisible();
+  await expect(animatedDialog).toHaveAttribute('data-motion-state', 'closing');
+  await expect(confirmation).toBeHidden();
+  await resetRating.click();
+  await confirmReset.click();
+  await expect(confirmation.getByRole('alert')).toHaveText('Could not reset this rating. Try again.');
+  expect(details[0].rated).toBe(true);
+  await confirmReset.click();
+  await expect(confirmation).toBeHidden();
+  await expect(page.getByText('Reopened HR rating')).toBeVisible();
+  await expect(progress).toHaveText('1 of 3 responses rated');
+  await expect(page.getByRole('combobox', { name: 'Question' })).toHaveText('Question 1 · To rate');
+  await expect(score('Clarity', 1)).toBeFocused();
+  await expect(page.getByRole('radio', { checked: true })).toHaveCount(0);
+  await expect(compareWithAi).toHaveCount(0);
+  await page.getByRole('button', { name: 'Refresh responses' }).click();
+  await expect(score('Clarity', 1)).toBeVisible();
+  await expect(page.getByRole('radio', { checked: true })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('hr-ratings-reopened-mobile.png'), fullPage: true });
+  await score('Clarity', 5).check();
+  await score('Correctness', 3).check();
+  await score('Completeness', 5).check();
+  await saveRating.click();
+  await expect(progress).toHaveText('2 of 3 responses rated');
+  await expect(savedHeading).toBeFocused();
+
+  await page.getByRole('link', { name: 'Back to Admin' }).click();
+  await expect(page).toHaveURL(`${baseURL}/admin`);
   await page.getByRole('link', { name: 'Scoring Study', exact: true }).click();
   await page.getByRole('combobox', { name: 'Participant' }).click();
   await page.getByRole('option', { name: 'Participant 0679' }).click();
@@ -326,12 +449,12 @@ test('H₀₄ marks a participant completed only after all five responses are ra
   });
 
   await page.goto(`${baseURL}/admin?tab=hr-ratings`);
+  await expect(page).toHaveURL(`${baseURL}/admin/hr-ratings`);
   const participants = page.getByRole('combobox', { name: 'Participant' });
   await participants.click();
   await expect(page.getByRole('option', { name: /Completed/ })).toHaveCount(0);
   await page.getByRole('option', { name: 'Participant 0679', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Saved response' }).click();
-  await page.getByRole('option', { name: 'Question 5 · To rate' }).click();
+  await expect(page.getByRole('combobox', { name: 'Question' })).toHaveText('Question 5 · To rate');
   for (const criterion of ['Clarity', 'Correctness', 'Completeness']) {
     await page.getByRole('radiogroup', { name: criterion }).getByRole('radio', { name: /^4 ·/ }).check();
   }

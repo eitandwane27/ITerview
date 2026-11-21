@@ -22,6 +22,8 @@ const correctionSchema = new Schema({
   previousRating: { type: ratingSchema, required: true },
   correctedAt: { type: Date, required: true },
   correctedBy: { type: String, required: true },
+  resetCriterion: { type: String, enum: Object.keys(scores) },
+  reset: Boolean,
 }, { _id: false });
 
 module.exports = model('ScoringStudyResult', new Schema({
@@ -30,5 +32,7 @@ module.exports = model('ScoringStudyResult', new Schema({
   modelName: { type: String, required: true },
   trials: { type: [trialSchema], default: [] },
   rating: { type: ratingSchema, default: null },
+  // Keep the previous full rating available for the audit history and legacy partial resets.
+  resetCriteria: { type: [String], enum: Object.keys(scores), default: [] },
   ratingHistory: { type: [correctionSchema], default: [] },
 }));

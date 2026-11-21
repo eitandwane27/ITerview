@@ -44,7 +44,9 @@ function createSchoolAuth(verifyToken = verifyFirebaseToken) {
     if (!identity?.uid || !isSchoolEmail(identity.email)) {
       throw new AccessError(403, 'auth/school-email-required', `Please use your @${SCHOOL_EMAIL_DOMAIN} school email.`);
     }
-    if (identity.email_verified !== true) {
+    const skipVerification = process.env.NODE_ENV === 'development' &&
+      process.env.SKIP_EMAIL_VERIFICATION === 'true';
+    if (!skipVerification && identity.email_verified !== true) {
       throw new AccessError(403, 'auth/email-unverified', 'Verify your school email before continuing.');
     }
     if (identity.firebase?.sign_in_provider !== 'password') {

@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import Admin from './pages/Admin';
+import Admin, { HR_RATINGS_PATH } from './pages/Admin';
 import LikertScale from './pages/LikertScale';
 import MicTest from './components/MicTest';
 import PreTest from './pages/PreTest';
@@ -47,6 +47,7 @@ function App() {
             <Route path="/hrTester" element={<Navigate to="/admin?tab=hr-tester" replace />} />
             <Route element={<ProtectedRoute admin />}>
               <Route path="/admin" element={<Admin />} />
+              <Route path={HR_RATINGS_PATH} element={<Admin hrRatings />} />
             </Route>
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />

@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, Mail } from 'lucide-react';
 import { useSchoolAuth } from '../auth/schoolAuth';
 import { sendSchoolVerification, verificationWaitSeconds } from '../utils/emailVerification';
+import { REQUIRE_SCHOOL_EMAIL_VERIFICATION } from '../utils/schoolAccess';
 import '../components/AuthModal.css';
 
 export default function VerifyEmail() {
@@ -86,8 +87,9 @@ export default function VerifyEmail() {
   }
 
   if (status === 'admin') return <Navigate to="/admin" replace />;
-  if (status === 'ready') return <Navigate to="/dashboard" replace />;
   if (status === 'signed-out' || status === 'wrong-school') return <Navigate to="/login" replace />;
+  if (status === 'ready' || !REQUIRE_SCHOOL_EMAIL_VERIFICATION)
+    return <Navigate to="/dashboard" replace />;
   if (!user)
     return (
       <div className="am-page-root am-access-status" role="status">

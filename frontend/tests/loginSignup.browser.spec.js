@@ -11,6 +11,7 @@ const projectId = 'mock-school-project';
 test.beforeAll(async () => {
   // Exercise the real app and Firebase SDK with a synthetic project.
   server = await createServer({
+    mode: 'test',
     configFile: fileURLToPath(new URL('../vite.config.js', import.meta.url)),
     root: fileURLToPath(new URL('..', import.meta.url)),
     server: { host: '127.0.0.1', port: 5189 },

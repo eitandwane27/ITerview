@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { LogOut, Search } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, ExternalLink, LogOut, Search } from 'lucide-react';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useSchoolAuth } from '../auth/schoolAuth';
 import DashboardSignOutDialog from '../components/DashboardSignOutDialog';
 import HrTester from '../components/hrTester';
@@ -11,24 +11,40 @@ import AdminResearchData from './AdminResearchData';
 import AdminScoringStudy, { AdminHrRatings } from './AdminScoringStudy';
 import './Admin.css';
 
+export const HR_RATINGS_PATH = '/admin/hr-ratings';
+
 const adminPages = [
   { id: '', title: 'Students', description: 'Find student accounts, view unlocked tiers, and manage official names.', Content: AdminStudents },
   { id: 'research-data', title: 'Research Data', Content: AdminResearchData },
   { id: 'scoring-study', title: 'Scoring Study', description: 'Run H₀₃ AI trials and compare saved scores for the research study.', Content: AdminScoringStudy },
-  { id: 'hr-ratings', title: 'H₀₄ · HR ratings', Content: AdminHrRatings },
   { id: 'hr-tester', title: 'HR Tester', description: 'Generate and copy interview questions for HR review.', Content: HrTester },
 ];
 
 const unlockedTierLabels = new Map([['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']]);
 
-export default function Admin() {
+export default function Admin({ hrRatings = false }) {
   const { user, logout } = useSchoolAuth();
   const [params] = useSearchParams();
   const activePage = adminPages.find(({ id }) => id === params.get('tab')) ?? adminPages[0];
-  const { id, title, description, Content } = activePage;
+  const { id, title, description, Content } = hrRatings ? {
+    title: 'H₀₄ · HR ratings',
+    description: 'Review pre-test answers with the 3C rubric.',
+    Content: AdminHrRatings,
+  } : activePage;
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState('');
+
+  useEffect(() => {
+    if (!hrRatings) return;
+    const previousTitle = document.title;
+    document.title = 'H₀₄ · HR ratings | ITerview';
+    return () => { document.title = previousTitle; };
+  }, [hrRatings]);
+
+  if (!hrRatings && params.get('tab') === 'hr-ratings') {
+    return <Navigate to={HR_RATINGS_PATH} replace />;
+  }
 
   async function handleSignOut() {
     if (signingOut) return;
@@ -43,7 +59,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="rs-root admin-page">
+    <div className={`rs-root admin-page${hrRatings ? ' admin-page--ratings' : ''}`}>
       <ResultsHeader badge="Admin">
         <button type="button" className="rs-topbar-return-btn" aria-haspopup="dialog" onClick={() => {
           setSignOutError('');
@@ -53,23 +69,36 @@ export default function Admin() {
           Sign out
         </button>
       </ResultsHeader>
-      <main className={`rs-main admin-main${id === 'hr-ratings' ? ' admin-main--ratings' : ''}`}>
-        <nav className="admin-nav" aria-label="Admin pages">
-          {adminPages.map((page) => (
-            <Link key={page.id} to={page.id ? `/admin?tab=${page.id}` : '/admin'}
-              aria-current={page === activePage ? 'page' : undefined}>
-              {page.title}
+      <main className="rs-main admin-main">
+        {!hrRatings && (
+          <div className="admin-navigation">
+            <nav className="admin-nav" aria-label="Admin pages">
+              {adminPages.map((page) => (
+                <Link key={page.id} to={page.id ? `/admin?tab=${page.id}` : '/admin'}
+                  aria-current={page === activePage ? 'page' : undefined}>
+                  {page.title}
+                </Link>
+              ))}
+            </nav>
+            <Link to={HR_RATINGS_PATH} target="_blank" rel="noopener noreferrer"
+              className="rs-btn-primary admin-ratings-link" aria-label="Open H₀₄ HR ratings (opens in a new tab)">
+              Open H₀₄ HR ratings <ExternalLink size={16} aria-hidden="true" />
             </Link>
-          ))}
-        </nav>
-        <div className="rs-header-section">
-          <h1 className="rs-page-title">{title}</h1>
-          {id === 'research-data' ? (
-            <p className="rs-page-subtitle research-run">
-              <span><strong>H₀₁</strong> Pre/post interview</span>
-              <span><strong>H₀₂</strong> Confidence survey</span>
-            </p>
-          ) : description && <p className="rs-page-subtitle">{description}</p>}
+          </div>
+        )}
+        <div className={hrRatings ? 'admin-ratings-heading' : undefined}>
+          <div className="rs-header-section">
+            <h1 className="rs-page-title">{title}</h1>
+            {id === 'research-data' ? (
+              <p className="rs-page-subtitle research-run">
+                <span><strong>H₀₁</strong> Pre/post interview</span>
+                <span><strong>H₀₂</strong> Confidence survey</span>
+              </p>
+            ) : description && <p className="rs-page-subtitle">{description}</p>}
+          </div>
+          {hrRatings && <Link to="/admin" className="rs-topbar-return-btn admin-ratings-back">
+            <ArrowLeft size={16} aria-hidden="true" /> Back to Admin
+          </Link>}
         </div>
         <Content user={user} />
       </main>

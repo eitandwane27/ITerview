@@ -1,12 +1,16 @@
 import { auth } from '../firebase';
 import { apiUrl } from './backendUrl';
-import { schoolAccessStatus } from './schoolAccess';
+import { REQUIRE_SCHOOL_EMAIL_VERIFICATION, schoolAccessStatus } from './schoolAccess';
 
 export async function schoolIdToken() {
   await auth.authStateReady();
   const user = auth.currentUser;
   if (schoolAccessStatus(user) !== 'ready') {
-    throw new Error('Please sign in and verify your SPCBA school email.');
+    throw new Error(
+      REQUIRE_SCHOOL_EMAIL_VERIFICATION
+        ? 'Please sign in and verify your SPCBA school email.'
+        : 'Please sign in with your SPCBA school email.'
+    );
   }
   return user.getIdToken();
 }

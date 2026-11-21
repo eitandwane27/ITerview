@@ -64,6 +64,25 @@ test('missing/invalid tokens, personal addresses, unverified accounts and OAuth 
   assert.equal((await auth.authenticate('valid')).uid, verifiedUser.uid);
 });
 
+test('the local verification bypass still requires a school email and password sign-in', async t => {
+  const keys = ['NODE_ENV', 'SKIP_EMAIL_VERIFICATION'];
+  const previous = keys.map(key => process.env[key]);
+  t.after(() => keys.forEach((key, index) => {
+    if (previous[index] === undefined) delete process.env[key];
+    else process.env[key] = previous[index];
+  }));
+
+  process.env.NODE_ENV = 'development';
+  process.env.SKIP_EMAIL_VERIFICATION = 'true';
+  assert.equal(await auth.authenticate('unverified'), identities.unverified);
+  await assert.rejects(auth.authenticate('personal'), { code: 'auth/school-email-required' });
+  await assert.rejects(auth.authenticate('oauth'), { code: 'auth/password-required' });
+  await assert.rejects(auth.authenticate('forged'), { code: 'auth/invalid-token' });
+
+  process.env.NODE_ENV = 'production';
+  await assert.rejects(auth.authenticate('unverified'), { code: 'auth/email-unverified' });
+});
+
 test('admin access requires the configured UID and password sign-in', async t => {
   const previousUid = process.env.ADMIN_FIREBASE_UID;
   t.after(() => {

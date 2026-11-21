@@ -34,6 +34,10 @@ function sourceResponse(assessment, email, answer) {
   };
 }
 
+function completedRating(result) {
+  return result?.resetCriteria?.length ? null : result?.rating ?? null;
+}
+
 function withStatus(source, result) {
   return {
     id: source.id,
@@ -42,17 +46,22 @@ function withStatus(source, result) {
     assessmentId: source.assessmentId,
     questionIndex: source.questionIndex,
     trialsSaved: result?.trials.length ?? 0,
-    rated: Boolean(result?.rating),
+    rated: Boolean(completedRating(result)),
   };
 }
 
 function responseDetail(source, result, showTrials = false) {
+  const rating = completedRating(result);
   return {
     ...withStatus(source, result),
     question: source.question,
     transcript: source.transcript,
-    trials: showTrials || result?.rating ? result?.trials ?? [] : [],
-    rating: result?.rating ?? null,
+    trials: showTrials || rating ? result?.trials ?? [] : [],
+    rating,
+    ratingDraft: result?.rating && !rating
+      ? Object.fromEntries(dimensions.filter((key) => !result.resetCriteria.includes(key))
+        .map((key) => [key, result.rating[key]]))
+      : null,
     ratingRevision: result?.ratingHistory?.length ?? 0,
   };
 }
@@ -92,14 +101,15 @@ router.get('/export', async (req, res) => {
   ];
   const rows = sources.flatMap((source) => {
     const result = byResponse.get(source.id);
-    if (!result?.trials.length && !result?.rating) return [];
+    const rating = completedRating(result);
+    if (!result?.trials.length && !rating) return [];
     return [[source.participantKey, source.participantId ?? '', source.id, source.questionIndex + 1,
       difficulty, result.modelName, result.protocol,
       ...Array.from({ length: trialCount }, (_, index) => {
         const trial = result.trials[index];
         return [...fields(trial), trial?.scoredAt.toISOString() ?? ''];
       }).flat(),
-      result.rating?.raterCode ?? '', ...fields(result.rating), result.rating?.ratedAt.toISOString() ?? '',
+      rating?.raterCode ?? '', ...fields(rating), rating?.ratedAt.toISOString() ?? '',
     ]];
   });
   // Quote every cell and neutralize formula prefixes in configured identifiers.
@@ -202,12 +212,13 @@ async function saveRating(req, res) {
     if (!current?.rating || (current.ratingHistory?.length ?? 0) !== revision) {
       return res.status(409).json({ message: conflictMessage });
     }
-    if (dimensions.every((key) => current.rating[key] === rating[key])) {
+    if (completedRating(current) && dimensions.every((key) => current.rating[key] === rating[key])) {
       return res.json({ response: responseDetail(source, current) });
     }
     if (current.rating.raterCode !== undefined) rating.raterCode = current.rating.raterCode;
     filter.rating = { $ne: null };
     filter[`ratingHistory.${revision}`] = { $exists: false };
+    update.$set.resetCriteria = [];
     update.$push = { ratingHistory: {
       previousRating: current.rating,
       correctedAt: rating.ratedAt,
@@ -224,6 +235,30 @@ async function saveRating(req, res) {
 }
 
 router.route(`${responsePath}/rating`).post(saveRating).patch(saveRating);
+
+router.post(`${responsePath}/rating/reset`, async (req, res) => {
+  const source = res.locals.studySource;
+  const { id, criterion, revision } = req.body ?? {};
+  if (id !== source.id) return res.status(409).json({ message: 'The response changed. Open it again.' });
+  if (criterion !== undefined || !Number.isSafeInteger(revision) || revision < 0) {
+    return res.status(400).json({ message: 'Refresh responses before resetting this rating.' });
+  }
+  const conflict = { message: 'The saved HR rating changed. Refresh responses before resetting it.' };
+  const current = await ScoringStudyResult.findById(source.id).lean();
+  if (!current?.rating || (current.ratingHistory?.length ?? 0) !== revision) return res.status(409).json(conflict);
+  if (current.resetCriteria?.length === dimensions.length) return res.json({ response: responseDetail(source, current) });
+
+  const saved = await ScoringStudyResult.findOneAndUpdate({
+    _id: source.id, rating: { $ne: null }, [`ratingHistory.${revision}`]: { $exists: false },
+  }, {
+    $set: { resetCriteria: dimensions },
+    $push: { ratingHistory: {
+      previousRating: current.rating, correctedAt: new Date(), correctedBy: req.auth.uid, reset: true,
+    } },
+  }, { returnDocument: 'after', runValidators: true }).lean();
+  if (!saved) return res.status(409).json(conflict);
+  res.json({ response: responseDetail(source, saved) });
+});
 
 router.use((error, _req, res, _next) => {
   console.error('[Scoring Study] Request failed', error.name);

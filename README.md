@@ -15,6 +15,8 @@ Run `npm run build` from `frontend` to create a production frontend build. Keep 
 
 School accounts use email/password sign-in and must verify an `@spcba.edu.ph` email before accessing the dashboard or interviews. Set `FIREBASE_PROJECT_ID` on the backend to the same project as `VITE_FIREBASE_PROJECT_ID` on the frontend. Enable Email/Password in Firebase Authentication and configure the verification email template in the Firebase console. Verification uses Firebase's hosted email action page; students return to ITerview and select **I've verified my email**. Email verification does not establish course or graduating status.
 
+For local testing, set `VITE_SKIP_EMAIL_VERIFICATION=true` in `frontend/.env.development.local` and `SKIP_EMAIL_VERIFICATION=true` with `NODE_ENV=development` in `backend/.env`. Restart both servers after changing these settings. Remove both skip flags to require verification again.
+
 The microphone test and direct Flux debugger request a fresh 30-second Deepgram usage token from the authenticated `/api/deepgram/token` endpoint before each connection. Keep `DEEPGRAM_API_KEY` on the backend and give it Member permissions so it can mint these tokens. The browser uses bearer authentication; an established speech connection can continue after the token expires. See [Deepgram token authentication](https://developers.deepgram.com/guides/fundamentals/token-based-authentication). For an existing deployment that used the previous key-returning endpoint, replace the server key and revoke the old key in the Deepgram console after deploying this change; previously copied keys remain valid until revoked.
 
 ## Nikki goodbye and sign-out demo

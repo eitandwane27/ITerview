@@ -16,7 +16,12 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'fire
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { auth } from '../firebase';
 import './AuthModal.css';
-import { ADMIN_AUTH_EMAIL, isSchoolEmail } from '../utils/schoolAccess';
+import {
+  ADMIN_AUTH_EMAIL,
+  isSchoolEmail,
+  REQUIRE_SCHOOL_EMAIL_VERIFICATION,
+  schoolAccessStatus,
+} from '../utils/schoolAccess';
 import { sendSchoolVerification } from '../utils/emailVerification';
 import { passwordResetWaitSeconds, requestPasswordReset } from '../utils/passwordReset';
 import { useSchoolAuth } from '../auth/schoolAuth';
@@ -312,7 +317,7 @@ export default function AuthModal({
           : await createUserWithEmailAndPassword(auth, trimmedEmail, password);
       const user = credential.user;
 
-      if (!isAdminLogin && !user.emailVerified) {
+      if (schoolAccessStatus(user) === 'verify') {
         signInTransition?.cancel();
         let emailSent = false;
         let verificationError = '';
@@ -466,7 +471,7 @@ export default function AuthModal({
 
             <p id="am-subheading" className="am-subheading">
               {mode === 'login'
-                ? 'Use your verified SPCBA school email or admin username.'
+                ? `Use your ${REQUIRE_SCHOOL_EMAIL_VERIFICATION ? 'verified ' : ''}SPCBA school email or admin username.`
                 : mode === 'register'
                   ? 'Use your SPCBA school email to get started.'
                   : 'Enter the SPCBA school email you used to create your ITerview account.'}

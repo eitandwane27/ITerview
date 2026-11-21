@@ -62,7 +62,7 @@ test('the scoring study resumes failed trials and records corrections to saved H
         if (!result.rating || result.ratingHistory?.[Number(slot.split('.')[1])]) return lean(null);
         (result.ratingHistory ??= []).push(update.$push.ratingHistory);
       } else if (result.rating) return lean(null);
-      result.rating = update.$set.rating;
+      Object.assign(result, update.$set);
     }
     return lean(result);
   });
@@ -187,5 +187,37 @@ test('the scoring study resumes failed trials and records corrections to saved H
   assert.deepEqual(concurrent.map((response) => response.status).sort(), [200, 409]);
   assert.equal(rows.get(id).ratingHistory.length, 2);
   assert.equal(rows.get(id).rating.raterCode, 'HR01');
+  assert.match((await (await request('/export')).json()).csv, /"HR01","[24]","4","4"/);
+
+  const reset = (revision, token) => request(path + '/rating/reset', { id, revision }, token);
+  assert.equal((await reset(2, 'student')).status, 403);
+  assert.equal((await request(path + '/rating/reset', { id, criterion: 'clarity_score', revision: 2 })).status, 400);
+  assert.equal((await reset(1)).status, 409);
+  const originalRating = structuredClone(rows.get(id).rating);
+  const reopened = await (await reset(2)).json();
+  assert.equal(reopened.response.rated, false);
+  assert.equal(reopened.response.rating, null);
+  assert.deepEqual(reopened.response.ratingDraft, {});
+  assert.deepEqual(reopened.response.trials, []);
+  assert.equal(reopened.response.ratingRevision, 3);
+  assert.deepEqual(rows.get(id).ratingHistory[2].previousRating, originalRating);
+  assert.equal(rows.get(id).ratingHistory[2].reset, true);
+  assert.equal((await (await request('')).json()).responses[0].rated, false);
+  assert.match((await (await request('/export')).json()).csv.trimEnd().split('\r\n').at(-1), /(?:,""){5}$/);
+  assert.equal((await correct({ ...correction, revision: 2 })).status, 409);
+
+  assert.deepEqual((await (await request(path)).json()).response.ratingDraft, {});
+  assert.equal((await (await reset(3)).json()).response.ratingRevision, 3);
+  assert.equal((await correct({ id, revision: 3, scores: { correctness_score: 4 } })).status, 400);
+  await new ScoringStudyResult(rows.get(id)).validate();
+
+  const { clarity_score, correctness_score, completeness_score } = originalRating;
+  const restored = await (await correct({ id, revision: 3, scores: { clarity_score, correctness_score, completeness_score } })).json();
+  assert.equal(restored.response.rated, true);
+  assert.equal(restored.response.rating.raterCode, 'HR01');
+  assert.equal(restored.response.ratingDraft, null);
+  assert.deepEqual(restored.response.trials, rated.response.trials);
+  assert.equal(restored.response.ratingRevision, 4);
+  assert.deepEqual(rows.get(id).resetCriteria, []);
   assert.match((await (await request('/export')).json()).csv, /"HR01","[24]","4","4"/);
 });
