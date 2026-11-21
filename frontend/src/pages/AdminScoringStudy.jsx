@@ -507,8 +507,8 @@ export default function AdminScoringStudy({ user, hrOnly = false }) {
           </div>
         )}
         {error && !confirmReset && !ratingFormOpen && <p className="admin-error" role="alert">{error}</p>}
-        {!cohort && !error && <p role="status" className="admin-muted">Loading completed pre-test responses…</p>}
-        {cohort && !responses.length && <p className="admin-muted">Saved answers appear here after a student completes the pre-test.</p>}
+        {!cohort && !error && <p role="status" className="admin-muted">Loading completed post-test responses…</p>}
+        {cohort && !responses.length && <p className="admin-muted">Saved answers appear here after a student completes the post-test.</p>}
         {selected && !response && !error && <p role="status" className="admin-muted">Loading saved response…</p>}
         {hrOnly && cohort && !selected && !!responses.length && <p className="admin-muted">Choose a participant to start rating.</p>}
         <div className="scoring-response">

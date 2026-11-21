@@ -16,7 +16,7 @@ export const HR_RATINGS_PATH = '/admin/hr-ratings';
 const adminPages = [
   { id: '', title: 'Students', description: 'Find student accounts, view unlocked tiers, and manage official names.', Content: AdminStudents },
   { id: 'research-data', title: 'Research Data', Content: AdminResearchData },
-  { id: 'scoring-study', title: 'Scoring Study', description: 'Run H₀₃ AI trials and compare saved scores for the research study.', Content: AdminScoringStudy },
+  { id: 'scoring-study', title: 'Scoring Study', description: 'Run H₀₃ AI trials on post-test responses and compare saved scores.', Content: AdminScoringStudy },
   { id: 'hr-tester', title: 'HR Tester', description: 'Generate and copy interview questions for HR review.', Content: HrTester },
 ];
 
@@ -28,7 +28,7 @@ export default function Admin({ hrRatings = false }) {
   const activePage = adminPages.find(({ id }) => id === params.get('tab')) ?? adminPages[0];
   const { id, title, description, Content } = hrRatings ? {
     title: 'H₀₄ · HR ratings',
-    description: 'Review pre-test answers with the 3C rubric.',
+    description: 'Review post-test answers with the 3C rubric.',
     Content: AdminHrRatings,
   } : activePage;
   const [confirmSignOut, setConfirmSignOut] = useState(false);

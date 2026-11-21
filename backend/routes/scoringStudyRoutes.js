@@ -2,7 +2,7 @@ const { createHash } = require('node:crypto');
 const express = require('express');
 const { isSchoolEmail } = require('../middleware/schoolAuth');
 const User = require('../models/User');
-const PreTestSession = require('../models/PreTestSession');
+const PostTestSession = require('../models/PostTestSession');
 const ScoringStudyResult = require('../models/ScoringStudyResult');
 
 const router = express.Router();
@@ -71,7 +71,7 @@ async function loadCohort(adminUid) {
     .select('firebaseUid email -_id').sort({ createdAt: 1, _id: 1 }).lean();
   const eligible = new Map(users.filter(({ email }) => isSchoolEmail(email))
     .map(({ firebaseUid, email }) => [firebaseUid, email]));
-  const assessments = await PreTestSession.find({
+  const assessments = await PostTestSession.find({
     firebaseUid: { $in: [...eligible.keys()] }, completedAt: completed,
   }).select(assessmentFields).lean();
   const byUid = new Map(assessments.map((assessment) => [assessment.firebaseUid, assessment]));
@@ -93,7 +93,7 @@ router.get('/export', async (req, res) => {
   const { sources, byResponse } = await loadCohort(req.auth.uid);
   const fields = (entry) => dimensions.map((key) => entry?.[key] ?? '');
   const header = [
-    'participant_key', 'participant_id', 'response_id', 'pre_test_question', 'difficulty', 'model', 'scoring_protocol',
+    'participant_key', 'participant_id', 'response_id', 'post_test_question', 'difficulty', 'model', 'scoring_protocol',
     ...Array.from({ length: trialCount }, (_, index) => [
       ...dimensions.map((key) => `ai_${index + 1}_${key}`), `ai_${index + 1}_scored_at`,
     ]).flat(),
@@ -124,9 +124,9 @@ const responsePath = '/:assessmentId/:questionIndex';
 router.use(responsePath, async (req, res, next) => {
   const { assessmentId, questionIndex } = req.params;
   if (!/^[a-f0-9]{24}$/.test(assessmentId) || !/^[0-4]$/.test(questionIndex)) {
-    return res.status(400).json({ message: 'Choose a saved pre-test response.' });
+    return res.status(400).json({ message: 'Choose a saved post-test response.' });
   }
-  const assessment = await PreTestSession.findOne({ _id: assessmentId, completedAt: completed })
+  const assessment = await PostTestSession.findOne({ _id: assessmentId, completedAt: completed })
     .select(assessmentFields).lean();
   if (assessment && assessment.firebaseUid !== req.auth.uid) {
     const student = await User.findOne({ firebaseUid: assessment.firebaseUid }).select('email -_id').lean();
@@ -139,7 +139,7 @@ router.use(responsePath, async (req, res, next) => {
       }
     }
   }
-  res.status(404).json({ message: 'This completed pre-test response is no longer available.' });
+  res.status(404).json({ message: 'This completed post-test response is no longer available.' });
 });
 
 router.get(responsePath, async (req, res) => {

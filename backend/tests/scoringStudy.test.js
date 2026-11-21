@@ -4,10 +4,11 @@ const express = require('express');
 const { createSchoolAuth } = require('../middleware/schoolAuth');
 const adminRoutes = require('../routes/adminRoutes');
 const User = require('../models/User');
+const PostTestSession = require('../models/PostTestSession');
 const PreTestSession = require('../models/PreTestSession');
 const ScoringStudyResult = require('../models/ScoringStudyResult');
 
-test('the scoring study resumes failed trials and records corrections to saved HR ratings', async (t) => {
+test('the scoring study runs trials and saves HR ratings on completed post-test responses', async (t) => {
   const oldAdminUid = process.env.ADMIN_FIREBASE_UID;
   const oldKey = process.env.DEEPSEEK_API_KEY;
   const oldModel = process.env.DEEPSEEK_MODEL;
@@ -31,15 +32,18 @@ test('the scoring study resumes failed trials and records corrections to saved H
       transcript: 'A test that checks one small unit of code.',
     }],
   };
+  const preTest = { ...fixture, _id: '5e0c0f6c1dac114774aa23bd' };
   const rows = new Map();
   const lean = (data) => ({ lean: async () => structuredClone(data) });
   t.mock.method(User, 'find', () => ({ select: () => ({ sort: () => lean([student, unrelated]) }) }));
   t.mock.method(User, 'findOne', ({ firebaseUid }) => ({ select: () => lean(firebaseUid === student.firebaseUid ? student : unrelated) }));
-  t.mock.method(PreTestSession, 'find', (filter) => {
+  t.mock.method(PreTestSession, 'find', () => ({ select: () => lean([preTest]) }));
+  t.mock.method(PreTestSession, 'findOne', ({ _id }) => ({ select: () => lean(_id === preTest._id ? preTest : null) }));
+  t.mock.method(PostTestSession, 'find', (filter) => {
     assert.deepEqual(filter, { firebaseUid: { $in: [student.firebaseUid] }, completedAt: { $type: 'date' } });
     return { select: () => lean([fixture]) };
   });
-  t.mock.method(PreTestSession, 'findOne', (filter) => {
+  t.mock.method(PostTestSession, 'findOne', (filter) => {
     assert.deepEqual(filter.completedAt, { $type: 'date' });
     return { select: () => lean(fixture._id === filter._id && fixture.completedAt ? fixture : null) };
   });
@@ -91,6 +95,7 @@ test('the scoring study resumes failed trials and records corrections to saved H
     body: body && JSON.stringify(body),
   });
   const path = `/${fixture._id}/0`;
+  assert.equal((await request(`/${preTest._id}/0`)).status, 404);
   assert.equal((await request(path, null, 'student')).status, 403);
   assert.equal((await request(path + '?showTrials=1', null, 'student')).status, 403);
   assert.equal((await request(path + '/trial', { trial: 1 }, 'student')).status, 403);
@@ -99,7 +104,8 @@ test('the scoring study resumes failed trials and records corrections to saved H
   const { responses, trialCount } = await listing.json();
   assert.equal(trialCount, 3);
   assert.equal(responses.length, 1);
-  const [{ id, participantKey, participantId, transcript, trialsSaved }] = responses;
+  const [{ id, participantKey, participantId, assessmentId, transcript, trialsSaved }] = responses;
+  assert.equal(assessmentId, fixture._id);
   assert.equal(participantId, '0042');
   assert.equal(transcript, undefined);
   assert.equal(trialsSaved, 0);
@@ -170,6 +176,7 @@ test('the scoring study resumes failed trials and records corrections to saved H
   assert.equal(calls.length, callsBeforeCorrection);
 
   const { csv } = await (await request('/export')).json();
+  assert.match(csv, /"post_test_question"/);
   assert.match(csv, /"ai_3_clarity_score"/);
   assert.match(csv, /"hr_completeness_score"/);
   assert.ok(csv.includes(`"${participantKey}","0042","${id}"`));
